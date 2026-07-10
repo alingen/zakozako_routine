@@ -31,7 +31,16 @@ final class RoutineSessionViewModel {
         guard dependencies == nil else { return }
         dependencies = AppDependencies(context: context)
         characterName = dependencies?.characterEngine.activePreset.name ?? characterName
-        Task { await start() }
+        Task {
+            await start()
+            // ルーティン開始と同時に、デフォルトで音声会話を有効にする。
+            // 開始の挨拶(greeting)は、音声エンジンがリスニングに入った直後に読み上げさせる
+            // (許可が下りない・認識器が使えない等で音声が始まらなければ、テキストのみで続行する)。
+            await startVoiceMode()
+            if let greeting = messages.last?.text {
+                voiceEngine?.speak(greeting)
+            }
+        }
     }
 
     func start() async {

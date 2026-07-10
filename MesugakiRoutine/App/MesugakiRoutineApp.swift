@@ -27,6 +27,10 @@ struct MesugakiRoutineApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabView()
+                .environment(SiriLaunchCoordinator.shared)
+                .onOpenURL { url in
+                    SiriLaunchCoordinator.shared.handle(url: url)
+                }
         }
         .modelContainer(modelContainer)
     }

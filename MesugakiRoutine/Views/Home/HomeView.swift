@@ -3,15 +3,28 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(SiriLaunchCoordinator.self) private var siriLaunchCoordinator
     @State private var viewModel = HomeViewModel()
     @State private var selectedRoutine: Routine?
     @State private var editingRoutine: Routine?
     @State private var isPresentingTemptationPicker = false
     @State private var isPresentingTemptationMessage = false
     @State private var temptationMessage = ""
+    @State private var isPresentingSiriHelp = false
 
     var body: some View {
         List {
+            if viewModel.isListeningForVoiceCommand {
+                Section {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("🎙️ 「朝ルーティン」「夜ルーティン」など話しかけてください…")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             Section {
                 Button {
                     isPresentingTemptationPicker = true
@@ -27,9 +40,18 @@ struct HomeView: View {
                 .listRowBackground(Color.clear)
             }
 
-            Section("今日のルーティン") {
+            Section {
                 routineRow(title: "朝ルーティン", routine: viewModel.morningRoutine)
                 routineRow(title: "夜ルーティン", routine: viewModel.nightRoutine)
+            } header: {
+                HStack {
+                    Text("今日のルーティン")
+                    Button {
+                        isPresentingSiriHelp = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                }
             }
 
             Section("やらないことリスト") {
@@ -74,11 +96,22 @@ struct HomeView: View {
         } message: {
             Text(temptationMessage)
         }
+        .sheet(isPresented: $isPresentingSiriHelp) {
+            SiriShortcutHelpView()
+        }
         .task {
             viewModel.configure(context: modelContext)
         }
         .onAppear {
             viewModel.reload()
+            triggerAutoListenIfNeeded()
+            startPendingRoutineIfNeeded()
+        }
+        .onChange(of: siriLaunchCoordinator.shouldAutoListenOnNextHomeAppear) {
+            triggerAutoListenIfNeeded()
+        }
+        .onChange(of: siriLaunchCoordinator.pendingRoutineTypeToStart) {
+            startPendingRoutineIfNeeded()
         }
     }
 
@@ -86,6 +119,30 @@ struct HomeView: View {
         Task {
             temptationMessage = await viewModel.confrontTemptation(behavior)
             isPresentingTemptationMessage = true
+        }
+    }
+
+    /// Siriショートカット(zakozakoroutine:// URL)経由で開かれた時だけ、数秒間の音声コマンド受付を始める。
+    /// 手動でアイコンをタップして開いた場合は発火しない。
+    private func triggerAutoListenIfNeeded() {
+        guard siriLaunchCoordinator.shouldAutoListenOnNextHomeAppear else { return }
+        siriLaunchCoordinator.shouldAutoListenOnNextHomeAppear = false
+        Task {
+            if let routine = await viewModel.listenForRoutineVoiceCommand() {
+                selectedRoutine = routine
+            }
+        }
+    }
+
+    /// App Intent(StartRoutineIntent)経由で「このルーティンを開始して」と指定されていれば、
+    /// 該当ルーティンへ直接遷移する。音声認識は不要(Siriが既にどちらか判定済みのため)。
+    private func startPendingRoutineIfNeeded() {
+        guard let routineType = siriLaunchCoordinator.pendingRoutineTypeToStart else { return }
+        siriLaunchCoordinator.pendingRoutineTypeToStart = nil
+        switch routineType {
+        case .morning: selectedRoutine = viewModel.morningRoutine
+        case .night: selectedRoutine = viewModel.nightRoutine
+        case .custom: break
         }
     }
 
@@ -127,5 +184,6 @@ struct HomeView: View {
     NavigationStack {
         HomeView()
     }
+    .environment(SiriLaunchCoordinator())
     .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self, CharacterPreset.self, BlockedBehavior.self], inMemory: true)
 }

@@ -33,6 +33,10 @@ targets:
         CFBundleDisplayName: 小悪魔コーチ
         NSMicrophoneUsageDescription: 音声で会話するためにマイクを使用します。
         NSSpeechRecognitionUsageDescription: 話しかけた内容をテキストに変換するために音声認識を使用します。
+        CFBundleURLTypes:
+          - CFBundleURLName: com.zakozako.mesugakiroutine
+            CFBundleURLSchemes:
+              - zakozakoroutine
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zakozako.mesugakiroutine

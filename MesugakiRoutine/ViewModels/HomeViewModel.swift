@@ -10,7 +10,11 @@ final class HomeViewModel {
     private(set) var blockedBehaviors: [BlockedBehavior] = []
     var newBlockedBehaviorTitle: String = ""
 
+    /// Siriショートカット経由の起動直後、数秒だけ音声コマンドを受け付けている間 true。
+    private(set) var isListeningForVoiceCommand = false
+
     private var dependencies: AppDependencies?
+    private let quickVoiceCommandListener = QuickVoiceCommandListener()
 
     func configure(context: ModelContext) {
         if dependencies == nil {
@@ -65,5 +69,21 @@ final class HomeViewModel {
             )
         )
         return response.text
+    }
+
+    /// Siriショートカット経由の起動時にだけ呼ばれる。数秒間だけ音声を聞き取り、
+    /// 「朝」「夜」といったキーワードから該当ルーティンを判定して返す(一致しなければ nil)。
+    func listenForRoutineVoiceCommand() async -> Routine? {
+        isListeningForVoiceCommand = true
+        let text = await quickVoiceCommandListener.listenOnce()
+        isListeningForVoiceCommand = false
+        guard let text else { return nil }
+        return matchRoutine(for: text)
+    }
+
+    private func matchRoutine(for text: String) -> Routine? {
+        if text.contains("朝") { return morningRoutine }
+        if text.contains("夜") { return nightRoutine }
+        return nil
     }
 }
