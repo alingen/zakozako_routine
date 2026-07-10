@@ -1,0 +1,18 @@
+# Xcode
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# XcodeGen generates project.pbxproj from project.yml
+# (commit project.yml, not the generated .xcodeproj)
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Local secrets (never commit real API keys; see Secrets.example.json)
+MesugakiRoutine/Resources/Secrets.local.json
