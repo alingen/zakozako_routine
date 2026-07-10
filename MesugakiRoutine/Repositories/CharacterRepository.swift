@@ -50,13 +50,9 @@ final class CharacterRepository {
 
     func update(
         _ preset: CharacterPreset,
-        name: String,
-        description: String,
         praiseStyle: PraiseStyle,
         scoldStyle: ScoldStyle
     ) {
-        preset.name = name
-        preset.presetDescription = description
         preset.praiseStyle = praiseStyle
         preset.scoldStyle = scoldStyle
         preset.updatedAt = .now

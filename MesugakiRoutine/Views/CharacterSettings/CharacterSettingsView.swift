@@ -21,11 +21,11 @@ struct CharacterSettingsView: View {
                     }
                     .foregroundStyle(.primary)
                 }
-            }
-
-            Section("キャラクター名") {
-                TextField("名前", text: $viewModel.name)
-                TextField("説明", text: $viewModel.description, axis: .vertical)
+                if let selected = viewModel.selectedPreset, !selected.presetDescription.isEmpty {
+                    Text(selected.presetDescription)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("褒め方") {
@@ -35,6 +35,9 @@ struct CharacterSettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .onChange(of: viewModel.praiseStyle) {
+                    viewModel.save()
+                }
             }
 
             Section("叱り方") {
@@ -44,33 +47,9 @@ struct CharacterSettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-            }
-
-            Section {
-                Button("保存") {
+                .onChange(of: viewModel.scoldStyle) {
                     viewModel.save()
                 }
-            }
-
-            Section {
-                SecureField("sk-...", text: $viewModel.openAIAPIKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                HStack {
-                    Button("APIキーを保存") {
-                        viewModel.saveAPIKey()
-                    }
-                    Spacer()
-                    Button("削除", role: .destructive) {
-                        viewModel.clearAPIKey()
-                    }
-                }
-            } header: {
-                Text("OpenAI連携")
-            } footer: {
-                Text(viewModel.isUsingOpenAI
-                     ? "APIキーが設定されているため、ChatGPT(Chat Completions API)で応答を生成します。"
-                     : "APIキー未設定のため、ローカルテンプレートで応答します。")
             }
 
             Section {

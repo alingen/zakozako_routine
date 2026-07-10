@@ -7,6 +7,7 @@ import Observation
 final class HomeViewModel {
     private(set) var morningRoutine: Routine?
     private(set) var nightRoutine: Routine?
+    private(set) var blockedBehaviors: [BlockedBehavior] = []
 
     private var dependencies: AppDependencies?
 
@@ -21,5 +22,6 @@ final class HomeViewModel {
         guard let dependencies else { return }
         morningRoutine = dependencies.routineRepository.fetch(type: .morning).first
         nightRoutine = dependencies.routineRepository.fetch(type: .night).first
+        blockedBehaviors = dependencies.blockedBehaviorRepository.fetchActive()
     }
 }
