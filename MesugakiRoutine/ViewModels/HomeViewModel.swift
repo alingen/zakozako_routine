@@ -58,6 +58,26 @@ final class HomeViewModel {
         reload()
     }
 
+    /// 検出ワード・代替行動・検出時間帯を更新する(詳細編集シート用)。
+    func updateBlockedBehaviorDetails(
+        _ behavior: BlockedBehavior,
+        triggerText: String,
+        alternativeAction: String,
+        useTimeWindow: Bool,
+        startTime: Date,
+        endTime: Date
+    ) {
+        guard let dependencies else { return }
+        dependencies.blockedBehaviorRepository.updateDetails(
+            behavior,
+            triggerText: triggerText,
+            alternativeAction: alternativeAction,
+            activeStartMinute: useTimeWindow ? BlockedBehavior.minutes(from: startTime) : nil,
+            activeEndMinute: useTimeWindow ? BlockedBehavior.minutes(from: endTime) : nil
+        )
+        reload()
+    }
+
     /// 「負けそう」ボタンから、特定の「やらないこと」に対するキャラクターの声かけを取得する。
     /// ルーティンセッション外からの呼び出しのため、RoutineEngineには一切触れずCharacterEngineだけを使う。
     func confrontTemptation(_ behavior: BlockedBehavior?) async -> String {
@@ -65,7 +85,8 @@ final class HomeViewModel {
         let response = await dependencies.characterEngine.respond(
             to: .blockedBehaviorDetected(
                 behaviorTitle: behavior?.title ?? "",
-                counterMessage: behavior?.counterMessage ?? ""
+                counterMessage: behavior?.counterMessage ?? "",
+                alternativeAction: behavior?.alternativeAction ?? ""
             )
         )
         return response.text

@@ -93,7 +93,11 @@ final class ConversationCoordinator {
 
         if let behavior = blockedBehaviorRepository.firstMatch(for: text) {
             let response = await characterEngine.respond(
-                to: .blockedBehaviorDetected(behaviorTitle: behavior.title, counterMessage: behavior.counterMessage),
+                to: .blockedBehaviorDetected(
+                    behaviorTitle: behavior.title,
+                    counterMessage: behavior.counterMessage,
+                    alternativeAction: behavior.alternativeAction
+                ),
                 userText: text,
                 history: history
             )

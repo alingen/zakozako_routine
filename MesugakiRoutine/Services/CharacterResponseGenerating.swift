@@ -8,7 +8,7 @@ enum CharacterSituation {
     case stepFailed(nextStepName: String?)
     case routineCompleted
     case helpRequested(currentStepName: String)
-    case blockedBehaviorDetected(behaviorTitle: String, counterMessage: String)
+    case blockedBehaviorDetected(behaviorTitle: String, counterMessage: String, alternativeAction: String)
     case nextStepQuery(currentStepName: String?)
     /// 自由入力テキスト。ChatGPT等に差し替えた際は、これがそのままユーザー発言として渡る。
     case freeText(String)

@@ -48,10 +48,12 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
         case .helpRequested(let currentStepName):
             return "\(currentStepName)のやり方わかんないの？ざっこ〜♡ほら、体動かすだけでいいのに〜"
 
-        case .blockedBehaviorDetected(_, let counterMessage):
-            return counterMessage.isEmpty
+        case .blockedBehaviorDetected(_, let counterMessage, let alternativeAction):
+            let base = counterMessage.isEmpty
                 ? "え〜誘惑にまけてやっちゃうの？ざこざこめんたるでお先まっくら〜"
                 : counterMessage
+            guard !alternativeAction.isEmpty else { return base }
+            return "\(base) 代わりに\(alternativeAction)しなよ〜？"
 
         case .nextStepQuery(let currentStepName):
             if let step = currentStepName {

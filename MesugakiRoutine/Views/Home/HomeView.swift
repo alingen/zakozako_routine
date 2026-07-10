@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var isPresentingTemptationMessage = false
     @State private var temptationMessage = ""
     @State private var isPresentingSiriHelp = false
+    @State private var editingBehavior: BlockedBehavior?
 
     var body: some View {
         List {
@@ -56,11 +57,28 @@ struct HomeView: View {
 
             Section("やらないことリスト") {
                 ForEach(viewModel.blockedBehaviors, id: \.id) { behavior in
-                    Toggle(isOn: Binding(
-                        get: { behavior.isActive },
-                        set: { _ in viewModel.toggleBlockedBehavior(behavior) }
-                    )) {
-                        Text(behavior.title)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(behavior.title)
+                            if let subtitle = detailSubtitle(for: behavior) {
+                                Text(subtitle)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { behavior.isActive },
+                            set: { _ in viewModel.toggleBlockedBehavior(behavior) }
+                        ))
+                        .labelsHidden()
+                        Button {
+                            editingBehavior = behavior
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.secondary)
                     }
                 }
                 .onDelete { viewModel.deleteBlockedBehaviors(at: $0) }
@@ -98,6 +116,18 @@ struct HomeView: View {
         }
         .sheet(isPresented: $isPresentingSiriHelp) {
             SiriShortcutHelpView()
+        }
+        .sheet(item: $editingBehavior) { behavior in
+            BlockedBehaviorDetailView(behavior: behavior) { triggerText, alternativeAction, useTimeWindow, start, end in
+                viewModel.updateBlockedBehaviorDetails(
+                    behavior,
+                    triggerText: triggerText,
+                    alternativeAction: alternativeAction,
+                    useTimeWindow: useTimeWindow,
+                    startTime: start,
+                    endTime: end
+                )
+            }
         }
         .task {
             viewModel.configure(context: modelContext)
@@ -144,6 +174,21 @@ struct HomeView: View {
         case .night: selectedRoutine = viewModel.nightRoutine
         case .custom: break
         }
+    }
+
+    private func detailSubtitle(for behavior: BlockedBehavior) -> String? {
+        var parts: [String] = []
+        if let start = behavior.activeStartMinute, let end = behavior.activeEndMinute {
+            parts.append("\(timeString(start))〜\(timeString(end))")
+        }
+        if !behavior.alternativeAction.isEmpty {
+            parts.append("代替: \(behavior.alternativeAction)")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " ・ ")
+    }
+
+    private func timeString(_ minutes: Int) -> String {
+        String(format: "%02d:%02d", minutes / 60, minutes % 60)
     }
 
     @ViewBuilder

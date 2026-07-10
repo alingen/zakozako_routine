@@ -135,8 +135,12 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             instruction = "ユーザーが全ステップを完了し、ルーティンが終わった。しっかり褒めて締めくくって。"
         case .helpRequested(let current):
             instruction = "ユーザーが助けを求めている。今のステップは「\(current)」。それだけに集中すればいいと伝えて安心させて。"
-        case .blockedBehaviorDetected(let title, let counter):
-            instruction = "ユーザーが「やらない」と決めていた行動(\(title))をしようとしている。次のメッセージのニュアンスを踏まえて短く止めて: \(counter)"
+        case .blockedBehaviorDetected(let title, let counter, let alternativeAction):
+            var text = "ユーザーが「やらない」と決めていた行動(\(title))をしようとしている。次のメッセージのニュアンスを踏まえて短く止めて: \(counter)"
+            if !alternativeAction.isEmpty {
+                text += " 止めるだけでなく、代わりに「\(alternativeAction)」を軽く勧めて。"
+            }
+            instruction = text
         case .nextStepQuery(let current):
             if let current {
                 instruction = "ユーザーが次にやることを聞いている。今のステップは「\(current)」だと伝えて。"
