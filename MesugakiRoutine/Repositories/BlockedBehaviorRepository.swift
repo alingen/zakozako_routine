@@ -44,6 +44,12 @@ final class BlockedBehaviorRepository {
         save()
     }
 
+    func setActive(_ behavior: BlockedBehavior, isActive: Bool) {
+        behavior.isActive = isActive
+        behavior.updatedAt = .now
+        save()
+    }
+
     func delete(_ behavior: BlockedBehavior) {
         context.delete(behavior)
         save()

@@ -12,6 +12,7 @@ final class RoutineSessionViewModel {
     let routine: Routine
     private(set) var progress: RoutineProgress?
     private(set) var messages: [ConversationMessage] = []
+    private(set) var characterName: String = "小悪魔コーチ"
     var inputText: String = ""
 
     /// 音声会話の状態。UIは既存のシンプルな画面のまま、これを見てマイクの状態だけ出す想定
@@ -29,6 +30,7 @@ final class RoutineSessionViewModel {
     func configure(context: ModelContext) {
         guard dependencies == nil else { return }
         dependencies = AppDependencies(context: context)
+        characterName = dependencies?.characterEngine.activePreset.name ?? characterName
         Task { await start() }
     }
 

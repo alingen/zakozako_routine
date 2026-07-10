@@ -49,27 +49,40 @@ struct RoutineSessionView: View {
 
     @ViewBuilder
     private var stepHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let progress = viewModel.progress {
-                if let current = progress.currentStep {
-                    Text("現在のステップ")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(current.title)
-                        .font(.title2.bold())
-                    Text("残り \(progress.remainingSteps.count) ステップ")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 12) {
+            characterAvatar(size: 48)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(viewModel.characterName)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+
+                if let progress = viewModel.progress {
+                    if let current = progress.currentStep {
+                        Text(current.title)
+                            .font(.title2.bold())
+                        Text("残り \(progress.remainingSteps.count) ステップ")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(progress.isFinished ? "ルーティン完了！" : "準備中…")
+                            .font(.title2.bold())
+                    }
                 } else {
-                    Text(progress.isFinished ? "ルーティン完了！" : "準備中…")
-                        .font(.title2.bold())
+                    ProgressView()
                 }
-            } else {
-                ProgressView()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
+    }
+
+    private func characterAvatar(size: CGFloat) -> some View {
+        Image("CharacterIcon")
+            .resizable()
+            .scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(Circle())
     }
 
     private var conversationLog: some View {
@@ -94,8 +107,9 @@ struct RoutineSessionView: View {
     }
 
     private func messageBubble(_ message: ConversationMessage) -> some View {
-        HStack {
+        HStack(alignment: .bottom, spacing: 6) {
             if message.role == .character {
+                characterAvatar(size: 28)
                 bubbleText(message.text, background: .secondary.opacity(0.15))
                 Spacer(minLength: 40)
             } else {
