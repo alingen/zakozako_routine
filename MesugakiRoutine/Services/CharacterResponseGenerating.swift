@@ -10,6 +10,9 @@ enum CharacterSituation {
     case helpRequested(currentStepName: String)
     case blockedBehaviorDetected(behaviorTitle: String, counterMessage: String, alternativeAction: String)
     case nextStepQuery(currentStepName: String?)
+    /// ホーム画面を開いた時の一言。streakDays は継続日数(初回でも1)、isMorningRoutinePending は
+    /// 「もう朝ルーティンを始めていい時間帯なのにまだ始めていない」かどうか。
+    case homeGreeting(streakDays: Int, isMorningRoutinePending: Bool)
     /// 自由入力テキスト。ChatGPT等に差し替えた際は、これがそのままユーザー発言として渡る。
     case freeText(String)
 }

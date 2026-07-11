@@ -61,6 +61,21 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
             }
             return "ふぅん、全部おわっちゃうなんてつよつよ〜"
 
+        case .homeGreeting(let streakDays, let isMorningRoutinePending):
+            if isMorningRoutinePending {
+                return "まだ朝ルーティンもやってないじゃん〜♡たいだ〜♡"
+            }
+            switch streakDays {
+            case ...1:
+                return "やっとやる気になったんだ〜♡おっそ〜♡"
+            case 2:
+                return "今日でやめたらざこすぎ〜♡"
+            case 3...6:
+                return "\(streakDays)日目とか、やるじゃん♡でもまだまだこれからだよね〜？"
+            default:
+                return "\(streakDays)日目継続とか、ちょっとは見直しちゃうかも♡調子乗んなよ〜？"
+            }
+
         case .freeText:
             // 将来ここがAI(OpenAI等)による自由応答に置き換わる想定。
             return "うんうん、聞いてるよ。でも今はルーティンに集中しよっか。"

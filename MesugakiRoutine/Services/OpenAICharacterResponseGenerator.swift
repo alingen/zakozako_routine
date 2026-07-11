@@ -147,6 +147,12 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             } else {
                 instruction = "ユーザーが次にやることを聞いているが、もう全ステップ終わっている。その旨を伝えて。"
             }
+        case .homeGreeting(let streakDays, let isMorningRoutinePending):
+            if isMorningRoutinePending {
+                instruction = "ユーザーがホーム画面を開いたが、今日の朝ルーティンをまだ始めていない時間帯になっている。サボりを軽く指摘して急かして。"
+            } else {
+                instruction = "ユーザーがホーム画面を開いた。継続\(streakDays)日目。日数に応じてからかい半分に迎えて(1日目なら今更感、日数が増えるほど少しずつ認めつつ煽る)。"
+            }
         case .freeText:
             instruction = ""
         }

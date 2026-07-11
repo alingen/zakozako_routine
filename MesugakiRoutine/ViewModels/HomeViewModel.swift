@@ -10,6 +10,9 @@ final class HomeViewModel {
     private(set) var blockedBehaviors: [BlockedBehavior] = []
     var newBlockedBehaviorTitle: String = ""
 
+    /// ホーム画面上部に出す、キャラクターからの一言。
+    private(set) var homeComment: String = ""
+
     /// Siriショートカット経由の起動直後、数秒だけ音声コマンドを受け付けている間 true。
     private(set) var isListeningForVoiceCommand = false
 
@@ -106,5 +109,48 @@ final class HomeViewModel {
         if text.contains("朝") { return morningRoutine }
         if text.contains("夜") { return nightRoutine }
         return nil
+    }
+
+    /// ホーム画面上部のキャラクターコメントを取得し直す。継続日数・朝ルーティンの未着手判定を元に生成する。
+    func loadHomeComment() async {
+        guard let dependencies else { return }
+        let response = await dependencies.characterEngine.respond(
+            to: .homeGreeting(
+                streakDays: currentStreakDays(),
+                isMorningRoutinePending: isMorningRoutinePending()
+            )
+        )
+        homeComment = response.text
+    }
+
+    /// 今日を含めて何日連続でルーティンを完了しているか。記録が無ければ1(今日が初日)を返す。
+    private func currentStreakDays(calendar: Calendar = .current, now: Date = .now) -> Int {
+        guard let dependencies else { return 1 }
+        let completedDays = Set(
+            dependencies.sessionRepository.fetchAllSessions()
+                .filter { $0.status == .completed }
+                .compactMap { $0.completedAt }
+                .map { calendar.startOfDay(for: $0) }
+        )
+        var streak = 1
+        var cursor = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)) ?? now
+        while completedDays.contains(cursor) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
+        }
+        return streak
+    }
+
+    /// 「もう朝ルーティンを始めていい時間帯なのに、今日はまだ始めていない」かどうか。
+    private func isMorningRoutinePending(calendar: Calendar = .current, now: Date = .now) -> Bool {
+        guard let dependencies, let morning = morningRoutine else { return false }
+        guard calendar.component(.hour, from: now) >= 10 else { return false }
+        let completedToday = dependencies.sessionRepository.fetchAllSessions().contains { session in
+            session.routineId == morning.id
+                && session.status == .completed
+                && session.completedAt.map { calendar.isDate($0, inSameDayAs: now) } == true
+        }
+        return !completedToday
     }
 }

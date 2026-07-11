@@ -15,6 +15,22 @@ struct HomeView: View {
 
     var body: some View {
         List {
+            if !viewModel.homeComment.isEmpty {
+                Section {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image("CharacterIcon")
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 44, height: 44)
+                            .clipShape(Circle())
+                        Text(viewModel.homeComment)
+                            .font(.subheadline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
             if viewModel.isListeningForVoiceCommand {
                 Section {
                     HStack(spacing: 8) {
@@ -131,11 +147,13 @@ struct HomeView: View {
         }
         .task {
             viewModel.configure(context: modelContext)
+            await viewModel.loadHomeComment()
         }
         .onAppear {
             viewModel.reload()
             triggerAutoListenIfNeeded()
             startPendingRoutineIfNeeded()
+            Task { await viewModel.loadHomeComment() }
         }
         .onChange(of: siriLaunchCoordinator.shouldAutoListenOnNextHomeAppear) {
             triggerAutoListenIfNeeded()
