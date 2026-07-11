@@ -171,11 +171,8 @@ struct RoutineSessionView: View {
             if let progress = viewModel.progress, !progress.isFinished {
                 voiceControls
                 HStack(spacing: 8) {
-                    actionButton("完了") { await viewModel.complete() }
-                    actionButton("スキップ") { await viewModel.skip() }
+                    actionButton("できた") { await viewModel.complete() }
                     actionButton("できなかった") { await viewModel.fail() }
-                }
-                HStack(spacing: 8) {
                     actionButton("次なに？") { await viewModel.askNextStep() }
                     actionButton("助けて") { await viewModel.askForHelp() }
                 }
