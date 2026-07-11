@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var temptationMessage = ""
     @State private var isPresentingSiriHelp = false
     @State private var editingBehavior: BlockedBehavior?
+    @State private var isPresentingProfile = false
 
     var body: some View {
         List {
@@ -23,6 +24,9 @@ struct HomeView: View {
                             .scaledToFill()
                             .frame(width: 44, height: 44)
                             .clipShape(Circle())
+                            .onTapGesture {
+                                isPresentingProfile = true
+                            }
                         Text(viewModel.homeComment)
                             .font(.subheadline)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -132,6 +136,9 @@ struct HomeView: View {
         }
         .sheet(isPresented: $isPresentingSiriHelp) {
             SiriShortcutHelpView()
+        }
+        .sheet(isPresented: $isPresentingProfile) {
+            CharacterProfileView()
         }
         .sheet(item: $editingBehavior) { behavior in
             BlockedBehaviorDetailView(behavior: behavior) { triggerText, alternativeAction, useTimeWindow, start, end in

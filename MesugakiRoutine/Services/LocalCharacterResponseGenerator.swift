@@ -11,7 +11,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
 
     /// 積極的に使いたい推奨表現・語彙(アプリ内設定にはせず、ここを直接編集してチューニングする)。
     /// `OpenAICharacterResponseGenerator` がGPTへの語彙ガイドとして使う。ローカル応答はテンプレ文そのままなので参照しない。
-    static let recommendedPhrases: [String] = ["♡", "ざっこ〜", "きっしょ〜♡", "つよつよ", "ざこざこ", "よわよわ"]
+    static let recommendedPhrases: [String] = ["うわ", "♡", "ざっこ〜", "きっしょ〜♡", "つよつよ", "ざこざこ", "よわよわ"]
 
     func generateResponse(context: CharacterResponseContext) async -> CharacterResponse {
         let rawText = templateText(for: context.situation)

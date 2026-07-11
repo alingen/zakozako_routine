@@ -12,10 +12,16 @@ enum DataSeeder {
     }
 
     private static func seedCharacterIfNeeded(context: ModelContext) {
+        let defaults = CharacterPreset.makeDefault()
         let descriptor = FetchDescriptor<CharacterPreset>()
         let existing = (try? context.fetch(descriptor)) ?? []
-        guard existing.isEmpty else { return }
-        context.insert(CharacterPreset.makeDefault())
+        if let current = existing.first(where: { $0.name == defaults.name }) {
+            // basePromptはコード側で管理しているため、起動のたびに最新の内容へ同期する
+            // (褒め方/叱り方などユーザーが設定画面で変更した項目はそのまま残す)。
+            current.basePrompt = defaults.basePrompt
+        } else {
+            context.insert(defaults)
+        }
     }
 
     private static func seedRoutinesIfNeeded(context: ModelContext) {
