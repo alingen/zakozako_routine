@@ -4,6 +4,7 @@ import SwiftUI
 struct GeneralSettingsView: View {
     @State private var uiMode: AppUIMode = AppSettingsStore.uiMode
     @State private var userNickname: String = AppSettingsStore.userNickname
+    @State private var completionPhrase: String = AppSettingsStore.completionPhrase
 
     var body: some View {
         List {
@@ -34,6 +35,17 @@ struct GeneralSettingsView: View {
                 Text("モード")
             } footer: {
                 Text("\(uiMode.description)\n見た目の切り替えは準備中で、現在はまだ反映されません。")
+            }
+
+            Section {
+                TextField("例: できた", text: $completionPhrase)
+                    .onChange(of: completionPhrase) {
+                        AppSettingsStore.completionPhrase = completionPhrase
+                    }
+            } header: {
+                Text("音声コマンド")
+            } footer: {
+                Text("音声会話中(またはテキスト入力)でこの発言をすると、現在のステップを完了として次に進みます。")
             }
         }
         .navigationTitle("一般")

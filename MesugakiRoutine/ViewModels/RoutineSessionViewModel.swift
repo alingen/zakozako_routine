@@ -72,16 +72,6 @@ final class RoutineSessionViewModel {
         voiceEngine?.speak(turn.characterText)
     }
 
-    func askNextStep() async {
-        guard let dependencies, let progress else { return }
-        appendUser("次なに？")
-        isCharacterThinking = true
-        let text = await dependencies.conversationCoordinator.askNextStep(current: progress)
-        isCharacterThinking = false
-        appendCharacter(text)
-        voiceEngine?.speak(text)
-    }
-
     func askForHelp() async {
         guard let dependencies, let progress else { return }
         appendUser("助けて")

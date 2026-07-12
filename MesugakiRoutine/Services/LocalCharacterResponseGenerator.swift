@@ -67,12 +67,6 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
             guard !alternativeAction.isEmpty else { return base }
             return "\(base) 代わりに\(alternativeAction)しなよ〜？"
 
-        case .nextStepQuery(let currentStepName):
-            if let step = currentStepName {
-                return "次の\(step)くらいはよゆ〜でやってくれるよね〜？"
-            }
-            return "ふぅん、全部おわっちゃうなんてつよつよ〜"
-
         case .homeGreeting(let streakDays, let isMorningRoutinePending):
             let call = nameCall(userNickname)
             if isMorningRoutinePending {

@@ -194,7 +194,6 @@ struct RoutineSessionView: View {
                 HStack(spacing: 8) {
                     actionButton("できた") { await viewModel.complete() }
                     actionButton("できなかった") { await viewModel.fail() }
-                    actionButton("次なに？") { await viewModel.askNextStep() }
                     actionButton("助けて") { await viewModel.askForHelp() }
                 }
                 HStack {

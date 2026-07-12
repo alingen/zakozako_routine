@@ -51,17 +51,6 @@ struct CharacterSettingsView: View {
                     viewModel.save()
                 }
             }
-
-            Section {
-                TextField("例: できた", text: $viewModel.completionPhrase)
-                Button("保存") {
-                    viewModel.saveCompletionPhrase()
-                }
-            } header: {
-                Text("音声コマンド")
-            } footer: {
-                Text("音声会話中(またはテキスト入力)でこの発言をすると、現在のステップを完了として次に進みます。")
-            }
         }
         .navigationTitle("キャラクター設定")
         .task {

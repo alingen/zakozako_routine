@@ -11,9 +11,6 @@ final class CharacterSettingsViewModel {
     var praiseStyle: PraiseStyle = .teasing
     var scoldStyle: ScoldStyle = .provoking
 
-    /// 音声/自由入力でこの発言(部分一致)が検出されたら現在のステップを完了として次へ進める。
-    var completionPhrase: String = ""
-
     private var dependencies: AppDependencies?
 
     func configure(context: ModelContext) {
@@ -32,13 +29,6 @@ final class CharacterSettingsViewModel {
             praiseStyle = selected.praiseStyle
             scoldStyle = selected.scoldStyle
         }
-        completionPhrase = AppSettingsStore.completionPhrase
-    }
-
-    func saveCompletionPhrase() {
-        let trimmed = completionPhrase.trimmingCharacters(in: .whitespacesAndNewlines)
-        AppSettingsStore.completionPhrase = trimmed.isEmpty ? "できた" : trimmed
-        reload()
     }
 
     func selectPreset(_ preset: CharacterPreset) {

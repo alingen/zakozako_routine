@@ -147,12 +147,6 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
                 text += " 止めるだけでなく、代わりに「\(alternativeAction)」を軽く勧めて。"
             }
             instruction = text
-        case .nextStepQuery(let current):
-            if let current {
-                instruction = "ユーザーが次にやることを聞いている。今のステップは「\(current)」だと伝えて。"
-            } else {
-                instruction = "ユーザーが次にやることを聞いているが、もう全ステップ終わっている。その旨を伝えて。"
-            }
         case .homeGreeting(let streakDays, let isMorningRoutinePending):
             if isMorningRoutinePending {
                 instruction = "ユーザーがホーム画面を開いたが、今日の朝ルーティンをまだ始めていない時間帯になっている。サボりを軽く指摘して急かして。"

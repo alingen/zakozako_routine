@@ -8,7 +8,7 @@ enum StepOutcome {
 
     var userLabel: String {
         switch self {
-        case .completed: return "完了"
+        case .completed: return "できた"
         case .skipped: return "スキップ"
         case .failed: return "できなかった"
         }

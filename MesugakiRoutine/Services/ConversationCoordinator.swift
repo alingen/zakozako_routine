@@ -2,7 +2,7 @@ import Foundation
 
 /// Conversation Layer の中核。
 ///
-/// UIフレームワーク(SwiftUI)には一切依存しない。ユーザーの操作(完了/スキップ/失敗/次なに？/助けて/自由入力)を
+/// UIフレームワーク(SwiftUI)には一切依存しない。ユーザーの操作(完了/スキップ/失敗/助けて/自由入力)を
 /// RoutineEngine に渡して進行状態を更新し、CharacterEngine から状況に応じた返答を取得して返すだけの薄い調停役。
 /// 会話履歴(history)もここで保持し、ChatGPT等の会話APIに文脈として渡せるようにする。
 ///
@@ -61,15 +61,6 @@ final class ConversationCoordinator {
         let response = await characterEngine.respond(to: situation, history: history)
         appendTurn(userLabel: "(\(outcome.userLabel))", assistantText: response.text)
         return Turn(progress: updated, characterText: response.text)
-    }
-
-    func askNextStep(current progress: RoutineProgress) async -> String {
-        let response = await characterEngine.respond(
-            to: .nextStepQuery(currentStepName: progress.currentStep?.title),
-            history: history
-        )
-        appendTurn(userLabel: "次なに？", assistantText: response.text)
-        return response.text
     }
 
     func askForHelp(current progress: RoutineProgress) async -> String {
