@@ -10,8 +10,8 @@ import AVFoundation
 /// 将来そちらへ差し替える際は本クラスをまるごと `OpenAIRealtimeVoiceConversationEngine` に
 /// 置き換えるだけでよい(呼び出し側は `VoiceConversationEngine` protocol しか見ていない)。
 ///
-/// 声の自然さはAVSpeechSynthesizer標準ボイス相応であり、Realtime API ほどの「リアルさ」は出ない。
-/// あくまで音声対話ループの動作確認・土台として位置づける。
+/// VOICEVOX等の外部TTSエンジンも検討したが、ネットワーク経由の読み上げは遅延が大きく体験を損なうため、
+/// 現在はApple標準の音声合成のみを使い、声質を`pitchMultiplier`/`rate`でキャラクターに寄せて調整している。
 @MainActor
 final class NativeVoiceConversationEngine: NSObject, VoiceConversationEngine {
     enum VoiceEngineError: LocalizedError {
@@ -77,6 +77,9 @@ final class NativeVoiceConversationEngine: NSObject, VoiceConversationEngine {
         state = .speaking
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
+        // キャラクター感を出すため、標準の声より少し高め・やや遅めに調整。
+        utterance.pitchMultiplier = 1.15
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.9
         synthesizer.speak(utterance)
     }
 
