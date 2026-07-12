@@ -39,7 +39,7 @@ final class HomeViewModel {
     /// サボり通知を、現在のルーティン状態(今日完了済みかどうか)にあわせて再計算する。
     private func rescheduleNotifications() {
         guard let dependencies else { return }
-        let routines = [morningRoutine, nightRoutine].compactMap { $0 }
+        let routines = dependencies.routineRepository.fetchAll().filter { $0.isActive }
         Task {
             await dependencies.notificationScheduler.reschedule(
                 routines: routines,

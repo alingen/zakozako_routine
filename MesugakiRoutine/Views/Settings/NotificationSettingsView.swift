@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// 「通知」設定画面。ルーティンごとに、サボり通知の有効/無効と時刻を設定する。
+/// 「通知」設定画面。全ルーティン共通で、サボり通知の有効/無効と
+/// 「各ルーティンの開始予定時刻から何分後に通知するか」を設定する。
 struct NotificationSettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = NotificationSettingsViewModel()
+
+    private static let delayOptions = [10, 15, 30, 45, 60, 90, 120]
 
     var body: some View {
         List {
@@ -15,51 +18,61 @@ struct NotificationSettingsView: View {
                 }
             }
 
-            if let morningRoutine = viewModel.morningRoutine {
-                reminderSection(
-                    title: morningRoutine.title,
-                    isEnabled: Binding(
-                        get: { viewModel.morningReminderEnabled },
-                        set: { viewModel.setMorningReminder(enabled: $0) }
-                    ),
-                    time: Binding(
-                        get: { viewModel.morningReminderTime },
-                        set: { viewModel.setMorningReminderTime($0) }
+            Section {
+                Toggle(
+                    "サボり通知",
+                    isOn: Binding(
+                        get: { viewModel.notificationsEnabled },
+                        set: { viewModel.setNotificationsEnabled($0) }
                     )
                 )
+                if viewModel.notificationsEnabled {
+                    Picker(
+                        "通知タイミング",
+                        selection: Binding(
+                            get: { viewModel.delayMinutes },
+                            set: { viewModel.setDelayMinutes($0) }
+                        )
+                    ) {
+                        ForEach(Self.delayOptions, id: \.self) { minutes in
+                            Text("\(minutes)分後").tag(minutes)
+                        }
+                    }
+                }
+            } footer: {
+                Text("開始予定時刻から指定した時間が経ってもそのルーティンが終わっていない場合に通知します。")
             }
 
-            if let nightRoutine = viewModel.nightRoutine {
-                reminderSection(
-                    title: nightRoutine.title,
-                    isEnabled: Binding(
-                        get: { viewModel.nightReminderEnabled },
-                        set: { viewModel.setNightReminder(enabled: $0) }
-                    ),
-                    time: Binding(
-                        get: { viewModel.nightReminderTime },
-                        set: { viewModel.setNightReminderTime($0) }
-                    )
-                )
+            if !viewModel.routines.isEmpty {
+                Section("対象ルーティン") {
+                    ForEach(viewModel.routines) { routine in
+                        HStack {
+                            Text(routine.title)
+                            Spacer()
+                            if let minute = routine.scheduledStartMinute {
+                                Text(timeString(fromMinutes: minute))
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("開始予定時間 未設定")
+                                    .font(.footnote)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                    }
+                }
             }
         }
         .navigationTitle("通知")
         .task {
             viewModel.configure(context: modelContext)
         }
+        .onAppear {
+            viewModel.reload()
+        }
     }
 
-    private func reminderSection(title: String, isEnabled: Binding<Bool>, time: Binding<Date>) -> some View {
-        Section {
-            Toggle("サボり通知", isOn: isEnabled)
-            if isEnabled.wrappedValue {
-                DatePicker("通知時刻", selection: time, displayedComponents: .hourAndMinute)
-            }
-        } header: {
-            Text(title)
-        } footer: {
-            Text("この時刻までに\(title)が終わっていない場合に通知します。")
-        }
+    private func timeString(fromMinutes minutes: Int) -> String {
+        String(format: "%02d:%02d", minutes / 60, minutes % 60)
     }
 }
 

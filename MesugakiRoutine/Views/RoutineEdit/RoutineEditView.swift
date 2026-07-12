@@ -18,7 +18,41 @@ struct RoutineEditView: View {
                         Text(type.displayName).tag(type)
                     }
                 }
-                TextField("説明(任意)", text: $viewModel.description, axis: .vertical)
+                DatePicker("開始予定時間", selection: $viewModel.scheduledStartTime, displayedComponents: .hourAndMinute)
+            }
+
+            Section {
+                HStack {
+                    ForEach(Weekday.allCases) { weekday in
+                        Button {
+                            viewModel.toggleWeekday(weekday)
+                        } label: {
+                            Text(weekday.shortLabel)
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 36)
+                                .background(
+                                    viewModel.selectedWeekdays.contains(weekday.rawValue)
+                                        ? Color.accentColor
+                                        : Color(.systemGray5)
+                                )
+                                .foregroundStyle(
+                                    viewModel.selectedWeekdays.contains(weekday.rawValue) ? .white : .primary
+                                )
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 4)
+
+                if viewModel.showEveryDayHint {
+                    Text("継続するためにおすすめは毎日やることです")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("対象曜日")
             }
 
             Section("ステップ") {
@@ -51,9 +85,6 @@ struct RoutineEditView: View {
                     dismiss()
                 }
                 .disabled(!viewModel.canSave)
-            }
-            ToolbarItem(placement: .topBarLeading) {
-                EditButton()
             }
         }
         .task {

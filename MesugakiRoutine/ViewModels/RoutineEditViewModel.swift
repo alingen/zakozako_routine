@@ -7,8 +7,11 @@ import Observation
 final class RoutineEditViewModel {
     private(set) var routine: Routine?
     var title: String = ""
-    var description: String = ""
     var type: RoutineType = .custom
+    /// 開始予定時間。サボり通知はこの時刻を起点に計算されるため、新規作成時もデフォルト値を持たせる。
+    var scheduledStartTime: Date = Routine.date(fromMinutes: 8 * 60)
+    /// 対象曜日。デフォルトは全曜日選択。
+    var selectedWeekdays: Set<Int> = Set(Weekday.allWeekdayValues)
     private(set) var steps: [RoutineStep] = []
     var newStepTitle: String = ""
 
@@ -18,13 +21,31 @@ final class RoutineEditViewModel {
         self.routine = routine
         if let routine {
             title = routine.title
-            description = routine.routineDescription
             type = routine.type
+            if let minute = routine.scheduledStartMinute {
+                scheduledStartTime = Routine.date(fromMinutes: minute)
+            }
+            if !routine.activeWeekdayValues.isEmpty {
+                selectedWeekdays = Set(routine.activeWeekdayValues)
+            }
         }
     }
 
     var canSave: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// 1日でも対象曜日から外れていたら、毎日継続することを勧めるヒントを出す。
+    var showEveryDayHint: Bool {
+        selectedWeekdays.count < Weekday.allCases.count
+    }
+
+    func toggleWeekday(_ weekday: Weekday) {
+        if selectedWeekdays.contains(weekday.rawValue) {
+            selectedWeekdays.remove(weekday.rawValue)
+        } else {
+            selectedWeekdays.insert(weekday.rawValue)
+        }
     }
 
     func configure(context: ModelContext) {
@@ -36,15 +57,21 @@ final class RoutineEditViewModel {
         }
     }
 
-    /// タイトル・種別・説明を保存する。新規作成の場合はここでルーティンを作成する。
+    /// タイトル・種別などを保存する。新規作成の場合はここでルーティンを作成する。
     func save() {
         guard let dependencies, canSave else { return }
+        let scheduledStartMinute = Routine.minutes(from: scheduledStartTime)
+        let weekdayValues = Array(selectedWeekdays)
         if let routine {
             dependencies.routineRepository.update(
-                routine, title: title, description: description, type: type, isActive: routine.isActive
+                routine, title: title, type: type, isActive: routine.isActive,
+                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
             )
         } else {
-            let created = dependencies.routineRepository.create(title: title, description: description, type: type)
+            let created = dependencies.routineRepository.create(
+                title: title, type: type,
+                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
+            )
             routine = created
         }
     }

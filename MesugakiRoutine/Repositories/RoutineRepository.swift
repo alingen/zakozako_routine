@@ -26,31 +26,40 @@ final class RoutineRepository {
     }
 
     @discardableResult
-    func create(title: String, description: String, type: RoutineType) -> Routine {
-        let routine = Routine(title: title, routineDescription: description, type: type)
+    func create(
+        title: String,
+        type: RoutineType,
+        scheduledStartMinute: Int? = nil,
+        activeWeekdayValues: [Int] = Weekday.allWeekdayValues
+    ) -> Routine {
+        let routine = Routine(
+            title: title, type: type,
+            scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: activeWeekdayValues
+        )
         context.insert(routine)
         save()
         return routine
     }
 
-    func update(_ routine: Routine, title: String, description: String, type: RoutineType, isActive: Bool) {
+    func update(
+        _ routine: Routine,
+        title: String,
+        type: RoutineType,
+        isActive: Bool,
+        scheduledStartMinute: Int?,
+        activeWeekdayValues: [Int]
+    ) {
         routine.title = title
-        routine.routineDescription = description
         routine.type = type
         routine.isActive = isActive
+        routine.scheduledStartMinute = scheduledStartMinute
+        routine.activeWeekdayValues = activeWeekdayValues
         routine.updatedAt = .now
         save()
     }
 
     func delete(_ routine: Routine) {
         context.delete(routine)
-        save()
-    }
-
-    func updateReminder(_ routine: Routine, enabled: Bool, minuteOfDay: Int?) {
-        routine.reminderEnabled = enabled
-        routine.reminderMinuteOfDay = minuteOfDay
-        routine.updatedAt = .now
         save()
     }
 

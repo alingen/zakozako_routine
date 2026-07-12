@@ -28,7 +28,7 @@ struct CharacterProfileView: View {
                     profileRow(label: "好きなこと", value: "ダンス。韓国系のファッションが好き。")
                     profileRow(
                         label: "学校では",
-                        value: "人気グループ。先生には一応敬語を使う。宿題はめんどくさがりながらもちゃんと提出するタイプ。"
+                        value: "先生には一応敬語を使う。宿題はめんどくさがりながらもちゃんと提出するタイプ。"
                     )
                     profileRow(label: "性格", value: "さびしがりやで、人に構ってもらうために煽りがち。")
                 }

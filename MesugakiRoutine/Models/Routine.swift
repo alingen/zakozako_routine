@@ -21,16 +21,18 @@ enum RoutineType: String, Codable, CaseIterable, Identifiable {
 final class Routine {
     @Attribute(.unique) var id: UUID
     var title: String
-    var routineDescription: String
     var type: RoutineType
     var isActive: Bool
     var createdAt: Date
     var updatedAt: Date
 
-    /// サボり通知を有効にするか。
-    var reminderEnabled: Bool = false
-    /// 通知を出す時刻(0時からの分数、0〜1439)。未設定ならnil。
-    var reminderMinuteOfDay: Int?
+    /// 開始予定時刻(0時からの分数、0〜1439)。未設定ならnil。
+    /// サボり通知は、有効な全ルーティンに対して共通の設定(AppSettingsStore)で
+    /// 「この時刻から何分後」を計算するために使う。ルーティンごとの個別設定は持たない。
+    var scheduledStartMinute: Int?
+
+    /// 対象曜日(Weekdayのraw value)。デフォルトは全曜日。
+    var activeWeekdayValues: [Int] = Weekday.allWeekdayValues
 
     @Relationship(deleteRule: .cascade, inverse: \RoutineStep.routine)
     var steps: [RoutineStep] = []
@@ -38,23 +40,21 @@ final class Routine {
     init(
         id: UUID = UUID(),
         title: String,
-        routineDescription: String = "",
         type: RoutineType,
         isActive: Bool = true,
         createdAt: Date = .now,
         updatedAt: Date = .now,
-        reminderEnabled: Bool = false,
-        reminderMinuteOfDay: Int? = nil
+        scheduledStartMinute: Int? = nil,
+        activeWeekdayValues: [Int] = Weekday.allWeekdayValues
     ) {
         self.id = id
         self.title = title
-        self.routineDescription = routineDescription
         self.type = type
         self.isActive = isActive
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.reminderEnabled = reminderEnabled
-        self.reminderMinuteOfDay = reminderMinuteOfDay
+        self.scheduledStartMinute = scheduledStartMinute
+        self.activeWeekdayValues = activeWeekdayValues
     }
 
     var orderedSteps: [RoutineStep] {

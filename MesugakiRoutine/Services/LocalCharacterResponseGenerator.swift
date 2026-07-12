@@ -11,7 +11,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
 
     /// 積極的に使いたい推奨表現・語彙(アプリ内設定にはせず、ここを直接編集してチューニングする)。
     /// `OpenAICharacterResponseGenerator` がGPTへの語彙ガイドとして使う。ローカル応答はテンプレ文そのままなので参照しない。
-    static let recommendedPhrases: [String] = ["うわ", "♡", "ざっこ〜", "きっしょ〜♡", "つよつよ", "ざこざこ", "よわよわ"]
+    static let recommendedPhrases: [String] = ["うわっ", "おっ", "♡", "ざっこ〜", "きっしょ〜♡", "つよつよ", "ざこざこ", "よわよわ"]
 
     func generateResponse(context: CharacterResponseContext) async -> CharacterResponse {
         let rawText = templateText(for: context.situation, userNickname: context.userNickname)
@@ -62,7 +62,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
 
         case .blockedBehaviorDetected(_, let counterMessage, let alternativeAction):
             let base = counterMessage.isEmpty
-                ? "\(nameCall(userNickname))え〜誘惑にまけてやっちゃうの？ざこざこめんたるでお先まっくら〜"
+                ? "\(nameCall(userNickname))うわっ誘惑にまけてやっちゃうの？ざこざこめんたるでお先まっくら〜"
                 : "\(nameCall(userNickname))\(counterMessage)"
             guard !alternativeAction.isEmpty else { return base }
             return "\(base) 代わりに\(alternativeAction)しなよ〜？"
@@ -102,7 +102,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
         case .light:
             return "ふぅん、まあやるじゃん♡"
         case .teasing:
-            return "え、ちゃんとできるんだ♡ちょっと見直しちゃうかも〜"
+            return "おっ、ちゃんとできるんだ♡ちょっと見直しちゃうかも〜"
         case .honest:
             return "すっご〜♡さすがおとなだね〜ちょっと見直しちゃうかも〜"
         }

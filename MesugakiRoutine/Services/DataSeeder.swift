@@ -29,7 +29,7 @@ enum DataSeeder {
         let existing = (try? context.fetch(descriptor)) ?? []
         guard existing.isEmpty else { return }
 
-        let morning = Routine(title: "朝ルーティン", routineDescription: "1日を気持ちよく始めるための準備", type: .morning)
+        let morning = Routine(title: "朝ルーティン", type: .morning, scheduledStartMinute: 7 * 60)
         context.insert(morning)
         [
             ("水を飲む", 1),
@@ -48,7 +48,7 @@ enum DataSeeder {
             context.insert(step)
         }
 
-        let night = Routine(title: "夜ルーティン", routineDescription: "1日を締めくくり、良い睡眠につなげる", type: .night)
+        let night = Routine(title: "夜ルーティン", type: .night, scheduledStartMinute: 22 * 60)
         context.insert(night)
         [
             ("スマホを充電場所に置く", 1),

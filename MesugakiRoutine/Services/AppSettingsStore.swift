@@ -28,6 +28,8 @@ enum AppSettingsStore {
     private static let completionPhraseKey = "voice_completion_phrase"
     private static let uiModeKey = "app_ui_mode"
     private static let userNicknameKey = "user_nickname"
+    private static let notificationsEnabledKey = "notifications_enabled"
+    private static let notificationDelayMinutesKey = "notification_delay_minutes"
 
     /// 音声/自由入力でこの発言(部分一致)が検出されたら、現在のステップを完了として次へ進める。
     static var completionPhrase: String {
@@ -44,5 +46,20 @@ enum AppSettingsStore {
     static var userNickname: String {
         get { UserDefaults.standard.string(forKey: userNicknameKey) ?? "おにいさん" }
         set { UserDefaults.standard.set(newValue, forKey: userNicknameKey) }
+    }
+
+    /// サボり通知を有効にするか。全ルーティン共通の設定(ルーティンごとの個別設定は持たない)。
+    static var notificationsEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: notificationsEnabledKey) }
+        set { UserDefaults.standard.set(newValue, forKey: notificationsEnabledKey) }
+    }
+
+    /// 各ルーティンの開始予定時刻から何分後に、まだ終わっていなければ通知するか。全ルーティン共通。
+    static var notificationDelayMinutes: Int {
+        get {
+            let value = UserDefaults.standard.integer(forKey: notificationDelayMinutesKey)
+            return value == 0 ? 30 : value
+        }
+        set { UserDefaults.standard.set(newValue, forKey: notificationDelayMinutesKey) }
     }
 }

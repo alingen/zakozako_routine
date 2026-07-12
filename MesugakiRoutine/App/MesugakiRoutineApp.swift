@@ -44,7 +44,7 @@ struct MesugakiRoutineApp: App {
     /// (Home画面が再表示されない限り呼ばれない `HomeViewModel.reload()` を補う)
     private func rescheduleNotifications() {
         let dependencies = AppDependencies(context: modelContainer.mainContext)
-        let routines = dependencies.routineRepository.fetchAll().filter { $0.type == .morning || $0.type == .night }
+        let routines = dependencies.routineRepository.fetchAll().filter { $0.isActive }
         Task {
             await dependencies.notificationScheduler.reschedule(
                 routines: routines,
