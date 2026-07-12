@@ -224,16 +224,23 @@ struct HomeView: View {
     @ViewBuilder
     private func routineRow(title: String, routine: Routine?) -> some View {
         if let routine {
+            let inProgressStep = viewModel.inProgressStepTitle(for: routine)
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(routine.title)
                         .font(.headline)
-                    Text("\(routine.orderedSteps.count)ステップ")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if let inProgressStep {
+                        Text("\(inProgressStep)まで進行中")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text("\(routine.orderedSteps.count)ステップ")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
-                Button("開始") {
+                Button(inProgressStep != nil ? "再開" : "開始") {
                     selectedRoutine = routine
                 }
                 .buttonStyle(.borderedProminent)

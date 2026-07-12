@@ -126,6 +126,15 @@ final class HomeViewModel {
         return nil
     }
 
+    /// 中断中(完了していない)のセッションがあれば、その現在のステップ名を返す。無ければ nil。
+    /// ホーム画面で「〇〇まで進行中」の表示・開始/再開ボタンの出し分けに使う。
+    func inProgressStepTitle(for routine: Routine?) -> String? {
+        guard let dependencies, let routine else { return nil }
+        guard let session = dependencies.sessionRepository.fetchActiveSession(routineId: routine.id) else { return nil }
+        guard let stepId = session.currentStepId else { return nil }
+        return routine.orderedSteps.first { $0.id == stepId }?.title
+    }
+
     /// ホーム画面上部のキャラクターコメントを取得し直す。継続日数・朝ルーティンの未着手判定を元に生成する。
     func loadHomeComment() async {
         guard let dependencies else { return }

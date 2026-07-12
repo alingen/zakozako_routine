@@ -2,12 +2,26 @@ import Foundation
 import SwiftData
 import Observation
 
+/// 1つのルーティンの直近30日ぶんの達成率。対象曜日(activeWeekdayValues)に該当する日だけを分母に数える。
+struct RoutineAchievement: Identifiable {
+    let routine: Routine
+    let completedCount: Int
+    let applicableCount: Int
+
+    var id: UUID { routine.id }
+    var rate: Double { applicableCount == 0 ? 0 : Double(completedCount) / Double(applicableCount) }
+}
+
 @Observable
 @MainActor
 final class RoutineLogViewModel {
     private(set) var routines: [Routine] = []
     /// 日(startOfDay) → その日に完了したルーティンのid集合。
     private(set) var completionsByDay: [Date: Set<UUID>] = [:]
+    /// 直近30日の、ルーティンごとの達成率。
+    private(set) var achievements: [RoutineAchievement] = []
+    /// 今日(または昨日まで)を含めて何日連続でいずれかのルーティンを達成しているか。
+    private(set) var streakDays: Int = 0
     var displayedMonth: Date
 
     private var dependencies: AppDependencies?
@@ -30,13 +44,66 @@ final class RoutineLogViewModel {
         routines = dependencies.routineRepository.fetchAll()
             .sorted { sortOrder(for: $0.type) < sortOrder(for: $1.type) }
 
+        let sessions = dependencies.sessionRepository.fetchAllSessions()
+
         var map: [Date: Set<UUID>] = [:]
-        for session in dependencies.sessionRepository.fetchAllSessions() where session.status == .completed {
+        for session in sessions where session.status == .completed {
             guard let completedAt = session.completedAt else { continue }
             let day = calendar.startOfDay(for: completedAt)
             map[day, default: []].insert(session.routineId)
         }
         completionsByDay = map
+
+        achievements = computeAchievements(sessions: sessions)
+        streakDays = computeStreakDays()
+    }
+
+    /// 直近30日(今日を含む)ぶんの、アクティブなルーティンごとの達成率を計算する。
+    /// 対象曜日に該当しない日や、ルーティン作成日より前の日は分母に含めない。
+    private func computeAchievements(sessions: [RoutineSession], now: Date = .now, windowDays: Int = 30) -> [RoutineAchievement] {
+        let today = calendar.startOfDay(for: now)
+        guard let windowStart = calendar.date(byAdding: .day, value: -(windowDays - 1), to: today) else { return [] }
+
+        return routines.filter(\.isActive).map { routine in
+            let createdDay = calendar.startOfDay(for: routine.createdAt)
+            let rangeStart = max(windowStart, createdDay)
+            let completedDays = Set(
+                sessions.filter { $0.routineId == routine.id && $0.status == .completed }
+                    .compactMap { $0.completedAt }
+                    .map { calendar.startOfDay(for: $0) }
+            )
+
+            var applicableCount = 0
+            var completedCount = 0
+            var cursor = rangeStart
+            while cursor <= today {
+                let weekday = calendar.component(.weekday, from: cursor)
+                if routine.activeWeekdayValues.contains(weekday) {
+                    applicableCount += 1
+                    if completedDays.contains(cursor) { completedCount += 1 }
+                }
+                guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+                cursor = next
+            }
+            return RoutineAchievement(routine: routine, completedCount: completedCount, applicableCount: applicableCount)
+        }
+    }
+
+    /// 今日既に達成していれば今日を起点に、まだなら昨日を起点に、連続で達成している日数を数える。
+    private func computeStreakDays(now: Date = .now) -> Int {
+        let today = calendar.startOfDay(for: now)
+        var cursor = today
+        if !(completionsByDay[cursor]?.isEmpty == false) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return 0 }
+            cursor = yesterday
+        }
+        var streak = 0
+        while completionsByDay[cursor]?.isEmpty == false {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
+        }
+        return streak
     }
 
     func goToPreviousMonth() {

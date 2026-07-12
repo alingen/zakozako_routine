@@ -10,6 +10,7 @@ struct RoutineLogView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                summarySection
                 monthHeader
                 weekdayHeader
                 LazyVGrid(columns: columns, spacing: 12) {
@@ -32,6 +33,39 @@ struct RoutineLogView: View {
         .onAppear {
             viewModel.reload()
         }
+    }
+
+    private var summarySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "flame.fill")
+                    .foregroundStyle(.orange)
+                Text("継続 \(viewModel.streakDays)日")
+                    .font(.headline)
+            }
+
+            Text("直近30日の達成率")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            ForEach(viewModel.achievements) { achievement in
+                HStack {
+                    Image(systemName: icon(for: achievement.routine.type))
+                        .foregroundStyle(color(for: achievement.routine.type))
+                    Text(achievement.routine.title)
+                        .font(.subheadline)
+                    Spacer()
+                    Text("\(Int((achievement.rate * 100).rounded()))%")
+                        .font(.subheadline.bold())
+                    Text("(\(achievement.completedCount)/\(achievement.applicableCount)日)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var monthHeader: some View {
