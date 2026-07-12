@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RoutineEditView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RoutineEditViewModel
 
     init(routine: Routine?) {
@@ -13,12 +12,30 @@ struct RoutineEditView: View {
         Form {
             Section("ルーティン情報") {
                 TextField("タイトル", text: $viewModel.title)
+                    .onChange(of: viewModel.title) {
+                        viewModel.save()
+                    }
                 Picker("種別", selection: $viewModel.type) {
                     ForEach(RoutineType.allCases) { type in
                         Text(type.displayName).tag(type)
                     }
                 }
+                .onChange(of: viewModel.type) {
+                    viewModel.save()
+                }
                 DatePicker("開始予定時間", selection: $viewModel.scheduledStartTime, displayedComponents: .hourAndMinute)
+                    .onChange(of: viewModel.scheduledStartTime) {
+                        viewModel.save()
+                    }
+            }
+
+            Section {
+                Toggle("ルーティン開始時に音声会話も開始", isOn: $viewModel.autoStartVoiceMode)
+                    .onChange(of: viewModel.autoStartVoiceMode) {
+                        viewModel.save()
+                    }
+            } footer: {
+                Text("オフにすると音声会話は自動で始まらず、画面内のボタンから手動で開始できます。")
             }
 
             Section {
@@ -26,6 +43,7 @@ struct RoutineEditView: View {
                     ForEach(Weekday.allCases) { weekday in
                         Button {
                             viewModel.toggleWeekday(weekday)
+                            viewModel.save()
                         } label: {
                             Text(weekday.shortLabel)
                                 .font(.subheadline.weight(.semibold))
@@ -78,15 +96,6 @@ struct RoutineEditView: View {
             }
         }
         .navigationTitle(viewModel.routine == nil ? "ルーティン新規作成" : "ルーティン編集")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("保存") {
-                    viewModel.save()
-                    dismiss()
-                }
-                .disabled(!viewModel.canSave)
-            }
-        }
         .task {
             viewModel.configure(context: modelContext)
         }

@@ -36,9 +36,11 @@ final class RoutineSessionViewModel {
         characterName = dependencies?.characterEngine.activePreset.name ?? characterName
         Task {
             await start()
-            // ルーティン開始と同時に、デフォルトで音声会話を有効にする。
+            // ルーティンごとの設定(autoStartVoiceMode)がオンの場合だけ、開始と同時に音声会話も有効にする。
+            // オフの場合は画面内の手動ボタンからいつでも開始できる。
             // 開始の挨拶(greeting)は、音声エンジンがリスニングに入った直後に読み上げさせる
             // (許可が下りない・認識器が使えない等で音声が始まらなければ、テキストのみで続行する)。
+            guard routine.autoStartVoiceMode else { return }
             await startVoiceMode()
             if let greeting = messages.last?.text {
                 voiceEngine?.speak(greeting)

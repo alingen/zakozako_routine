@@ -30,11 +30,13 @@ final class RoutineRepository {
         title: String,
         type: RoutineType,
         scheduledStartMinute: Int? = nil,
-        activeWeekdayValues: [Int] = Weekday.allWeekdayValues
+        activeWeekdayValues: [Int] = Weekday.allWeekdayValues,
+        autoStartVoiceMode: Bool = true
     ) -> Routine {
         let routine = Routine(
             title: title, type: type,
-            scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: activeWeekdayValues
+            scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: activeWeekdayValues,
+            autoStartVoiceMode: autoStartVoiceMode
         )
         context.insert(routine)
         save()
@@ -47,13 +49,15 @@ final class RoutineRepository {
         type: RoutineType,
         isActive: Bool,
         scheduledStartMinute: Int?,
-        activeWeekdayValues: [Int]
+        activeWeekdayValues: [Int],
+        autoStartVoiceMode: Bool
     ) {
         routine.title = title
         routine.type = type
         routine.isActive = isActive
         routine.scheduledStartMinute = scheduledStartMinute
         routine.activeWeekdayValues = activeWeekdayValues
+        routine.autoStartVoiceMode = autoStartVoiceMode
         routine.updatedAt = .now
         save()
     }

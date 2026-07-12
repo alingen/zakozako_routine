@@ -12,6 +12,8 @@ final class RoutineEditViewModel {
     var scheduledStartTime: Date = Routine.date(fromMinutes: 8 * 60)
     /// 対象曜日。デフォルトは全曜日選択。
     var selectedWeekdays: Set<Int> = Set(Weekday.allWeekdayValues)
+    /// ルーティン開始時に音声会話も自動で開始するか。
+    var autoStartVoiceMode: Bool = true
     private(set) var steps: [RoutineStep] = []
     var newStepTitle: String = ""
 
@@ -28,6 +30,7 @@ final class RoutineEditViewModel {
             if !routine.activeWeekdayValues.isEmpty {
                 selectedWeekdays = Set(routine.activeWeekdayValues)
             }
+            autoStartVoiceMode = routine.autoStartVoiceMode
         }
     }
 
@@ -65,12 +68,14 @@ final class RoutineEditViewModel {
         if let routine {
             dependencies.routineRepository.update(
                 routine, title: title, type: type, isActive: routine.isActive,
-                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
+                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues,
+                autoStartVoiceMode: autoStartVoiceMode
             )
         } else {
             let created = dependencies.routineRepository.create(
                 title: title, type: type,
-                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
+                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues,
+                autoStartVoiceMode: autoStartVoiceMode
             )
             routine = created
         }
