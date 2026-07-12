@@ -12,6 +12,7 @@ struct AppDependencies {
     let routineEngine: RoutineEngine
     let characterEngine: CharacterEngine
     let conversationCoordinator: ConversationCoordinator
+    let notificationScheduler: RoutineNotificationScheduler
 
     init(context: ModelContext) {
         routineRepository = RoutineRepository(context: context)
@@ -19,6 +20,7 @@ struct AppDependencies {
         blockedBehaviorRepository = BlockedBehaviorRepository(context: context)
         sessionRepository = RoutineSessionRepository(context: context)
         routineEngine = RoutineEngine(sessionRepository: sessionRepository)
+        notificationScheduler = RoutineNotificationScheduler()
         // Keychain に OpenAI APIキーが保存されていれば ChatGPT(Chat Completions API) で応答を生成し、
         // なければローカルテンプレートにフォールバックする。キーの有無だけで自動的に切り替わる。
         let generator: CharacterResponseGenerating

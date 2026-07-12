@@ -16,7 +16,7 @@ struct HomeView: View {
 
     var body: some View {
         List {
-            if !viewModel.homeComment.isEmpty {
+            if viewModel.isLoadingHomeComment || !viewModel.homeComment.isEmpty {
                 Section {
                     HStack(alignment: .top, spacing: 12) {
                         Image("CharacterIcon")
@@ -27,9 +27,14 @@ struct HomeView: View {
                             .onTapGesture {
                                 isPresentingProfile = true
                             }
-                        Text(viewModel.homeComment)
-                            .font(.subheadline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if viewModel.isLoadingHomeComment {
+                            TypingIndicatorView()
+                                .frame(height: 22)
+                        } else {
+                            Text(viewModel.homeComment)
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                     .padding(.vertical, 4)
                 }

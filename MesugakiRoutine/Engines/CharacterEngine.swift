@@ -28,6 +28,7 @@ final class CharacterEngine {
             situation: situation,
             preset: activePreset,
             recentUserText: userText,
+            userNickname: AppSettingsStore.userNickname,
             history: history
         )
         return await generator.generateResponse(context: context)

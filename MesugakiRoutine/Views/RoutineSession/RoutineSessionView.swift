@@ -93,16 +93,27 @@ struct RoutineSessionView: View {
                         messageBubble(message)
                             .id(message.id)
                     }
+                    if viewModel.isCharacterThinking {
+                        typingIndicatorBubble
+                            .id("typing-indicator")
+                    }
                 }
                 .padding()
             }
             .onChange(of: viewModel.messages.count) { _, _ in
-                if let last = viewModel.messages.last {
-                    withAnimation {
-                        proxy.scrollTo(last.id, anchor: .bottom)
-                    }
-                }
+                scrollToBottom(proxy)
             }
+            .onChange(of: viewModel.isCharacterThinking) { _, _ in
+                scrollToBottom(proxy)
+            }
+        }
+    }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        let targetId: AnyHashable? = viewModel.isCharacterThinking ? "typing-indicator" : viewModel.messages.last?.id
+        guard let targetId else { return }
+        withAnimation {
+            proxy.scrollTo(targetId, anchor: .bottom)
         }
     }
 
@@ -116,6 +127,16 @@ struct RoutineSessionView: View {
                 Spacer(minLength: 40)
                 bubbleText(message.text, background: Color.accentColor.opacity(0.2))
             }
+        }
+    }
+
+    private var typingIndicatorBubble: some View {
+        HStack(alignment: .bottom, spacing: 6) {
+            characterAvatar(size: 28)
+            TypingIndicatorView()
+                .padding(10)
+                .background(.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+            Spacer(minLength: 40)
         }
     }
 

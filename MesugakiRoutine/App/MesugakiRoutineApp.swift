@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct MesugakiRoutineApp: App {
     let modelContainer: ModelContainer
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let schema = Schema([
@@ -33,5 +34,22 @@ struct MesugakiRoutineApp: App {
                 }
         }
         .modelContainer(modelContainer)
+        .onChange(of: scenePhase) {
+            guard scenePhase == .active else { return }
+            rescheduleNotifications()
+        }
+    }
+
+    /// アプリがフォアグラウンドに戻るたびに、日付が変わっている場合の再スケジュールを保証する。
+    /// (Home画面が再表示されない限り呼ばれない `HomeViewModel.reload()` を補う)
+    private func rescheduleNotifications() {
+        let dependencies = AppDependencies(context: modelContainer.mainContext)
+        let routines = dependencies.routineRepository.fetchAll().filter { $0.type == .morning || $0.type == .night }
+        Task {
+            await dependencies.notificationScheduler.reschedule(
+                routines: routines,
+                sessionRepository: dependencies.sessionRepository
+            )
+        }
     }
 }

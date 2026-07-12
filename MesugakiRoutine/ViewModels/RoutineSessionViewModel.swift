@@ -20,6 +20,9 @@ final class RoutineSessionViewModel {
     private(set) var voiceState: VoiceConversationState = .idle
     private(set) var livePartialUserText: String = ""
 
+    /// キャラクターの返答を待っている間 true(チャットログの入力中インジケーターに使う)。
+    private(set) var isCharacterThinking = false
+
     private var dependencies: AppDependencies?
     private var voiceEngine: (any VoiceConversationEngine)?
 
@@ -45,7 +48,9 @@ final class RoutineSessionViewModel {
 
     func start() async {
         guard let dependencies else { return }
+        isCharacterThinking = true
         let turn = await dependencies.conversationCoordinator.start(routine: routine)
+        isCharacterThinking = false
         progress = turn.progress
         appendCharacter(turn.characterText)
     }
@@ -57,7 +62,9 @@ final class RoutineSessionViewModel {
     private func record(_ outcome: StepOutcome) async {
         guard let dependencies, let progress, !progress.isFinished else { return }
         appendUser(outcome.userLabel)
+        isCharacterThinking = true
         let turn = await dependencies.conversationCoordinator.recordOutcome(outcome, current: progress)
+        isCharacterThinking = false
         self.progress = turn.progress
         appendCharacter(turn.characterText)
         voiceEngine?.speak(turn.characterText)
@@ -66,7 +73,9 @@ final class RoutineSessionViewModel {
     func askNextStep() async {
         guard let dependencies, let progress else { return }
         appendUser("次なに？")
+        isCharacterThinking = true
         let text = await dependencies.conversationCoordinator.askNextStep(current: progress)
+        isCharacterThinking = false
         appendCharacter(text)
         voiceEngine?.speak(text)
     }
@@ -74,7 +83,9 @@ final class RoutineSessionViewModel {
     func askForHelp() async {
         guard let dependencies, let progress else { return }
         appendUser("助けて")
+        isCharacterThinking = true
         let text = await dependencies.conversationCoordinator.askForHelp(current: progress)
+        isCharacterThinking = false
         appendCharacter(text)
         voiceEngine?.speak(text)
     }
@@ -85,7 +96,9 @@ final class RoutineSessionViewModel {
         guard !text.isEmpty else { return }
         inputText = ""
         appendUser(text)
+        isCharacterThinking = true
         let turn = await dependencies.conversationCoordinator.submitFreeText(text, current: progress)
+        isCharacterThinking = false
         self.progress = turn.progress
         appendCharacter(turn.characterText)
     }
@@ -102,7 +115,9 @@ final class RoutineSessionViewModel {
         if voiceEngine == nil {
             let engine = NativeVoiceConversationEngine { [weak self] text in
                 guard let self, let progress = self.progress else { return "" }
+                self.isCharacterThinking = true
                 let turn = await dependencies.conversationCoordinator.submitFreeText(text, current: progress)
+                self.isCharacterThinking = false
                 self.progress = turn.progress
                 return turn.characterText
             }

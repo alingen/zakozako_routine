@@ -10,6 +10,9 @@ struct SettingsView: View {
             NavigationLink("キャラクター設定") {
                 CharacterSettingsView()
             }
+            NavigationLink("通知") {
+                NotificationSettingsView()
+            }
         }
         .navigationTitle("設定")
     }

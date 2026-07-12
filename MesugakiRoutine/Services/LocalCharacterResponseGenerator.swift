@@ -14,15 +14,27 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
     static let recommendedPhrases: [String] = ["うわ", "♡", "ざっこ〜", "きっしょ〜♡", "つよつよ", "ざこざこ", "よわよわ"]
 
     func generateResponse(context: CharacterResponseContext) async -> CharacterResponse {
-        let rawText = templateText(for: context.situation)
+        let rawText = templateText(for: context.situation, userNickname: context.userNickname)
         let safeText = ForbiddenPhraseFilter.apply(rawText, forbidden: Self.forbiddenPhrases)
         return CharacterResponse(text: safeText)
     }
 
-    private func templateText(for situation: CharacterSituation) -> String {
+    /// 呼び名が設定されていれば「〇〇、」という呼びかけを文頭に添える。未設定なら空文字。
+    /// 他のcaseでも呼びかけたい場合は、この関数を文頭に足すだけでよい。
+    private func nameCall(_ userNickname: String) -> String {
+        userNickname.isEmpty ? "" : "\(userNickname)、"
+    }
+
+    /// ルーティン開始時だけ使う、呼び名の頭に「ざこの」を付けた煽り気味の呼びかけ。
+    /// 例: 呼び名が「おにいさん」なら「ざこのおにいさん、」。
+    private func routineStartNameCall(_ userNickname: String) -> String {
+        userNickname.isEmpty ? "" : "ざこの\(userNickname)、"
+    }
+
+    private func templateText(for situation: CharacterSituation, userNickname: String) -> String {
         switch situation {
         case .routineStarted(let stepName):
-            return "きっしょ〜♡\(stepName)からだって。このくらい大人なら余裕できるよね〜"
+            return "\(routineStartNameCall(userNickname))きっしょ〜♡\(stepName)からだって。このくらい大人なら余裕できるよね〜"
 
         case .stepCompleted(let nextStepName):
             if let next = nextStepName {
@@ -50,30 +62,31 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
 
         case .blockedBehaviorDetected(_, let counterMessage, let alternativeAction):
             let base = counterMessage.isEmpty
-                ? "え〜誘惑にまけてやっちゃうの？ざこざこめんたるでお先まっくら〜"
-                : counterMessage
+                ? "\(nameCall(userNickname))え〜誘惑にまけてやっちゃうの？ざこざこめんたるでお先まっくら〜"
+                : "\(nameCall(userNickname))\(counterMessage)"
             guard !alternativeAction.isEmpty else { return base }
             return "\(base) 代わりに\(alternativeAction)しなよ〜？"
 
         case .nextStepQuery(let currentStepName):
             if let step = currentStepName {
-                return "次の\(step)くらいは余裕でやってくれるよね〜？"
+                return "次の\(step)くらいはよゆ〜でやってくれるよね〜？"
             }
             return "ふぅん、全部おわっちゃうなんてつよつよ〜"
 
         case .homeGreeting(let streakDays, let isMorningRoutinePending):
+            let call = nameCall(userNickname)
             if isMorningRoutinePending {
-                return "まだ朝ルーティンもやってないじゃん〜♡たいだ〜♡"
+                return "\(call)まだ朝ルーティンもやってないじゃん〜♡たいだ〜♡"
             }
             switch streakDays {
             case ...1:
-                return "やっとやる気になったんだ〜♡おっそ〜♡"
+                return "\(call)やっとやる気になったんだ〜♡おっそ〜♡"
             case 2:
-                return "今日でやめたらざこすぎ〜♡"
+                return "\(call)今日でやめたらざこすぎ〜♡"
             case 3...6:
-                return "\(streakDays)日目とか、やるじゃん♡でもまだまだこれからだよね〜？"
+                return "\(call)\(streakDays)日目とか、やるじゃん♡でもまだまだこれからだよね〜？"
             default:
-                return "\(streakDays)日目継続とか、ちょっとは見直しちゃうかも♡調子乗んなよ〜？"
+                return "\(call)\(streakDays)日目継続とか、意外と頑張ってるじゃん♡でももっとつよつよになれるよね〜？"
             }
 
         case .freeText:

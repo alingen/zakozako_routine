@@ -12,6 +12,8 @@ final class HomeViewModel {
 
     /// ホーム画面上部に出す、キャラクターからの一言。
     private(set) var homeComment: String = ""
+    /// キャラクターの一言を生成している間 true(入力中インジケーターの表示に使う)。
+    private(set) var isLoadingHomeComment = false
 
     /// Siriショートカット経由の起動直後、数秒だけ音声コマンドを受け付けている間 true。
     private(set) var isListeningForVoiceCommand = false
@@ -31,6 +33,19 @@ final class HomeViewModel {
         morningRoutine = dependencies.routineRepository.fetch(type: .morning).first
         nightRoutine = dependencies.routineRepository.fetch(type: .night).first
         blockedBehaviors = dependencies.blockedBehaviorRepository.fetchAll()
+        rescheduleNotifications()
+    }
+
+    /// サボり通知を、現在のルーティン状態(今日完了済みかどうか)にあわせて再計算する。
+    private func rescheduleNotifications() {
+        guard let dependencies else { return }
+        let routines = [morningRoutine, nightRoutine].compactMap { $0 }
+        Task {
+            await dependencies.notificationScheduler.reschedule(
+                routines: routines,
+                sessionRepository: dependencies.sessionRepository
+            )
+        }
     }
 
     func addBlockedBehavior() {
@@ -114,6 +129,7 @@ final class HomeViewModel {
     /// ホーム画面上部のキャラクターコメントを取得し直す。継続日数・朝ルーティンの未着手判定を元に生成する。
     func loadHomeComment() async {
         guard let dependencies else { return }
+        isLoadingHomeComment = true
         let response = await dependencies.characterEngine.respond(
             to: .homeGreeting(
                 streakDays: currentStreakDays(),
@@ -121,6 +137,7 @@ final class HomeViewModel {
             )
         )
         homeComment = response.text
+        isLoadingHomeComment = false
     }
 
     /// 今日を含めて何日連続でルーティンを完了しているか。記録が無ければ1(今日が初日)を返す。

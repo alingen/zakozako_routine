@@ -3,9 +3,21 @@ import SwiftUI
 /// 「一般」設定画面。
 struct GeneralSettingsView: View {
     @State private var uiMode: AppUIMode = AppSettingsStore.uiMode
+    @State private var userNickname: String = AppSettingsStore.userNickname
 
     var body: some View {
         List {
+            Section {
+                TextField("例: おにいさん、おねえさん", text: $userNickname)
+                    .onChange(of: userNickname) {
+                        AppSettingsStore.userNickname = userNickname
+                    }
+            } header: {
+                Text("呼び名")
+            } footer: {
+                Text("キャラクターがあなたを呼ぶ時の呼び名です。空欄なら特に呼びかけません。ルーティン開始時だけは頭に「ざこの」が付きます(例: ざこのおにいさん)。")
+            }
+
             Section {
                 Picker(selection: $uiMode) {
                     ForEach(AppUIMode.allCases) { mode in

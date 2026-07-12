@@ -55,7 +55,7 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
     }
 
     private func buildMessages(context: CharacterResponseContext, referenceLine: String) -> [OpenAIChatMessage] {
-        var messages = [OpenAIChatMessage(role: "system", content: systemPrompt(for: context.preset))]
+        var messages = [OpenAIChatMessage(role: "system", content: systemPrompt(for: context))]
 
         for item in context.history.suffix(20) {
             messages.append(OpenAIChatMessage(role: item.role == .user ? "user" : "assistant", content: item.text))
@@ -73,12 +73,17 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         return messages
     }
 
-    private func systemPrompt(for preset: CharacterPreset) -> String {
+    private func systemPrompt(for context: CharacterResponseContext) -> String {
+        let preset = context.preset
         var lines: [String] = []
         if !preset.basePrompt.isEmpty {
             lines.append(preset.basePrompt)
         }
         lines.append("キャラクター名: \(preset.name)")
+        if !context.userNickname.isEmpty {
+            lines.append("ユーザーの呼び名: \(context.userNickname)(会話の要所で、この呼び名で呼びかけてよい。毎回でなくてよい)")
+            lines.append("ただしルーティン開始時だけは、呼び名の頭に「ざこの」を付けて「ざこの\(context.userNickname)」と呼びかける")
+        }
         lines.append("褒め方のスタイル: \(preset.praiseStyle.displayName)(例: 「\(fallback.sampleLine(for: preset.praiseStyle))」)")
         lines.append("叱り方のスタイル: \(preset.scoldStyle.displayName)(例: 「\(fallback.sampleLine(for: preset.scoldStyle))」)")
         if !LocalCharacterResponseGenerator.forbiddenPhrases.isEmpty {

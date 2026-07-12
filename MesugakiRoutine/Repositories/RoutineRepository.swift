@@ -47,6 +47,13 @@ final class RoutineRepository {
         save()
     }
 
+    func updateReminder(_ routine: Routine, enabled: Bool, minuteOfDay: Int?) {
+        routine.reminderEnabled = enabled
+        routine.reminderMinuteOfDay = minuteOfDay
+        routine.updatedAt = .now
+        save()
+    }
+
     @discardableResult
     func addStep(to routine: Routine, title: String, description: String, estimatedMinutes: Int, isRequired: Bool) -> RoutineStep {
         let nextIndex = (routine.steps.map(\.orderIndex).max() ?? -1) + 1

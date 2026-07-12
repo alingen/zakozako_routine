@@ -35,6 +35,8 @@ struct CharacterResponseContext {
     let situation: CharacterSituation
     let preset: CharacterPreset
     let recentUserText: String?
+    /// キャラクターがユーザーを呼ぶ時の呼び名。空文字なら特に呼びかけない(AppSettingsStore.userNicknameで設定)。
+    let userNickname: String
     /// 直近までの会話履歴(今回のsituationは含まない)。ChatGPTのようなAPIに文脈を持たせるために使う。
     var history: [ConversationHistoryItem] = []
 }
