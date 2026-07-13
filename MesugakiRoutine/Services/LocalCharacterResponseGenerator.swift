@@ -25,7 +25,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
     static let ngTeasingExamples: [String] = ["いじめられてそ〜", "つまんなそ〜"]
 
     func generateResponse(context: CharacterResponseContext) async -> CharacterResponse {
-        let rawText = templateText(for: context.situation, userNickname: context.userNickname, trustStage: context.trustStage)
+        let rawText = templateText(for: context.situation, userNickname: context.userNickname)
         let safeText = ForbiddenPhraseFilter.apply(rawText, forbidden: Self.forbiddenPhrases)
         return CharacterResponse(text: safeText)
     }
@@ -42,7 +42,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
         userNickname.isEmpty ? "" : "ざこの\(userNickname)、"
     }
 
-    private func templateText(for situation: CharacterSituation, userNickname: String, trustStage: Int) -> String {
+    private func templateText(for situation: CharacterSituation, userNickname: String) -> String {
         switch situation {
         case .routineStarted(let stepName, let routineType):
             let morningGreeting = routineType == .morning ? "おはよ〜♡" : ""
@@ -101,12 +101,12 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
             // ここに来るのはフリートーク中(ルーティン完了後)の会話のみ。GPT未接続時のフォールバック。
             return "ふーん、そうなんだ〜♡もっと話してよ〜"
 
-        case .freeTalkStarted:
+        case .freeTalkStarted(let topic):
             let call = nameCall(userNickname)
-            guard let question = FreeTalkTopicSelector.pickTopic(forTrustStage: trustStage) else {
+            guard let topic else {
                 return "\(FreeTalkTopics.intro) \(call)"
             }
-            return "\(FreeTalkTopics.intro) \(call)\(question)"
+            return "\(FreeTalkTopics.intro) \(call)\(topic.question)"
         }
     }
 

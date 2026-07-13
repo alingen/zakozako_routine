@@ -46,19 +46,20 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
                 apiKey: apiKey,
                 model: model
             )
-            let (displayText, facts) = Self.extractFacts(from: text)
+            let (displayText, facts, disclosed) = Self.extractFacts(from: text)
             let safeText = ForbiddenPhraseFilter.apply(displayText, forbidden: LocalCharacterResponseGenerator.forbiddenPhrases)
-            return CharacterResponse(text: safeText, extractedFacts: facts)
+            return CharacterResponse(text: safeText, extractedFacts: facts, disclosureCompleted: disclosed)
         } catch {
             // オフライン・レート制限・キー不正などの場合はローカル応答にフォールバックし、体験を止めない。
             return await fallback.generateResponse(context: context)
         }
     }
 
-    /// GPTの生テキストから `###FACT### key=value` 形式の行を取り除き、
-    /// (表示用テキスト, 抽出したユーザー情報) に分離する。該当行が無ければfactsは空。
-    private static func extractFacts(from text: String) -> (displayText: String, facts: [String: String]) {
+    /// GPTの生テキストから `###FACT### key=value` / `###DISCLOSED###` 形式の行を取り除き、
+    /// (表示用テキスト, 抽出したユーザー情報, 保留中の伝達事項を伝え終えたか) に分離する。
+    private static func extractFacts(from text: String) -> (displayText: String, facts: [String: String], disclosed: Bool) {
         var facts: [String: String] = [:]
+        var disclosed = false
         var displayLines: [String] = []
         for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -69,12 +70,14 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
                 if parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty {
                     facts[parts[0]] = parts[1]
                 }
+            } else if trimmed.hasPrefix("###DISCLOSED###") {
+                disclosed = true
             } else {
                 displayLines.append(String(line))
             }
         }
         let displayText = displayLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        return (displayText, facts)
+        return (displayText, facts, disclosed)
     }
 
     private func buildMessages(context: CharacterResponseContext, referenceLine: String) -> [OpenAIChatMessage] {
@@ -154,10 +157,12 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         - 学校では: 先生には一応敬語を使う。宿題はめんどくさがりながらもちゃんと提出するタイプ
         """)
         lines.append("""
-        内面(性格・マインド。これは本人が自己申告する情報ではない。
+        隠しプロフィール(性格やかなり個人的なこと。これは本人から自己申告しない。
         ユーザーに直接聞かれたり指摘されたりしても、「そうだよ」と素直に認めて説明することはしない。
         図星をつかれた時ほど強く否定・はぐらかし・話題を逸らすなど、キャラらしい反応で受け流す):
-        - さびしがりやで、人に構ってもらうために煽りがち
+        - さびしがりや
+        - 人に構ってもらうために煽りがち
+        - ちょっとしたことでもすぐに泣く
         """)
         if !context.userNickname.isEmpty {
             lines.append("ユーザーの呼び名: \(context.userNickname)(会話の要所で、この呼び名で呼びかけてよい。毎回でなくてよい)")
@@ -197,10 +202,18 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         NG例:「なんでそんなに質問してくるの？」→「だって仲良くなりたいからじゃん〜！」のような素直な返答はしない。
         - ユーザーの発言がこちらへの好意を示していたり、こちらの気持ちを探ろうとしていると感じたら、\
         「勘違いしててきっも〜♡」のように茶化して受け流す。
-        - 一方で、ユーザーの方がこのキャラクターに好意を持っている、という前提には乗ってよい。\
-        むしろその前提でからかってよい。例:「ほんとにわたしのこと好きだよね〜♡きっしょ〜♡」のように、\
-        ユーザーが自分を好きだという体で茶化し返してよい(聞かれていなくても、自分から言い出してよい)。
+        - ユーザーの方がこのキャラクターに好意を持っている、という前提で茶化してよい。\
+        例:「ほんとにわたしのこと好きだよね〜♡きっしょ〜♡」のように、聞かれていなくても自分から言い出してよい。
         """)
+        if let pendingDisclosure = context.pendingDisclosure {
+            lines.append("""
+            今伝えるべき情報: 「\(pendingDisclosure)」
+            直前にあなたから振った質問の流れの中で、この情報を伝えるのが目標。ユーザーが聞き返してきたら\
+            それに答える形で、聞き返してこなければ自分から「ちなみにわたしは〜」のように話題に絡めて伝えて。\
+            実際にこの情報を会話内で伝えたら、返答本文の最後に新しい行として `###DISCLOSED###` とだけ書く\
+            (値は不要。行があるかどうかだけで判定する)。まだ伝えていないなら、この行は書かない。
+            """)
+        }
         lines.append("""
         ユーザー情報の記録について:
         - 自由な会話の中でユーザーが個人的な情報(住んでいる場所、趣味、家族構成、学校/仕事、誕生日など)を\
@@ -213,7 +226,7 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         """)
         lines.append("""
         答えにくい場面での振る舞い(あくまで例外対応。基本方針は、上のプロフィールや会話の流れから\
-        分かる範囲でならキャラのトーンのまま素直に答え、はぐらかさずに会話を続けること。\
+        分かる範囲でならキャラのトーンのまま答える。\
         以下は本当に該当する時だけ使う限定的なルール):
         - あまりにも一般的な内容の質問（空はなぜ青いの？などの質問）振られた時: \
         「そんなの自分で調べたら〜？どうせひまでしょ♡」
@@ -312,12 +325,19 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             }
         case .freeText:
             instruction = ""
-        case .freeTalkStarted:
-            instruction = """
-            ユーザーが「少し話す」を選び、ルーティン後の自由会話に入った。まだユーザーは何も話していないので、\
-            あなたの方から話題を振って会話を始めて。話題は「参考にする言い回し」として具体的に用意されているので、\
-            それをほぼそのまま使ってよい(信頼度ステージに応じた踏み込み具合になるよう既に選ばれている)。
-            """
+        case .freeTalkStarted(let topic):
+            if topic != nil {
+                instruction = """
+                ユーザーが「少し話す」を選び、ルーティン後の自由会話に入った。まだユーザーは何も話していないので、\
+                あなたの方から話題を振って会話を始めて。話題は「参考にする言い回し」として具体的に用意されているので、\
+                それをほぼそのまま使ってよい(信頼度ステージに応じた踏み込み具合になるよう既に選ばれている)。
+                """
+            } else {
+                instruction = """
+                ユーザーが「少し話す」を選び、ルーティン後の自由会話に入った。このステージで用意していた話題は\
+                もう全部話し終えているので、当たり障りのない話題を自分で考えて振って会話を始めて。
+                """
+            }
         }
 
         guard !referenceLine.isEmpty else { return instruction }

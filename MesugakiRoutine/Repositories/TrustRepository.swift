@@ -24,7 +24,8 @@ final class TrustRepository {
     }
 
     var points: Int { fetchOrCreate().points }
-    var stage: Int { TrustStage.stage(for: points) }
+    /// 実際に到達しているステージ(話題完了によるゲート済み)。
+    var stage: Int { fetchOrCreate().currentStage }
 
     func increment(by amount: Int = 1) {
         let state = fetchOrCreate()
@@ -33,10 +34,24 @@ final class TrustRepository {
         try? context.save()
     }
 
-    /// デバッグ・動作確認用に信頼度ポイントを直接書き換える。
+    /// ポイントが次のステージに必要な分を満たし、かつ現ステージのフリートーク話題を
+    /// 全て伝え終えていれば、次のステージに進める。両方揃わなければ何もしない。
+    func tryAdvanceStage(topicProgressRepository: FreeTalkTopicProgressRepository) {
+        let state = fetchOrCreate()
+        let requiredPoints = state.currentStage * TrustStage.pointsPerStage
+        guard state.points >= requiredPoints else { return }
+        let topics = FreeTalkTopics.topics(for: state.currentStage)
+        guard topicProgressRepository.allCompleted(topics) else { return }
+        state.currentStage += 1
+        state.updatedAt = .now
+        try? context.save()
+    }
+
+    /// デバッグ・動作確認用に信頼度ポイントとステージを直接書き換える(話題完了のゲートを無視する)。
     func setPoints(_ points: Int) {
         let state = fetchOrCreate()
         state.points = points
+        state.currentStage = TrustStage.stage(for: points)
         state.updatedAt = .now
         try? context.save()
     }

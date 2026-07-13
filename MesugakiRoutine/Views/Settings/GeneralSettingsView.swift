@@ -8,6 +8,7 @@ struct GeneralSettingsView: View {
     @State private var userNickname: String = AppSettingsStore.userNickname
     @State private var completionPhrase: String = AppSettingsStore.completionPhrase
     @State private var trustPoints: Int = 0
+    @State private var trustStage: Int = 1
 
     private var trustRepository: TrustRepository { TrustRepository(context: modelContext) }
 
@@ -54,7 +55,7 @@ struct GeneralSettingsView: View {
             }
 
             Section {
-                Text("現在: ステージ\(TrustStage.stage(for: trustPoints))(\(trustPoints)pt)")
+                Text("現在: ステージ\(trustStage)(\(trustPoints)pt)")
                     .font(.subheadline)
                 Button("低ステージにする") {
                     setTrustPoints(0)
@@ -68,18 +69,20 @@ struct GeneralSettingsView: View {
             } header: {
                 Text("信頼度(デバッグ用)")
             } footer: {
-                Text("信頼度ステージによる応答の変化を確認するためのテスト用ボタンです。")
+                Text("信頼度ステージによる応答の変化を確認するためのテスト用ボタンです。ここでの切り替えは、そのステージのフリートーク話題が完了しているかに関わらず強制的に反映されます。")
             }
         }
         .navigationTitle("一般")
         .task {
             trustPoints = trustRepository.points
+            trustStage = trustRepository.stage
         }
     }
 
     private func setTrustPoints(_ points: Int) {
         trustRepository.setPoints(points)
         trustPoints = points
+        trustStage = trustRepository.stage
     }
 }
 

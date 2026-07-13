@@ -16,6 +16,7 @@ struct MesugakiRoutineApp: App {
             BlockedBehavior.self,
             TrustState.self,
             UserProfileFact.self,
+            FreeTalkTopicProgress.self,
         ])
         let configuration = ModelConfiguration(schema: schema)
         do {

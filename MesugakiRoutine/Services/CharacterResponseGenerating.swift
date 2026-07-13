@@ -15,8 +15,8 @@ enum CharacterSituation {
     /// 自由入力テキスト。ChatGPT等に差し替えた際は、これがそのままユーザー発言として渡る。
     case freeText(String)
     /// ルーティン完了後、「少し話す」でフリートークに入った直後。キャラクター側から話題を振る。
-    /// 話題の踏み込み具合は CharacterResponseContext.trustStage を見て決める。
-    case freeTalkStarted
+    /// topicはConversationCoordinatorが信頼度ステージに応じて選んだ話題(nilなら全て話し終えている)。
+    case freeTalkStarted(topic: FreeTalkTopic?)
 }
 
 /// AI視点での発言者。会話履歴をAPIに渡す際の role にマッピングする。
@@ -43,6 +43,9 @@ struct CharacterResponseContext {
     let trustStage: Int
     /// これまでの会話でわかっているユーザーの情報(key: value)。将来の会話に自然に組み込む材料として使う。
     let userProfileFacts: [String: String]
+    /// 直前にキャラクターから振った話題(FreeTalkTopic)のうち、まだ伝え終えていない「伝えたい情報」。
+    /// フリートーク中の会話で、これを実際に伝えられたかどうかの判定に使う(GPT応答からのみ利用)。
+    let pendingDisclosure: String?
     /// 直近までの会話履歴(今回のsituationは含まない)。ChatGPTのようなAPIに文脈を持たせるために使う。
     var history: [ConversationHistoryItem] = []
 }
@@ -52,6 +55,8 @@ struct CharacterResponse {
     let text: String
     /// 応答の中でユーザーが新たに明かした情報(key: value)。GPT応答からのみ抽出される(Localは常に空)。
     var extractedFacts: [String: String] = [:]
+    /// `pendingDisclosure`を今回の応答で実際に伝え終えたか。GPT応答からのみ判定される(Localは常にfalse)。
+    var disclosureCompleted: Bool = false
 }
 
 /// キャラクターの応答生成を抽象化するプロトコル。

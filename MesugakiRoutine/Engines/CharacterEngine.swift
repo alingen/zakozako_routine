@@ -31,6 +31,7 @@ final class CharacterEngine {
     func respond(
         to situation: CharacterSituation,
         userText: String? = nil,
+        pendingDisclosure: String? = nil,
         history: [ConversationHistoryItem] = []
     ) async -> CharacterResponse {
         let context = CharacterResponseContext(
@@ -40,6 +41,7 @@ final class CharacterEngine {
             userNickname: AppSettingsStore.userNickname,
             trustStage: trustRepository.stage,
             userProfileFacts: userProfileFactRepository.allFacts,
+            pendingDisclosure: pendingDisclosure,
             history: history
         )
         return await generator.generateResponse(context: context)

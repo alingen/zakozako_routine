@@ -22,23 +22,30 @@ final class ConversationCoordinator {
     private let blockedBehaviorRepository: BlockedBehaviorRepository
     private let trustRepository: TrustRepository
     private let userProfileFactRepository: UserProfileFactRepository
+    private let freeTalkTopicProgressRepository: FreeTalkTopicProgressRepository
 
     /// このセッション中の会話履歴。AI応答生成のたびに文脈として渡し、応答後に追記する。
     /// 際限なく増えないよう直近40ターン程度に丸めている。
     private var history: [ConversationHistoryItem] = []
+
+    /// 直前のフリートーク開始時に振った話題のうち、まだ伝え終えていないもの。
+    /// `freeTalk` の応答で伝え終えたと判定されたら nil に戻す。
+    private var pendingDisclosureTopic: FreeTalkTopic?
 
     init(
         routineEngine: RoutineEngine,
         characterEngine: CharacterEngine,
         blockedBehaviorRepository: BlockedBehaviorRepository,
         trustRepository: TrustRepository,
-        userProfileFactRepository: UserProfileFactRepository
+        userProfileFactRepository: UserProfileFactRepository,
+        freeTalkTopicProgressRepository: FreeTalkTopicProgressRepository
     ) {
         self.routineEngine = routineEngine
         self.characterEngine = characterEngine
         self.blockedBehaviorRepository = blockedBehaviorRepository
         self.trustRepository = trustRepository
         self.userProfileFactRepository = userProfileFactRepository
+        self.freeTalkTopicProgressRepository = freeTalkTopicProgressRepository
     }
 
     /// `characterEngine.respond` の薄いラッパー。GPT応答から抽出されたユーザー情報があれば、
@@ -47,7 +54,12 @@ final class ConversationCoordinator {
         to situation: CharacterSituation,
         userText: String? = nil
     ) async -> CharacterResponse {
-        let response = await characterEngine.respond(to: situation, userText: userText, history: history)
+        let response = await characterEngine.respond(
+            to: situation,
+            userText: userText,
+            pendingDisclosure: pendingDisclosureTopic?.disclosure,
+            history: history
+        )
         for (key, value) in response.extractedFacts {
             userProfileFactRepository.upsert(key: key, value: value)
         }
@@ -70,6 +82,7 @@ final class ConversationCoordinator {
         if updated.isFinished {
             situation = .routineCompleted(routineType: updated.routine.type)
             trustRepository.increment(by: 1)
+            trustRepository.tryAdvanceStage(topicProgressRepository: freeTalkTopicProgressRepository)
         } else {
             switch outcome {
             case .completed: situation = .stepCompleted(nextStepName: updated.currentStep?.title)
@@ -121,21 +134,32 @@ final class ConversationCoordinator {
         }
     }
 
-    /// フリートークモードに入った直後、キャラクター側から話題を振る。
+    /// フリートークモードに入った直後、信頼度ステージに応じた未完了の話題を1つ選んで振る。
     /// ユーザーの発言ではないため信頼度は変化しない。
     func beginFreeTalk() async -> String {
-        let response = await respond(to: .freeTalkStarted)
+        let topic = FreeTalkTopicSelector.pickTopic(
+            forStage: trustRepository.stage,
+            progressRepository: freeTalkTopicProgressRepository
+        )
+        pendingDisclosureTopic = topic
+        let response = await respond(to: .freeTalkStarted(topic: topic))
         appendTurn(userLabel: "(フリートーク開始)", assistantText: response.text)
         return response.text
     }
 
     /// ルーティン完了後の自由会話(フリートーク)を扱う。RoutineProgressに紐づかないため
     /// ステップ進行やブロック行動判定は行わず、キャラクターとの雑談として応答するだけ。
-    /// やり取りのたびに信頼度が+1される。
+    /// やり取りのたびに信頼度が+1される。保留中の話題の伝達事項を伝え終えたら完了扱いにし、
+    /// ステージ進行の条件も揃っていれば次のステージに進める。
     func freeTalk(_ text: String) async -> String {
         let response = await respond(to: .freeText(text), userText: text)
+        if response.disclosureCompleted, let topic = pendingDisclosureTopic {
+            freeTalkTopicProgressRepository.markCompleted(question: topic.question)
+            pendingDisclosureTopic = nil
+        }
         appendTurn(userLabel: text, assistantText: response.text)
         trustRepository.increment(by: 1)
+        trustRepository.tryAdvanceStage(topicProgressRepository: freeTalkTopicProgressRepository)
         return response.text
     }
 
