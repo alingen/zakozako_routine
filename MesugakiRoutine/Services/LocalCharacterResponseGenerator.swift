@@ -14,7 +14,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
     static let recommendedPhrases: [String] = ["うわっ", "おっ", "♡", "ざっこ〜", "きっしょ〜♡", "つよつよ", "ざこざこ", "よわよわ"]
 
     func generateResponse(context: CharacterResponseContext) async -> CharacterResponse {
-        let rawText = templateText(for: context.situation, userNickname: context.userNickname)
+        let rawText = templateText(for: context.situation, userNickname: context.userNickname, trustStage: context.trustStage)
         let safeText = ForbiddenPhraseFilter.apply(rawText, forbidden: Self.forbiddenPhrases)
         return CharacterResponse(text: safeText)
     }
@@ -31,10 +31,11 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
         userNickname.isEmpty ? "" : "ざこの\(userNickname)、"
     }
 
-    private func templateText(for situation: CharacterSituation, userNickname: String) -> String {
+    private func templateText(for situation: CharacterSituation, userNickname: String, trustStage: Int) -> String {
         switch situation {
-        case .routineStarted(let stepName):
-            return "\(routineStartNameCall(userNickname))きっしょ〜♡\(stepName)からだって。このくらい大人なら余裕できるよね〜"
+        case .routineStarted(let stepName, let routineType):
+            let morningGreeting = routineType == .morning ? "おはよ〜♡" : ""
+            return "\(routineStartNameCall(userNickname))\(morningGreeting)きっしょ〜♡\(stepName)からだって。このくらい大人なら余裕できるよね〜"
 
         case .stepCompleted(let nextStepName):
             if let next = nextStepName {
@@ -54,8 +55,9 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
             }
             return "まけみとめちゃうんだ〜ざっこ〜♡"
 
-        case .routineCompleted:
-            return "ふぅん、今日だけはつよつよってことにしといてあげる〜♡"
+        case .routineCompleted(let routineType):
+            let nightGreeting = routineType == .night ? " おやすみ〜♡" : ""
+            return "ふぅん、今日だけはつよつよってことにしといてあげる〜♡\(nightGreeting)"
 
         case .helpRequested(let currentStepName):
             return "\(currentStepName)のやり方わかんないの？ざっこ〜♡ほら、体動かすだけでいいのに〜"
@@ -86,6 +88,13 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
         case .freeText:
             // 将来ここがAI(OpenAI等)による自由応答に置き換わる想定。
             return "うんうん、聞いてるよ。でも今はルーティンに集中しよっか。"
+
+        case .freeTalkStarted:
+            let call = nameCall(userNickname)
+            guard let question = FreeTalkTopicSelector.pickTopic(forTrustStage: trustStage) else {
+                return "\(FreeTalkTopics.intro) \(call)"
+            }
+            return "\(FreeTalkTopics.intro) \(call)\(question)"
         }
     }
 

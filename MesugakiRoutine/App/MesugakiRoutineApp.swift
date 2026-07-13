@@ -14,6 +14,8 @@ struct MesugakiRoutineApp: App {
             RoutineEvent.self,
             CharacterPreset.self,
             BlockedBehavior.self,
+            TrustState.self,
+            UserProfileFact.self,
         ])
         let configuration = ModelConfiguration(schema: schema)
         do {

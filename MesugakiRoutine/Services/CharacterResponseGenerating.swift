@@ -2,11 +2,11 @@ import Foundation
 
 /// キャラクターが反応すべき状況。RoutineEngine / ConversationCoordinator から渡される。
 enum CharacterSituation {
-    case routineStarted(stepName: String)
+    case routineStarted(stepName: String, routineType: RoutineType)
     case stepCompleted(nextStepName: String?)
     case stepSkipped(nextStepName: String?)
     case stepFailed(nextStepName: String?)
-    case routineCompleted
+    case routineCompleted(routineType: RoutineType)
     case helpRequested(currentStepName: String)
     case blockedBehaviorDetected(behaviorTitle: String, counterMessage: String, alternativeAction: String)
     /// ホーム画面を開いた時の一言。streakDays は継続日数(初回でも1)、isMorningRoutinePending は
@@ -14,6 +14,9 @@ enum CharacterSituation {
     case homeGreeting(streakDays: Int, isMorningRoutinePending: Bool)
     /// 自由入力テキスト。ChatGPT等に差し替えた際は、これがそのままユーザー発言として渡る。
     case freeText(String)
+    /// ルーティン完了後、「少し話す」でフリートークに入った直後。キャラクター側から話題を振る。
+    /// 話題の踏み込み具合は CharacterResponseContext.trustStage を見て決める。
+    case freeTalkStarted
 }
 
 /// AI視点での発言者。会話履歴をAPIに渡す際の role にマッピングする。
@@ -36,6 +39,10 @@ struct CharacterResponseContext {
     let recentUserText: String?
     /// キャラクターがユーザーを呼ぶ時の呼び名。空文字なら特に呼びかけない(AppSettingsStore.userNicknameで設定)。
     let userNickname: String
+    /// 現在の信頼度ステージ(TrustStage.stage(for:)で算出)。低いほど警戒心が強い状態を表す。
+    let trustStage: Int
+    /// これまでの会話でわかっているユーザーの情報(key: value)。将来の会話に自然に組み込む材料として使う。
+    let userProfileFacts: [String: String]
     /// 直近までの会話履歴(今回のsituationは含まない)。ChatGPTのようなAPIに文脈を持たせるために使う。
     var history: [ConversationHistoryItem] = []
 }
@@ -43,6 +50,8 @@ struct CharacterResponseContext {
 /// AI応答の結果。将来は音声合成用のメタデータ（SSML等）をここに足せるようにしておく。
 struct CharacterResponse {
     let text: String
+    /// 応答の中でユーザーが新たに明かした情報(key: value)。GPT応答からのみ抽出される(Localは常に空)。
+    var extractedFacts: [String: String] = [:]
 }
 
 /// キャラクターの応答生成を抽象化するプロトコル。

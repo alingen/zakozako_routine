@@ -20,6 +20,8 @@ final class ConversationCoordinator {
     private let routineEngine: RoutineEngine
     private let characterEngine: CharacterEngine
     private let blockedBehaviorRepository: BlockedBehaviorRepository
+    private let trustRepository: TrustRepository
+    private let userProfileFactRepository: UserProfileFactRepository
 
     /// このセッション中の会話履歴。AI応答生成のたびに文脈として渡し、応答後に追記する。
     /// 際限なく増えないよう直近40ターン程度に丸めている。
@@ -28,18 +30,34 @@ final class ConversationCoordinator {
     init(
         routineEngine: RoutineEngine,
         characterEngine: CharacterEngine,
-        blockedBehaviorRepository: BlockedBehaviorRepository
+        blockedBehaviorRepository: BlockedBehaviorRepository,
+        trustRepository: TrustRepository,
+        userProfileFactRepository: UserProfileFactRepository
     ) {
         self.routineEngine = routineEngine
         self.characterEngine = characterEngine
         self.blockedBehaviorRepository = blockedBehaviorRepository
+        self.trustRepository = trustRepository
+        self.userProfileFactRepository = userProfileFactRepository
+    }
+
+    /// `characterEngine.respond` の薄いラッパー。GPT応答から抽出されたユーザー情報があれば、
+    /// どの状況経由でも漏れなく永続化されるよう、応答取得は必ずこれを通す。
+    private func respond(
+        to situation: CharacterSituation,
+        userText: String? = nil
+    ) async -> CharacterResponse {
+        let response = await characterEngine.respond(to: situation, userText: userText, history: history)
+        for (key, value) in response.extractedFacts {
+            userProfileFactRepository.upsert(key: key, value: value)
+        }
+        return response
     }
 
     func start(routine: Routine) async -> Turn {
         let progress = routineEngine.startSession(for: routine)
-        let response = await characterEngine.respond(
-            to: .routineStarted(stepName: progress.currentStep?.title ?? ""),
-            history: history
+        let response = await respond(
+            to: .routineStarted(stepName: progress.currentStep?.title ?? "", routineType: routine.type)
         )
         appendTurn(userLabel: "(ルーティン開始)", assistantText: response.text)
         return Turn(progress: progress, characterText: response.text)
@@ -50,7 +68,8 @@ final class ConversationCoordinator {
 
         let situation: CharacterSituation
         if updated.isFinished {
-            situation = .routineCompleted
+            situation = .routineCompleted(routineType: updated.routine.type)
+            trustRepository.increment(by: 1)
         } else {
             switch outcome {
             case .completed: situation = .stepCompleted(nextStepName: updated.currentStep?.title)
@@ -58,18 +77,18 @@ final class ConversationCoordinator {
             case .failed: situation = .stepFailed(nextStepName: updated.currentStep?.title)
             }
         }
-        let response = await characterEngine.respond(to: situation, history: history)
+        let response = await respond(to: situation)
         appendTurn(userLabel: "(\(outcome.userLabel))", assistantText: response.text)
         return Turn(progress: updated, characterText: response.text)
     }
 
     func askForHelp(current progress: RoutineProgress) async -> String {
         guard let step = progress.currentStep else {
-            let text = await characterEngine.respond(to: .routineCompleted, history: history).text
+            let text = await respond(to: .routineCompleted(routineType: progress.routine.type)).text
             appendTurn(userLabel: "助けて", assistantText: text)
             return text
         }
-        let response = await characterEngine.respond(to: .helpRequested(currentStepName: step.title), history: history)
+        let response = await respond(to: .helpRequested(currentStepName: step.title))
         appendTurn(userLabel: "助けて", assistantText: response.text)
         return response.text
     }
@@ -83,23 +102,40 @@ final class ConversationCoordinator {
         }
 
         if let behavior = blockedBehaviorRepository.firstMatch(for: text) {
-            let response = await characterEngine.respond(
+            let response = await respond(
                 to: .blockedBehaviorDetected(
                     behaviorTitle: behavior.title,
                     counterMessage: behavior.counterMessage,
                     alternativeAction: behavior.alternativeAction
                 ),
-                userText: text,
-                history: history
+                userText: text
             )
             routineEngine.recordBlockedBehavior(progress, userText: text, aiText: response.text)
             appendTurn(userLabel: text, assistantText: response.text)
             return Turn(progress: progress, characterText: response.text)
         } else {
-            let response = await characterEngine.respond(to: .freeText(text), userText: text, history: history)
+            let response = await respond(to: .freeText(text), userText: text)
             appendTurn(userLabel: text, assistantText: response.text)
             return Turn(progress: progress, characterText: response.text)
         }
+    }
+
+    /// フリートークモードに入った直後、キャラクター側から話題を振る。
+    /// ユーザーの発言ではないため信頼度は変化しない。
+    func beginFreeTalk() async -> String {
+        let response = await respond(to: .freeTalkStarted)
+        appendTurn(userLabel: "(フリートーク開始)", assistantText: response.text)
+        return response.text
+    }
+
+    /// ルーティン完了後の自由会話(フリートーク)を扱う。RoutineProgressに紐づかないため
+    /// ステップ進行やブロック行動判定は行わず、キャラクターとの雑談として応答するだけ。
+    /// やり取りのたびに信頼度が+1される。
+    func freeTalk(_ text: String) async -> String {
+        let response = await respond(to: .freeText(text), userText: text)
+        appendTurn(userLabel: text, assistantText: response.text)
+        trustRepository.increment(by: 1)
+        return response.text
     }
 
     private func matchesCompletionPhrase(_ text: String) -> Bool {

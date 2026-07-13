@@ -9,6 +9,8 @@ struct AppDependencies {
     let characterRepository: CharacterRepository
     let blockedBehaviorRepository: BlockedBehaviorRepository
     let sessionRepository: RoutineSessionRepository
+    let trustRepository: TrustRepository
+    let userProfileFactRepository: UserProfileFactRepository
     let routineEngine: RoutineEngine
     let characterEngine: CharacterEngine
     let conversationCoordinator: ConversationCoordinator
@@ -19,6 +21,8 @@ struct AppDependencies {
         characterRepository = CharacterRepository(context: context)
         blockedBehaviorRepository = BlockedBehaviorRepository(context: context)
         sessionRepository = RoutineSessionRepository(context: context)
+        trustRepository = TrustRepository(context: context)
+        userProfileFactRepository = UserProfileFactRepository(context: context)
         routineEngine = RoutineEngine(sessionRepository: sessionRepository)
         notificationScheduler = RoutineNotificationScheduler()
         // Keychain に OpenAI APIキーが保存されていれば ChatGPT(Chat Completions API) で応答を生成し、
@@ -33,12 +37,16 @@ struct AppDependencies {
         }
         characterEngine = CharacterEngine(
             generator: generator,
-            characterRepository: characterRepository
+            characterRepository: characterRepository,
+            trustRepository: trustRepository,
+            userProfileFactRepository: userProfileFactRepository
         )
         conversationCoordinator = ConversationCoordinator(
             routineEngine: routineEngine,
             characterEngine: characterEngine,
-            blockedBehaviorRepository: blockedBehaviorRepository
+            blockedBehaviorRepository: blockedBehaviorRepository,
+            trustRepository: trustRepository,
+            userProfileFactRepository: userProfileFactRepository
         )
     }
 }

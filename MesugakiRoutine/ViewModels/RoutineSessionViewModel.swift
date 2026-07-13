@@ -23,6 +23,9 @@ final class RoutineSessionViewModel {
     /// キャラクターの返答を待っている間 true(チャットログの入力中インジケーターに使う)。
     private(set) var isCharacterThinking = false
 
+    /// ルーティン完了後、「少し話す」を選んでフリートーク(自由会話)モードに入っているか。
+    private(set) var isFreeTalkActive = false
+
     private var dependencies: AppDependencies?
     private var voiceEngine: (any VoiceConversationEngine)?
 
@@ -95,6 +98,32 @@ final class RoutineSessionViewModel {
         appendCharacter(turn.characterText)
     }
 
+    /// ルーティン完了後、フリートークモードに切り替え、キャラクター側から話題を振らせる。
+    func startFreeTalk() async {
+        guard let dependencies else { return }
+        isFreeTalkActive = true
+        isCharacterThinking = true
+        let opener = await dependencies.conversationCoordinator.beginFreeTalk()
+        isCharacterThinking = false
+        appendCharacter(opener)
+        voiceEngine?.speak(opener)
+    }
+
+    /// フリートーク中のテキスト送信。ステップ進行には関与せず、キャラクターとの雑談として応答する。
+    /// やり取りのたびに信頼度が上がる(ConversationCoordinator.freeTalk側で加算)。
+    func sendFreeTalkMessage() async {
+        guard let dependencies else { return }
+        let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        inputText = ""
+        appendUser(text)
+        isCharacterThinking = true
+        let reply = await dependencies.conversationCoordinator.freeTalk(text)
+        isCharacterThinking = false
+        appendCharacter(reply)
+        voiceEngine?.speak(reply)
+    }
+
     func finishSession() {
         voiceEngine?.stop()
         guard let dependencies, let progress, progress.session.status == .active else { return }
@@ -106,7 +135,14 @@ final class RoutineSessionViewModel {
         guard let dependencies else { return }
         if voiceEngine == nil {
             let engine = NativeVoiceConversationEngine { [weak self] text in
-                guard let self, let progress = self.progress else { return "" }
+                guard let self else { return "" }
+                if self.isFreeTalkActive {
+                    self.isCharacterThinking = true
+                    let reply = await dependencies.conversationCoordinator.freeTalk(text)
+                    self.isCharacterThinking = false
+                    return reply
+                }
+                guard let progress = self.progress else { return "" }
                 self.isCharacterThinking = true
                 let turn = await dependencies.conversationCoordinator.submitFreeText(text, current: progress)
                 self.isCharacterThinking = false

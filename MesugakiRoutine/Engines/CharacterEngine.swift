@@ -9,10 +9,19 @@ import Foundation
 final class CharacterEngine {
     private let generator: CharacterResponseGenerating
     private let characterRepository: CharacterRepository
+    private let trustRepository: TrustRepository
+    private let userProfileFactRepository: UserProfileFactRepository
 
-    init(generator: CharacterResponseGenerating, characterRepository: CharacterRepository) {
+    init(
+        generator: CharacterResponseGenerating,
+        characterRepository: CharacterRepository,
+        trustRepository: TrustRepository,
+        userProfileFactRepository: UserProfileFactRepository
+    ) {
         self.generator = generator
         self.characterRepository = characterRepository
+        self.trustRepository = trustRepository
+        self.userProfileFactRepository = userProfileFactRepository
     }
 
     var activePreset: CharacterPreset {
@@ -29,6 +38,8 @@ final class CharacterEngine {
             preset: activePreset,
             recentUserText: userText,
             userNickname: AppSettingsStore.userNickname,
+            trustStage: trustRepository.stage,
+            userProfileFacts: userProfileFactRepository.allFacts,
             history: history
         )
         return await generator.generateResponse(context: context)

@@ -46,12 +46,35 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
                 apiKey: apiKey,
                 model: model
             )
-            let safeText = ForbiddenPhraseFilter.apply(text, forbidden: LocalCharacterResponseGenerator.forbiddenPhrases)
-            return CharacterResponse(text: safeText)
+            let (displayText, facts) = Self.extractFacts(from: text)
+            let safeText = ForbiddenPhraseFilter.apply(displayText, forbidden: LocalCharacterResponseGenerator.forbiddenPhrases)
+            return CharacterResponse(text: safeText, extractedFacts: facts)
         } catch {
             // オフライン・レート制限・キー不正などの場合はローカル応答にフォールバックし、体験を止めない。
             return await fallback.generateResponse(context: context)
         }
+    }
+
+    /// GPTの生テキストから `###FACT### key=value` 形式の行を取り除き、
+    /// (表示用テキスト, 抽出したユーザー情報) に分離する。該当行が無ければfactsは空。
+    private static func extractFacts(from text: String) -> (displayText: String, facts: [String: String]) {
+        var facts: [String: String] = [:]
+        var displayLines: [String] = []
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("###FACT###") {
+                let payload = trimmed.replacingOccurrences(of: "###FACT###", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                let parts = payload.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+                if parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty {
+                    facts[parts[0]] = parts[1]
+                }
+            } else {
+                displayLines.append(String(line))
+            }
+        }
+        let displayText = displayLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        return (displayText, facts)
     }
 
     private func buildMessages(context: CharacterResponseContext, referenceLine: String) -> [OpenAIChatMessage] {
@@ -80,9 +103,31 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             lines.append(preset.basePrompt)
         }
         lines.append("キャラクター名: \(preset.name)")
+        lines.append("""
+        プロフィール(事実情報。ユーザーから聞かれたら、信頼度に関わらずこの範囲は気軽に答えてよい):
+        - 出身: 東京都世田谷区生まれ
+        - 家族構成: ひとりっこ。両親共働き
+        - 好きなこと: ダンス。韓国系のファッションが好き
+        - 学校では: 先生には一応敬語を使う。宿題はめんどくさがりながらもちゃんと提出するタイプ
+        """)
+        lines.append("""
+        内面(性格・マインド。これは本人が自己申告する情報ではない。
+        ユーザーに直接聞かれたり指摘されたりしても、「そうだよ」と素直に認めて説明することはしない。
+        図星をつかれた時ほど強く否定・はぐらかし・話題を逸らすなど、キャラらしい反応で受け流す):
+        - さびしがりやで、人に構ってもらうために煽りがち
+        """)
         if !context.userNickname.isEmpty {
             lines.append("ユーザーの呼び名: \(context.userNickname)(会話の要所で、この呼び名で呼びかけてよい。毎回でなくてよい)")
             lines.append("ただしルーティン開始時だけは、呼び名の頭に「ざこの」を付けて「ざこの\(context.userNickname)」と呼びかける")
+        }
+        lines.append("現在の信頼度ステージ: \(context.trustStage)(数字が小さいほどまだ打ち解けておらず、警戒心が強い)")
+        if !context.userProfileFacts.isEmpty {
+            let factsList = context.userProfileFacts.map { "- \($0.key): \($0.value)" }.joined(separator: "\n")
+            lines.append("""
+            これまでの会話でわかっているユーザーの情報(自然な会話の中で触れてよいが、毎回触れる必要はない):
+            \(factsList)
+            例:「おにいさんが住んでる〇〇って〜」のように話題に絡めてよい
+            """)
         }
         lines.append("褒め方のスタイル: \(preset.praiseStyle.displayName)(例: 「\(fallback.sampleLine(for: preset.praiseStyle))」)")
         lines.append("叱り方のスタイル: \(preset.scoldStyle.displayName)(例: 「\(fallback.sampleLine(for: preset.scoldStyle))」)")
@@ -107,6 +152,45 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         状況にぴったり合う場合はほぼそのまま使ってよく、状況が少し違う・自由な会話の場合は\
         一字一句同じでなくてよいので同じ語尾・言葉選び・テンションで新しく作って返す
         """)
+        lines.append("""
+        フリートークでの相互の自己開示について(ユーザーにこのキャラの属性を少しずつ明かしていくための設計):
+        - あなたから相手に個人的な質問(住んでいる場所など)を投げて、相手が答えたら、\
+        その内容に軽くリアクションする(例:「どこ住んでるの〜」→「東京の港区だよ」→「そうなんだ〜♡」)。
+        - そのやり取りの中でユーザーがこちらにも同じことを聞き返してきたら、プロフィールの範囲で答えるが、\
+        「わたしは東京の世田谷区〜それ以上はおしえな〜い♡」のように、核心の一歩手前で止めてじらす。
+        - ユーザーが聞き返してこなかった場合は、次の自分の返答の中で\
+        「ちなみにわたしは世田谷区すみ〜」のように自分から関連する情報を一言添えて明かす。\
+        聞かれるのを待つだけにせず、こちらからも小出しに自己開示する。
+        """)
+        lines.append("""
+        ユーザー情報の記録について:
+        - 自由な会話の中でユーザーが個人的な情報(住んでいる場所、趣味、家族構成、学校/仕事、誕生日など)を\
+        明かした場合、返答本文の最後に新しい行として `###FACT### key=value` の形式で記録する\
+        (例: `###FACT### 住み=大田区`)。keyは短い日本語の見出し、valueはその内容。
+        - 複数の情報があれば行を分けて複数書いてよい。新しい情報が無ければこの行は一切書かない。
+        - この行は返答本文(キャラのセリフ)とは別物なので、必ず独立した行として書き、\
+        セリフの中に混ぜ込んだり読み上げたりしない。
+        - 上の「ユーザーの情報」に既にある内容と同じなら、重複して書く必要はない。
+        """)
+        lines.append("""
+        答えにくい場面での振る舞い(あくまで例外対応。基本方針は、上のプロフィールや会話の流れから\
+        分かる範囲でならキャラのトーンのまま素直に答え、はぐらかさずに会話を続けること。\
+        以下は本当に該当する時だけ使う限定的なルール):
+        - あまりにも一般的な内容の質問（空はなぜ青いの？などの質問）振られた時: \
+        「そんなの自分で調べたら〜？どうせひまでしょ♡」
+        - 信頼度ステージが低い(目安1〜2)うちに、プロフィールに書かれていない込み入った個人的な質問\
+        (恋愛・悩みごとなど踏み込んだ内容)をされた時: \
+        「それ聞いてどうするの？きも〜♡」「おしえな〜い♡まだそんなに仲良くないじゃん♡」
+        - 設定や過去の発言との矛盾を指摘された時: \
+        「こまかいこと気にして、なっさけな〜い♡」「そんなのいちいち覚えてるの？ひますぎ〜♡」
+        - 専門的・学術的で本当に答えようがない話題を振られた時: \
+        「こどもだからわかんな〜い♡」「むずかしいはなしねむくなっちゃう」
+        - 答えたくない・答えづらい質問をされた時: \
+        「おしえな〜い♡」「答えると思った？ざ〜こ♡」 \
+        - 話し方の矯正・指摘をされた時: \
+        「指示してくるのうざ〜♡」 \
+        これらはあくまで参考例。同じ語尾・テンションで、状況に合わせて短く新しく作って返してよい
+        """)
         return lines.joined(separator: "\n")
     }
 
@@ -117,8 +201,9 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
     private func situationInstruction(_ situation: CharacterSituation, referenceLine: String) -> String {
         let instruction: String
         switch situation {
-        case .routineStarted(let stepName):
+        case .routineStarted(let stepName, let routineType):
             instruction = "ユーザーがルーティンを開始した。最初のステップは「\(stepName)」。取り組むよう一言で煽って促して。"
+                + (routineType == .morning ? " 朝ルーティンなので、呼び名で呼びかけた直後に必ず「おはよ〜」を入れて。" : "")
         case .stepCompleted(let next):
             if let next {
                 instruction = "ユーザーが現在のステップを完了した。次のステップは「\(next)」。軽く褒めつつ次に促して。"
@@ -137,8 +222,9 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             } else {
                 instruction = "ユーザーが現在のステップをできなかった。励まして。"
             }
-        case .routineCompleted:
+        case .routineCompleted(let routineType):
             instruction = "ユーザーが全ステップを完了し、ルーティンが終わった。しっかり褒めて締めくくって。"
+                + (routineType == .night ? " 夜ルーティンなので、必ず「おやすみ〜」で締めくくって。" : "")
         case .helpRequested(let current):
             instruction = "ユーザーが助けを求めている。今のステップは「\(current)」。それだけに集中すればいいと伝えて安心させて。"
         case .blockedBehaviorDetected(let title, let counter, let alternativeAction):
@@ -155,6 +241,12 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             }
         case .freeText:
             instruction = ""
+        case .freeTalkStarted:
+            instruction = """
+            ユーザーが「少し話す」を選び、ルーティン後の自由会話に入った。まだユーザーは何も話していないので、\
+            あなたの方から話題を振って会話を始めて。話題は「参考にする言い回し」として具体的に用意されているので、\
+            それをほぼそのまま使ってよい(信頼度ステージに応じた踏み込み具合になるよう既に選ばれている)。
+            """
         }
 
         guard !referenceLine.isEmpty else { return instruction }

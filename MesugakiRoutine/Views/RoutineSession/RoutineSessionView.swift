@@ -205,8 +205,37 @@ struct RoutineSessionView: View {
                     .disabled(viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             } else if viewModel.progress?.isFinished == true {
-                Button("閉じる") { dismiss() }
-                    .buttonStyle(.borderedProminent)
+                if viewModel.isFreeTalkActive {
+                    voiceControls
+                    HStack {
+                        TextField("メッセージを入力", text: $viewModel.inputText)
+                            .textFieldStyle(.roundedBorder)
+                        Button("送信") {
+                            Task { await viewModel.sendFreeTalkMessage() }
+                        }
+                        .disabled(viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    Button("今日は終わる") {
+                        viewModel.finishSession()
+                        dismiss()
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    HStack(spacing: 12) {
+                        Button("少し話す") {
+                            Task { await viewModel.startFreeTalk() }
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity)
+
+                        Button("今日は終わる") {
+                            viewModel.finishSession()
+                            dismiss()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity)
+                    }
+                }
             }
         }
         .padding()
