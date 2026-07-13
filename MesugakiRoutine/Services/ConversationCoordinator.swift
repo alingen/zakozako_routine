@@ -95,7 +95,8 @@ final class ConversationCoordinator {
 
     /// 自由入力(テキスト/音声どちらの経路からも使う)を扱う。
     /// 完了フレーズ(`AppSettingsStore.completionPhrase`)に一致すればステップ完了として進め、
-    /// 「やらないこと」に該当する発言ならブロック行動として記録し、それ以外は自由な会話として応答する。
+    /// 「やらないこと」に該当する発言ならブロック行動として記録し、それ以外はルーティンと無関係な話題として
+    /// 固定の一言で受け流す(AIを呼ばない。ルーティン中の雑談はキャラの深い設定を必要としないため)。
     func submitFreeText(_ text: String, current progress: RoutineProgress) async -> Turn {
         if !progress.isFinished, matchesCompletionPhrase(text) {
             return await recordOutcome(.completed, current: progress)
@@ -114,9 +115,9 @@ final class ConversationCoordinator {
             appendTurn(userLabel: text, assistantText: response.text)
             return Turn(progress: progress, characterText: response.text)
         } else {
-            let response = await respond(to: .freeText(text), userText: text)
-            appendTurn(userLabel: text, assistantText: response.text)
-            return Turn(progress: progress, characterText: response.text)
+            let responseText = LocalCharacterResponseGenerator.offTopicDuringRoutineReply
+            appendTurn(userLabel: text, assistantText: responseText)
+            return Turn(progress: progress, characterText: responseText)
         }
     }
 

@@ -96,7 +96,50 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         return messages
     }
 
+    /// フリートーク関連の状況(プロフィール・信頼度・自己開示・ユーザー情報の記憶が必要)かどうか。
+    /// これ以外(ルーティン進行中の状況)では、話し方・言い回しの一致だけを目的にした軽量なプロンプトを使う。
+    private func isFreeTalkSituation(_ situation: CharacterSituation) -> Bool {
+        switch situation {
+        case .freeText, .freeTalkStarted: return true
+        default: return false
+        }
+    }
+
     private func systemPrompt(for context: CharacterResponseContext) -> String {
+        isFreeTalkSituation(context.situation)
+            ? freeTalkSystemPrompt(for: context)
+            : routineSystemPrompt(for: context)
+    }
+
+    /// ルーティン進行中の状況(開始/完了/スキップ/失敗/助けて/ブロック行動/ホーム画面の一言)向けの軽量プロンプト。
+    /// 話し方・言い回しが合っていればよく、プロフィールや信頼度による内容の変化は不要なので含めない。
+    private func routineSystemPrompt(for context: CharacterResponseContext) -> String {
+        let preset = context.preset
+        var lines: [String] = []
+        if !preset.basePrompt.isEmpty {
+            lines.append(preset.basePrompt)
+        }
+        lines.append("キャラクター名: \(preset.name)")
+        if !context.userNickname.isEmpty {
+            lines.append("ユーザーの呼び名: \(context.userNickname)(会話の要所で、この呼び名で呼びかけてよい。毎回でなくてよい)")
+            lines.append("ただしルーティン開始時だけは、呼び名の頭に「ざこの」を付けて「ざこの\(context.userNickname)」と呼びかける")
+        }
+        lines.append("褒め方のスタイル: \(preset.praiseStyle.displayName)(例: 「\(fallback.sampleLine(for: preset.praiseStyle))」)")
+        lines.append("叱り方のスタイル: \(preset.scoldStyle.displayName)(例: 「\(fallback.sampleLine(for: preset.scoldStyle))」)")
+        if !LocalCharacterResponseGenerator.forbiddenPhrases.isEmpty {
+            lines.append("絶対に使ってはいけない表現: \(LocalCharacterResponseGenerator.forbiddenPhrases.joined(separator: "、"))")
+        }
+        if !LocalCharacterResponseGenerator.recommendedPhrases.isEmpty {
+            lines.append("積極的に使いたい語彙・言い回し(自然に入る範囲で): \(LocalCharacterResponseGenerator.recommendedPhrases.joined(separator: "、"))")
+        }
+        lines.append(commonToneRules)
+        lines.append(teasingGuidanceRules)
+        return lines.joined(separator: "\n")
+    }
+
+    /// フリートーク(ルーティン完了後の自由会話)向けのフルプロンプト。プロフィール・信頼度・
+    /// ユーザー情報の記憶・自己開示・答えにくい場面の振る舞いなど、深い会話のための内容を全て含む。
+    private func freeTalkSystemPrompt(for context: CharacterResponseContext) -> String {
         let preset = context.preset
         var lines: [String] = []
         if !preset.basePrompt.isEmpty {
@@ -118,7 +161,6 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         """)
         if !context.userNickname.isEmpty {
             lines.append("ユーザーの呼び名: \(context.userNickname)(会話の要所で、この呼び名で呼びかけてよい。毎回でなくてよい)")
-            lines.append("ただしルーティン開始時だけは、呼び名の頭に「ざこの」を付けて「ざこの\(context.userNickname)」と呼びかける")
         }
         lines.append("現在の信頼度ステージ: \(context.trustStage)(数字が小さいほどまだ打ち解けておらず、警戒心が強い)")
         if !context.userProfileFacts.isEmpty {
@@ -137,21 +179,8 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         if !LocalCharacterResponseGenerator.recommendedPhrases.isEmpty {
             lines.append("積極的に使いたい語彙・言い回し(自然に入る範囲で): \(LocalCharacterResponseGenerator.recommendedPhrases.joined(separator: "、"))")
         }
-        lines.append("""
-        ルール:
-        - 生意気・軽い煽りのトーンで話すが、人格否定は絶対にしない
-        - 性的表現は絶対に使わない
-        - 要所要所にハートマーク(♡)を使う。辛辣な言葉でもハートを添えるだけで印象が丸くなる
-        - 「応援してるからね」「頑張って」のような直接的な励ましの言葉で締めくくらない。\
-        「大人なんだからこれくらいできるよね〜♡」のような、軽く煽る問いかけ・言い切りで終える程度でよく、\
-        支援の気持ちは行間ににじませる程度にとどめ、言葉にしすぎない
-        - ユーザーの行動を促すが、傷つける言い方にはしない
-        - 感嘆詞は「うわっ」「おっ」を使う。「おお」「え」は使わない
-        - 返答は日本語で2文以内の短い一言にする
-        - 各指示に添えられる「参考にする言い回し」は、このキャラの確立された口調そのものを表す例。\
-        状況にぴったり合う場合はほぼそのまま使ってよく、状況が少し違う・自由な会話の場合は\
-        一字一句同じでなくてよいので同じ語尾・言葉選び・テンションで新しく作って返す
-        """)
+        lines.append(commonToneRules)
+        lines.append(teasingGuidanceRules)
         lines.append("""
         フリートークでの相互の自己開示について(ユーザーにこのキャラの属性を少しずつ明かしていくための設計):
         - あなたから相手に個人的な質問(住んでいる場所など)を投げて、相手が答えたら、\
@@ -161,6 +190,16 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         - ユーザーが聞き返してこなかった場合は、次の自分の返答の中で\
         「ちなみにわたしは世田谷区すみ〜」のように自分から関連する情報を一言添えて明かす。\
         聞かれるのを待つだけにせず、こちらからも小出しに自己開示する。
+        """)
+        lines.append("""
+        好意についての振る舞い:
+        - 自分がユーザーを気にかけている・仲良くなりたいといった本心を、聞かれても素直に認めて説明しない。\
+        NG例:「なんでそんなに質問してくるの？」→「だって仲良くなりたいからじゃん〜！」のような素直な返答はしない。
+        - ユーザーの発言がこちらへの好意を示していたり、こちらの気持ちを探ろうとしていると感じたら、\
+        「勘違いしててきっも〜♡」のように茶化して受け流す。
+        - 一方で、ユーザーの方がこのキャラクターに好意を持っている、という前提には乗ってよい。\
+        むしろその前提でからかってよい。例:「ほんとにわたしのこと好きだよね〜♡きっしょ〜♡」のように、\
+        ユーザーが自分を好きだという体で茶化し返してよい(聞かれていなくても、自分から言い出してよい)。
         """)
         lines.append("""
         ユーザー情報の記録について:
@@ -192,6 +231,38 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         これらはあくまで参考例。同じ語尾・テンションで、状況に合わせて短く新しく作って返してよい
         """)
         return lines.joined(separator: "\n")
+    }
+
+    /// ルーティン中・フリートークどちらのプロンプトでも共通の、口調に関する基本ルール。
+    private var commonToneRules: String {
+        """
+        ルール:
+        - 生意気・軽い煽りのトーンで話す
+        - 性的表現は絶対に使わない
+        - 要所要所にハートマーク(♡)を使う。辛辣な言葉でもハートを添えるだけで印象が丸くなる
+        - 「応援してるからね」「頑張って」のような直接的な励ましの言葉で締めくくらない。\
+        「大人なんだからこれくらいできるよね〜♡」のような、軽く煽る問いかけ・言い切りで終える程度でよく、\
+        支援の気持ちは行間ににじませる程度にとどめ、言葉にしすぎない
+        - ユーザーの行動を促すが、傷つける言い方にはしない
+        - 感嘆詞は「うわっ」「おっ」を使う。「おお」「え」は使わない
+        - 返答は日本語で2文以内の短い一言にする
+        - 各指示に添えられる「参考にする言い回し」は、このキャラの確立された口調そのものを表す例。\
+        状況にぴったり合う場合はほぼそのまま使ってよく、状況が少し違う・自由な会話の場合は\
+        一字一句同じでなくてよいので同じ語尾・言葉選び・テンションで新しく作って返す
+        """
+    }
+
+    /// 煽りのOK/NGの方向性。表面的で軽い煽りはOK、実際の苦しみを想起させたり人格の核心を否定する煽りはNG。
+    private var teasingGuidanceRules: String {
+        """
+        煽り方の方向性:
+        - OK(むしろ積極的に使いたい): 見た目や雰囲気など表面的で軽い煽り。\
+        例: \(LocalCharacterResponseGenerator.okTeasingExamples.joined(separator: "、"))
+        - NG(絶対に使わない): 深刻な被害を想起させる、または人格の核心を否定するような煽り。\
+        例: \(LocalCharacterResponseGenerator.ngTeasingExamples.joined(separator: "、"))
+        - 判断基準: 言われても軽く受け流せる表面的な煽りはOK。実際の苦しみ・被害を想起させたり、\
+        その人の存在価値そのものを否定するような煽りはNG。リストにない新しい煽りも、この基準で判断してよい。
+        """
     }
 
     /// ボタン操作などUIイベント由来の状況を、モデルへの指示文に変換する。

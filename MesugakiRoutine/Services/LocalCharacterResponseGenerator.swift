@@ -13,6 +13,17 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
     /// `OpenAICharacterResponseGenerator` がGPTへの語彙ガイドとして使う。ローカル応答はテンプレ文そのままなので参照しない。
     static let recommendedPhrases: [String] = ["うわっ", "おっ", "♡", "ざっこ〜", "きっしょ〜♡", "つよつよ", "ざこざこ", "よわよわ"]
 
+    /// ルーティン中にルーティンと無関係な自由発言をされた時、AIを呼ばずに常にこの一言で受け流す。
+    /// (ConversationCoordinator.submitFreeText から直接参照される)
+    static let offTopicDuringRoutineReply = "ルーティン中に話しかけるのきんし〜♡だまって手をうごかして〜♡"
+
+    /// キャラ的にOKな煽りの方向性(表面的・軽いもの)。積極的に使いたい例。
+    /// アプリ内設定にはせず、ここを直接編集してチューニングする。`OpenAICharacterResponseGenerator`がGPTへの参考例として使う。
+    static let okTeasingExamples: [String] = ["さえなそ〜", "もてなそ〜"]
+
+    /// キャラ的にNGな煽りの方向性(深刻な被害を想起させる・人格そのものを否定するもの)。絶対に使わない例。
+    static let ngTeasingExamples: [String] = ["いじめられてそ〜", "つまんなそ〜"]
+
     func generateResponse(context: CharacterResponseContext) async -> CharacterResponse {
         let rawText = templateText(for: context.situation, userNickname: context.userNickname, trustStage: context.trustStage)
         let safeText = ForbiddenPhraseFilter.apply(rawText, forbidden: Self.forbiddenPhrases)
@@ -51,9 +62,9 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
 
         case .stepFailed(let nextStepName):
             if let next = nextStepName {
-                return "まけみとめちゃうんだ〜ざっこ〜♡さすたに次の\(next)くらいはできるよね〜？"
+                return "負けみとめちゃうんだ〜ざっこ〜♡さすたに次の\(next)くらいはできるよね〜？"
             }
-            return "まけみとめちゃうんだ〜ざっこ〜♡"
+            return "負けみとめちゃうんだ〜ざっこ〜♡"
 
         case .routineCompleted(let routineType):
             let nightGreeting = routineType == .night ? " おやすみ〜♡" : ""
@@ -86,8 +97,9 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
             }
 
         case .freeText:
-            // 将来ここがAI(OpenAI等)による自由応答に置き換わる想定。
-            return "うんうん、聞いてるよ。でも今はルーティンに集中しよっか。"
+            // ルーティン中の雑談はConversationCoordinator側でAIを介さず固定文で返すため、
+            // ここに来るのはフリートーク中(ルーティン完了後)の会話のみ。GPT未接続時のフォールバック。
+            return "ふーん、そうなんだ〜♡もっと話してよ〜"
 
         case .freeTalkStarted:
             let call = nameCall(userNickname)
@@ -116,7 +128,7 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
     func sampleLine(for scoldStyle: ScoldStyle) -> String {
         switch scoldStyle {
         case .gentle:
-            return "まあ今回は見逃してあげる〜♡次はちゃんとやってよね？"
+            return "まあ今回は見逃してあげる〜♡次はちゃんとやってね？♡"
         case .provoking:
             return "ざっこ〜♡次こそやれるよね〜？"
         case .strict:
