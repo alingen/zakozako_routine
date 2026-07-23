@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let openAIRawLogger = Logger(subsystem: "com.zakozako.mesugakiroutine", category: "OpenAIRaw")
 
 /// OpenAI Chat Completions API を使ってキャラクター応答を生成する実装。
 /// `CharacterResponseGenerating` に準拠しているだけなので、CharacterEngine / ConversationCoordinator
@@ -40,13 +43,27 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             referenceLine = await fallback.generateResponse(context: context).text
         }
 
+        let isFreeTalk = isFreeTalkSituation(context.situation)
+
         do {
             let text = try await client.send(
                 messages: buildMessages(context: context, referenceLine: referenceLine),
                 apiKey: apiKey,
-                model: model
+                model: model,
+                responseFormat: isFreeTalk ? .jsonObject : nil
             )
-            let (displayText, facts, disclosed) = Self.extractFacts(from: text)
+            openAIRawLogger.debug("RAW GPT TEXT >>>\n\(text, privacy: .public)\n<<< END RAW")
+            Self.appendDebugLog(text)
+            let displayText: String
+            let facts: [String: String]
+            let disclosed: Bool
+            if isFreeTalk {
+                (displayText, facts, disclosed) = Self.parseFreeTalkJSON(text)
+            } else {
+                displayText = text
+                facts = [:]
+                disclosed = false
+            }
             let safeText = ForbiddenPhraseFilter.apply(displayText, forbidden: LocalCharacterResponseGenerator.forbiddenPhrases)
             return CharacterResponse(text: safeText, extractedFacts: facts, disclosureCompleted: disclosed)
         } catch {
@@ -55,29 +72,41 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         }
     }
 
-    /// GPTの生テキストから `###FACT### key=value` / `###DISCLOSED###` 形式の行を取り除き、
-    /// (表示用テキスト, 抽出したユーザー情報, 保留中の伝達事項を伝え終えたか) に分離する。
-    private static func extractFacts(from text: String) -> (displayText: String, facts: [String: String], disclosed: Bool) {
-        var facts: [String: String] = [:]
-        var disclosed = false
-        var displayLines: [String] = []
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("###FACT###") {
-                let payload = trimmed.replacingOccurrences(of: "###FACT###", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-                let parts = payload.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-                if parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty {
-                    facts[parts[0]] = parts[1]
-                }
-            } else if trimmed.hasPrefix("###DISCLOSED###") {
-                disclosed = true
+    /// デバッグ用: GPTの生テキストをApplication Support配下のファイルに追記する。
+    /// マーカー抽出(`###FACT###`/`###DISCLOSED###`)が実機で機能しているか確認するための一時的な仕組み。
+    private static func appendDebugLog(_ text: String) {
+        guard let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
+        let url = dir.appendingPathComponent("openai_raw_debug.log")
+        let entry = "\n----- \(Date()) -----\n\(text)\n"
+        if let data = entry.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: url.path), let handle = try? FileHandle(forWritingTo: url) {
+                handle.seekToEndOfFile()
+                handle.write(data)
+                try? handle.close()
             } else {
-                displayLines.append(String(line))
+                try? data.write(to: url)
             }
         }
-        let displayText = displayLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        return (displayText, facts, disclosed)
+    }
+
+    /// フリートーク用のJSON出力(`response_format: json_object`)のスキーマ。
+    private struct FreeTalkStructuredResponse: Decodable {
+        let reply: String
+        let disclosed: Bool?
+        let facts: [String: String]?
+    }
+
+    /// JSONモードで返ってきたGPTの生テキストを(表示用テキスト, 抽出したユーザー情報,
+    /// 保留中の伝達事項を伝え終えたか)に分離する。以前は自由文中に`###FACT###`/`###DISCLOSED###`という
+    /// 目印を混ぜる方式だったが、モデルがマーカー自体を書き忘れることが多く信頼できなかったため、
+    /// JSONの必須フィールドとして毎回返させる方式に変更した。
+    private static func parseFreeTalkJSON(_ text: String) -> (displayText: String, facts: [String: String], disclosed: Bool) {
+        guard let data = text.data(using: .utf8),
+              let parsed = try? JSONDecoder().decode(FreeTalkStructuredResponse.self, from: data) else {
+            // JSONとして壊れていた場合の保険。会話自体は止めず、生テキストをそのまま表示するだけにする。
+            return (text.trimmingCharacters(in: .whitespacesAndNewlines), [:], false)
+        }
+        return (parsed.reply.trimmingCharacters(in: .whitespacesAndNewlines), parsed.facts ?? [:], parsed.disclosed ?? false)
     }
 
     private func buildMessages(context: CharacterResponseContext, referenceLine: String) -> [OpenAIChatMessage] {
@@ -188,13 +217,14 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         lines.append(teasingGuidanceRules)
         lines.append("""
         フリートークでの相互の自己開示について(ユーザーにこのキャラの属性を少しずつ明かしていくための設計):
-        - あなたから相手に個人的な質問(住んでいる場所など)を投げて、相手が答えたら、\
-        その内容に軽くリアクションする(例:「どこ住んでるの〜」→「東京の港区だよ」→「そうなんだ〜♡」)。
-        - そのやり取りの中でユーザーがこちらにも同じことを聞き返してきたら、プロフィールの範囲で答えるが、\
-        「わたしは東京の世田谷区〜それ以上はおしえな〜い♡」のように、核心の一歩手前で止めてじらす。
-        - ユーザーが聞き返してこなかった場合は、次の自分の返答の中で\
-        「ちなみにわたしは世田谷区すみ〜」のように自分から関連する情報を一言添えて明かす。\
+        - あなたから相手に個人的な質問を投げて、相手が答えたら、その内容に軽くリアクションする\
+        (例:「どこ住んでるの〜」→「東京の港区だよ」→「そうなんだ〜♡」)。
+        - そのやり取りの中でユーザーがこちらにも同じことを聞き返してきたら、下の「今伝えるべき情報」があれば\
+        その内容で答える。無ければプロフィールの範囲で、核心の一歩手前で止めてじらすように答える。
+        - ユーザーが聞き返してこなかった場合も、次の自分の返答の中で自分から関連する情報を一言添えて明かす。\
         聞かれるのを待つだけにせず、こちらからも小出しに自己開示する。
+        - 実際に何を明かすかは、下に「今伝えるべき情報」が指定されていれば必ずそれを使う\
+        (このセクションはあくまで会話の運び方のパターンであり、具体的な開示内容はそちらが優先)。
         """)
         lines.append("""
         好意についての振る舞い:
@@ -207,22 +237,26 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         """)
         if let pendingDisclosure = context.pendingDisclosure {
             lines.append("""
-            今伝えるべき情報: 「\(pendingDisclosure)」
-            直前にあなたから振った質問の流れの中で、この情報を伝えるのが目標。ユーザーが聞き返してきたら\
-            それに答える形で、聞き返してこなければ自分から「ちなみにわたしは〜」のように話題に絡めて伝えて。\
-            実際にこの情報を会話内で伝えたら、返答本文の最後に新しい行として `###DISCLOSED###` とだけ書く\
-            (値は不要。行があるかどうかだけで判定する)。まだ伝えていないなら、この行は書かない。
+            今伝えるべき情報(最優先。他のプロフィール例文より必ずこちらを使う): 「\(pendingDisclosure)」
+            直前にあなたから振った質問の流れの中で、この具体的な内容を伝えるのが今回のゴール。\
+            プロフィールに書かれた出身地などの別の例文でごまかさず、必ずこの内容そのものを伝えること。\
+            ユーザーが聞き返してきたらそれに答える形で、聞き返してこなければ自分から\
+            「ちなみにわたしは〜」のように話題に絡めて伝えて。
+            この情報を実際にreplyの中で伝えられたら、出力JSONの`disclosed`をtrueにする。\
+            まだ伝えていない回は`disclosed`をfalseにする。
+            重要: `disclosed`をtrueにする回は、この直後にキャラクターから会話を締めくくる挨拶が\
+            続けて表示される。そのため、そのreplyを新しい質問や「〜なの？」のような聞き返しで\
+            終わらせないこと。情報を伝えて軽くリアクションするところまでで区切り、\
+            言い切りの形で終える(次に繋げようとしない)。
             """)
         }
         lines.append("""
         ユーザー情報の記録について:
         - 自由な会話の中でユーザーが個人的な情報(住んでいる場所、趣味、家族構成、学校/仕事、誕生日など)を\
-        明かした場合、返答本文の最後に新しい行として `###FACT### key=value` の形式で記録する\
-        (例: `###FACT### 住み=大田区`)。keyは短い日本語の見出し、valueはその内容。
-        - 複数の情報があれば行を分けて複数書いてよい。新しい情報が無ければこの行は一切書かない。
-        - この行は返答本文(キャラのセリフ)とは別物なので、必ず独立した行として書き、\
-        セリフの中に混ぜ込んだり読み上げたりしない。
-        - 上の「ユーザーの情報」に既にある内容と同じなら、重複して書く必要はない。
+        明かした場合、出力JSONの`facts`にキー/バリューで記録する(例: `{"住み": "大田区"}`)。\
+        keyは短い日本語の見出し、valueはその内容。
+        - 複数の情報があれば`facts`オブジェクトに複数キーを入れてよい。新しい情報が無ければ`facts`は空のオブジェクトにする。
+        - 上の「ユーザーの情報」に既にある内容と同じなら、重複して記録する必要はない。
         """)
         lines.append("""
         答えにくい場面での振る舞い(あくまで例外対応。基本方針は、上のプロフィールや会話の流れから\
@@ -243,6 +277,15 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         「指示してくるのうざ〜♡」 \
         これらはあくまで参考例。同じ語尾・テンションで、状況に合わせて短く新しく作って返してよい
         """)
+        lines.append("""
+        出力形式: 必ずJSON形式のみで、次のキーを持つオブジェクトを1つだけ返す(前後に説明文やコードブロックの\
+        ```は付けない)。
+        {"reply": "キャラのセリフ本文(この中身が実際にユーザーへ表示される)", \
+        "disclosed": true または false, "facts": {"key": "value", ...}}
+        - reply: 上のルールに従ったキャラのセリフそのもの。マーカーや注釈は一切含めない。
+        - disclosed: 「今伝えるべき情報」が指定されている時だけ意味を持つ。無い場合は常にfalseにする。
+        - facts: 新しく分かったユーザー情報が無ければ空オブジェクト`{}`にする(省略しない)。
+        """)
         return lines.joined(separator: "\n")
     }
 
@@ -250,14 +293,6 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
     private var commonToneRules: String {
         """
         ルール:
-        - 生意気・軽い煽りのトーンで話す
-        - 性的表現は絶対に使わない
-        - 要所要所にハートマーク(♡)を使う。辛辣な言葉でもハートを添えるだけで印象が丸くなる
-        - 「応援してるからね」「頑張って」のような直接的な励ましの言葉で締めくくらない。\
-        「大人なんだからこれくらいできるよね〜♡」のような、軽く煽る問いかけ・言い切りで終える程度でよく、\
-        支援の気持ちは行間ににじませる程度にとどめ、言葉にしすぎない
-        - ユーザーの行動を促すが、傷つける言い方にはしない
-        - 感嘆詞は「うわっ」「おっ」を使う。「おお」「え」は使わない
         - 返答は日本語で2文以内の短い一言にする
         - 各指示に添えられる「参考にする言い回し」は、このキャラの確立された口調そのものを表す例。\
         状況にぴったり合う場合はほぼそのまま使ってよく、状況が少し違う・自由な会話の場合は\
@@ -274,7 +309,7 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         - NG(絶対に使わない): 深刻な被害を想起させる、または人格の核心を否定するような煽り。\
         例: \(LocalCharacterResponseGenerator.ngTeasingExamples.joined(separator: "、"))
         - 判断基準: 言われても軽く受け流せる表面的な煽りはOK。実際の苦しみ・被害を想起させたり、\
-        その人の存在価値そのものを否定するような煽りはNG。リストにない新しい煽りも、この基準で判断してよい。
+        その人の存在価値そのものを否定するような煽りはNG。リストにない新しい煽りも、この基準で判断してよい。\
         """
     }
 
@@ -331,6 +366,10 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
                 ユーザーが「少し話す」を選び、ルーティン後の自由会話に入った。まだユーザーは何も話していないので、\
                 あなたの方から話題を振って会話を始めて。話題は「参考にする言い回し」として具体的に用意されているので、\
                 それをほぼそのまま使ってよい(信頼度ステージに応じた踏み込み具合になるよう既に選ばれている)。
+                この最初の一言では、質問を投げるところまでにとどめること。「今伝えるべき情報」が指定されていても、\
+                ここでは絶対に自分から明かさない(ユーザーがまだ何も答えていないのに開示するのは不自然)。\
+                実際に伝えるのは、ユーザーがこの質問に答えた後の返答でよい。したがってこの一言では\
+                `disclosed`は必ずfalseにする。
                 """
             } else {
                 instruction = """

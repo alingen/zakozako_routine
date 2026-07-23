@@ -19,10 +19,10 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
 
     /// キャラ的にOKな煽りの方向性(表面的・軽いもの)。積極的に使いたい例。
     /// アプリ内設定にはせず、ここを直接編集してチューニングする。`OpenAICharacterResponseGenerator`がGPTへの参考例として使う。
-    static let okTeasingExamples: [String] = ["さえなそ〜", "もてなそ〜"]
+    static let okTeasingExamples: [String] = ["さえなそ〜", "もてなそ〜", "なさけな〜い", "よわそ〜"]
 
     /// キャラ的にNGな煽りの方向性(深刻な被害を想起させる・人格そのものを否定するもの)。絶対に使わない例。
-    static let ngTeasingExamples: [String] = ["いじめられてそ〜", "つまんなそ〜"]
+    static let ngTeasingExamples: [String] = ["いじめられてそ〜", "生きてる価値なさそ〜"]
 
     func generateResponse(context: CharacterResponseContext) async -> CharacterResponse {
         let rawText = templateText(for: context.situation, userNickname: context.userNickname)

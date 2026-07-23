@@ -18,7 +18,7 @@ enum FreeTalkTopics {
         FreeTalkTopic(question: "どこに住んでるの〜？", disclosure: "わたしは東京都内に住んでる"),
         FreeTalkTopic(question: "ならいごとって何かしてる〜？", disclosure: "ダンスを習ってる"),
         FreeTalkTopic(question: "パパママと一緒に住んでるの〜？", disclosure: "パパもママも共働き"),
-        FreeTalkTopic(question: "ともだちっているの〜？", disclosure: "幼稚園からのともだちがいる"),
+        FreeTalkTopic(question: "親友っているの〜？", disclosure: "幼稚園からの親友がいる"),
         FreeTalkTopic(question: "兄弟っているの〜？", disclosure: "ひとりっこ"),
     ]
 

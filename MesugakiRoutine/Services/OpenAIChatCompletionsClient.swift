@@ -14,12 +14,23 @@ enum OpenAIClientError: Error {
     case emptyChoice
 }
 
+/// Chat Completions APIの`response_format`。`.jsonObject`を指定すると、モデルは必ず妥当なJSONを返す
+/// (ただしJSONの中身のスキーマまでは保証されないので、system prompt側でキーを明示する必要がある)。
+enum OpenAIResponseFormat: String {
+    case jsonObject = "json_object"
+}
+
 final class OpenAIChatCompletionsClient {
+    private struct ResponseFormat: Encodable {
+        let type: String
+    }
+
     private struct Request: Encodable {
         let model: String
         let messages: [OpenAIChatMessage]
         let temperature: Double
         let max_tokens: Int
+        let response_format: ResponseFormat?
     }
 
     private struct Response: Decodable {
@@ -41,7 +52,8 @@ final class OpenAIChatCompletionsClient {
         apiKey: String,
         model: String,
         temperature: Double = 0.8,
-        maxTokens: Int = 150
+        maxTokens: Int = 150,
+        responseFormat: OpenAIResponseFormat? = nil
     ) async throws -> String {
         guard !apiKey.isEmpty else { throw OpenAIClientError.missingAPIKey }
 
@@ -50,7 +62,13 @@ final class OpenAIChatCompletionsClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONEncoder().encode(
-            Request(model: model, messages: messages, temperature: temperature, max_tokens: maxTokens)
+            Request(
+                model: model,
+                messages: messages,
+                temperature: temperature,
+                max_tokens: maxTokens,
+                response_format: responseFormat.map { ResponseFormat(type: $0.rawValue) }
+            )
         )
 
         let (data, response) = try await session.data(for: request)

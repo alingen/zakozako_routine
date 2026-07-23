@@ -26,6 +26,10 @@ final class RoutineSessionViewModel {
     /// ルーティン完了後、「少し話す」を選んでフリートーク(自由会話)モードに入っているか。
     private(set) var isFreeTalkActive = false
 
+    /// フリートークで話すべき話題を伝え終え、キャラクターから区切りの挨拶で会話が終了したか。
+    /// trueになったら、このセッション中は「少し話す」を再表示せず「今日は終わる」だけにする。
+    private(set) var hasEndedFreeTalk = false
+
     private var dependencies: AppDependencies?
     private var voiceEngine: (any VoiceConversationEngine)?
 
@@ -103,14 +107,19 @@ final class RoutineSessionViewModel {
         guard let dependencies else { return }
         isFreeTalkActive = true
         isCharacterThinking = true
-        let opener = await dependencies.conversationCoordinator.beginFreeTalk()
+        let turn = await dependencies.conversationCoordinator.beginFreeTalk()
         isCharacterThinking = false
-        appendCharacter(opener)
-        voiceEngine?.speak(opener)
+        appendCharacter(turn.text)
+        voiceEngine?.speak(turn.text)
+        if turn.shouldEndFreeTalk {
+            isFreeTalkActive = false
+            hasEndedFreeTalk = true
+        }
     }
 
     /// フリートーク中のテキスト送信。ステップ進行には関与せず、キャラクターとの雑談として応答する。
     /// やり取りのたびに信頼度が上がる(ConversationCoordinator.freeTalk側で加算)。
+    /// 話すべき話題を伝え終えた場合、キャラクターから区切りの挨拶が添えられ、フリートークモードを終了する。
     func sendFreeTalkMessage() async {
         guard let dependencies else { return }
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -118,10 +127,14 @@ final class RoutineSessionViewModel {
         inputText = ""
         appendUser(text)
         isCharacterThinking = true
-        let reply = await dependencies.conversationCoordinator.freeTalk(text)
+        let turn = await dependencies.conversationCoordinator.freeTalk(text)
         isCharacterThinking = false
-        appendCharacter(reply)
-        voiceEngine?.speak(reply)
+        appendCharacter(turn.text)
+        voiceEngine?.speak(turn.text)
+        if turn.shouldEndFreeTalk {
+            isFreeTalkActive = false
+            hasEndedFreeTalk = true
+        }
     }
 
     func finishSession() {
@@ -138,9 +151,13 @@ final class RoutineSessionViewModel {
                 guard let self else { return "" }
                 if self.isFreeTalkActive {
                     self.isCharacterThinking = true
-                    let reply = await dependencies.conversationCoordinator.freeTalk(text)
+                    let turn = await dependencies.conversationCoordinator.freeTalk(text)
                     self.isCharacterThinking = false
-                    return reply
+                    if turn.shouldEndFreeTalk {
+                        self.isFreeTalkActive = false
+                        self.hasEndedFreeTalk = true
+                    }
+                    return turn.text
                 }
                 guard let progress = self.progress else { return "" }
                 self.isCharacterThinking = true

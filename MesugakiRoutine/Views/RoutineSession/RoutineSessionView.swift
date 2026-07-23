@@ -10,6 +10,7 @@ struct RoutineSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RoutineSessionViewModel
     @State private var isPresentingExitConfirm = false
+    @FocusState private var isInputFocused: Bool
 
     init(routine: Routine) {
         _viewModel = State(initialValue: RoutineSessionViewModel(routine: routine))
@@ -199,7 +200,9 @@ struct RoutineSessionView: View {
                 HStack {
                     TextField("メッセージを入力", text: $viewModel.inputText)
                         .textFieldStyle(.roundedBorder)
+                        .focused($isInputFocused)
                     Button("送信") {
+                        isInputFocused = false
                         Task { await viewModel.submitFreeText() }
                     }
                     .disabled(viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -210,7 +213,9 @@ struct RoutineSessionView: View {
                     HStack {
                         TextField("メッセージを入力", text: $viewModel.inputText)
                             .textFieldStyle(.roundedBorder)
+                            .focused($isInputFocused)
                         Button("送信") {
+                            isInputFocused = false
                             Task { await viewModel.sendFreeTalkMessage() }
                         }
                         .disabled(viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -220,6 +225,13 @@ struct RoutineSessionView: View {
                         dismiss()
                     }
                     .buttonStyle(.bordered)
+                } else if viewModel.hasEndedFreeTalk {
+                    Button("今日は終わる") {
+                        viewModel.finishSession()
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity)
                 } else {
                     HStack(spacing: 12) {
                         Button("少し話す") {

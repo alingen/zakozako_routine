@@ -17,6 +17,14 @@ final class ConversationCoordinator {
         let characterText: String
     }
 
+    /// フリートークでの1往復の結果。`shouldEndFreeTalk`がtrueの場合、その回で話すべき話題(伝達事項)を
+    /// 伝え終えたことを示す。呼び出し側(ViewModel)はこれを見てフリートークモードを終了させ、
+    /// 「少し話す/今日は終わる」の選択に戻してよい。
+    struct FreeTalkTurn {
+        let text: String
+        let shouldEndFreeTalk: Bool
+    }
+
     private let routineEngine: RoutineEngine
     private let characterEngine: CharacterEngine
     private let blockedBehaviorRepository: BlockedBehaviorRepository
@@ -31,6 +39,9 @@ final class ConversationCoordinator {
     /// 直前のフリートーク開始時に振った話題のうち、まだ伝え終えていないもの。
     /// `freeTalk` の応答で伝え終えたと判定されたら nil に戻す。
     private var pendingDisclosureTopic: FreeTalkTopic?
+
+    /// このセッションで実行中のルーティン種別。フリートーク終了時の挨拶(朝/夜)の出し分けに使う。
+    private var currentRoutineType: RoutineType?
 
     init(
         routineEngine: RoutineEngine,
@@ -67,6 +78,7 @@ final class ConversationCoordinator {
     }
 
     func start(routine: Routine) async -> Turn {
+        currentRoutineType = routine.type
         let progress = routineEngine.startSession(for: routine)
         let response = await respond(
             to: .routineStarted(stepName: progress.currentStep?.title ?? "", routineType: routine.type)
@@ -136,31 +148,47 @@ final class ConversationCoordinator {
 
     /// フリートークモードに入った直後、信頼度ステージに応じた未完了の話題を1つ選んで振る。
     /// ユーザーの発言ではないため信頼度は変化しない。
-    func beginFreeTalk() async -> String {
+    func beginFreeTalk() async -> FreeTalkTurn {
         let topic = FreeTalkTopicSelector.pickTopic(
             forStage: trustRepository.stage,
             progressRepository: freeTalkTopicProgressRepository
         )
         pendingDisclosureTopic = topic
         let response = await respond(to: .freeTalkStarted(topic: topic))
-        appendTurn(userLabel: "(フリートーク開始)", assistantText: response.text)
-        return response.text
+        let shouldEnd = completePendingDisclosureIfNeeded(response)
+        let finalText = shouldEnd ? response.text + "\n" + freeTalkClosingLine() : response.text
+        appendTurn(userLabel: "(フリートーク開始)", assistantText: finalText)
+        return FreeTalkTurn(text: finalText, shouldEndFreeTalk: shouldEnd)
     }
 
     /// ルーティン完了後の自由会話(フリートーク)を扱う。RoutineProgressに紐づかないため
     /// ステップ進行やブロック行動判定は行わず、キャラクターとの雑談として応答するだけ。
     /// やり取りのたびに信頼度が+1される。保留中の話題の伝達事項を伝え終えたら完了扱いにし、
-    /// ステージ進行の条件も揃っていれば次のステージに進める。
-    func freeTalk(_ text: String) async -> String {
+    /// ステージ進行の条件も揃っていれば次のステージに進める。話すべき話題を伝え終えた回は、
+    /// キャラクターの返答に続けて締めの挨拶を添え、フリートークをこちらから終了させる。
+    func freeTalk(_ text: String) async -> FreeTalkTurn {
         let response = await respond(to: .freeText(text), userText: text)
-        if response.disclosureCompleted, let topic = pendingDisclosureTopic {
-            freeTalkTopicProgressRepository.markCompleted(question: topic.question)
-            pendingDisclosureTopic = nil
-        }
-        appendTurn(userLabel: text, assistantText: response.text)
+        let shouldEnd = completePendingDisclosureIfNeeded(response)
+        let finalText = shouldEnd ? response.text + "\n" + freeTalkClosingLine() : response.text
+        appendTurn(userLabel: text, assistantText: finalText)
         trustRepository.increment(by: 1)
         trustRepository.tryAdvanceStage(topicProgressRepository: freeTalkTopicProgressRepository)
-        return response.text
+        return FreeTalkTurn(text: finalText, shouldEndFreeTalk: shouldEnd)
+    }
+
+    /// 保留中の話題を伝え終えていれば完了として記録し、伝え終えたかどうかを返す。
+    private func completePendingDisclosureIfNeeded(_ response: CharacterResponse) -> Bool {
+        guard response.disclosureCompleted, let topic = pendingDisclosureTopic else { return false }
+        freeTalkTopicProgressRepository.markCompleted(question: topic.question)
+        pendingDisclosureTopic = nil
+        return true
+    }
+
+    /// 話すべき話題を伝え終えた時にキャラクターから添える締めの一言。ルーティン種別によって出し分ける。
+    private func freeTalkClosingLine() -> String {
+        currentRoutineType == .night
+            ? "そろそろ眠くなっちゃったからきるね、おやすみ〜♡"
+            : "じゃあ今日はここまでね〜ざこなりに今日も頑張ってね♡"
     }
 
     private func matchesCompletionPhrase(_ text: String) -> Bool {
