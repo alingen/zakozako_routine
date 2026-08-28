@@ -1,0 +1,44 @@
+scenario_id	scenario_type	line_order	node_id	speaker	message_type	text	choice_id	next_node_id	save_key	save_value	asset_id	min_phase	max_phase	speaker_name	background	portrait	cg	enabled	notes
+daily_001	daily	1	daily_001_01	character	text	お、ルーティンちゃんと終わらせたんだ。ざこのわりにやるじゃん♡												TRUE	
+daily_001	daily	2	daily_001_02	character	text	べつに褒めてないけどね。あたりまえのことしただけだし												TRUE	
+daily_001	daily	3	daily_001_03	character	text	わたしは今日、学校のあとダンスの練習してきたの。ちょっと疲れちゃった〜												TRUE	
+daily_001	daily	4	daily_001_04	character	text	……なんであんたに報告してるんだろ。まあいいや												TRUE	
+daily_001	daily	5	daily_001_05	character	text	じゃ、今日はもう終わり。明日もサボらず来なよね♡												TRUE	
+daily_002	daily	1	daily_002_01	character	text	また来たんだ。ふーん、意外と続くじゃん												TRUE	
+daily_002	daily	2	daily_002_02	character	text	今日はね、新しい振り付けがやっと通しで踊れるようになったの。すごくない?												TRUE	
+daily_002	daily	3	daily_002_03	character	choice	ねえ、ちょっと気になったんだけど……あんた、兄弟っているの?	choice_siblings											TRUE	
+daily_002	daily	4	daily_002_has_sib	character	text	へぇ、兄弟いるんだ。にぎやかそうでいいじゃん。ちょっとうらやましいかも		daily_002_merge										TRUE	
+daily_002	daily	5	daily_002_no_sib	character	text	一人っ子か。わたしと同じだね。まあ気楽でいいよね〜		daily_002_merge										TRUE	
+daily_002	daily	6	daily_002_merge	character	text	ま、どっちでもいいんだけどね。ちょっと聞いてみただけ												TRUE	
+daily_002	daily	7	daily_002_04	character	text	……今日もルーティンできてるからよしとしてあげる。えらいえらい♡												TRUE	
+daily_003	daily	1	daily_003_01	character	text	3日目。へぇ、ほんとに続いてるんだ												TRUE	
+daily_003	daily	2	daily_003_02	character	text	そういえば昨日、兄弟は{{fact:hasSiblings|いる?いない?}}って言ってたよね。ちゃんと覚えてるし												TRUE	
+daily_003	daily	3	daily_003_03	character	text	うちはパパもママも共働きでさ、家に帰っても誰もいないことが多いんだよね												TRUE	
+daily_003	daily	4	daily_003_04	character	text	だからってべつに寂しくないし。一人のほうが気楽だもん												TRUE	
+daily_003	daily	5	daily_003_04b	character	text	……まあ、こういう話をあんたにするの、ちょっと慣れてきたかも。毎日来るからだと思うけど						1						TRUE	関係Phase1以上でのみ表示
+daily_003	daily	6	daily_003_05	character	text	はい今日はおしまい。また明日ね、ざこ♡												TRUE	
+small_001	small_event	1	small_001_01	character	text	ねえ、ちょっとだけ聞いてほしいことがあるんだけど												TRUE	
+small_001	small_event	2	small_001_02	character	text	……毎日あんたが来るの、正直ちょっとだけ楽しみにしてる。ほんとにちょっとだけね												TRUE	
+small_001	small_event	3	small_001_03	character	choice	え、意外だった?	choice_honne_react											TRUE	
+small_001	small_event	4	small_001_happy	character	text	な……なにそれ。素直に言われると調子狂うんだけど		small_001_merge										TRUE	
+small_001	small_event	5	small_001_know	character	text	は? 調子乗らないでよ。ちょっと言ってみただけなのに		small_001_merge										TRUE	
+small_001	small_event	6	small_001_merge	character	text	とにかく! 明日も来なかったら怒るからね。ばーか♡												TRUE	
+small_002	small_event	1	small_002_01	character	text	ねえ、今日のダンスの練習、我ながらけっこう上手く踊れたんだよね												TRUE	
+small_002	small_event	2	small_002_02	character	text	特別に1枚だけ見せてあげる。ほんとに1枚だけだからね												TRUE	
+small_002	small_event	3	small_002_03	character	image						event_rio_dance							TRUE	画像メッセージ
+small_002	small_event	4	small_002_04	character	choice	どう? わたしのダンス、ちょっとはかっこいいでしょ	choice_dance_react											TRUE	
+small_002	small_event	5	small_002_praise	character	text	でしょ? もっと褒めていいんだよ。ふふん		small_002_merge										TRUE	
+small_002	small_event	6	small_002_pout	character	text	は? 見る目ないな〜。まあいいけど		small_002_merge										TRUE	
+small_002	small_event	7	small_002_merge	character	text	…見せたこと、誰にも言わないでよ。約束だからね												TRUE	
+small_003	small_event	1	small_003_01	character	text	3日も続けられたご褒美に、自分で自分に服を買ったの												TRUE	
+small_003	small_event	2	small_003_02	character	image	韓国っぽいやつ。かわいくない?					event_rio_skirt							TRUE	
+small_003	small_event	3	small_003_03	character	text	あんたも、続けたらいいことあるかもよ。……知らないけど												TRUE	
+large_001	large_event	1	large_001_01	character	text	……もしもし。こんな時間にごめん。起きてた?										rio_stand_normal		TRUE	
+large_001	large_event	2	large_001_02	character	text	なんとなく、声聞きたくなっただけ。用があるわけじゃない												TRUE	
+large_001	large_event	3	large_001_03	character	text	あのさ。前から思ってたんだけど												TRUE	
+large_001	large_event	4	large_001_04	character	choice	あんた、わたしのこと面倒くさいって思ってる?	choice_night_bother											TRUE	
+large_001	large_event	5	large_001_soft	character	text	……ふーん。まあ、そういうことにしといてあげる		large_001_cg										TRUE	
+large_001	large_event	6	large_001_pout	character	text	は? 正直すぎでしょ。……でも、嘘つかれるよりマシか		large_001_cg										TRUE	
+large_001	large_event	7	large_001_cg	character	text	でもね、こうやって毎日ちゃんと来てくれる人、あんたが初めてなんだ											cg_rio_smile	TRUE	一枚絵
+large_001	large_event	8	large_001_05	character	text	……だから、ちょっとだけ信じてみようかなって。ちょっとだけね										rio_stand_normal		TRUE	
+large_001	large_event	9	large_001_06	character	text	この話、明日になったら忘れるから。おやすみ												TRUE	

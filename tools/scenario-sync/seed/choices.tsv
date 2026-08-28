@@ -1,0 +1,9 @@
+choice_id	choice_order	label	next_node_id	save_key	save_value	required_key	required_operator	required_value	enabled	notes
+choice_siblings	1	いる	daily_002_has_sib	hasSiblings	いる				TRUE	
+choice_siblings	2	いない(一人っ子)	daily_002_no_sib	hasSiblings	いない				TRUE	
+choice_honne_react	1	うれしいよ	small_001_happy						TRUE	
+choice_honne_react	2	知ってた	small_001_know						TRUE	
+choice_dance_react	1	すごくかっこいい	small_002_praise	sawRioDance	はい				TRUE	
+choice_dance_react	2	まあまあかな	small_002_pout	sawRioDance	はい				TRUE	
+choice_night_bother	1	思ってないよ	large_001_soft						TRUE	
+choice_night_bother	2	ちょっとだけ	large_001_pout						TRUE	

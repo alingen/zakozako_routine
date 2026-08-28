@@ -1,0 +1,8 @@
+event_id	event_type	title	entry_scenario_id	priority	repeatable	cooldown_days	condition_type	condition_key	operator	threshold	background	advances_to_phase	enabled	notes
+event_small_001	small_event	莉央のひとりごと	small_001	100	FALSE	0	user_state	trust	gte	2			TRUE	同一event_idの条件はAND
+event_small_002	small_event	ダンスの動画、見る?	small_002	110	FALSE	0	user_state	trust	gte	3			TRUE	同一event_idの条件はAND
+event_small_003	small_event	新しい服、買ったんだ	small_003	120	FALSE	0	user_state	trust	gte	4			TRUE	同一event_idの条件はAND
+event_small_003	small_event	新しい服、買ったんだ	small_003	120	FALSE	0	streak	continuous_days	gte	3			TRUE	同一event_idの条件はAND
+event_large_001	large_event	夜の電話	large_001	200	FALSE	0	user_state	trust	gte	5	bg_rio_room	1	TRUE	同一event_idの条件はAND
+event_large_001	large_event	夜の電話	large_001	200	FALSE	0	streak	continuous_days	gte	3	bg_rio_room	1	TRUE	同一event_idの条件はAND
+event_large_001	large_event	夜の電話	large_001	200	FALSE	0	event	event_completed	exists	event_small_001	bg_rio_room	1	TRUE	同一event_idの条件はAND

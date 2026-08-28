@@ -1,0 +1,49 @@
+name: scenario-sync
+
+on:
+  pull_request:
+    paths:
+      - 'tools/scenario-sync/**'
+      - 'MesugakiRoutine/Resources/GeneratedScenarios/**'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/scenario-sync/**'
+      - 'MesugakiRoutine/Resources/GeneratedScenarios/**'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/scenario-sync
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tools/scenario-sync/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Format check (tool sources)
+        run: npm run format:check
+
+      - name: Unit tests
+        run: npm test
+
+      # Drift check against Google Sheets.
+      # - Public (link-shared) sheet: fetched live via the XLSX export, no secrets.
+      # - Private sheet: set SCENARIO_GOOGLE_SA_JSON as a repo secret for API access.
+      # - No network to Sheets: falls back to the committed snapshot and still
+      #   checks the generated files match it.
+      - name: Sync --check
+        env:
+          SCENARIO_SHEET_ID: ${{ secrets.SCENARIO_SHEET_ID }}
+          SCENARIO_GOOGLE_SA_JSON: ${{ secrets.SCENARIO_GOOGLE_SA_JSON }}
+        run: npm run sync:check
