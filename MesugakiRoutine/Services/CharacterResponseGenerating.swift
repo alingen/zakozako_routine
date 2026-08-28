@@ -8,7 +8,9 @@ enum CharacterSituation {
     case stepFailed(nextStepName: String?)
     case routineCompleted(routineType: RoutineType)
     case helpRequested(currentStepName: String)
-    case blockedBehaviorDetected(behaviorTitle: String, counterMessage: String, alternativeAction: String)
+    /// reason はその行動をやめると決めた理由(例: 「仕事をさぼらないため」)、alternativeAction は
+    /// 代わりに勧める具体的な行動(例: 「音楽をかける」)。どちらも空文字なら特に触れない。
+    case blockedBehaviorDetected(behaviorTitle: String, counterMessage: String, reason: String, alternativeAction: String)
     /// ホーム画面を開いた時の一言。streakDays は継続日数(初回でも1)、isMorningRoutinePending は
     /// 「もう朝ルーティンを始めていい時間帯なのにまだ始めていない」かどうか。
     case homeGreeting(streakDays: Int, isMorningRoutinePending: Bool)

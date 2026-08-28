@@ -17,6 +17,9 @@ struct MesugakiRoutineApp: App {
             TrustState.self,
             UserProfileFact.self,
             FreeTalkTopicProgress.self,
+            DailyConversationState.self,
+            EventProgress.self,
+            RelationshipState.self,
         ])
         let configuration = ModelConfiguration(schema: schema)
         do {
@@ -32,9 +35,6 @@ struct MesugakiRoutineApp: App {
         WindowGroup {
             RootTabView()
                 .environment(SiriLaunchCoordinator.shared)
-                .onOpenURL { url in
-                    SiriLaunchCoordinator.shared.handle(url: url)
-                }
         }
         .modelContainer(modelContainer)
         .onChange(of: scenePhase) {

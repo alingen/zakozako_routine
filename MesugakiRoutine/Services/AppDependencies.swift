@@ -12,6 +12,13 @@ struct AppDependencies {
     let trustRepository: TrustRepository
     let userProfileFactRepository: UserProfileFactRepository
     let freeTalkTopicProgressRepository: FreeTalkTopicProgressRepository
+    let dailyConversationStateRepository: DailyConversationStateRepository
+    let dailyConversationProvider: DailyConversationProvider
+    let eventProgressRepository: EventProgressRepository
+    let relationshipRepository: RelationshipRepository
+    let eventCatalog: EventCatalog
+    let progressMetricsProvider: ProgressMetricsProvider
+    let eventUnlockService: EventUnlockService
     let routineEngine: RoutineEngine
     let characterEngine: CharacterEngine
     let conversationCoordinator: ConversationCoordinator
@@ -25,6 +32,23 @@ struct AppDependencies {
         trustRepository = TrustRepository(context: context)
         userProfileFactRepository = UserProfileFactRepository(context: context)
         freeTalkTopicProgressRepository = FreeTalkTopicProgressRepository(context: context)
+        dailyConversationStateRepository = DailyConversationStateRepository(context: context)
+        dailyConversationProvider = DailyConversationProvider()
+        eventProgressRepository = EventProgressRepository(context: context)
+        relationshipRepository = RelationshipRepository(context: context)
+        eventCatalog = EventCatalog()
+        progressMetricsProvider = ProgressMetricsProvider(
+            sessionRepository: sessionRepository,
+            trustRepository: trustRepository,
+            blockedBehaviorRepository: blockedBehaviorRepository,
+            eventProgressRepository: eventProgressRepository,
+            relationshipRepository: relationshipRepository
+        )
+        eventUnlockService = EventUnlockService(
+            catalog: eventCatalog,
+            progressRepository: eventProgressRepository,
+            metricsProvider: progressMetricsProvider
+        )
         routineEngine = RoutineEngine(sessionRepository: sessionRepository)
         notificationScheduler = RoutineNotificationScheduler()
         // Keychain に OpenAI APIキーが保存されていれば ChatGPT(Chat Completions API) で応答を生成し、

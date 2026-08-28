@@ -1,0 +1,51 @@
+{
+  "_generated": "AUTO-GENERATED FROM GOOGLE SHEETS — DO NOT EDIT BY HAND. Edit the spreadsheet, then run: npm --prefix tools/scenario-sync run sync",
+  "scenarios": [
+    {
+      "scenarioId": "daily_001",
+      "dayIndex": 1,
+      "messages": [
+        {
+          "id": "daily_001_01",
+          "speaker": "character",
+          "text": "今日も来たんだ♡",
+          "next": "daily_001_02"
+        },
+        {
+          "id": "daily_001_02",
+          "speaker": "character",
+          "text": "兄弟いるの？",
+          "next": "daily_001_03"
+        },
+        {
+          "id": "daily_001_03",
+          "speaker": "user",
+          "text": "",
+          "choices": [
+            {
+              "text": "いる",
+              "next": "daily_001_04",
+              "saveFact": {
+                "key": "hasSiblings",
+                "value": "true"
+              }
+            },
+            {
+              "text": "いない",
+              "next": "daily_001_04",
+              "saveFact": {
+                "key": "hasSiblings",
+                "value": "false"
+              }
+            }
+          ]
+        },
+        {
+          "id": "daily_001_04",
+          "speaker": "character",
+          "text": "そうなんだ。今度もっと聞かせて。"
+        }
+      ]
+    }
+  ]
+}

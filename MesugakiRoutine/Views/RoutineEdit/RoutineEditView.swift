@@ -30,15 +30,6 @@ struct RoutineEditView: View {
             }
 
             Section {
-                Toggle("ルーティン開始時に音声会話も開始", isOn: $viewModel.autoStartVoiceMode)
-                    .onChange(of: viewModel.autoStartVoiceMode) {
-                        viewModel.save()
-                    }
-            } footer: {
-                Text("オフにすると音声会話は自動で始まらず、画面内のボタンから手動で開始できます。")
-            }
-
-            Section {
                 HStack {
                     ForEach(Weekday.allCases) { weekday in
                         Button {

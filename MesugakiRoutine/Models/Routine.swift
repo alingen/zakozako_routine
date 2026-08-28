@@ -34,10 +34,6 @@ final class Routine {
     /// 対象曜日(Weekdayのraw value)。デフォルトは全曜日。
     var activeWeekdayValues: [Int] = Weekday.allWeekdayValues
 
-    /// ルーティン開始時に音声会話も自動で開始するか。認識精度が低いと冗長に感じる場合があるため
-    /// ルーティンごとにオフにできる。オフでも画面内の手動ボタンからはいつでも開始できる。
-    var autoStartVoiceMode: Bool = true
-
     @Relationship(deleteRule: .cascade, inverse: \RoutineStep.routine)
     var steps: [RoutineStep] = []
 
@@ -49,8 +45,7 @@ final class Routine {
         createdAt: Date = .now,
         updatedAt: Date = .now,
         scheduledStartMinute: Int? = nil,
-        activeWeekdayValues: [Int] = Weekday.allWeekdayValues,
-        autoStartVoiceMode: Bool = true
+        activeWeekdayValues: [Int] = Weekday.allWeekdayValues
     ) {
         self.id = id
         self.title = title
@@ -60,7 +55,6 @@ final class Routine {
         self.updatedAt = updatedAt
         self.scheduledStartMinute = scheduledStartMinute
         self.activeWeekdayValues = activeWeekdayValues
-        self.autoStartVoiceMode = autoStartVoiceMode
     }
 
     var orderedSteps: [RoutineStep] {

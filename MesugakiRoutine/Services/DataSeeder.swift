@@ -67,24 +67,19 @@ enum DataSeeder {
         }
     }
 
+    /// 悪習慣は同時に1件しか挑戦できない設計のため、サンプルも1件だけ投入する。
     private static func seedBlockedBehaviorsIfNeeded(context: ModelContext) {
         let descriptor = FetchDescriptor<BlockedBehavior>()
         let existing = (try? context.fetch(descriptor)) ?? []
         guard existing.isEmpty else { return }
 
-        let samples: [(String, String, String)] = [
-            ("起床直後にYouTubeを開く", "YouTube", "朝からYouTubeはダメ。まずはルーティン終わらせよ？"),
-            ("起床直後にSNSを開く", "SNS", "SNSは後でいいでしょ。今やることあるよね？"),
-            ("二度寝する", "二度寝", "気持ちは分かるけど、二度寝したら1日台無しだよ。"),
-            ("深夜に動画を見続ける", "動画", "もう寝る時間。続きは明日の自分に任せよ。"),
-        ]
-        for (title, trigger, counter) in samples {
-            let behavior = BlockedBehavior(
-                title: title,
-                triggerText: trigger,
-                counterMessage: counter
-            )
-            context.insert(behavior)
-        }
+        let behavior = BlockedBehavior(
+            title: "YouTubeを見ない",
+            triggerText: "YouTube",
+            counterMessage: "朝からYouTubeはダメ。まずはルーティン終わらせよ？",
+            reason: "仕事をさぼらないため",
+            alternativeAction: "音楽をかけて仕事に戻る"
+        )
+        context.insert(behavior)
     }
 }

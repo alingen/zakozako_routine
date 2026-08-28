@@ -1,0 +1,30 @@
+{
+  "_generated": "AUTO-GENERATED FROM GOOGLE SHEETS — DO NOT EDIT BY HAND. Edit the spreadsheet, then run: npm --prefix tools/scenario-sync run sync",
+  "events": [
+    {
+      "eventId": "event_small_001",
+      "eventType": "small",
+      "title": "はじめての相談",
+      "priority": 10,
+      "repeatable": false,
+      "cooldownDays": 0,
+      "unlockConditions": {
+        "minTrust": 10,
+        "minStreakDays": 7
+      },
+      "messages": [
+        {
+          "id": "small_001_01",
+          "speaker": "character",
+          "text": "少しだけ、相談してもいい？",
+          "next": "small_001_02"
+        },
+        {
+          "id": "small_001_02",
+          "speaker": "character",
+          "text": "今日来てくれて、ちょっと安心した。"
+        }
+      ]
+    }
+  ]
+}

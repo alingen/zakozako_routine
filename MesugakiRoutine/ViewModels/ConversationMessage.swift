@@ -12,4 +12,6 @@ struct ConversationMessage: Identifiable {
     let role: Role
     let text: String
     let timestamp: Date
+    /// 非nilなら画像メッセージ。`text` はキャプション扱いになる(空可)。
+    var imageName: String? = nil
 }

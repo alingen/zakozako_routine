@@ -73,12 +73,17 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
         case .helpRequested(let currentStepName):
             return "\(currentStepName)のやり方わかんないの？ざっこ〜♡ほら、体動かすだけでいいのに〜"
 
-        case .blockedBehaviorDetected(_, let counterMessage, let alternativeAction):
-            let base = counterMessage.isEmpty
+        case .blockedBehaviorDetected(_, let counterMessage, let reason, let alternativeAction):
+            var text = counterMessage.isEmpty
                 ? "\(nameCall(userNickname))うわっ誘惑にまけてやっちゃうの？ざこざこめんたるでお先まっくら〜"
                 : "\(nameCall(userNickname))\(counterMessage)"
-            guard !alternativeAction.isEmpty else { return base }
-            return "\(base) 代わりに\(alternativeAction)しなよ〜？"
+            if !reason.isEmpty {
+                text += " 「\(reason)」んじゃなかったの〜？"
+            }
+            if !alternativeAction.isEmpty {
+                text += " \(alternativeAction)しな〜♡"
+            }
+            return text
 
         case .homeGreeting(let streakDays, let isMorningRoutinePending):
             let call = nameCall(userNickname)

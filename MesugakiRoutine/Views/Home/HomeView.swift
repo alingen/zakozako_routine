@@ -7,12 +7,12 @@ struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     @State private var selectedRoutine: Routine?
     @State private var editingRoutine: Routine?
-    @State private var isPresentingTemptationPicker = false
     @State private var isPresentingTemptationMessage = false
     @State private var temptationMessage = ""
-    @State private var isPresentingSiriHelp = false
     @State private var editingBehavior: BlockedBehavior?
     @State private var isPresentingProfile = false
+    @State private var isPresentingCheckIn = false
+    @State private var presentedEvent: EventDefinition?
 
     var body: some View {
         List {
@@ -40,20 +40,29 @@ struct HomeView: View {
                 }
             }
 
-            if viewModel.isListeningForVoiceCommand {
+            if let event = viewModel.presentableEvent {
                 Section {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text("🎙️ 「朝ルーティン」「夜ルーティン」など話しかけてください…")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                    Button {
+                        presentedEvent = event
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "envelope.badge.fill")
+                                .foregroundStyle(.pink)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(viewModel.characterName)が話したいことがあるみたい")
+                                    .font(.subheadline.bold())
+                                Text("タップして話を聞く")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }
 
             Section {
                 Button {
-                    isPresentingTemptationPicker = true
+                    confrontTemptation()
                 } label: {
                     Text("負けそう")
                         .font(.title2.bold())
@@ -66,54 +75,72 @@ struct HomeView: View {
                 .listRowBackground(Color.clear)
             }
 
-            Section {
+            Section("今日のルーティン") {
                 routineRow(title: "朝ルーティン", routine: viewModel.morningRoutine)
                 routineRow(title: "夜ルーティン", routine: viewModel.nightRoutine)
-            } header: {
-                HStack {
-                    Text("今日のルーティン")
-                    Button {
-                        isPresentingSiriHelp = true
-                    } label: {
-                        Image(systemName: "questionmark.circle")
-                    }
-                }
             }
 
-            Section("やらないことリスト") {
-                ForEach(viewModel.blockedBehaviors, id: \.id) { behavior in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(behavior.title)
-                            if let subtitle = detailSubtitle(for: behavior) {
-                                Text(subtitle)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+            Section("やらないこと") {
+                if let behavior = viewModel.currentBehavior {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(behavior.title)
+                                    .font(.headline)
+                                if !behavior.reason.isEmpty {
+                                    Text("理由: \(behavior.reason)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                if !behavior.alternativeAction.isEmpty {
+                                    Text("代替行動: \(behavior.alternativeAction)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                            Spacer()
+                            Button {
+                                editingBehavior = behavior
+                            } label: {
+                                Image(systemName: "gearshape")
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.secondary)
                         }
-                        Spacer()
-                        Toggle("", isOn: Binding(
-                            get: { behavior.isActive },
-                            set: { _ in viewModel.toggleBlockedBehavior(behavior) }
-                        ))
-                        .labelsHidden()
-                        Button {
-                            editingBehavior = behavior
-                        } label: {
-                            Image(systemName: "gearshape")
+                        ProgressView(
+                            value: Double(min(behavior.currentStreakDays, BlockedBehavior.masteryStreakDays)),
+                            total: Double(BlockedBehavior.masteryStreakDays)
+                        )
+                        Text("\(behavior.currentStreakDays)/\(BlockedBehavior.masteryStreakDays)日達成")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("やらないこと(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
+                        TextField("理由(例: 仕事をさぼらないため)", text: $viewModel.newBlockedBehaviorReason)
+                        TextField("代替行動(例: 音楽をかける)", text: $viewModel.newBlockedBehaviorAlternativeAction)
+                        Button("追加") {
+                            viewModel.addBlockedBehavior()
                         }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(.secondary)
+                        .disabled(viewModel.newBlockedBehaviorTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
-                .onDelete { viewModel.deleteBlockedBehaviors(at: $0) }
 
-                HStack {
-                    TextField("追加する項目", text: $viewModel.newBlockedBehaviorTitle)
-                    Button("追加") {
-                        viewModel.addBlockedBehavior()
+                if !viewModel.masteredBehaviors.isEmpty {
+                    DisclosureGroup("卒業した習慣(\(viewModel.masteredBehaviors.count))") {
+                        ForEach(viewModel.masteredBehaviors, id: \.id) { behavior in
+                            Text(behavior.title)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .onDelete { offsets in
+                            for index in offsets {
+                                viewModel.deleteMasteredBehavior(viewModel.masteredBehaviors[index])
+                            }
+                        }
                     }
-                    .disabled(viewModel.newBlockedBehaviorTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
@@ -123,34 +150,33 @@ struct HomeView: View {
         .navigationDestination(item: $editingRoutine) { routine in
             RoutineEditView(routine: routine)
         }
-        .confirmationDialog("何に負けそう？", isPresented: $isPresentingTemptationPicker, titleVisibility: .visible) {
-            ForEach(viewModel.blockedBehaviors.filter(\.isActive), id: \.id) { behavior in
-                Button(behavior.title) {
-                    confrontTemptation(behavior)
-                }
-            }
-            Button("とにかく負けそう") {
-                confrontTemptation(nil)
-            }
-            Button("キャンセル", role: .cancel) {}
-        }
         .alert("小悪魔コーチより", isPresented: $isPresentingTemptationMessage) {
             Button("がんばる", role: .cancel) {}
         } message: {
             Text(temptationMessage)
         }
-        .sheet(isPresented: $isPresentingSiriHelp) {
-            SiriShortcutHelpView()
+        .alert(
+            checkInAlertTitle,
+            isPresented: $isPresentingCheckIn
+        ) {
+            Button("まもれた！") { viewModel.answerCheckIn(protected: true) }
+            Button("まもれなかった…", role: .destructive) { viewModel.answerCheckIn(protected: false) }
         }
         .sheet(isPresented: $isPresentingProfile) {
             CharacterProfileView()
         }
+        .fullScreenCover(item: $presentedEvent, onDismiss: { viewModel.reload() }) { event in
+            NavigationStack {
+                EventPlayerView(event: event)
+            }
+        }
         .sheet(item: $editingBehavior) { behavior in
-            BlockedBehaviorDetailView(behavior: behavior) { triggerText, alternativeAction, useTimeWindow, start, end in
+            BlockedBehaviorDetailView(behavior: behavior) { reason, alternativeAction, triggerText, useTimeWindow, start, end in
                 viewModel.updateBlockedBehaviorDetails(
                     behavior,
-                    triggerText: triggerText,
+                    reason: reason,
                     alternativeAction: alternativeAction,
+                    triggerText: triggerText,
                     useTimeWindow: useTimeWindow,
                     startTime: start,
                     endTime: end
@@ -163,39 +189,35 @@ struct HomeView: View {
         }
         .onAppear {
             viewModel.reload()
-            triggerAutoListenIfNeeded()
             startPendingRoutineIfNeeded()
+            triggerCheckInIfNeeded()
             Task { await viewModel.loadHomeComment() }
-        }
-        .onChange(of: siriLaunchCoordinator.shouldAutoListenOnNextHomeAppear) {
-            triggerAutoListenIfNeeded()
         }
         .onChange(of: siriLaunchCoordinator.pendingRoutineTypeToStart) {
             startPendingRoutineIfNeeded()
         }
     }
 
-    private func confrontTemptation(_ behavior: BlockedBehavior?) {
+    private var checkInAlertTitle: String {
+        guard let title = viewModel.pendingCheckInBehavior?.title else { return "" }
+        return "昨日の「\(title)」は守れた？"
+    }
+
+    private func confrontTemptation() {
         Task {
-            temptationMessage = await viewModel.confrontTemptation(behavior)
+            temptationMessage = await viewModel.confrontTemptation()
             isPresentingTemptationMessage = true
         }
     }
 
-    /// Siriショートカット(zakozakoroutine:// URL)経由で開かれた時だけ、数秒間の音声コマンド受付を始める。
-    /// 手動でアイコンをタップして開いた場合は発火しない。
-    private func triggerAutoListenIfNeeded() {
-        guard siriLaunchCoordinator.shouldAutoListenOnNextHomeAppear else { return }
-        siriLaunchCoordinator.shouldAutoListenOnNextHomeAppear = false
-        Task {
-            if let routine = await viewModel.listenForRoutineVoiceCommand() {
-                selectedRoutine = routine
-            }
-        }
+    /// 前日分の「まもれた/まもれなかった」がまだ未記録なら、確認アラートを出す。
+    private func triggerCheckInIfNeeded() {
+        guard viewModel.pendingCheckInBehavior != nil else { return }
+        isPresentingCheckIn = true
     }
 
     /// App Intent(StartRoutineIntent)経由で「このルーティンを開始して」と指定されていれば、
-    /// 該当ルーティンへ直接遷移する。音声認識は不要(Siriが既にどちらか判定済みのため)。
+    /// 該当ルーティンへ直接遷移する。
     private func startPendingRoutineIfNeeded() {
         guard let routineType = siriLaunchCoordinator.pendingRoutineTypeToStart else { return }
         siriLaunchCoordinator.pendingRoutineTypeToStart = nil
@@ -204,21 +226,6 @@ struct HomeView: View {
         case .night: selectedRoutine = viewModel.nightRoutine
         case .custom: break
         }
-    }
-
-    private func detailSubtitle(for behavior: BlockedBehavior) -> String? {
-        var parts: [String] = []
-        if let start = behavior.activeStartMinute, let end = behavior.activeEndMinute {
-            parts.append("\(timeString(start))〜\(timeString(end))")
-        }
-        if !behavior.alternativeAction.isEmpty {
-            parts.append("代替: \(behavior.alternativeAction)")
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " ・ ")
-    }
-
-    private func timeString(_ minutes: Int) -> String {
-        String(format: "%02d:%02d", minutes / 60, minutes % 60)
     }
 
     @ViewBuilder
@@ -267,5 +274,14 @@ struct HomeView: View {
         HomeView()
     }
     .environment(SiriLaunchCoordinator())
-    .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self, CharacterPreset.self, BlockedBehavior.self], inMemory: true)
+    .modelContainer(
+        for: [
+            Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self,
+            CharacterPreset.self, BlockedBehavior.self, TrustState.self,
+            UserProfileFact.self, FreeTalkTopicProgress.self, DailyConversationState.self,
+            EventProgress.self,
+            RelationshipState.self,
+        ],
+        inMemory: true
+    )
 }

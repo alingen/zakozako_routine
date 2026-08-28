@@ -30,8 +30,9 @@ enum AppSettingsStore {
     private static let userNicknameKey = "user_nickname"
     private static let notificationsEnabledKey = "notifications_enabled"
     private static let notificationDelayMinutesKey = "notification_delay_minutes"
+    private static let blockedBehaviorProtectedCountKey = "blocked_behavior_protected_count"
 
-    /// 音声/自由入力でこの発言(部分一致)が検出されたら、現在のステップを完了として次へ進める。
+    /// ルーティン中のテキスト入力でこの発言(部分一致)が検出されたら、現在のステップを完了として次へ進める。
     static var completionPhrase: String {
         get { UserDefaults.standard.string(forKey: completionPhraseKey) ?? "できた" }
         set { UserDefaults.standard.set(newValue, forKey: completionPhraseKey) }
@@ -61,5 +62,11 @@ enum AppSettingsStore {
             return value == 0 ? 30 : value
         }
         set { UserDefaults.standard.set(newValue, forKey: notificationDelayMinutesKey) }
+    }
+
+    /// 「やらないこと」を「まもれた」と記録した累積回数。イベント解放条件で参照する。
+    static var blockedBehaviorProtectedCount: Int {
+        get { UserDefaults.standard.integer(forKey: blockedBehaviorProtectedCountKey) }
+        set { UserDefaults.standard.set(newValue, forKey: blockedBehaviorProtectedCountKey) }
     }
 }

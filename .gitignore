@@ -16,3 +16,12 @@ DerivedData/
 
 # Local secrets (never commit real API keys; see Secrets.example.json)
 MesugakiRoutine/Resources/Secrets.local.json
+
+# scenario-sync tool (Node)
+tools/scenario-sync/node_modules/
+tools/scenario-sync/.env
+tools/scenario-sync/secrets/
+*.tmp
+
+# Claude Code local settings
+.claude/settings.local.json

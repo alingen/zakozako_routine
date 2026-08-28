@@ -7,24 +7,33 @@ import Observation
 final class HomeViewModel {
     private(set) var morningRoutine: Routine?
     private(set) var nightRoutine: Routine?
-    private(set) var blockedBehaviors: [BlockedBehavior] = []
+
+    /// 現在挑戦中の「やらないこと」(あれば1件)。
+    private(set) var currentBehavior: BlockedBehavior?
+    /// 14日間守り切って卒業した「やらないこと」。新しい順。
+    private(set) var masteredBehaviors: [BlockedBehavior] = []
+    /// 前日分の「まもれた/まもれなかった」がまだ未記録なら、その確認対象。
+    private(set) var pendingCheckInBehavior: BlockedBehavior?
+    /// 解放済みで未完了のイベント(あれば「話したいことがあるみたい」を出す)。
+    private(set) var presentableEvent: EventDefinition?
+    /// キャラクター名(「〇〇が話したいことがあるみたい」の表示に使う)。
+    private(set) var characterName = "小悪魔コーチ"
     var newBlockedBehaviorTitle: String = ""
+    var newBlockedBehaviorReason: String = ""
+    var newBlockedBehaviorAlternativeAction: String = ""
 
     /// ホーム画面上部に出す、キャラクターからの一言。
     private(set) var homeComment: String = ""
     /// キャラクターの一言を生成している間 true(入力中インジケーターの表示に使う)。
     private(set) var isLoadingHomeComment = false
 
-    /// Siriショートカット経由の起動直後、数秒だけ音声コマンドを受け付けている間 true。
-    private(set) var isListeningForVoiceCommand = false
-
     private var dependencies: AppDependencies?
-    private let quickVoiceCommandListener = QuickVoiceCommandListener()
 
     func configure(context: ModelContext) {
         if dependencies == nil {
             dependencies = AppDependencies(context: context)
         }
+        characterName = dependencies?.characterEngine.activePreset.name ?? characterName
         reload()
     }
 
@@ -32,7 +41,11 @@ final class HomeViewModel {
         guard let dependencies else { return }
         morningRoutine = dependencies.routineRepository.fetch(type: .morning).first
         nightRoutine = dependencies.routineRepository.fetch(type: .night).first
-        blockedBehaviors = dependencies.blockedBehaviorRepository.fetchAll()
+        currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
+        masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
+        pendingCheckInBehavior = dependencies.blockedBehaviorRepository.pendingCheckIn()
+        dependencies.eventUnlockService.refreshUnlocks()
+        presentableEvent = dependencies.eventUnlockService.nextPresentableEvent()
         rescheduleNotifications()
     }
 
@@ -48,39 +61,42 @@ final class HomeViewModel {
         }
     }
 
+    /// 現在挑戦中の項目が無い(未着手 or 卒業済み)場合のみ、新しい「やらないこと」を追加できる。
+    var canAddBlockedBehavior: Bool {
+        dependencies?.blockedBehaviorRepository.canAddNew() ?? false
+    }
+
     func addBlockedBehavior() {
-        guard let dependencies else { return }
-        let trimmed = newBlockedBehaviorTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard let dependencies, canAddBlockedBehavior else { return }
+        let title = newBlockedBehaviorTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        let reason = newBlockedBehaviorReason.trimmingCharacters(in: .whitespacesAndNewlines)
+        let alternativeAction = newBlockedBehaviorAlternativeAction.trimmingCharacters(in: .whitespacesAndNewlines)
         dependencies.blockedBehaviorRepository.create(
-            title: trimmed,
-            description: "",
-            triggerText: trimmed,
+            title: title,
+            reason: reason,
+            alternativeAction: alternativeAction,
+            triggerText: title,
             counterMessage: ""
         )
         newBlockedBehaviorTitle = ""
+        newBlockedBehaviorReason = ""
+        newBlockedBehaviorAlternativeAction = ""
         reload()
     }
 
-    func toggleBlockedBehavior(_ behavior: BlockedBehavior) {
+    func deleteMasteredBehavior(_ behavior: BlockedBehavior) {
         guard let dependencies else { return }
-        dependencies.blockedBehaviorRepository.setActive(behavior, isActive: !behavior.isActive)
+        dependencies.blockedBehaviorRepository.delete(behavior)
         reload()
     }
 
-    func deleteBlockedBehaviors(at offsets: IndexSet) {
-        guard let dependencies else { return }
-        for index in offsets {
-            dependencies.blockedBehaviorRepository.delete(blockedBehaviors[index])
-        }
-        reload()
-    }
-
-    /// 検出ワード・代替行動・検出時間帯を更新する(詳細編集シート用)。
+    /// 検出ワード・理由・検出時間帯を更新する(詳細編集シート用)。
     func updateBlockedBehaviorDetails(
         _ behavior: BlockedBehavior,
-        triggerText: String,
+        reason: String,
         alternativeAction: String,
+        triggerText: String,
         useTimeWindow: Bool,
         startTime: Date,
         endTime: Date
@@ -88,42 +104,41 @@ final class HomeViewModel {
         guard let dependencies else { return }
         dependencies.blockedBehaviorRepository.updateDetails(
             behavior,
-            triggerText: triggerText,
+            reason: reason,
             alternativeAction: alternativeAction,
+            triggerText: triggerText,
             activeStartMinute: useTimeWindow ? BlockedBehavior.minutes(from: startTime) : nil,
             activeEndMinute: useTimeWindow ? BlockedBehavior.minutes(from: endTime) : nil
         )
         reload()
     }
 
-    /// 「負けそう」ボタンから、特定の「やらないこと」に対するキャラクターの声かけを取得する。
+    /// 前日分の「まもれた/まもれなかった」を記録する。
+    /// 「まもれた」場合は信頼度を加算し(ルーティン完了と同じ +1)、累積回数を増やしてイベント解放を再評価する。
+    func answerCheckIn(protected: Bool) {
+        guard let dependencies, let behavior = pendingCheckInBehavior else { return }
+        dependencies.blockedBehaviorRepository.recordCheckIn(behavior, protected: protected)
+        if protected {
+            dependencies.trustRepository.increment(by: 1)
+            AppSettingsStore.blockedBehaviorProtectedCount += 1
+            dependencies.eventUnlockService.refreshUnlocks()
+        }
+        reload()
+    }
+
+    /// 「負けそう」ボタンから、現在挑戦中の「やらないこと」に対するキャラクターの声かけを取得する。
     /// ルーティンセッション外からの呼び出しのため、RoutineEngineには一切触れずCharacterEngineだけを使う。
-    func confrontTemptation(_ behavior: BlockedBehavior?) async -> String {
+    func confrontTemptation() async -> String {
         guard let dependencies else { return "" }
         let response = await dependencies.characterEngine.respond(
             to: .blockedBehaviorDetected(
-                behaviorTitle: behavior?.title ?? "",
-                counterMessage: behavior?.counterMessage ?? "",
-                alternativeAction: behavior?.alternativeAction ?? ""
+                behaviorTitle: currentBehavior?.title ?? "",
+                counterMessage: currentBehavior?.counterMessage ?? "",
+                reason: currentBehavior?.reason ?? "",
+                alternativeAction: currentBehavior?.alternativeAction ?? ""
             )
         )
         return response.text
-    }
-
-    /// Siriショートカット経由の起動時にだけ呼ばれる。数秒間だけ音声を聞き取り、
-    /// 「朝」「夜」といったキーワードから該当ルーティンを判定して返す(一致しなければ nil)。
-    func listenForRoutineVoiceCommand() async -> Routine? {
-        isListeningForVoiceCommand = true
-        let text = await quickVoiceCommandListener.listenOnce()
-        isListeningForVoiceCommand = false
-        guard let text else { return nil }
-        return matchRoutine(for: text)
-    }
-
-    private func matchRoutine(for text: String) -> Routine? {
-        if text.contains("朝") { return morningRoutine }
-        if text.contains("夜") { return nightRoutine }
-        return nil
     }
 
     /// 中断中(完了していない)のセッションがあれば、その現在のステップ名を返す。無ければ nil。

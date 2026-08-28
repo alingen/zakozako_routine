@@ -17,12 +17,20 @@ final class ConversationCoordinator {
         let characterText: String
     }
 
-    /// フリートークでの1往復の結果。`shouldEndFreeTalk`がtrueの場合、その回で話すべき話題(伝達事項)を
-    /// 伝え終えたことを示す。呼び出し側(ViewModel)はこれを見てフリートークモードを終了させ、
-    /// 「少し話す/今日は終わる」の選択に戻してよい。
+    /// フリートークでの1往復の結果。`closingLine`が非nilの場合、その回で話すべき話題(伝達事項)を
+    /// 伝え終えたことを示す。呼び出し側(ViewModel)は`replyText`と`closingLine`を別々の吹き出しとして
+    /// 表示することで、AIが2通に分けて送ってきたかのような見た目にできる。`closingLine`が非nilの場合は
+    /// フリートークモードを終了させ、「少し話す/今日は終わる」の選択に戻してよい。
     struct FreeTalkTurn {
-        let text: String
-        let shouldEndFreeTalk: Bool
+        let replyText: String
+        let closingLine: String?
+        var shouldEndFreeTalk: Bool { closingLine != nil }
+
+        /// 音声読み上げなど、まとめて1つの文字列として扱いたい場面向け。
+        var text: String {
+            guard let closingLine else { return replyText }
+            return replyText + "\n" + closingLine
+        }
     }
 
     private let routineEngine: RoutineEngine
@@ -132,6 +140,7 @@ final class ConversationCoordinator {
                 to: .blockedBehaviorDetected(
                     behaviorTitle: behavior.title,
                     counterMessage: behavior.counterMessage,
+                    reason: behavior.reason,
                     alternativeAction: behavior.alternativeAction
                 ),
                 userText: text
@@ -155,10 +164,9 @@ final class ConversationCoordinator {
         )
         pendingDisclosureTopic = topic
         let response = await respond(to: .freeTalkStarted(topic: topic))
-        let shouldEnd = completePendingDisclosureIfNeeded(response)
-        let finalText = shouldEnd ? response.text + "\n" + freeTalkClosingLine() : response.text
-        appendTurn(userLabel: "(フリートーク開始)", assistantText: finalText)
-        return FreeTalkTurn(text: finalText, shouldEndFreeTalk: shouldEnd)
+        let turn = makeFreeTalkTurn(from: response)
+        appendTurn(userLabel: "(フリートーク開始)", assistantText: turn.text)
+        return turn
     }
 
     /// ルーティン完了後の自由会話(フリートーク)を扱う。RoutineProgressに紐づかないため
@@ -168,12 +176,23 @@ final class ConversationCoordinator {
     /// キャラクターの返答に続けて締めの挨拶を添え、フリートークをこちらから終了させる。
     func freeTalk(_ text: String) async -> FreeTalkTurn {
         let response = await respond(to: .freeText(text), userText: text)
-        let shouldEnd = completePendingDisclosureIfNeeded(response)
-        let finalText = shouldEnd ? response.text + "\n" + freeTalkClosingLine() : response.text
-        appendTurn(userLabel: text, assistantText: finalText)
+        let turn = makeFreeTalkTurn(from: response)
+        appendTurn(userLabel: text, assistantText: turn.text)
         trustRepository.increment(by: 1)
         trustRepository.tryAdvanceStage(topicProgressRepository: freeTalkTopicProgressRepository)
-        return FreeTalkTurn(text: finalText, shouldEndFreeTalk: shouldEnd)
+        return turn
+    }
+
+    /// キャラクター応答から`FreeTalkTurn`を組み立てる。話すべき話題を伝え終えた回は、返答本体(疑問形の
+    /// 末尾があれば取り除いたもの)と締めの挨拶を別々の吹き出しとして扱えるよう分けて保持する。
+    private func makeFreeTalkTurn(from response: CharacterResponse) -> FreeTalkTurn {
+        guard completePendingDisclosureIfNeeded(response) else {
+            return FreeTalkTurn(replyText: response.text, closingLine: nil)
+        }
+        return FreeTalkTurn(
+            replyText: Self.removingTrailingQuestion(from: response.text),
+            closingLine: freeTalkClosingLine()
+        )
     }
 
     /// 保留中の話題を伝え終えていれば完了として記録し、伝え終えたかどうかを返す。
@@ -189,6 +208,44 @@ final class ConversationCoordinator {
         currentRoutineType == .night
             ? "そろそろ眠くなっちゃったからきるね、おやすみ〜♡"
             : "じゃあ今日はここまでね〜ざこなりに今日も頑張ってね♡"
+    }
+
+    /// 文末の句読点(。！？!?)の直後に続く装飾・空白文字(♡〜~ー等)までを1文としてまとめて分割する。
+    private static func splitIntoSentenceChunks(_ text: String) -> [String] {
+        let terminators: Set<Character> = ["。", "！", "？", "!", "?"]
+        let decorations: Set<Character> = ["♡", "〜", "~", "ー"]
+        var chunks: [String] = []
+        var current = ""
+        var index = text.startIndex
+        while index < text.endIndex {
+            let character = text[index]
+            current.append(character)
+            index = text.index(after: index)
+            guard terminators.contains(character) else { continue }
+            while index < text.endIndex, decorations.contains(text[index]) || text[index].isWhitespace {
+                current.append(text[index])
+                index = text.index(after: index)
+            }
+            chunks.append(current)
+            current = ""
+        }
+        if !current.isEmpty {
+            chunks.append(current)
+        }
+        return chunks
+    }
+
+    /// `disclosed == true` の回に締めの挨拶をつなげる前に使う保険的な後処理。
+    /// モデルへは「今伝えるべき情報を伝えた回は質問で終わらせない」と指示しているが、遵守されないことがあり、
+    /// その場合そのまま締めの挨拶をつなげると「質問→即座に会話終了」という不自然な流れになってしまう。
+    /// 返答が複数文(句読点で区切れる)かつ最後の文が疑問形の場合、その最後の文だけを取り除く。
+    /// 疑問形の1文しかない場合は、空にしてしまうより元の文をそのまま残す。
+    private static func removingTrailingQuestion(from text: String) -> String {
+        let chunks = splitIntoSentenceChunks(text)
+        guard chunks.count > 1, let last = chunks.last, last.contains("？") || last.contains("?") else {
+            return text
+        }
+        return chunks.dropLast().joined().trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func matchesCompletionPhrase(_ text: String) -> Bool {

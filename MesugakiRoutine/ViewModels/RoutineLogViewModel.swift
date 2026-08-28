@@ -55,7 +55,7 @@ final class RoutineLogViewModel {
         completionsByDay = map
 
         achievements = computeAchievements(sessions: sessions)
-        streakDays = computeStreakDays()
+        streakDays = StreakCalculator.currentStreak(sessions: sessions, calendar: calendar)
     }
 
     /// 直近30日(今日を含む)ぶんの、アクティブなルーティンごとの達成率を計算する。
@@ -87,23 +87,6 @@ final class RoutineLogViewModel {
             }
             return RoutineAchievement(routine: routine, completedCount: completedCount, applicableCount: applicableCount)
         }
-    }
-
-    /// 今日既に達成していれば今日を起点に、まだなら昨日を起点に、連続で達成している日数を数える。
-    private func computeStreakDays(now: Date = .now) -> Int {
-        let today = calendar.startOfDay(for: now)
-        var cursor = today
-        if !(completionsByDay[cursor]?.isEmpty == false) {
-            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return 0 }
-            cursor = yesterday
-        }
-        var streak = 0
-        while completionsByDay[cursor]?.isEmpty == false {
-            streak += 1
-            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
-            cursor = previous
-        }
-        return streak
     }
 
     func goToPreviousMonth() {

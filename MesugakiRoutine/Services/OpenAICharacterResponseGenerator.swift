@@ -192,6 +192,7 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         - さびしがりや
         - 人に構ってもらうために煽りがち
         - ちょっとしたことでもすぐに泣く
+        - 人前で話すのはちょっと苦手
         """)
         if !context.userNickname.isEmpty {
             lines.append("ユーザーの呼び名: \(context.userNickname)(会話の要所で、この呼び名で呼びかけてよい。毎回でなくてよい)")
@@ -309,7 +310,7 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
         - NG(絶対に使わない): 深刻な被害を想起させる、または人格の核心を否定するような煽り。\
         例: \(LocalCharacterResponseGenerator.ngTeasingExamples.joined(separator: "、"))
         - 判断基準: 言われても軽く受け流せる表面的な煽りはOK。実際の苦しみ・被害を想起させたり、\
-        その人の存在価値そのものを否定するような煽りはNG。リストにない新しい煽りも、この基準で判断してよい。\
+        その人の存在価値そのものを否定するような煽りはNG。リストにない新しい煽りも、この基準で判断してよい。
         """
     }
 
@@ -346,10 +347,23 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
                 + (routineType == .night ? " 夜ルーティンなので、必ず「おやすみ〜」で締めくくって。" : "")
         case .helpRequested(let current):
             instruction = "ユーザーが助けを求めている。今のステップは「\(current)」。それだけに集中すればいいと伝えて安心させて。"
-        case .blockedBehaviorDetected(let title, let counter, let alternativeAction):
+        case .blockedBehaviorDetected(let title, let counter, let reason, let alternativeAction):
             var text = "ユーザーが「やらない」と決めていた行動(\(title))をしようとしている。次のメッセージのニュアンスを踏まえて短く止めて: \(counter)"
+            text += "\n" + """
+            返答は次の3つをこの順番でつなげた1〜2文にして: \
+            (1)煽り。「もう〜に負けそうなんだ〜？♡」のように誘惑に負けかけていることをからかう。
+            """
+            if !reason.isEmpty {
+                text += "\n" + """
+                (2)理由の指摘。ユーザー自身が「\(reason)」という理由でこの行動をやめると決めていたので、\
+                まるでユーザー本人がそう宣言していたのを覚えているかのように、\
+                「〇〇するって言ったの誰だっけ〜？」のニュアンスで引き合いに出してからかう。
+                """
+            }
             if !alternativeAction.isEmpty {
-                text += " 止めるだけでなく、代わりに「\(alternativeAction)」を軽く勧めて。"
+                text += "\n" + """
+                (3)代替行動への誘導。「\(alternativeAction)」を、命令口調ではなく軽く促す形で最後に添える。
+                """
             }
             instruction = text
         case .homeGreeting(let streakDays, let isMorningRoutinePending):

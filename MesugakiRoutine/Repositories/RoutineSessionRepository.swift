@@ -69,6 +69,30 @@ final class RoutineSessionRepository {
         return Array(all.prefix(limit))
     }
 
+    // MARK: - デバッグ用(継続日数の動作確認)
+
+    /// 指定日に「完了した」ダミーのセッションを1件挿入する。イベントログは持たせない
+    /// (`debugRemoveSyntheticSessions` はイベントの無い完了セッションを掃除対象にする)。
+    func debugInsertCompletedSession(routineId: UUID, completedAt: Date) {
+        let session = RoutineSession(
+            routineId: routineId,
+            startedAt: completedAt,
+            completedAt: completedAt,
+            status: .completed,
+            currentStepId: nil
+        )
+        context.insert(session)
+        save()
+    }
+
+    /// デバッグで挿入した(イベントログの無い)完了セッションを全て削除する。
+    func debugRemoveSyntheticSessions() {
+        for session in fetchAllSessions() where session.status == .completed && session.events.isEmpty {
+            context.delete(session)
+        }
+        save()
+    }
+
     private func save() {
         try? context.save()
     }
