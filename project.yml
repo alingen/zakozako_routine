@@ -37,6 +37,7 @@ targets:
         PRODUCT_NAME: MesugakiRoutine
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: YZZRP6M55K
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     scheme:
       testTargets: []
       gatherCoverageData: false
