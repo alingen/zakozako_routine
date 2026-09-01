@@ -37,12 +37,12 @@ enum RoutineStreak {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Int {
-        let today = calendar.startOfDay(for: now)
+        let today = AppDay.startOfDay(for: now, calendar: calendar)
         let weekdayScoped = routine.period == .day && !routine.activeWeekdayValues.isEmpty
         let targetWeekdays: Set<Int> = weekdayScoped ? Set(routine.activeWeekdayValues) : Set(1...7)
 
         func isCounted(_ day: Date) -> Bool {
-            targetWeekdays.contains(calendar.component(.weekday, from: day))
+            targetWeekdays.contains(calendar.component(.weekday, from: AppDay.anchor(day, calendar: calendar)))
         }
         func previousCounted(before day: Date) -> Date? {
             var cursor = day
@@ -82,7 +82,7 @@ enum RoutineStreak {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Int {
-        let today = calendar.startOfDay(for: now)
+        let today = AppDay.startOfDay(for: now, calendar: calendar)
         func anyCompleteOn(_ day: Date) -> Bool {
             routines.contains { $0.wasCompleteOn(day: day, now: now, calendar: calendar) }
         }

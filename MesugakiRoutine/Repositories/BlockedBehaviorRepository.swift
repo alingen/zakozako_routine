@@ -77,12 +77,12 @@ final class BlockedBehaviorRepository {
     /// - Returns: 今回新たに「達成」と判定された日数(呼び出し側で信頼度・累積回数を加算するのに使う)。
     @discardableResult
     func autoEvaluate(_ behavior: BlockedBehavior, calendar: Calendar = .current, now: Date = .now) -> Int {
-        let today = calendar.startOfDay(for: now)
-        let createdDay = calendar.startOfDay(for: behavior.createdAt)
+        let today = AppDay.startOfDay(for: now, calendar: calendar)
+        let createdDay = AppDay.startOfDay(for: behavior.createdAt, calendar: calendar)
 
         var cursor: Date
         if let last = behavior.lastCheckInDate {
-            cursor = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: last)) ?? today
+            cursor = calendar.date(byAdding: .day, value: 1, to: AppDay.startOfDay(for: last, calendar: calendar)) ?? today
         } else {
             // 一度も評価していない場合は、遡りすぎないよう最大でも「昨日」から。
             cursor = calendar.date(byAdding: .day, value: -1, to: today) ?? today

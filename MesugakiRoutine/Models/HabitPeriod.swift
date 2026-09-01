@@ -37,9 +37,15 @@ enum HabitPeriod: String, Codable, CaseIterable, Identifiable {
     /// この期間で「対象曜日」の指定が意味を持つか(1日のときだけ)。
     var supportsWeekdaySelection: Bool { self == .day }
 
-    /// 指定日を含む期間ウィンドウ [start, end)。
+    /// 指定日を含む期間ウィンドウ [start, end)。日付境界は 0時ではなく `AppDay.startHour`(既定4時)。
     func window(containing day: Date, calendar: Calendar = .current) -> DateInterval {
-        calendar.dateInterval(of: calendarComponent, for: day)
-            ?? DateInterval(start: calendar.startOfDay(for: day), duration: 86_400)
+        let anchored = AppDay.anchor(day, calendar: calendar)
+        guard let interval = calendar.dateInterval(of: calendarComponent, for: anchored) else {
+            let start = AppDay.startOfDay(for: day, calendar: calendar)
+            return DateInterval(start: start, duration: 86_400)
+        }
+        let start = calendar.date(byAdding: .hour, value: AppDay.startHour, to: interval.start) ?? interval.start
+        let end = calendar.date(byAdding: .hour, value: AppDay.startHour, to: interval.end) ?? interval.end
+        return DateInterval(start: start, end: end)
     }
 }

@@ -86,7 +86,8 @@ final class BlockedBehavior {
     /// 指定日の終了時点で、その日を含む期間の消費回数が上限に達しているか(達したら「失敗」)。
     func exceededLimit(on day: Date, calendar: Calendar = .current) -> Bool {
         let window = limitWindow(containing: day, calendar: calendar)
-        let dayEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day)) ?? window.end
+        let dayStart = AppDay.startOfDay(for: day, calendar: calendar)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? window.end
         let upperBound = min(window.end, dayEnd)
         let count = usageEvents.filter { $0 >= window.start && $0 < upperBound }.count
         return count >= effectiveLimit
