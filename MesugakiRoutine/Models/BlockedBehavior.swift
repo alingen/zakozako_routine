@@ -37,29 +37,15 @@ enum BlockedBehaviorLimitPeriod: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// ユーザーが「やらないと決めた行動」。悪習慣を1つずつ潰していく想定で、同時に挑戦中(`isActive`)に
-/// できるのは1件のみ(`BlockedBehaviorRepository`側で担保する)。triggerText はユーザー入力との
-/// マッチング用キーワード。
+/// ユーザーが「やらないと決めた行動」(今日の約束)。同時に挑戦中(`isActive`)にできるのは1件のみ。
 ///
-/// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、ユーザーがカードをタップするたびに1回消費する
+/// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、カードをタップするたびに1回消費する
 /// (`usageEvents` にタイムスタンプを積む)。期間内の消費が上限以内なら、その日は「達成」として
-/// 連続日数に加算される。判定は `BlockedBehaviorRepository.autoEvaluate` が日付変更時に自動で行う
-/// (手動チェックインは廃止)。
+/// 連続日数に加算される。判定は `BlockedBehaviorRepository.autoEvaluate` が日付変更時に自動で行う。
 @Model
 final class BlockedBehavior {
     @Attribute(.unique) var id: UUID
     var title: String
-    var triggerText: String
-    var counterMessage: String
-    /// この行動をやめる理由(例: 「仕事をさぼらないため」)。「負けそう」ボタンを押した時、\
-    /// キャラクターがこれを引き合いに出してからかう材料として使う。空文字なら特に触れない。
-    var reason: String = ""
-    /// この行動の代わりに勧める具体的な行動(例: 「音楽をかける」)。「負けそう」ボタンを押した時、\
-    /// 煽り・理由に続けて実際にやることとして勧める。空文字なら特に勧めない。
-    var alternativeAction: String = ""
-    /// 検出を有効にする時間帯(0〜1439分、真夜中またぎも可)。どちらか nil なら常に検出する。
-    var activeStartMinute: Int?
-    var activeEndMinute: Int?
     /// 現在挑戦中かどうか。true になれるのは同時に1件のみ。
     var isActive: Bool
     /// 回数制限の集計期間(生値)。既存データの軽量マイグレーションを通すため optional String で保持する
@@ -98,12 +84,6 @@ final class BlockedBehavior {
     init(
         id: UUID = UUID(),
         title: String,
-        triggerText: String = "",
-        counterMessage: String = "",
-        reason: String = "",
-        alternativeAction: String = "",
-        activeStartMinute: Int? = nil,
-        activeEndMinute: Int? = nil,
         isActive: Bool = true,
         limitPeriod: BlockedBehaviorLimitPeriod = .day,
         limitCount: Int = 0,
@@ -116,12 +96,6 @@ final class BlockedBehavior {
     ) {
         self.id = id
         self.title = title
-        self.triggerText = triggerText
-        self.counterMessage = counterMessage
-        self.reason = reason
-        self.alternativeAction = alternativeAction
-        self.activeStartMinute = activeStartMinute
-        self.activeEndMinute = activeEndMinute
         self.isActive = isActive
         self.limitPeriodRawValue = limitPeriod.rawValue
         self.limitCountValue = limitCount
@@ -155,19 +129,6 @@ final class BlockedBehavior {
     func usageInCurrentPeriod(now: Date = .now, calendar: Calendar = .current) -> Int {
         let window = limitWindow(containing: now, calendar: calendar)
         return usageEvents.filter { $0 >= window.start && $0 <= now }.count
-    }
-
-    /// 指定した日時が、この行動の検出対象時間帯に入っているか。時間帯未指定なら常に true。
-    func isWithinActiveWindow(at date: Date = .now, calendar: Calendar = .current) -> Bool {
-        guard let start = activeStartMinute, let end = activeEndMinute else { return true }
-        let components = calendar.dateComponents([.hour, .minute], from: date)
-        let currentMinute = (components.hour ?? 0) * 60 + (components.minute ?? 0)
-        if start <= end {
-            return (start...end).contains(currentMinute)
-        } else {
-            // 例: 22:00〜翌6:00 のような日をまたぐ時間帯
-            return currentMinute >= start || currentMinute <= end
-        }
     }
 
     static func minutes(from date: Date, calendar: Calendar = .current) -> Int {

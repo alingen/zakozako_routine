@@ -34,5 +34,5 @@ struct RootTabView: View {
 #Preview {
     RootTabView()
         .environment(SiriLaunchCoordinator())
-        .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self, CharacterPreset.self, BlockedBehavior.self], inMemory: true)
+        .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self, BlockedBehavior.self], inMemory: true)
 }

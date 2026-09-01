@@ -5,26 +5,18 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(SiriLaunchCoordinator.self) private var siriLaunchCoordinator
     @State private var viewModel = HomeViewModel()
-    @State private var selectedRoutine: Routine?
     @State private var editingRoutine: Routine?
     @State private var isPresentingNewRoutine = false
-    @State private var isPresentingTemptationMessage = false
-    @State private var temptationMessage = ""
     @State private var editingBehavior: BlockedBehavior?
-    @State private var presentedEvent: EventDefinition?
     @State private var showAddPromiseForm = false
 
     var body: some View {
         List {
-            eventTeaserSection
             todayRoutinesSection
             todayPromiseSection
             zakoBulletinSection
         }
         .appScreenBackground()
-        .navigationDestination(item: $selectedRoutine) { routine in
-            RoutineSessionView(routine: routine)
-        }
         .navigationDestination(item: $editingRoutine) { routine in
             RoutineEditView(routine: routine)
         }
@@ -33,40 +25,19 @@ struct HomeView: View {
                 RoutineEditView(routine: nil)
             }
         }
-        .alert("小悪魔コーチより", isPresented: $isPresentingTemptationMessage) {
-            Button("がんばる", role: .cancel) {}
-        } message: {
-            Text(temptationMessage)
-        }
-        .fullScreenCover(item: $presentedEvent, onDismiss: { viewModel.reload() }) { event in
-            NavigationStack {
-                EventPlayerView(event: event)
-            }
-        }
         .fullScreenCover(
             item: Binding(
                 get: { viewModel.completionContext },
                 set: { if $0 == nil { viewModel.clearCompletion() } }
             )
         ) { context in
-            RoutineCompletionPresentation(
-                context: context,
-                // 現状クイック完了は offersTodayConversation == false なのでこの分岐は呼ばれない。
-                // TODO(Step 6): 「今日のルーティン全完了」で今日の会話へ繋ぐ。
-                onStartTodayConversation: { viewModel.clearCompletion() },
-                onFinish: { viewModel.clearCompletion() }
-            )
+            RoutineCompletionPresentation(context: context, onFinish: { viewModel.clearCompletion() })
         }
         .sheet(item: $editingBehavior) { behavior in
-            BlockedBehaviorDetailView(behavior: behavior) { reason, alternativeAction, triggerText, useTimeWindow, start, end, limitPeriod, limitCount in
+            BlockedBehaviorDetailView(behavior: behavior) { title, limitPeriod, limitCount in
                 viewModel.updateBlockedBehaviorDetails(
                     behavior,
-                    reason: reason,
-                    alternativeAction: alternativeAction,
-                    triggerText: triggerText,
-                    useTimeWindow: useTimeWindow,
-                    startTime: start,
-                    endTime: end,
+                    title: title,
                     limitPeriod: limitPeriod,
                     limitCount: limitCount
                 )
@@ -77,37 +48,7 @@ struct HomeView: View {
         }
         .onAppear {
             viewModel.reload()
-            startPendingRoutineIfNeeded()
-        }
-        .onChange(of: siriLaunchCoordinator.pendingOpenTodayRoutines) {
-            startPendingRoutineIfNeeded()
-        }
-    }
-
-    // MARK: - イベント予告(既存機能)
-
-    @ViewBuilder
-    private var eventTeaserSection: some View {
-        if let event = viewModel.presentableEvent {
-            Section {
-                Button {
-                    presentedEvent = event
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "envelope.badge.fill")
-                            .foregroundStyle(AppColor.secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(viewModel.characterName)が話したいことがあるみたい")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(AppColor.text)
-                            Text("タップして話を聞く")
-                                .font(.caption)
-                                .foregroundStyle(AppColor.muted)
-                        }
-                    }
-                }
-            }
-            .appCardRow()
+            siriLaunchCoordinator.pendingOpenTodayRoutines = false
         }
     }
 
@@ -150,19 +91,15 @@ struct HomeView: View {
         .appCardRow()
     }
 
+    /// タップで1ステップ進む。最後のステップ(または0ステップ)で完了。
     @ViewBuilder
     private func routineRow(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
         let streak = viewModel.currentRoutineStreak(for: routine)
         let inProgressStep = viewModel.inProgressStepTitle(for: routine)
-        let isQuick = viewModel.isQuickCompletable(routine)
 
         Button {
-            if isQuick {
-                withAnimation { viewModel.quickComplete(routine) }
-            } else {
-                selectedRoutine = routine
-            }
+            withAnimation { viewModel.advanceRoutine(routine) }
         } label: {
             HStack(spacing: 12) {
                 ProgressCircle(progress: progress.fraction, size: 34)
@@ -179,7 +116,7 @@ struct HomeView: View {
                     }
 
                     if streak >= 1 {
-                        Text("\(streak)日継続中！")
+                        Text("\(streak)日達成！")
                             .font(.caption)
                             .foregroundStyle(AppColor.success)
                     } else {
@@ -191,12 +128,13 @@ struct HomeView: View {
 
                 Spacer(minLength: 8)
 
-                if inProgressStep != nil {
-                    Text("再開")
-                        .font(.caption.bold())
+                if let inProgressStep {
+                    Text(inProgressStep)
+                        .font(.caption)
                         .foregroundStyle(AppColor.primary)
-                } else if isQuick, !progress.isCompletedToday {
-                    Text("タップで完了")
+                        .lineLimit(1)
+                } else if !progress.isCompletedToday {
+                    Text("タップで進める")
                         .font(.caption)
                         .foregroundStyle(AppColor.muted)
                 } else if let minute = routine.scheduledStartMinute {
@@ -211,7 +149,7 @@ struct HomeView: View {
         .padding(.vertical, 4)
     }
 
-    // MARK: - 2. 今日の約束(BlockedBehavior。ルーティン一覧には混ぜない)
+    // MARK: - 2. 今日の約束
 
     @ViewBuilder
     private var todayPromiseSection: some View {
@@ -222,8 +160,6 @@ struct HomeView: View {
             } else if showAddPromiseForm {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("約束(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
-                    TextField("理由(例: 仕事をさぼらないため)", text: $viewModel.newBlockedBehaviorReason)
-                    TextField("代替行動(例: 音楽をかける)", text: $viewModel.newBlockedBehaviorAlternativeAction)
                     Picker("ペース", selection: $viewModel.newBlockedBehaviorLimitPeriod) {
                         ForEach(BlockedBehaviorLimitPeriod.allCases) { period in
                             Text(period.displayName).tag(period)
@@ -266,73 +202,59 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// 「今日の約束」カード本体。ルーティン行と同じく左に丸マーク。
-    /// 丸マーク＋タイトルをタップすると「1回消費」。「負けそう」ボタンはキャラ相談用に残す。
+    /// 「今日の約束」カード。ルーティン行と同じ左丸マーク。丸マーク＋タイトルのタップで1回消費。
     @ViewBuilder
     private func promiseCard(_ behavior: BlockedBehavior) -> some View {
         let usage = viewModel.promiseUsage(for: behavior)
 
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                Button {
-                    withAnimation { viewModel.consumePromise(behavior) }
-                } label: {
-                    HStack(spacing: 12) {
-                        ProgressCircle(
-                            progress: usage.fraction,
-                            size: 34,
-                            tint: usage.exceeded ? AppColor.error : AppColor.warning,
-                            showsCheckmarkWhenComplete: false
-                        )
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(behavior.title)
-                                .font(.headline)
-                                .foregroundStyle(AppColor.text)
+        HStack(spacing: 12) {
+            Button {
+                withAnimation { viewModel.consumePromise(behavior) }
+            } label: {
+                HStack(spacing: 12) {
+                    ProgressCircle(
+                        progress: usage.fraction,
+                        size: 34,
+                        tint: usage.exceeded ? AppColor.error : AppColor.warning,
+                        showsCheckmarkWhenComplete: false
+                    )
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(behavior.title)
+                            .font(.headline)
+                            .foregroundStyle(AppColor.text)
 
-                            if behavior.currentStreakDays >= 1 {
-                                Text("\(behavior.currentStreakDays)日達成！")
-                                    .font(.caption)
-                                    .foregroundStyle(AppColor.success)
-                            } else {
-                                Text("今日から")
-                                    .font(.caption)
-                                    .foregroundStyle(AppColor.muted)
-                            }
-
-                            Text("\(usage.periodLabel) \(usage.used) / \(usage.limit)回")
-                                .font(.caption2)
-                                .foregroundStyle(usage.exceeded ? AppColor.error : AppColor.muted)
+                        if behavior.currentStreakDays >= 1 {
+                            Text("\(behavior.currentStreakDays)日達成！")
+                                .font(.caption)
+                                .foregroundStyle(AppColor.success)
+                        } else {
+                            Text("今日から")
+                                .font(.caption)
+                                .foregroundStyle(AppColor.muted)
                         }
+
+                        Text("\(usage.periodLabel) \(usage.used) / \(usage.limit)回")
+                            .font(.caption2)
+                            .foregroundStyle(usage.exceeded ? AppColor.error : AppColor.muted)
                     }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-
-                Spacer(minLength: 8)
-
-                Button {
-                    editingBehavior = behavior
-                } label: {
-                    Image(systemName: "gearshape")
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(AppColor.muted)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 8)
 
             Button {
-                confrontTemptation()
+                editingBehavior = behavior
             } label: {
-                Text("負けそう")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+                Image(systemName: "gearshape")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(AppColor.error)
+            .buttonStyle(.borderless)
+            .foregroundStyle(AppColor.muted)
         }
     }
 
-    // MARK: - 3. みんなのざこ速報(プレースホルダ。フィード連携は別Step)
+    // MARK: - 3. みんなのざこ速報
 
     private var zakoBulletinSection: some View {
         Section("みんなのざこ速報") {
@@ -342,21 +264,6 @@ struct HomeView: View {
     }
 
     // MARK: - helpers
-
-    private func confrontTemptation() {
-        Task {
-            temptationMessage = await viewModel.confrontTemptation()
-            isPresentingTemptationMessage = true
-        }
-    }
-
-    /// App Intent「今日のルーティンを開く」(`OpenTodayRoutinesIntent`)が要求されていれば、
-    /// 今日ぶんで未完了の先頭ルーティンへ遷移する。
-    private func startPendingRoutineIfNeeded() {
-        guard siriLaunchCoordinator.pendingOpenTodayRoutines else { return }
-        siriLaunchCoordinator.pendingOpenTodayRoutines = false
-        selectedRoutine = viewModel.firstPendingTodayRoutine()
-    }
 
     private static func timeText(_ minute: Int) -> String {
         String(format: "%d:%02d", minute / 60, minute % 60)
@@ -369,13 +276,7 @@ struct HomeView: View {
     }
     .environment(SiriLaunchCoordinator())
     .modelContainer(
-        for: [
-            Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self,
-            CharacterPreset.self, BlockedBehavior.self, TrustState.self,
-            UserProfileFact.self, FreeTalkTopicProgress.self, DailyConversationState.self,
-            EventProgress.self,
-            RelationshipState.self,
-        ],
+        for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self, BlockedBehavior.self],
         inMemory: true
     )
 }

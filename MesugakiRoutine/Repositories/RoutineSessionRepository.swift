@@ -44,29 +44,12 @@ final class RoutineSessionRepository {
     func appendEvent(
         to session: RoutineSession,
         stepId: UUID?,
-        eventType: RoutineEventType,
-        userText: String? = nil,
-        aiText: String? = nil
+        eventType: RoutineEventType
     ) -> RoutineEvent {
-        let event = RoutineEvent(
-            stepId: stepId,
-            eventType: eventType,
-            userText: userText,
-            aiText: aiText,
-            session: session
-        )
+        let event = RoutineEvent(stepId: stepId, eventType: eventType, session: session)
         context.insert(event)
         save()
         return event
-    }
-
-    /// 完了系イベントを直近から取得する（Home画面の「最近の完了ログ」用）。
-    func fetchRecentEvents(limit: Int = 10) -> [RoutineEvent] {
-        let descriptor = FetchDescriptor<RoutineEvent>(
-            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
-        )
-        let all = (try? context.fetch(descriptor)) ?? []
-        return Array(all.prefix(limit))
     }
 
     // MARK: - デバッグ用(継続日数の動作確認)

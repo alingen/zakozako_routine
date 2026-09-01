@@ -7,9 +7,6 @@ struct SettingsView: View {
             NavigationLink("一般") {
                 GeneralSettingsView()
             }
-            NavigationLink("キャラクター設定") {
-                CharacterSettingsView()
-            }
             NavigationLink("通知") {
                 NotificationSettingsView()
             }
@@ -22,5 +19,4 @@ struct SettingsView: View {
     NavigationStack {
         SettingsView()
     }
-    .modelContainer(for: [CharacterPreset.self], inMemory: true)
 }

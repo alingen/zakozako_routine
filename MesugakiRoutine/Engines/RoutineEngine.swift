@@ -5,14 +5,6 @@ enum StepOutcome {
     case completed
     case skipped
     case failed
-
-    var userLabel: String {
-        switch self {
-        case .completed: return "できた"
-        case .skipped: return "スキップ"
-        case .failed: return "できなかった"
-        }
-    }
 }
 
 /// 実行中セッションの現在地を表すスナップショット。View / ViewModel はこれだけを見て画面を組み立てる。
@@ -34,7 +26,6 @@ struct RoutineProgress {
 
 /// ルーティンの実行フローを司るエンジン。
 /// 「今どのステップにいるか」「次に何をすべきか」の判定と、完了/スキップ/失敗の記録を一手に引き受ける。
-/// UI(RoutineSessionView) やキャラクター応答生成には一切依存しない。
 @MainActor
 final class RoutineEngine {
     private let sessionRepository: RoutineSessionRepository
@@ -74,12 +65,7 @@ final class RoutineEngine {
 
     /// 現在のステップの結果を記録し、次のステップへ進める。全ステップ終了なら自動でセッションを完了扱いにする。
     @discardableResult
-    func recordOutcome(
-        _ outcome: StepOutcome,
-        for progress: RoutineProgress,
-        userText: String? = nil,
-        aiText: String? = nil
-    ) -> RoutineProgress {
+    func recordOutcome(_ outcome: StepOutcome, for progress: RoutineProgress) -> RoutineProgress {
         guard let step = progress.currentStep else { return progress }
         let session = progress.session
         let routine = progress.routine
@@ -90,7 +76,7 @@ final class RoutineEngine {
         case .skipped: eventType = .skippedStep
         case .failed: eventType = .failedStep
         }
-        sessionRepository.appendEvent(to: session, stepId: step.id, eventType: eventType, userText: userText, aiText: aiText)
+        sessionRepository.appendEvent(to: session, stepId: step.id, eventType: eventType)
 
         let steps = routine.orderedSteps
         guard let currentIndex = steps.firstIndex(where: { $0.id == step.id }) else {
@@ -111,20 +97,5 @@ final class RoutineEngine {
     func abandon(_ progress: RoutineProgress) {
         sessionRepository.updateStatus(progress.session, status: .abandoned, completedAt: .now)
         sessionRepository.appendEvent(to: progress.session, stepId: progress.session.currentStepId, eventType: .abandoned)
-    }
-
-    /// 「やらないこと」に該当する行動が検知されたことを記録する（ルーティンの進行には影響しない）。
-    func recordBlockedBehavior(_ progress: RoutineProgress, userText: String?, aiText: String?) {
-        sessionRepository.appendEvent(
-            to: progress.session,
-            stepId: progress.session.currentStepId,
-            eventType: .blockedBehavior,
-            userText: userText,
-            aiText: aiText
-        )
-    }
-
-    func recentEvents(limit: Int = 10) -> [RoutineEvent] {
-        sessionRepository.fetchRecentEvents(limit: limit)
     }
 }

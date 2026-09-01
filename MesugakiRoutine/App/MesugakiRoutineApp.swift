@@ -12,14 +12,7 @@ struct MesugakiRoutineApp: App {
             RoutineStep.self,
             RoutineSession.self,
             RoutineEvent.self,
-            CharacterPreset.self,
             BlockedBehavior.self,
-            TrustState.self,
-            UserProfileFact.self,
-            FreeTalkTopicProgress.self,
-            DailyConversationState.self,
-            EventProgress.self,
-            RelationshipState.self,
         ])
         let configuration = ModelConfiguration(schema: schema)
         do {
@@ -28,7 +21,6 @@ struct MesugakiRoutineApp: App {
             fatalError("Failed to create ModelContainer: \(error)")
         }
         DataSeeder.seedIfNeeded(context: modelContainer.mainContext)
-        LocalSecretsSeeder.seedIfNeeded()
     }
 
     var body: some Scene {

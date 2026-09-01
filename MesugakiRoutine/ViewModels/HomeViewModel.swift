@@ -18,22 +18,19 @@ struct PromiseUsage {
 @MainActor
 final class HomeViewModel {
     /// 今日実行対象になっているルーティンの一覧。
-    /// isActive かつ「今日の曜日が対象曜日に含まれる(未指定なら毎日扱い)」もの。
-    /// 並び順: 開始予定時刻あり(時刻昇順) → 時刻なし → 同条件は作成日順。
     private(set) var todayRoutines: [Routine] = []
 
-    /// Routine.id → 今日の進捗(0.0〜1.0 と内訳)。`reload()` で全 Routine ぶん再計算する。
+    /// Routine.id → 今日の進捗(0.0〜1.0 と内訳)。
     private(set) var routineProgressById: [UUID: RoutineTodayProgress] = [:]
-    /// Routine.id → そのルーティンの連続達成回数(履歴から計算、保存値ではない)。
+    /// Routine.id → そのルーティンの連続達成回数(履歴から計算)。
     private(set) var routineStreakById: [UUID: Int] = [:]
 
-    /// 今日完了しているルーティン数 / 今日対象のルーティン総数。ヘッダーの「2 / 4」に使う。
+    /// 今日完了しているルーティン数 / 今日対象のルーティン総数。
     var todayCompletedCount: Int {
         todayRoutines.filter { routineProgressById[$0.id]?.isCompletedToday == true }.count
     }
     var todayTotalCount: Int { todayRoutines.count }
 
-    /// UI に依存しない取得口(Step 4 の行 View から使う)。
     func todayProgress(for routine: Routine) -> RoutineTodayProgress {
         routineProgressById[routine.id]
             ?? RoutineTodayProgress(fraction: 0, completedSteps: 0, totalSteps: 0, isCompletedToday: false)
@@ -47,21 +44,15 @@ final class HomeViewModel {
     private(set) var currentBehavior: BlockedBehavior?
     /// 14日間守り切って卒業した「やらないこと」。新しい順。
     private(set) var masteredBehaviors: [BlockedBehavior] = []
-    /// 解放済みで未完了のイベント(あれば「話したいことがあるみたい」を出す)。
-    private(set) var presentableEvent: EventDefinition?
-    /// キャラクター名(「〇〇が話したいことがあるみたい」の表示に使う)。
-    private(set) var characterName = "小悪魔コーチ"
+
     var newBlockedBehaviorTitle: String = ""
-    var newBlockedBehaviorReason: String = ""
-    var newBlockedBehaviorAlternativeAction: String = ""
     var newBlockedBehaviorLimitPeriod: BlockedBehaviorLimitPeriod = .day
     var newBlockedBehaviorLimitCount: Int = 0
 
     /// 「みんなのざこ速報」に出す項目(いまは自分の記録だけ。最大3件)。
     private(set) var zakoBulletinItems: [ZakoBulletinItem] = []
 
-    /// クイック完了直後に、完了体験(RoutineCompletionPresentation)へ渡す表示データが入る。
-    /// View 側はこれが非nilになったら完了 Presentation を出す。閉じる時は `clearCompletion()`。
+    /// ルーティンが完了した直後に、完了演出へ渡す表示データが入る。閉じる時は `clearCompletion()`。
     private(set) var completionContext: RoutineCompletionContext?
 
     private var dependencies: AppDependencies?
@@ -70,7 +61,6 @@ final class HomeViewModel {
         if dependencies == nil {
             dependencies = AppDependencies(context: context)
         }
-        characterName = dependencies?.characterEngine.activePreset.name ?? characterName
         reload()
     }
 
@@ -89,18 +79,16 @@ final class HomeViewModel {
         routineProgressById = progressMap
         routineStreakById = streakMap
 
-        evaluatePromiseIfNeeded()
+        if let behavior = dependencies.blockedBehaviorRepository.fetchActive() {
+            dependencies.blockedBehaviorRepository.autoEvaluate(behavior)
+        }
         currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
         masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
-        dependencies.eventUnlockService.refreshUnlocks()
-        presentableEvent = dependencies.eventUnlockService.nextPresentableEvent()
         zakoBulletinItems = Self.buildBulletin(routines: allRoutines, sessions: sessions, behavior: currentBehavior)
         rescheduleNotifications()
     }
 
     /// 「みんなのざこ速報」の項目を、自分の最近の記録から組み立てる(最大3件)。
-    /// - ルーティン完了 → 「〇〇が △△ を達成しました！」
-    /// - 今日、約束の回数上限を超過 → 「〇〇が △△ に負けました…」
     static func buildBulletin(
         routines: [Routine],
         sessions: [RoutineSession],
@@ -108,7 +96,7 @@ final class HomeViewModel {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> [ZakoBulletinItem] {
-        let who = AppSettingsStore.userNickname
+        let who = AppSettingsStore.userDisplayName
         let titleById = Dictionary(routines.map { ($0.id, $0.title) }, uniquingKeysWith: { first, _ in first })
 
         var entries: [(date: Date, line: String)] = []
@@ -141,15 +129,7 @@ final class HomeViewModel {
         }
     }
 
-    /// 現在挑戦中の約束について、前日までの達成/失敗を自動判定する(手動チェックインの置き換え)。
-    /// 新たに「達成」と判定された日数ぶん、信頼度と「まもれた累積回数」を加算する。
-    private func evaluatePromiseIfNeeded() {
-        guard let dependencies, let behavior = dependencies.blockedBehaviorRepository.fetchActive() else { return }
-        let keptDays = dependencies.blockedBehaviorRepository.autoEvaluate(behavior)
-        guard keptDays > 0 else { return }
-        dependencies.trustRepository.increment(by: keptDays)
-        AppSettingsStore.blockedBehaviorProtectedCount += keptDays
-    }
+    // MARK: - 今日の約束
 
     /// 約束カードの消費状況(期間内の消費回数 / 上限 と、円グラフ用の割合)。
     func promiseUsage(for behavior: BlockedBehavior, now: Date = .now) -> PromiseUsage {
@@ -177,7 +157,91 @@ final class HomeViewModel {
         reload()
     }
 
-    /// サボり通知を、現在のルーティン状態(今日完了済みかどうか)にあわせて再計算する。
+    /// 現在挑戦中の項目が無い(未着手 or 卒業済み)場合のみ、新しい「やらないこと」を追加できる。
+    var canAddBlockedBehavior: Bool {
+        dependencies?.blockedBehaviorRepository.canAddNew() ?? false
+    }
+
+    func addBlockedBehavior() {
+        guard let dependencies, canAddBlockedBehavior else { return }
+        let title = newBlockedBehaviorTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        dependencies.blockedBehaviorRepository.create(
+            title: title,
+            limitPeriod: newBlockedBehaviorLimitPeriod,
+            limitCount: max(0, newBlockedBehaviorLimitCount)
+        )
+        newBlockedBehaviorTitle = ""
+        newBlockedBehaviorLimitPeriod = .day
+        newBlockedBehaviorLimitCount = 0
+        reload()
+    }
+
+    func updateBlockedBehaviorDetails(
+        _ behavior: BlockedBehavior,
+        title: String,
+        limitPeriod: BlockedBehaviorLimitPeriod,
+        limitCount: Int
+    ) {
+        guard let dependencies else { return }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        dependencies.blockedBehaviorRepository.updateDetails(
+            behavior,
+            title: trimmed.isEmpty ? behavior.title : trimmed,
+            limitPeriod: limitPeriod,
+            limitCount: max(0, limitCount)
+        )
+        reload()
+    }
+
+    func deleteMasteredBehavior(_ behavior: BlockedBehavior) {
+        guard let dependencies else { return }
+        dependencies.blockedBehaviorRepository.delete(behavior)
+        reload()
+    }
+
+    // MARK: - ルーティン
+
+    func deleteRoutine(_ routine: Routine) {
+        guard let dependencies else { return }
+        dependencies.routineRepository.delete(routine)
+        reload()
+    }
+
+    /// ルーティンをタップした時: 1ステップ進める(0ステップなら完了)。完了したら完了演出を出す。
+    func advanceRoutine(_ routine: Routine) {
+        guard let dependencies else { return }
+        guard todayProgress(for: routine).isCompletedToday == false else { return }
+        let result = dependencies.routineCompletionService.advance(routine: routine)
+        reload()
+        if result.didComplete {
+            completionContext = RoutineCompletionContext(
+                routineTitle: routine.title,
+                currentStreak: result.currentStreak
+            )
+        }
+    }
+
+    /// 完了演出を閉じる。
+    func clearCompletion() {
+        completionContext = nil
+    }
+
+    /// 中断中(完了していない)のセッションの現在ステップ名。無ければ nil。
+    func inProgressStepTitle(for routine: Routine) -> String? {
+        guard let dependencies else { return nil }
+        guard let session = dependencies.sessionRepository.fetchActiveSession(routineId: routine.id) else { return nil }
+        guard let stepId = session.currentStepId else { return nil }
+        return routine.orderedSteps.first { $0.id == stepId }?.title
+    }
+
+    /// 中立 App Intent「今日のルーティンを開く」の遷移先。今日ぶんで未完了の先頭、無ければ先頭。
+    func firstPendingTodayRoutine() -> Routine? {
+        todayRoutines.first { routineProgressById[$0.id]?.isCompletedToday != true } ?? todayRoutines.first
+    }
+
+    // MARK: - helpers
+
     private func rescheduleNotifications() {
         guard let dependencies else { return }
         let routines = dependencies.routineRepository.fetchAll().filter { $0.isActive }
@@ -189,7 +253,7 @@ final class HomeViewModel {
         }
     }
 
-    /// 今日実行対象のルーティンを、指定の並び順で返す。
+    /// 今日実行対象のルーティンを、開始予定時刻→作成日順で返す。
     static func computeTodayRoutines(
         _ all: [Routine],
         calendar: Calendar = .current,
@@ -214,129 +278,5 @@ final class HomeViewModel {
                     return lhs.createdAt < rhs.createdAt
                 }
             }
-    }
-
-    /// 現在挑戦中の項目が無い(未着手 or 卒業済み)場合のみ、新しい「やらないこと」を追加できる。
-    var canAddBlockedBehavior: Bool {
-        dependencies?.blockedBehaviorRepository.canAddNew() ?? false
-    }
-
-    func addBlockedBehavior() {
-        guard let dependencies, canAddBlockedBehavior else { return }
-        let title = newBlockedBehaviorTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-        let reason = newBlockedBehaviorReason.trimmingCharacters(in: .whitespacesAndNewlines)
-        let alternativeAction = newBlockedBehaviorAlternativeAction.trimmingCharacters(in: .whitespacesAndNewlines)
-        dependencies.blockedBehaviorRepository.create(
-            title: title,
-            reason: reason,
-            alternativeAction: alternativeAction,
-            triggerText: title,
-            counterMessage: "",
-            limitPeriod: newBlockedBehaviorLimitPeriod,
-            limitCount: max(0, newBlockedBehaviorLimitCount)
-        )
-        newBlockedBehaviorTitle = ""
-        newBlockedBehaviorReason = ""
-        newBlockedBehaviorAlternativeAction = ""
-        newBlockedBehaviorLimitPeriod = .day
-        newBlockedBehaviorLimitCount = 0
-        reload()
-    }
-
-    func deleteMasteredBehavior(_ behavior: BlockedBehavior) {
-        guard let dependencies else { return }
-        dependencies.blockedBehaviorRepository.delete(behavior)
-        reload()
-    }
-
-    func deleteRoutine(_ routine: Routine) {
-        guard let dependencies else { return }
-        dependencies.routineRepository.delete(routine)
-        reload()
-    }
-
-    /// Home から「行/円タップだけ」で完了できる習慣か。0〜1ステップのものだけ。
-    /// 複数ステップの習慣は従来どおり RoutineSessionView へ遷移させる。
-    func isQuickCompletable(_ routine: Routine) -> Bool {
-        routine.orderedSteps.count <= 1
-    }
-
-    /// 0〜1ステップの習慣を Home から即完了する。
-    /// セッション作成 → completed → completedRoutine イベント → 共通の完了後処理(Trust +1 等)。
-    /// 今日すでに完了済みなら何もしない(共通サービス側でも同日重複は弾かれる)。
-    func quickComplete(_ routine: Routine) {
-        guard let dependencies else { return }
-        guard isQuickCompletable(routine) else { return }
-        guard !todayProgress(for: routine).isCompletedToday else { return }
-        let result = dependencies.routineCompletionService.completeQuickly(routine: routine)
-        reload()
-        completionContext = RoutineCompletionContext(
-            routineTitle: routine.title,
-            currentStreak: routineStreakById[routine.id] ?? 0,
-            trustAwarded: result.trustAwarded,
-            // TODO(Step 6): 「今日のルーティンが全部完了した時だけ」今日の会話を提案する。
-            offersTodayConversation: false
-        )
-    }
-
-    /// 完了体験を閉じる。
-    func clearCompletion() {
-        completionContext = nil
-    }
-
-    /// 検出ワード・理由・検出時間帯・回数制限を更新する(詳細編集シート用)。
-    func updateBlockedBehaviorDetails(
-        _ behavior: BlockedBehavior,
-        reason: String,
-        alternativeAction: String,
-        triggerText: String,
-        useTimeWindow: Bool,
-        startTime: Date,
-        endTime: Date,
-        limitPeriod: BlockedBehaviorLimitPeriod,
-        limitCount: Int
-    ) {
-        guard let dependencies else { return }
-        dependencies.blockedBehaviorRepository.updateDetails(
-            behavior,
-            reason: reason,
-            alternativeAction: alternativeAction,
-            triggerText: triggerText,
-            activeStartMinute: useTimeWindow ? BlockedBehavior.minutes(from: startTime) : nil,
-            activeEndMinute: useTimeWindow ? BlockedBehavior.minutes(from: endTime) : nil,
-            limitPeriod: limitPeriod,
-            limitCount: max(0, limitCount)
-        )
-        reload()
-    }
-
-    /// 「負けそう」ボタンから、現在挑戦中の「やらないこと」に対するキャラクターの声かけを取得する。
-    /// ルーティンセッション外からの呼び出しのため、RoutineEngineには一切触れずCharacterEngineだけを使う。
-    func confrontTemptation() async -> String {
-        guard let dependencies else { return "" }
-        let response = await dependencies.characterEngine.respond(
-            to: .blockedBehaviorDetected(
-                behaviorTitle: currentBehavior?.title ?? "",
-                counterMessage: currentBehavior?.counterMessage ?? "",
-                reason: currentBehavior?.reason ?? "",
-                alternativeAction: currentBehavior?.alternativeAction ?? ""
-            )
-        )
-        return response.text
-    }
-
-    /// 中断中(完了していない)のセッションがあれば、その現在のステップ名を返す。無ければ nil。
-    /// ホーム画面で「〇〇まで進行中」の表示・開始/再開ボタンの出し分けに使う。
-    func inProgressStepTitle(for routine: Routine?) -> String? {
-        guard let dependencies, let routine else { return nil }
-        guard let session = dependencies.sessionRepository.fetchActiveSession(routineId: routine.id) else { return nil }
-        guard let stepId = session.currentStepId else { return nil }
-        return routine.orderedSteps.first { $0.id == stepId }?.title
-    }
-
-    /// 中立 App Intent「今日のルーティンを開く」の遷移先。今日ぶんで未完了の先頭、無ければ先頭のルーティン。
-    func firstPendingTodayRoutine() -> Routine? {
-        todayRoutines.first { routineProgressById[$0.id]?.isCompletedToday != true } ?? todayRoutines.first
     }
 }

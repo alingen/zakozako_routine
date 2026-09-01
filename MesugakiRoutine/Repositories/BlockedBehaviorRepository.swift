@@ -39,43 +39,23 @@ final class BlockedBehaviorRepository {
     @discardableResult
     func create(
         title: String,
-        reason: String,
-        alternativeAction: String,
-        triggerText: String,
-        counterMessage: String,
         limitPeriod: BlockedBehaviorLimitPeriod = .day,
         limitCount: Int = 0
     ) -> BlockedBehavior {
-        let behavior = BlockedBehavior(
-            title: title,
-            triggerText: triggerText,
-            counterMessage: counterMessage,
-            reason: reason,
-            alternativeAction: alternativeAction,
-            limitPeriod: limitPeriod,
-            limitCount: limitCount
-        )
+        let behavior = BlockedBehavior(title: title, limitPeriod: limitPeriod, limitCount: limitCount)
         context.insert(behavior)
         save()
         return behavior
     }
 
-    /// 検出ワード・理由・代替行動・検出時間帯・回数制限をまとめて更新する(詳細編集シート用)。
+    /// タイトル・回数制限を更新する(詳細編集シート用)。
     func updateDetails(
         _ behavior: BlockedBehavior,
-        reason: String,
-        alternativeAction: String,
-        triggerText: String,
-        activeStartMinute: Int?,
-        activeEndMinute: Int?,
+        title: String,
         limitPeriod: BlockedBehaviorLimitPeriod,
         limitCount: Int
     ) {
-        behavior.reason = reason
-        behavior.alternativeAction = alternativeAction
-        behavior.triggerText = triggerText
-        behavior.activeStartMinute = activeStartMinute
-        behavior.activeEndMinute = activeEndMinute
+        behavior.title = title
         behavior.limitPeriod = limitPeriod
         behavior.limitCount = limitCount
         behavior.updatedAt = .now
@@ -138,15 +118,6 @@ final class BlockedBehaviorRepository {
     func delete(_ behavior: BlockedBehavior) {
         context.delete(behavior)
         save()
-    }
-
-    /// ユーザー入力テキストが、現在挑戦中の項目にマッチするか(簡易な部分一致 + 時間帯判定)。
-    func firstMatch(for text: String, at date: Date = .now) -> BlockedBehavior? {
-        guard !text.isEmpty, let behavior = fetchActive() else { return nil }
-        guard !behavior.triggerText.isEmpty else { return nil }
-        guard text.localizedCaseInsensitiveContains(behavior.triggerText) else { return nil }
-        guard behavior.isWithinActiveWindow(at: date) else { return nil }
-        return behavior
     }
 
     // MARK: - デバッグ用(自動判定の動作確認)
