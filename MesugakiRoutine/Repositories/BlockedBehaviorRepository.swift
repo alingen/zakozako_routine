@@ -115,6 +115,17 @@ final class BlockedBehaviorRepository {
         return behavior
     }
 
+    // MARK: - デバッグ用(前日チェックインの動作確認)
+
+    /// 現在挑戦中の項目を「前日ぶんが未記録」の状態に戻し、ホームの約束チェックインUIを再表示させる。
+    /// 作成日を2日前まで巻き戻し、最終チェックイン日をクリアする。
+    func debugMakeCheckInPending(calendar: Calendar = .current, now: Date = .now) {
+        guard let active = fetchActive() else { return }
+        active.createdAt = calendar.date(byAdding: .day, value: -2, to: now) ?? active.createdAt
+        active.lastCheckInDate = nil
+        save()
+    }
+
     private func save() {
         try? context.save()
     }

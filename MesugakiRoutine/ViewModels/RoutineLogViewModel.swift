@@ -41,8 +41,15 @@ final class RoutineLogViewModel {
 
     func reload() {
         guard let dependencies else { return }
-        routines = dependencies.routineRepository.fetchAll()
-            .sorted { sortOrder(for: $0.type) < sortOrder(for: $1.type) }
+        // 朝/夜という分類は使わず、開始予定時刻→作成日順の中立な並びにする。
+        routines = dependencies.routineRepository.fetchAll().sorted { lhs, rhs in
+            switch (lhs.scheduledStartMinute, rhs.scheduledStartMinute) {
+            case let (l?, r?): return l != r ? l < r : lhs.createdAt < rhs.createdAt
+            case (_?, nil): return true
+            case (nil, _?): return false
+            case (nil, nil): return lhs.createdAt < rhs.createdAt
+            }
+        }
 
         let sessions = dependencies.sessionRepository.fetchAllSessions()
 
@@ -130,14 +137,6 @@ final class RoutineLogViewModel {
         let key = calendar.startOfDay(for: day)
         guard let ids = completionsByDay[key] else { return [] }
         return routines.filter { ids.contains($0.id) }
-    }
-
-    private func sortOrder(for type: RoutineType) -> Int {
-        switch type {
-        case .morning: return 0
-        case .night: return 1
-        case .custom: return 2
-        }
     }
 
     private static func startOfMonth(for date: Date, calendar: Calendar) -> Date {

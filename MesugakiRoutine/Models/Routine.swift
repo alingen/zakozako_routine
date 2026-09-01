@@ -1,6 +1,10 @@
 import Foundation
 import SwiftData
 
+/// 【レガシー】朝/夜という分類はシステムの中心概念から外した。
+/// 既存データ(SwiftData)の互換のために enum とプロパティは残しているが、
+/// 新規ルーティンは常に `.custom` で作られ、アプリのロジック・UIはこの値で分岐しない。
+/// キャラクタープロンプトと Siri ショートカットだけがまだ `.morning` / `.night` を参照している(後続Stepで撤去)。
 enum RoutineType: String, Codable, CaseIterable, Identifiable {
     case morning
     case night

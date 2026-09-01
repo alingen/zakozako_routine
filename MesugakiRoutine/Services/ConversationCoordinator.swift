@@ -15,6 +15,14 @@ final class ConversationCoordinator {
     struct Turn {
         let progress: RoutineProgress
         let characterText: String
+        /// この操作でルーティンが完了した場合のみ非nil。完了体験(Presentation)の構築に使う。
+        var completion: RoutineCompletionResult?
+
+        init(progress: RoutineProgress, characterText: String, completion: RoutineCompletionResult? = nil) {
+            self.progress = progress
+            self.characterText = characterText
+            self.completion = completion
+        }
     }
 
     /// フリートークでの1往復の結果。`closingLine`が非nilの場合、その回で話すべき話題(伝達事項)を
@@ -39,6 +47,8 @@ final class ConversationCoordinator {
     private let trustRepository: TrustRepository
     private let userProfileFactRepository: UserProfileFactRepository
     private let freeTalkTopicProgressRepository: FreeTalkTopicProgressRepository
+    /// ルーティン完了の副作用(Trust 加算・イベント再評価)はすべてここに委譲する。
+    private let routineCompletionService: RoutineCompletionService
 
     /// このセッション中の会話履歴。AI応答生成のたびに文脈として渡し、応答後に追記する。
     /// 際限なく増えないよう直近40ターン程度に丸めている。
@@ -57,7 +67,8 @@ final class ConversationCoordinator {
         blockedBehaviorRepository: BlockedBehaviorRepository,
         trustRepository: TrustRepository,
         userProfileFactRepository: UserProfileFactRepository,
-        freeTalkTopicProgressRepository: FreeTalkTopicProgressRepository
+        freeTalkTopicProgressRepository: FreeTalkTopicProgressRepository,
+        routineCompletionService: RoutineCompletionService
     ) {
         self.routineEngine = routineEngine
         self.characterEngine = characterEngine
@@ -65,6 +76,7 @@ final class ConversationCoordinator {
         self.trustRepository = trustRepository
         self.userProfileFactRepository = userProfileFactRepository
         self.freeTalkTopicProgressRepository = freeTalkTopicProgressRepository
+        self.routineCompletionService = routineCompletionService
     }
 
     /// `characterEngine.respond` の薄いラッパー。GPT応答から抽出されたユーザー情報があれば、
@@ -99,10 +111,12 @@ final class ConversationCoordinator {
         let updated = routineEngine.recordOutcome(outcome, for: progress)
 
         let situation: CharacterSituation
+        var completionResult: RoutineCompletionResult?
         if updated.isFinished {
             situation = .routineCompleted(routineType: updated.routine.type)
-            trustRepository.increment(by: 1)
-            trustRepository.tryAdvanceStage(topicProgressRepository: freeTalkTopicProgressRepository)
+            // 完了副作用(Trust +1 / イベント再評価)は共通サービスに一本化。
+            // RoutineEngine が既にセッションを .completed にした後で呼ぶこと。
+            completionResult = routineCompletionService.applyCompletionSideEffects(routineId: updated.routine.id)
         } else {
             switch outcome {
             case .completed: situation = .stepCompleted(nextStepName: updated.currentStep?.title)
@@ -112,7 +126,7 @@ final class ConversationCoordinator {
         }
         let response = await respond(to: situation)
         appendTurn(userLabel: "(\(outcome.userLabel))", assistantText: response.text)
-        return Turn(progress: updated, characterText: response.text)
+        return Turn(progress: updated, characterText: response.text, completion: completionResult)
     }
 
     func askForHelp(current progress: RoutineProgress) async -> String {

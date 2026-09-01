@@ -14,6 +14,10 @@ final class RoutineSessionViewModel {
     private(set) var characterName: String = "小悪魔コーチ"
     var inputText: String = ""
 
+    /// ルーティンが完了したら、完了体験(RoutineCompletionPresentation)に渡す表示データが入る。
+    /// View 側はこれが非nilになったら完了 Presentation を出す。閉じる時は `clearCompletion()`。
+    private(set) var completionContext: RoutineCompletionContext?
+
     /// キャラクターの返答を待っている間 true(チャットログの入力中インジケーターに使う)。
     private(set) var isCharacterThinking = false
 
@@ -51,6 +55,29 @@ final class RoutineSessionViewModel {
         isCharacterThinking = false
         self.progress = turn.progress
         appendCharacter(turn.characterText)
+
+        if turn.progress.isFinished, let result = turn.completion {
+            completionContext = makeCompletionContext(result: result)
+        }
+    }
+
+    /// 完了体験に渡す表示データを、完了副作用の結果＋履歴から組み立てる。
+    private func makeCompletionContext(result: RoutineCompletionResult) -> RoutineCompletionContext {
+        let sessions = dependencies?.sessionRepository.fetchAllSessions() ?? []
+        let streak = RoutineStreakCalculator.currentStreak(routine: routine, sessions: sessions)
+        return RoutineCompletionContext(
+            routineTitle: routine.title,
+            currentStreak: streak,
+            trustAwarded: result.trustAwarded,
+            // 多ステップ完了は従来どおり今日の会話を提案する。
+            // TODO(Step 6): 「今日のルーティンが全部完了した時だけ」に変更する。
+            offersTodayConversation: true
+        )
+    }
+
+    /// 完了体験を閉じる。
+    func clearCompletion() {
+        completionContext = nil
     }
 
     func askForHelp() async {

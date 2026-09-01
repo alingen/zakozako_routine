@@ -12,12 +12,19 @@ struct GeneralSettingsView: View {
     @State private var userFacts: [(key: String, value: String)] = []
     @State private var eventRows: [EventDebugRow] = []
     @State private var metricsSummary: String = ""
+    @State private var routineDebugRows: [RoutineDebugRow] = []
 
     private struct EventDebugRow: Identifiable {
         let id: String
         let title: String
         let condition: String
         let status: String
+    }
+
+    private struct RoutineDebugRow: Identifiable {
+        let id: UUID
+        let title: String
+        let detail: String
     }
 
     private var trustRepository: TrustRepository { TrustRepository(context: modelContext) }
@@ -108,6 +115,10 @@ struct GeneralSettingsView: View {
                     AppSettingsStore.blockedBehaviorProtectedCount += 1
                     refreshEventDebug()
                 }
+                Button("約束のチェックインを促す(前日未記録にする)") {
+                    AppDependencies(context: modelContext).blockedBehaviorRepository.debugMakeCheckInPending()
+                    refreshEventDebug()
+                }
                 Button("継続日数を +1") {
                     extendStreakByOneDay()
                     refreshEventDebug()
@@ -131,6 +142,25 @@ struct GeneralSettingsView: View {
                 Text("イベント(デバッグ用)")
             } footer: {
                 Text("信頼度・継続日数・やらないこと回数などの条件を満たすとイベントが「解放」されます。解放後は今日の会話の後やホーム画面から開始できます。「継続日数を +1」は前の日に完了記録を1件追加します。")
+            }
+
+            Section {
+                if routineDebugRows.isEmpty {
+                    Text("ルーティンがありません")
+                        .font(.subheadline)
+                        .foregroundStyle(AppColor.muted)
+                } else {
+                    ForEach(routineDebugRows) { row in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.title).font(.subheadline)
+                            Text(row.detail).font(.caption2).foregroundStyle(AppColor.muted)
+                        }
+                    }
+                }
+            } header: {
+                Text("ルーティンの今日の進捗・連続達成(デバッグ用)")
+            } footer: {
+                Text("todayProgress(0.0〜1.0) と currentRoutineStreak を履歴から計算した値です。")
             }
 
             Section {
@@ -167,11 +197,28 @@ struct GeneralSettingsView: View {
             dailyConversationIndex = dailyConversationStateRepository.currentIndex
             reloadUserFacts()
             refreshEventDebug()
+            reloadRoutineDebug()
         }
     }
 
     private func reloadUserFacts() {
         userFacts = userProfileFactRepository.fetchAll().map { ($0.key, $0.value) }
+    }
+
+    private func reloadRoutineDebug() {
+        let deps = AppDependencies(context: modelContext)
+        let sessions = deps.sessionRepository.fetchAllSessions()
+        routineDebugRows = deps.routineRepository.fetchAll().map { routine in
+            let progress = RoutineProgressCalculator.todayProgress(routine: routine, sessions: sessions)
+            let streak = RoutineStreakCalculator.currentStreak(routine: routine, sessions: sessions)
+            let pct = Int((progress.fraction * 100).rounded())
+            let steps = progress.totalSteps > 0 ? " (\(progress.completedSteps)/\(progress.totalSteps)ステップ)" : ""
+            return RoutineDebugRow(
+                id: routine.id,
+                title: routine.title,
+                detail: "今日の進捗 \(pct)%\(steps) ・ \(streak)回連続"
+            )
+        }
     }
 
     /// 現在の連続達成日数のちょうど1つ手前の日に、完了扱いのダミーセッションを入れて継続日数を +1 する。

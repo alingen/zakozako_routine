@@ -51,8 +51,8 @@ struct RoutineLogView: View {
 
             ForEach(viewModel.achievements) { achievement in
                 HStack {
-                    Image(systemName: icon(for: achievement.routine.type))
-                        .foregroundStyle(color(for: achievement.routine.type))
+                    Image(systemName: routineIcon)
+                        .foregroundStyle(AppColor.primary)
                     Text(achievement.routine.title)
                         .font(.subheadline)
                     Spacer()
@@ -111,10 +111,10 @@ struct RoutineLogView: View {
                 .frame(width: 28, height: 28)
                 .background(isToday ? AppColor.primary : Color.clear, in: Circle())
             HStack(spacing: 3) {
-                ForEach(completed, id: \.id) { routine in
-                    Image(systemName: icon(for: routine.type))
-                        .font(.system(size: 10))
-                        .foregroundStyle(color(for: routine.type))
+                ForEach(completed, id: \.id) { _ in
+                    Circle()
+                        .fill(AppColor.primary)
+                        .frame(width: 6, height: 6)
                 }
             }
             .frame(height: 12)
@@ -126,8 +126,9 @@ struct RoutineLogView: View {
         HStack(spacing: 16) {
             ForEach(viewModel.routines, id: \.id) { routine in
                 HStack(spacing: 4) {
-                    Image(systemName: icon(for: routine.type))
-                        .foregroundStyle(color(for: routine.type))
+                    Circle()
+                        .fill(AppColor.primary)
+                        .frame(width: 6, height: 6)
                     Text(routine.title)
                         .font(.caption)
                         .foregroundStyle(AppColor.muted)
@@ -137,21 +138,7 @@ struct RoutineLogView: View {
         .padding(.top, 8)
     }
 
-    private func icon(for type: RoutineType) -> String {
-        switch type {
-        case .morning: return "sun.max.fill"
-        case .night: return "moon.stars.fill"
-        case .custom: return "star.fill"
-        }
-    }
-
-    private func color(for type: RoutineType) -> Color {
-        switch type {
-        case .morning: return AppColor.warning
-        case .night: return AppColor.secondary
-        case .custom: return AppColor.muted
-        }
-    }
+    private let routineIcon = "checkmark.circle.fill"
 }
 
 #Preview {

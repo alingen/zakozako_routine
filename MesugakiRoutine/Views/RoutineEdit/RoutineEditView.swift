@@ -15,14 +15,6 @@ struct RoutineEditView: View {
                     .onChange(of: viewModel.title) {
                         viewModel.save()
                     }
-                Picker("種別", selection: $viewModel.type) {
-                    ForEach(RoutineType.allCases) { type in
-                        Text(type.displayName).tag(type)
-                    }
-                }
-                .onChange(of: viewModel.type) {
-                    viewModel.save()
-                }
                 DatePicker("開始予定時間", selection: $viewModel.scheduledStartTime, displayedComponents: .hourAndMinute)
                     .onChange(of: viewModel.scheduledStartTime) {
                         viewModel.save()

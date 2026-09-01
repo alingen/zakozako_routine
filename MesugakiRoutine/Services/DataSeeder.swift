@@ -1,7 +1,8 @@
 import Foundation
 import SwiftData
 
-/// 初回起動時にサンプルデータ(朝/夜ルーティン、やらないことリスト、デフォルトキャラ)を投入する。
+/// 初回起動時にサンプルデータ(シンプルなルーティン数件、やらないこと1件、デフォルトキャラ)を投入する。
+/// 既存ユーザー(すでにデータがある)には一切触れない。
 @MainActor
 enum DataSeeder {
     static func seedIfNeeded(context: ModelContext) {
@@ -24,46 +25,26 @@ enum DataSeeder {
         }
     }
 
+    /// 新規ユーザー向けに、朝/夜という分類を前提にしないシンプルなルーティンを数件だけ投入する。
+    /// 種別は内部的に `.custom` 固定、開始予定時刻なし、対象は毎日。
     private static func seedRoutinesIfNeeded(context: ModelContext) {
         let descriptor = FetchDescriptor<Routine>()
         let existing = (try? context.fetch(descriptor)) ?? []
         guard existing.isEmpty else { return }
 
-        let morning = Routine(title: "朝ルーティン", type: .morning, scheduledStartMinute: 7 * 60)
-        context.insert(morning)
-        [
-            ("水を飲む", 1),
-            ("カーテンを開ける", 1),
-            ("歯を磨く", 3),
-            ("顔を洗う", 2),
-            ("着替える", 3),
-            ("今日やることを1つ確認する", 2),
-        ].enumerated().forEach { index, item in
-            let step = RoutineStep(
-                title: item.0,
-                orderIndex: index,
-                estimatedMinutes: item.1,
-                routine: morning
-            )
-            context.insert(step)
-        }
+        let samples: [(title: String, steps: [String])] = [
+            ("10分勉強する", ["10分だけ机に向かう"]),
+            ("散歩する", ["外に出て歩く"]),
+        ]
 
-        let night = Routine(title: "夜ルーティン", type: .night, scheduledStartMinute: 22 * 60)
-        context.insert(night)
-        [
-            ("スマホを充電場所に置く", 1),
-            ("明日の予定を見る", 3),
-            ("歯を磨く", 3),
-            ("部屋の明かりを落とす", 1),
-            ("ベッドに入る", 1),
-        ].enumerated().forEach { index, item in
-            let step = RoutineStep(
-                title: item.0,
-                orderIndex: index,
-                estimatedMinutes: item.1,
-                routine: night
-            )
-            context.insert(step)
+        for sample in samples {
+            let routine = Routine(title: sample.title, type: .custom)
+            context.insert(routine)
+            for (index, stepTitle) in sample.steps.enumerated() {
+                context.insert(
+                    RoutineStep(title: stepTitle, orderIndex: index, routine: routine)
+                )
+            }
         }
     }
 

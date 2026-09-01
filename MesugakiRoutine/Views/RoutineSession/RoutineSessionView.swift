@@ -9,6 +9,9 @@ struct RoutineSessionView: View {
     @State private var viewModel: RoutineSessionViewModel
     @State private var isPresentingExitConfirm = false
     @State private var isPresentingTodayConversation = false
+    /// 完了体験を閉じた後に「今日の会話」へ進むかどうか(fullScreenCover と sheet の二重表示を避けるため
+    /// cover の onDismiss で sheet を出す)。
+    @State private var startConversationAfterCompletion = false
     @FocusState private var isInputFocused: Bool
 
     init(routine: Routine) {
@@ -48,6 +51,33 @@ struct RoutineSessionView: View {
             NavigationStack {
                 TodayConversationView()
             }
+        }
+        .fullScreenCover(
+            item: Binding(
+                get: { viewModel.completionContext },
+                set: { if $0 == nil { viewModel.clearCompletion() } }
+            ),
+            onDismiss: {
+                // 完了体験を閉じた後の遷移はここに集約する。
+                if startConversationAfterCompletion {
+                    startConversationAfterCompletion = false
+                    isPresentingTodayConversation = true
+                } else {
+                    viewModel.finishSession()
+                    dismiss()
+                }
+            }
+        ) { context in
+            RoutineCompletionPresentation(
+                context: context,
+                onStartTodayConversation: {
+                    startConversationAfterCompletion = true
+                    viewModel.clearCompletion()
+                },
+                onFinish: {
+                    viewModel.clearCompletion()
+                }
+            )
         }
         .task {
             viewModel.configure(context: modelContext)
@@ -103,26 +133,11 @@ struct RoutineSessionView: View {
                     .disabled(viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             } else if viewModel.progress?.isFinished == true {
-                VStack(spacing: 12) {
-                    Text("ルーティンおつかれさま。今日の会話をスタートする？")
-                        .font(.subheadline)
-                        .foregroundStyle(AppColor.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    HStack(spacing: 12) {
-                        Button("今日の会話をはじめる") {
-                            isPresentingTodayConversation = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .frame(maxWidth: .infinity)
-
-                        Button("今日は終わる") {
-                            viewModel.finishSession()
-                            dismiss()
-                        }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity)
-                    }
-                }
+                // 完了時の導線は RoutineCompletionPresentation(fullScreenCover)へ移動。
+                Text("ルーティン完了！")
+                    .font(.subheadline)
+                    .foregroundStyle(AppColor.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding()

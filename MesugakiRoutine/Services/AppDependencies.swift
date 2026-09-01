@@ -20,6 +20,7 @@ struct AppDependencies {
     let progressMetricsProvider: ProgressMetricsProvider
     let eventUnlockService: EventUnlockService
     let routineEngine: RoutineEngine
+    let routineCompletionService: RoutineCompletionService
     let characterEngine: CharacterEngine
     let conversationCoordinator: ConversationCoordinator
     let notificationScheduler: RoutineNotificationScheduler
@@ -50,6 +51,12 @@ struct AppDependencies {
             metricsProvider: progressMetricsProvider
         )
         routineEngine = RoutineEngine(sessionRepository: sessionRepository)
+        routineCompletionService = RoutineCompletionService(
+            sessionRepository: sessionRepository,
+            trustRepository: trustRepository,
+            freeTalkTopicProgressRepository: freeTalkTopicProgressRepository,
+            eventUnlockService: eventUnlockService
+        )
         notificationScheduler = RoutineNotificationScheduler()
         // Keychain に OpenAI APIキーが保存されていれば ChatGPT(Chat Completions API) で応答を生成し、
         // なければローカルテンプレートにフォールバックする。キーの有無だけで自動的に切り替わる。
@@ -73,7 +80,8 @@ struct AppDependencies {
             blockedBehaviorRepository: blockedBehaviorRepository,
             trustRepository: trustRepository,
             userProfileFactRepository: userProfileFactRepository,
-            freeTalkTopicProgressRepository: freeTalkTopicProgressRepository
+            freeTalkTopicProgressRepository: freeTalkTopicProgressRepository,
+            routineCompletionService: routineCompletionService
         )
     }
 }
