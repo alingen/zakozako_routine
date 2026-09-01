@@ -145,5 +145,5 @@ struct RoutineLogView: View {
     NavigationStack {
         RoutineLogView()
     }
-    .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self], inMemory: true)
+    .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
 }

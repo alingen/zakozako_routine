@@ -1,43 +1,7 @@
 import Foundation
 import SwiftData
 
-/// 回数制限の集計期間。ユーザーが約束作成時に「日ごと / 週ごと / 月ごと」を選ぶ。
-enum BlockedBehaviorLimitPeriod: String, Codable, CaseIterable, Identifiable {
-    case day
-    case week
-    case month
-
-    var id: String { rawValue }
-
-    /// ピッカー等の表示名。
-    var displayName: String {
-        switch self {
-        case .day: return "日ごと"
-        case .week: return "週ごと"
-        case .month: return "月ごと"
-        }
-    }
-
-    /// 「今日 / 今週 / 今月」の見出し。カードの消費状況表示に使う。
-    var currentUnitLabel: String {
-        switch self {
-        case .day: return "今日"
-        case .week: return "今週"
-        case .month: return "今月"
-        }
-    }
-
-    /// `Calendar.Component` へのマッピング(期間ウィンドウの算出に使う)。
-    var calendarComponent: Calendar.Component {
-        switch self {
-        case .day: return .day
-        case .week: return .weekOfYear
-        case .month: return .month
-        }
-    }
-}
-
-/// ユーザーが「やらないと決めた行動」(今日の約束)。同時に挑戦中(`isActive`)にできるのは1件のみ。
+/// ユーザーが「やらないと決めた行動」。同時に挑戦中(`isActive`)にできるのは1件のみ。
 ///
 /// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、カードをタップするたびに1回消費する
 /// (`usageEvents` にタイムスタンプを積む)。期間内の消費が上限以内なら、その日は「達成」として
@@ -57,8 +21,8 @@ final class BlockedBehavior {
     var usageEventsStore: [Date]?
 
     /// 回数制限の集計期間。
-    var limitPeriod: BlockedBehaviorLimitPeriod {
-        get { limitPeriodRawValue.flatMap(BlockedBehaviorLimitPeriod.init(rawValue:)) ?? .day }
+    var limitPeriod: HabitPeriod {
+        get { limitPeriodRawValue.flatMap(HabitPeriod.init(rawValue:)) ?? .day }
         set { limitPeriodRawValue = newValue.rawValue }
     }
     /// 集計期間あたりの上限回数(設定値)。
@@ -89,7 +53,7 @@ final class BlockedBehavior {
         id: UUID = UUID(),
         title: String,
         isActive: Bool = true,
-        limitPeriod: BlockedBehaviorLimitPeriod = .day,
+        limitPeriod: HabitPeriod = .day,
         limitCount: Int = 1,
         usageEvents: [Date] = [],
         currentStreakDays: Int = 0,
@@ -116,8 +80,7 @@ final class BlockedBehavior {
 
     /// 指定日を含む集計期間ウィンドウ [start, end)。
     func limitWindow(containing day: Date, calendar: Calendar = .current) -> DateInterval {
-        calendar.dateInterval(of: limitPeriod.calendarComponent, for: day)
-            ?? DateInterval(start: calendar.startOfDay(for: day), duration: 86_400)
+        limitPeriod.window(containing: day, calendar: calendar)
     }
 
     /// 指定日の終了時点で、その日を含む期間の消費回数が上限に達しているか(達したら「失敗」)。

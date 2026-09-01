@@ -102,7 +102,7 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// ルーティン1件の大きな円セル。通常時タップで1ステップ進む / 編集時タップで編集画面へ。
+    /// 約束1件の大きな円セル。通常時タップで1回進む / 編集時タップで編集画面へ。
     @ViewBuilder
     private func routineGridCell(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
@@ -141,8 +141,8 @@ struct HomeView: View {
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
 
-                    if progress.showsStepBreakdown, !progress.isCompletedToday {
-                        Text("\(progress.completedSteps) / \(progress.totalSteps)ステップ")
+                    if progress.showsCountBreakdown {
+                        Text("\(progress.done) / \(progress.target)回")
                             .font(.caption2)
                             .foregroundStyle(AppColor.muted)
                     } else if streak >= 1 {
@@ -160,6 +160,13 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            if !isEditingRoutines, progress.done > 0 {
+                Button("1回取り消す", systemImage: "arrow.uturn.backward") {
+                    viewModel.undoRoutineProgress(routine)
+                }
+            }
+        }
     }
 
     /// 編集モードのときだけ出る「約束を追加」セル。
@@ -198,13 +205,13 @@ struct HomeView: View {
             } else if showAddPromiseForm {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("やらないこと(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
-                    Picker("ペース", selection: $viewModel.newBlockedBehaviorLimitPeriod) {
-                        ForEach(BlockedBehaviorLimitPeriod.allCases) { period in
-                            Text(period.displayName).tag(period)
+                    Picker("ペース", selection: $viewModel.newHabitPeriod) {
+                        ForEach(HabitPeriod.allCases) { period in
+                            Text(period.pickerLabel).tag(period)
                         }
                     }
                     Stepper(
-                        "\(viewModel.newBlockedBehaviorLimitPeriod.displayName) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
+                        "\(viewModel.newHabitPeriod.pickerLabel) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
                         value: $viewModel.newBlockedBehaviorLimitCount,
                         in: 1...50
                     )
@@ -316,8 +323,5 @@ struct HomeView: View {
         HomeView()
     }
     .environment(SiriLaunchCoordinator())
-    .modelContainer(
-        for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self, BlockedBehavior.self],
-        inMemory: true
-    )
+    .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
 }

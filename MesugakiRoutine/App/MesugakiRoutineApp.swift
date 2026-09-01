@@ -9,9 +9,6 @@ struct MesugakiRoutineApp: App {
     init() {
         let schema = Schema([
             Routine.self,
-            RoutineStep.self,
-            RoutineSession.self,
-            RoutineEvent.self,
             BlockedBehavior.self,
         ])
         let configuration = ModelConfiguration(schema: schema)
@@ -41,10 +38,7 @@ struct MesugakiRoutineApp: App {
         let dependencies = AppDependencies(context: modelContainer.mainContext)
         let routines = dependencies.routineRepository.fetchAll().filter { $0.isActive }
         Task {
-            await dependencies.notificationScheduler.reschedule(
-                routines: routines,
-                sessionRepository: dependencies.sessionRepository
-            )
+            await dependencies.notificationScheduler.reschedule(routines: routines)
         }
     }
 }

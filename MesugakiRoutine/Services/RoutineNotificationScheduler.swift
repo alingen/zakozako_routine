@@ -22,16 +22,14 @@ final class RoutineNotificationScheduler {
         }
     }
 
-    /// 渡されたルーティンぶんの通知を再計算してスケジュールし直す。
-    /// 通知の有効/無効・何分後に通知するかは全ルーティン共通(AppSettingsStore)。
-    /// 今日既に完了しているルーティンや、開始予定時刻が未設定のルーティンは通知を出さない(既存の予約があれば取り消す)。
+    /// 渡された約束ぶんの通知を再計算してスケジュールし直す。
+    /// 通知の有効/無効・何分後に通知するかは全体共通(AppSettingsStore)。
+    /// 今日(その期間)すでに達成している約束や、開始予定時刻が未設定の約束は通知を出さない。
     func reschedule(
         routines: [Routine],
-        sessionRepository: RoutineSessionRepository,
         calendar: Calendar = .current,
         now: Date = .now
     ) async {
-        let sessions = sessionRepository.fetchAllSessions()
         let delayMinutes = AppSettingsStore.notificationDelayMinutes
 
         for routine in routines {
@@ -39,22 +37,21 @@ final class RoutineNotificationScheduler {
             center.removePendingNotificationRequests(withIdentifiers: [identifier])
 
             guard AppSettingsStore.notificationsEnabled,
+                  routine.isScheduled(on: now, calendar: calendar),
                   let startMinute = routine.scheduledStartMinute
             else { continue }
 
-            let todaySessions = sessions.filter { $0.routineId == routine.id && calendar.isDate($0.startedAt, inSameDayAs: now) }
-            let completedToday = todaySessions.contains { $0.status == .completed }
-            guard !completedToday else { continue }
+            guard !routine.isComplete(now: now, calendar: calendar) else { continue }
 
             let minuteOfDay = (startMinute + delayMinutes) % (24 * 60)
             guard let fireDate = nextFireDate(minuteOfDay: minuteOfDay, calendar: calendar, now: now) else { continue }
 
-            let startedButNotFinished = todaySessions.contains { $0.status == .active }
+            let hasSomeProgress = routine.progressCount(now: now, calendar: calendar) > 0
             let content = UNMutableNotificationContent()
             content.title = "小悪魔コーチ"
-            content.body = startedButNotFinished
+            content.body = hasSomeProgress
                 ? "ちょっと〜、\(routine.title)とちゅうで放置とか一番ざこいパターンだよ〜？さっさと終わらせなよ〜♡"
-                : "うわっ、まだ\(routine.title)始めてすらいないの？ざっこ〜♡サボり確定じゃん〜"
+                : "うわっ、まだ\(routine.title)やってすらいないの？ざっこ〜♡サボり確定じゃん〜"
             content.sound = .default
 
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)

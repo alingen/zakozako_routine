@@ -7,17 +7,17 @@ import Observation
 final class RoutineEditViewModel {
     private(set) var routine: Routine?
     var title: String = ""
-    /// 開始予定時間。サボり通知はこの時刻を起点に計算されるため、新規作成時もデフォルト値を持たせる。
-    var scheduledStartTime: Date = Routine.date(fromMinutes: 8 * 60)
-    /// このルーティンを指定時刻に通知するか。false のとき `scheduledStartMinute` は nil で保存し、通知しない。
-    /// (朝/夜ではなく、ルーティンごとに「通知なし / 指定時刻に通知」を選ぶ)
-    var notifyAtScheduledTime: Bool = true
-    /// 対象曜日。デフォルトは全曜日選択。
-    var selectedWeekdays: Set<Int> = Set(Weekday.allWeekdayValues)
     /// 円の中に表示するアイコン(SF Symbol 名)。未選択なら nil。
     var iconName: String?
-    private(set) var steps: [RoutineStep] = []
-    var newStepTitle: String = ""
+    /// 集計期間(1日 / 1週間のうち / 1ヶ月のうち)。
+    var period: HabitPeriod = .day
+    /// 期間あたりの目標回数。デフォルト1。
+    var targetCount: Int = 1
+    /// 開始予定時間。通知の起点。
+    var scheduledStartTime: Date = Routine.date(fromMinutes: 8 * 60)
+    var notifyAtScheduledTime: Bool = false
+    /// 対象曜日。period == .day のときだけ有効。デフォルトは全曜日。
+    var selectedWeekdays: Set<Int> = Set(Weekday.allWeekdayValues)
 
     private var dependencies: AppDependencies?
 
@@ -26,6 +26,8 @@ final class RoutineEditViewModel {
         if let routine {
             title = routine.title
             iconName = routine.iconName
+            period = routine.period
+            targetCount = routine.targetCount
             notifyAtScheduledTime = routine.scheduledStartMinute != nil
             if let minute = routine.scheduledStartMinute {
                 scheduledStartTime = Routine.date(fromMinutes: minute)
@@ -40,9 +42,12 @@ final class RoutineEditViewModel {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    /// 1日でも対象曜日から外れていたら、毎日継続することを勧めるヒントを出す。
+    /// 対象曜日を選べるか(1日の期間のときだけ)。
+    var canSelectWeekdays: Bool { period.supportsWeekdaySelection }
+
+    /// 1日でも対象曜日から外れていたら、毎日やることを勧めるヒントを出す。
     var showEveryDayHint: Bool {
-        selectedWeekdays.count < Weekday.allCases.count
+        canSelectWeekdays && selectedWeekdays.count < Weekday.allCases.count
     }
 
     func toggleWeekday(_ weekday: Weekday) {
@@ -57,73 +62,43 @@ final class RoutineEditViewModel {
         if dependencies == nil {
             dependencies = AppDependencies(context: context)
         }
-        if let routine {
-            steps = routine.orderedSteps
-        }
     }
 
-    /// タイトル・通知・曜日・ステップを保存する。新規作成の場合はここでルーティンを作成する。
+    /// 変更を保存する。新規作成の場合はここで約束を作成する。
     func save() {
         guard let dependencies, canSave else { return }
         let scheduledStartMinute = notifyAtScheduledTime ? Routine.minutes(from: scheduledStartTime) : nil
-        let weekdayValues = Array(selectedWeekdays)
+        // 週/月の期間では対象曜日は全曜日扱いにする。
+        let weekdayValues = canSelectWeekdays ? Array(selectedWeekdays) : Weekday.allWeekdayValues
+        let count = max(targetCount, 1)
+
         if let routine {
             dependencies.routineRepository.update(
-                routine, title: title, isActive: routine.isActive,
-                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues,
-                iconName: iconName
+                routine,
+                title: title,
+                isActive: routine.isActive,
+                iconName: iconName,
+                period: period,
+                targetCount: count,
+                scheduledStartMinute: scheduledStartMinute,
+                activeWeekdayValues: weekdayValues
             )
         } else {
-            let created = dependencies.routineRepository.create(
+            routine = dependencies.routineRepository.create(
                 title: title,
-                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues,
-                iconName: iconName
+                iconName: iconName,
+                period: period,
+                targetCount: count,
+                scheduledStartMinute: scheduledStartMinute,
+                activeWeekdayValues: weekdayValues
             )
-            routine = created
         }
     }
 
-    /// このルーティンを削除する(既存ルーティンの編集時のみ)。
+    /// この約束を削除する(既存の編集時のみ)。
     func deleteRoutine() {
         guard let dependencies, let routine else { return }
         dependencies.routineRepository.delete(routine)
         self.routine = nil
-    }
-
-    func addStep() {
-        let trimmed = newStepTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let dependencies else { return }
-        if routine == nil { save() }
-        guard let routine else { return }
-        dependencies.routineRepository.addStep(
-            to: routine, title: trimmed, description: "", estimatedMinutes: 2, isRequired: true
-        )
-        steps = routine.orderedSteps
-        newStepTitle = ""
-    }
-
-    func deleteSteps(at offsets: IndexSet) {
-        guard let dependencies, let routine else { return }
-        for index in offsets {
-            dependencies.routineRepository.deleteStep(steps[index], from: routine)
-        }
-        steps = routine.orderedSteps
-    }
-
-    func renameStep(_ step: RoutineStep, newTitle: String) {
-        guard let dependencies else { return }
-        dependencies.routineRepository.updateStep(
-            step, title: newTitle, description: step.stepDescription,
-            estimatedMinutes: step.estimatedMinutes, isRequired: step.isRequired
-        )
-        if let routine { steps = routine.orderedSteps }
-    }
-
-    func moveSteps(from source: IndexSet, to destination: Int) {
-        guard let dependencies, let routine else { return }
-        var reordered = steps
-        reordered.move(fromOffsets: source, toOffset: destination)
-        dependencies.routineRepository.reorderSteps(of: routine, orderedIds: reordered.map(\.id))
-        steps = routine.orderedSteps
     }
 }

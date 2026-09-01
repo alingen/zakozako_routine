@@ -39,7 +39,7 @@ final class BlockedBehaviorRepository {
     @discardableResult
     func create(
         title: String,
-        limitPeriod: BlockedBehaviorLimitPeriod = .day,
+        limitPeriod: HabitPeriod = .day,
         limitCount: Int = 0
     ) -> BlockedBehavior {
         let behavior = BlockedBehavior(title: title, limitPeriod: limitPeriod, limitCount: limitCount)
@@ -52,7 +52,7 @@ final class BlockedBehaviorRepository {
     func updateDetails(
         _ behavior: BlockedBehavior,
         title: String,
-        limitPeriod: BlockedBehaviorLimitPeriod,
+        limitPeriod: HabitPeriod,
         limitCount: Int
     ) {
         behavior.title = title

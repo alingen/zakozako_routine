@@ -14,7 +14,6 @@ struct GeneralSettingsView: View {
         let detail: String
     }
 
-    /// フッターに出す表示名プレビュー。
     private var previewName: String {
         let name = userName.trimmingCharacters(in: .whitespaces)
         return name.isEmpty ? userHonorific.displayName : name + userHonorific.displayName
@@ -41,12 +40,13 @@ struct GeneralSettingsView: View {
                 Button("約束を1日巻き戻す(自動判定テスト)") {
                     AppDependencies(context: modelContext).blockedBehaviorRepository.debugAgePromiseByOneDay()
                 }
-                Button("継続日数を +1") {
-                    extendStreakByOneDay()
-                    reloadRoutineDebug()
-                }
-                Button("継続日数をリセット", role: .destructive) {
-                    AppDependencies(context: modelContext).sessionRepository.debugRemoveSyntheticSessions()
+                Button("先頭の約束を昨日達成扱いにする") {
+                    let deps = AppDependencies(context: modelContext)
+                    guard let routine = deps.routineRepository.fetchAll().first else { return }
+                    let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now
+                    for _ in 0..<routine.targetCount {
+                        deps.routineRepository.debugInsertProgress(routine, on: yesterday)
+                    }
                     reloadRoutineDebug()
                 }
             } header: {
@@ -67,7 +67,7 @@ struct GeneralSettingsView: View {
                     }
                 }
             } header: {
-                Text("約束の今日の進捗・連続達成(デバッグ用)")
+                Text("約束の進捗・連続達成(デバッグ用)")
             }
         }
         .navigationTitle("一般")
@@ -78,42 +78,16 @@ struct GeneralSettingsView: View {
 
     private func reloadRoutineDebug() {
         let deps = AppDependencies(context: modelContext)
-        let sessions = deps.sessionRepository.fetchAllSessions()
         routineDebugRows = deps.routineRepository.fetchAll().map { routine in
-            let progress = RoutineProgressCalculator.todayProgress(routine: routine, sessions: sessions)
-            let streak = RoutineStreakCalculator.currentStreak(routine: routine, sessions: sessions)
+            let progress = routine.todayProgress()
+            let streak = RoutineStreak.currentStreak(routine: routine)
             let pct = Int((progress.fraction * 100).rounded())
-            let steps = progress.totalSteps > 0 ? " (\(progress.completedSteps)/\(progress.totalSteps)ステップ)" : ""
             return RoutineDebugRow(
                 id: routine.id,
                 title: routine.title,
-                detail: "今日の進捗 \(pct)%\(steps) ・ \(streak)回連続"
+                detail: "\(routine.period.currentUnitLabel) \(progress.done)/\(progress.target)回 (\(pct)%) ・ \(streak)日連続"
             )
         }
-    }
-
-    /// 現在の連続達成日数のちょうど1つ手前の日に、完了扱いのダミーセッションを入れて継続日数を +1 する。
-    private func extendStreakByOneDay() {
-        let deps = AppDependencies(context: modelContext)
-        let calendar = Calendar.current
-        let sessions = deps.sessionRepository.fetchAllSessions()
-        let completedDays = Set(
-            sessions
-                .filter { $0.status == .completed }
-                .compactMap { $0.completedAt }
-                .map { calendar.startOfDay(for: $0) }
-        )
-        let today = calendar.startOfDay(for: .now)
-        var cursor = completedDays.contains(today)
-            ? today
-            : (calendar.date(byAdding: .day, value: -1, to: today) ?? today)
-        while completedDays.contains(cursor) {
-            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
-            cursor = previous
-        }
-        let routineId = deps.routineRepository.fetchAll().first?.id ?? UUID()
-        let noon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: cursor) ?? cursor
-        deps.sessionRepository.debugInsertCompletedSession(routineId: routineId, completedAt: noon)
     }
 }
 

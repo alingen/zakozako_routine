@@ -80,5 +80,5 @@ struct NotificationSettingsView: View {
     NavigationStack {
         NotificationSettingsView()
     }
-    .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self], inMemory: true)
+    .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
 }

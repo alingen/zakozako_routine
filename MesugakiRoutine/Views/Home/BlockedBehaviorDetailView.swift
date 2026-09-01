@@ -4,15 +4,15 @@ import SwiftUI
 struct BlockedBehaviorDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
-    let onSave: (_ title: String, _ limitPeriod: BlockedBehaviorLimitPeriod, _ limitCount: Int) -> Void
+    let onSave: (_ title: String, _ limitPeriod: HabitPeriod, _ limitCount: Int) -> Void
 
     @State private var title: String
-    @State private var limitPeriod: BlockedBehaviorLimitPeriod
+    @State private var limitPeriod: HabitPeriod
     @State private var limitCount: Int
 
     init(
         behavior: BlockedBehavior,
-        onSave: @escaping (String, BlockedBehaviorLimitPeriod, Int) -> Void
+        onSave: @escaping (String, HabitPeriod, Int) -> Void
     ) {
         self.onSave = onSave
         _title = State(initialValue: behavior.title)
@@ -29,11 +29,11 @@ struct BlockedBehaviorDetailView: View {
 
                 Section {
                     Picker("ペース", selection: $limitPeriod) {
-                        ForEach(BlockedBehaviorLimitPeriod.allCases) { period in
-                            Text(period.displayName).tag(period)
+                        ForEach(HabitPeriod.allCases) { period in
+                            Text(period.pickerLabel).tag(period)
                         }
                     }
-                    Stepper("\(limitPeriod.displayName) \(limitCount) 回で✕", value: $limitCount, in: 1...50)
+                    Stepper("\(limitPeriod.pickerLabel) \(limitCount) 回で✕", value: $limitCount, in: 1...50)
                 } header: {
                     Text("回数制限")
                 } footer: {
