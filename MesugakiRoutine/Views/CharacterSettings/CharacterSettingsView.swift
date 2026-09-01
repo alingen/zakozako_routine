@@ -19,12 +19,12 @@ struct CharacterSettingsView: View {
                             }
                         }
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(AppColor.text)
                 }
                 if let selected = viewModel.selectedPreset, !selected.presetDescription.isEmpty {
                     Text(selected.presetDescription)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.muted)
                 }
             }
 

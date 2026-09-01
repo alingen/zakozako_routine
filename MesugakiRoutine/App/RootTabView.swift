@@ -25,6 +25,9 @@ struct RootTabView: View {
                 Label("設定", systemImage: "gearshape")
             }
         }
+        .tint(AppColor.primary)
+        // 配色はライト前提の単一値パレットのため、ダーク時に破綻しないよう固定する。
+        .preferredColorScheme(.light)
     }
 }
 

@@ -47,11 +47,11 @@ struct ChatBubble: View {
         HStack(alignment: .bottom, spacing: 6) {
             if message.role == .character {
                 CharacterAvatar(size: 28)
-                bubbleContent(background: .secondary.opacity(0.15))
+                bubbleContent(background: AppColor.primarySoft)
                 Spacer(minLength: 40)
             } else {
                 Spacer(minLength: 40)
-                bubbleContent(background: Color.accentColor.opacity(0.2))
+                bubbleContent(background: AppColor.primary.opacity(0.16))
             }
         }
     }
@@ -71,13 +71,14 @@ struct ChatBubble: View {
             CharacterAvatar(size: 28)
             TypingIndicatorView()
                 .padding(10)
-                .background(.secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+                .background(AppColor.primarySoft, in: RoundedRectangle(cornerRadius: 12))
             Spacer(minLength: 40)
         }
     }
 
     private func bubbleText(_ text: String, background: Color) -> some View {
         Text(text)
+            .foregroundStyle(AppColor.text)
             .padding(10)
             .background(background, in: RoundedRectangle(cornerRadius: 12))
     }
@@ -97,7 +98,7 @@ struct ChatImageBubble: View {
             if !caption.isEmpty {
                 Text(caption)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppColor.muted)
             }
         }
     }
@@ -110,7 +111,7 @@ struct ChatImageBubble: View {
                 .scaledToFit()
         } else {
             RoundedRectangle(cornerRadius: 12)
-                .fill(.secondary.opacity(0.15))
+                .fill(AppColor.primarySoft)
                 .frame(width: 200, height: 150)
                 .overlay {
                     VStack(spacing: 6) {
@@ -119,7 +120,7 @@ struct ChatImageBubble: View {
                         Text(imageName)
                             .font(.caption2)
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppColor.muted)
                 }
         }
     }

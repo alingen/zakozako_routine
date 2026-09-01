@@ -17,12 +17,12 @@ struct RoutineListView: View {
                             if !routine.isActive {
                                 Text("無効")
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppColor.muted)
                             }
                         }
                         Text("\(routine.type.displayName) ・ \(routine.orderedSteps.count)ステップ")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColor.muted)
                     }
                 }
             }

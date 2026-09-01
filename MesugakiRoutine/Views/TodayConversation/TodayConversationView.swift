@@ -21,6 +21,7 @@ struct TodayConversationView: View {
             Divider()
             footer
         }
+        .background(AppColor.background)
         .navigationTitle("今日の会話  Day \(viewModel.dayNumber)")
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled(viewModel.player?.isFinished != true)
@@ -58,7 +59,7 @@ struct TodayConversationView: View {
                 VStack(spacing: 10) {
                     Text("\(viewModel.characterName)が話したいことがあるみたい")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     HStack(spacing: 12) {
                         Button("話を聞く") { presentedEvent = event }

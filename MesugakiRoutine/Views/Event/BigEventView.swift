@@ -106,7 +106,7 @@ struct BigEventView: View {
                             .padding(.vertical, 10)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.pink)
+                    .tint(AppColor.primary)
                 }
             } else {
                 if let name = viewModel.speakerName(for: viewModel.player?.currentMessage) {
@@ -115,7 +115,7 @@ struct BigEventView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
-                        .background(.pink.opacity(0.85), in: Capsule())
+                        .background(AppColor.primary.opacity(0.9), in: Capsule())
                 }
                 Text(viewModel.player?.currentText ?? "")
                     .font(.body)
@@ -125,7 +125,7 @@ struct BigEventView: View {
                 if viewModel.player?.isFinished == true {
                     Button("とじる") { dismiss() }
                         .buttonStyle(.borderedProminent)
-                        .tint(.pink)
+                        .tint(AppColor.primary)
                         .frame(maxWidth: .infinity)
                 } else {
                     Text("▼ タップで進む")

@@ -20,6 +20,7 @@ struct EventConversationView: View {
             Divider()
             footer
         }
+        .background(AppColor.background)
         .navigationTitle(viewModel.eventTitle.isEmpty ? "イベント" : viewModel.eventTitle)
         .navigationBarTitleDisplayMode(.inline)
         .interactiveDismissDisabled(viewModel.player?.isFinished != true)

@@ -18,7 +18,7 @@ struct TypingIndicatorView: View {
                     )
             }
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(AppColor.primary.opacity(0.55))
         .onAppear { isAnimating = true }
     }
 }

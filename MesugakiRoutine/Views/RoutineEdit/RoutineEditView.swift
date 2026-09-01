@@ -42,11 +42,11 @@ struct RoutineEditView: View {
                                 .frame(height: 36)
                                 .background(
                                     viewModel.selectedWeekdays.contains(weekday.rawValue)
-                                        ? Color.accentColor
-                                        : Color(.systemGray5)
+                                        ? AppColor.primary
+                                        : AppColor.border
                                 )
                                 .foregroundStyle(
-                                    viewModel.selectedWeekdays.contains(weekday.rawValue) ? .white : .primary
+                                    viewModel.selectedWeekdays.contains(weekday.rawValue) ? .white : AppColor.text
                                 )
                                 .clipShape(Circle())
                         }
@@ -58,7 +58,7 @@ struct RoutineEditView: View {
                 if viewModel.showEveryDayHint {
                     Text("継続するためにおすすめは毎日やることです")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.muted)
                 }
             } header: {
                 Text("対象曜日")

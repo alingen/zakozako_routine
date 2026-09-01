@@ -23,6 +23,7 @@ struct RoutineSessionView: View {
             Divider()
             inputArea
         }
+        .background(AppColor.background)
         .navigationTitle(viewModel.routine.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -61,7 +62,7 @@ struct RoutineSessionView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(viewModel.characterName)
                     .font(.subheadline.bold())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppColor.muted)
 
                 if let progress = viewModel.progress {
                     if let current = progress.currentStep {
@@ -69,7 +70,7 @@ struct RoutineSessionView: View {
                             .font(.title2.bold())
                         Text("残り \(progress.remainingSteps.count) ステップ")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColor.muted)
                     } else {
                         Text(progress.isFinished ? "ルーティン完了！" : "準備中…")
                             .font(.title2.bold())
@@ -105,7 +106,7 @@ struct RoutineSessionView: View {
                 VStack(spacing: 12) {
                     Text("ルーティンおつかれさま。今日の会話をスタートする？")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     HStack(spacing: 12) {
                         Button("今日の会話をはじめる") {

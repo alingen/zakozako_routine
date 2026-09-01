@@ -14,7 +14,7 @@ struct NotificationSettingsView: View {
                 Section {
                     Text("通知が許可されていません。設定アプリからこのアプリの通知を許可してください。")
                         .font(.footnote)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppColor.error)
                 }
             }
 
@@ -51,11 +51,11 @@ struct NotificationSettingsView: View {
                             Spacer()
                             if let minute = routine.scheduledStartMinute {
                                 Text(timeString(fromMinutes: minute))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppColor.muted)
                             } else {
                                 Text("開始予定時間 未設定")
                                     .font(.footnote)
-                                    .foregroundStyle(.red)
+                                    .foregroundStyle(AppColor.error)
                             }
                         }
                     }

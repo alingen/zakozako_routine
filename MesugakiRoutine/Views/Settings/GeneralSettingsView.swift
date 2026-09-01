@@ -93,15 +93,15 @@ struct GeneralSettingsView: View {
             Section {
                 Text(metricsSummary.isEmpty ? "—" : metricsSummary)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppColor.muted)
                 ForEach(eventRows) { row in
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
                             Text(row.title).font(.subheadline)
                             Spacer()
-                            Text(row.status).font(.caption).foregroundStyle(.secondary)
+                            Text(row.status).font(.caption).foregroundStyle(AppColor.muted)
                         }
-                        Text("条件: \(row.condition)").font(.caption2).foregroundStyle(.secondary)
+                        Text("条件: \(row.condition)").font(.caption2).foregroundStyle(AppColor.muted)
                     }
                 }
                 Button("やらないこと回数を +1") {
@@ -137,11 +137,11 @@ struct GeneralSettingsView: View {
                 if userFacts.isEmpty {
                     Text("まだ保存された情報はありません")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.muted)
                 } else {
                     ForEach(userFacts, id: \.key) { fact in
                         HStack {
-                            Text(fact.key).font(.caption).foregroundStyle(.secondary)
+                            Text(fact.key).font(.caption).foregroundStyle(AppColor.muted)
                             Spacer()
                             Text(fact.value).font(.subheadline)
                         }

@@ -47,7 +47,7 @@ struct CharacterProfileView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppColor.muted)
             Text(value)
         }
         .padding(.vertical, 2)

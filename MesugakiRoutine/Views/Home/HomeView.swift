@@ -33,11 +33,13 @@ struct HomeView: View {
                         } else {
                             Text(viewModel.homeComment)
                                 .font(.subheadline)
+                                .foregroundStyle(AppColor.text)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                     .padding(.vertical, 4)
                 }
+                .appCardRow()
             }
 
             if let event = viewModel.presentableEvent {
@@ -47,17 +49,19 @@ struct HomeView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "envelope.badge.fill")
-                                .foregroundStyle(.pink)
+                                .foregroundStyle(AppColor.secondary)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("\(viewModel.characterName)が話したいことがあるみたい")
                                     .font(.subheadline.bold())
+                                    .foregroundStyle(AppColor.text)
                                 Text("タップして話を聞く")
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppColor.muted)
                             }
                         }
                     }
                 }
+                .appCardRow()
             }
 
             Section {
@@ -70,7 +74,7 @@ struct HomeView: View {
                         .padding(.vertical, 8)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.red)
+                .tint(AppColor.error)
                 .buttonBorderShape(.roundedRectangle)
                 .listRowBackground(Color.clear)
             }
@@ -79,6 +83,7 @@ struct HomeView: View {
                 routineRow(title: "朝ルーティン", routine: viewModel.morningRoutine)
                 routineRow(title: "夜ルーティン", routine: viewModel.nightRoutine)
             }
+            .appCardRow()
 
             Section("やらないこと") {
                 if let behavior = viewModel.currentBehavior {
@@ -87,15 +92,16 @@ struct HomeView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(behavior.title)
                                     .font(.headline)
+                                    .foregroundStyle(AppColor.text)
                                 if !behavior.reason.isEmpty {
                                     Text("理由: \(behavior.reason)")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppColor.muted)
                                 }
                                 if !behavior.alternativeAction.isEmpty {
                                     Text("代替行動: \(behavior.alternativeAction)")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppColor.muted)
                                 }
                             }
                             Spacer()
@@ -105,7 +111,7 @@ struct HomeView: View {
                                 Image(systemName: "gearshape")
                             }
                             .buttonStyle(.borderless)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColor.muted)
                         }
                         ProgressView(
                             value: Double(min(behavior.currentStreakDays, BlockedBehavior.masteryStreakDays)),
@@ -113,7 +119,7 @@ struct HomeView: View {
                         )
                         Text("\(behavior.currentStreakDays)/\(BlockedBehavior.masteryStreakDays)日達成")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColor.muted)
                     }
                     .padding(.vertical, 4)
                 } else {
@@ -133,7 +139,7 @@ struct HomeView: View {
                         ForEach(viewModel.masteredBehaviors, id: \.id) { behavior in
                             Text(behavior.title)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppColor.muted)
                         }
                         .onDelete { offsets in
                             for index in offsets {
@@ -143,7 +149,9 @@ struct HomeView: View {
                     }
                 }
             }
+            .appCardRow()
         }
+        .appScreenBackground()
         .navigationDestination(item: $selectedRoutine) { routine in
             RoutineSessionView(routine: routine)
         }
@@ -236,14 +244,15 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(routine.title)
                         .font(.headline)
+                        .foregroundStyle(AppColor.text)
                     if let inProgressStep {
                         Text("\(inProgressStep)まで進行中")
                             .font(.caption)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(AppColor.warning)
                     } else {
                         Text("\(routine.orderedSteps.count)ステップ")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppColor.muted)
                     }
                 }
                 Spacer()
@@ -264,7 +273,7 @@ struct HomeView: View {
             .padding(.vertical, 4)
         } else {
             Text("\(title)は未登録です")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppColor.muted)
         }
     }
 }
