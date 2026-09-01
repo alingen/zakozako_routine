@@ -15,7 +15,7 @@ struct RoutineEditView: View {
 
     var body: some View {
         Form {
-            Section("ルーティン情報") {
+            Section("約束") {
                 TextField("タイトル", text: $viewModel.title)
                     .onChange(of: viewModel.title) {
                         viewModel.save()
@@ -41,8 +41,8 @@ struct RoutineEditView: View {
                 Text("通知")
             } footer: {
                 Text(viewModel.notifyAtScheduledTime
-                     ? "この時刻を過ぎてもルーティンが終わっていないと、通知でお知らせします。"
-                     : "このルーティンの通知はオフです。")
+                     ? "この時刻を過ぎても終わっていないと、通知でお知らせします。"
+                     : "この約束の通知はオフです。")
             }
 
             Section {
@@ -104,14 +104,14 @@ struct RoutineEditView: View {
 
             if isExisting {
                 Section {
-                    Button("このルーティンを削除", role: .destructive) {
+                    Button("この約束を削除", role: .destructive) {
                         isPresentingDeleteConfirm = true
                     }
                 }
             }
         }
-        .navigationTitle(isExisting ? "ルーティン編集" : "ルーティン新規作成")
-        .confirmationDialog("このルーティンを削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
+        .navigationTitle(isExisting ? "約束を編集" : "約束を追加")
+        .confirmationDialog("この約束を削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
             Button("削除する", role: .destructive) {
                 viewModel.deleteRoutine()
                 dismiss()

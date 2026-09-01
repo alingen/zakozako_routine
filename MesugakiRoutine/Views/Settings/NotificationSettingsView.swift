@@ -40,11 +40,11 @@ struct NotificationSettingsView: View {
                     }
                 }
             } footer: {
-                Text("開始予定時刻から指定した時間が経ってもそのルーティンが終わっていない場合に通知します。")
+                Text("開始予定時刻から指定した時間が経っても終わっていない場合に通知します。")
             }
 
             if !viewModel.routines.isEmpty {
-                Section("対象ルーティン") {
+                Section("対象の約束") {
                     ForEach(viewModel.routines) { routine in
                         HStack {
                             Text(routine.title)

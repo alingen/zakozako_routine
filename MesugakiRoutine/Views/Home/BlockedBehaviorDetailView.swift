@@ -23,7 +23,7 @@ struct BlockedBehaviorDetailView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("約束") {
+                Section("やらないこと") {
                     TextField("例: YouTubeを見ない", text: $title)
                 }
 
@@ -40,7 +40,7 @@ struct BlockedBehaviorDetailView: View {
                     Text("チェックボックスは満タンからスタートし、カードをタップするたびに1つ減ります。全部なくなると✕になり、その期間は失敗扱いです。")
                 }
             }
-            .navigationTitle("約束を編集")
+            .navigationTitle("やらないことを編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

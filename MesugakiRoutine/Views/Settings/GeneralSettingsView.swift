@@ -55,7 +55,7 @@ struct GeneralSettingsView: View {
 
             Section {
                 if routineDebugRows.isEmpty {
-                    Text("ルーティンがありません")
+                    Text("約束がありません")
                         .font(.subheadline)
                         .foregroundStyle(AppColor.muted)
                 } else {
@@ -67,7 +67,7 @@ struct GeneralSettingsView: View {
                     }
                 }
             } header: {
-                Text("ルーティンの今日の進捗・連続達成(デバッグ用)")
+                Text("約束の今日の進捗・連続達成(デバッグ用)")
             }
         }
         .navigationTitle("一般")

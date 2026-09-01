@@ -58,12 +58,12 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - 1. 今日のルーティン(2列グリッド)
+    // MARK: - 1. 今日の約束(2列グリッド)
 
     private var todayRoutinesSection: some View {
         Section {
             if viewModel.todayRoutines.isEmpty && !isEditingRoutines {
-                Text("今日のルーティンはありません")
+                Text("今日の約束はありません")
                     .font(.subheadline)
                     .foregroundStyle(AppColor.muted)
             } else {
@@ -80,7 +80,7 @@ struct HomeView: View {
             }
         } header: {
             HStack(spacing: 8) {
-                Text("今日のルーティン")
+                Text("今日の約束")
                 Spacer()
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
                     .font(.caption.monospacedDigit())
@@ -96,7 +96,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(AppColor.primary)
-                .accessibilityLabel(isEditingRoutines ? "編集を終える" : "ルーティンを編集")
+                .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
             }
         }
         .appCardRow()
@@ -162,7 +162,7 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    /// 編集モードのときだけ出る「ルーティンを追加」セル。
+    /// 編集モードのときだけ出る「約束を追加」セル。
     private var addRoutineCell: some View {
         Button {
             isPresentingNewRoutine = true
@@ -173,7 +173,7 @@ struct HomeView: View {
                     .foregroundStyle(AppColor.primary)
                     .frame(width: 116, height: 116)
                     .overlay(Circle().stroke(AppColor.border, lineWidth: 7))
-                Text("ルーティンを追加")
+                Text("約束を追加")
                     .font(.subheadline.bold())
                     .foregroundStyle(AppColor.primary)
                     .multilineTextAlignment(.center)
@@ -187,17 +187,17 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - 2. 今日の約束
+    // MARK: - 2. やらないこと
 
     @ViewBuilder
     private var todayPromiseSection: some View {
-        Section("今日の約束") {
+        Section("やらないこと") {
             if let behavior = viewModel.currentBehavior {
                 promiseCard(behavior)
                     .padding(.vertical, 4)
             } else if showAddPromiseForm {
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField("約束(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
+                    TextField("やらないこと(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
                     Picker("ペース", selection: $viewModel.newBlockedBehaviorLimitPeriod) {
                         ForEach(BlockedBehaviorLimitPeriod.allCases) { period in
                             Text(period.displayName).tag(period)
@@ -218,12 +218,12 @@ struct HomeView: View {
                 Button {
                     showAddPromiseForm = true
                 } label: {
-                    Label("今日の約束を決める", systemImage: "hand.raised")
+                    Label("やらないことを決める", systemImage: "hand.raised")
                 }
             }
 
             if !viewModel.masteredBehaviors.isEmpty {
-                DisclosureGroup("卒業した約束(\(viewModel.masteredBehaviors.count))") {
+                DisclosureGroup("卒業したこと(\(viewModel.masteredBehaviors.count))") {
                     ForEach(viewModel.masteredBehaviors, id: \.id) { behavior in
                         Text(behavior.title)
                             .font(.caption)
@@ -297,7 +297,7 @@ struct HomeView: View {
             }
             .buttonStyle(.borderless)
             .foregroundStyle(AppColor.muted)
-            .accessibilityLabel("約束を編集")
+            .accessibilityLabel("やらないことを編集")
         }
     }
 

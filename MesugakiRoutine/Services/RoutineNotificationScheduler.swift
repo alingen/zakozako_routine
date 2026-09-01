@@ -51,7 +51,7 @@ final class RoutineNotificationScheduler {
 
             let startedButNotFinished = todaySessions.contains { $0.status == .active }
             let content = UNMutableNotificationContent()
-            content.title = "ざこざこルーティン"
+            content.title = "小悪魔コーチ"
             content.body = startedButNotFinished
                 ? "ちょっと〜、\(routine.title)とちゅうで放置とか一番ざこいパターンだよ〜？さっさと終わらせなよ〜♡"
                 : "うわっ、まだ\(routine.title)始めてすらいないの？ざっこ〜♡サボり確定じゃん〜"
