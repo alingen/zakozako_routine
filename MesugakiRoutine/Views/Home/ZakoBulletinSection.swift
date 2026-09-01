@@ -23,13 +23,13 @@ struct ZakoBulletinFeedView: View {
                 .foregroundStyle(AppColor.muted)
         } else {
             ForEach(items) { item in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                     Text(item.line)
                         .font(.subheadline)
                         .foregroundStyle(AppColor.text)
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .truncationMode(.tail)
-                    Spacer(minLength: 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(item.relativeTime)
                         .font(.caption2)
                         .foregroundStyle(AppColor.muted)

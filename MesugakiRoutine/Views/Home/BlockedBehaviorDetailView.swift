@@ -33,11 +33,11 @@ struct BlockedBehaviorDetailView: View {
                             Text(period.displayName).tag(period)
                         }
                     }
-                    Stepper("\(limitPeriod.displayName) \(limitCount) 回まで", value: $limitCount, in: 0...50)
+                    Stepper("\(limitPeriod.displayName) \(limitCount) 回で✕", value: $limitCount, in: 1...50)
                 } header: {
                     Text("回数制限")
                 } footer: {
-                    Text("カードをタップするたびに1回消費します。この回数以内に収まった日が「達成」としてカウントされます。0回なら1回でもアウトです。")
+                    Text("チェックボックスは満タンからスタートし、カードをタップするたびに1つ減ります。全部なくなると✕になり、その期間は失敗扱いです。")
                 }
             }
             .navigationTitle("約束を編集")

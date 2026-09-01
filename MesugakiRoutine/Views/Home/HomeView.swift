@@ -166,9 +166,9 @@ struct HomeView: View {
                         }
                     }
                     Stepper(
-                        "\(viewModel.newBlockedBehaviorLimitPeriod.displayName) \(viewModel.newBlockedBehaviorLimitCount) 回まで",
+                        "\(viewModel.newBlockedBehaviorLimitPeriod.displayName) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
                         value: $viewModel.newBlockedBehaviorLimitCount,
-                        in: 0...50
+                        in: 1...50
                     )
                     Button("決定") {
                         viewModel.addBlockedBehavior()
@@ -215,8 +215,9 @@ struct HomeView: View {
                     ProgressCircle(
                         progress: usage.fraction,
                         size: 34,
-                        tint: usage.exceeded ? AppColor.error : AppColor.warning,
-                        showsCheckmarkWhenComplete: false
+                        tint: AppColor.primary,
+                        showsCheckmarkWhenComplete: false,
+                        failed: usage.failed
                     )
                     VStack(alignment: .leading, spacing: 2) {
                         Text(behavior.title)
@@ -233,9 +234,15 @@ struct HomeView: View {
                                 .foregroundStyle(AppColor.muted)
                         }
 
-                        Text("\(usage.periodLabel) \(usage.used) / \(usage.limit)回")
-                            .font(.caption2)
-                            .foregroundStyle(usage.exceeded ? AppColor.error : AppColor.muted)
+                        if usage.failed {
+                            Text("\(usage.periodLabel)は上限に達しました")
+                                .font(.caption2)
+                                .foregroundStyle(AppColor.error)
+                        } else {
+                            Text("\(usage.periodLabel) あと \(usage.remaining) 回")
+                                .font(.caption2)
+                                .foregroundStyle(AppColor.muted)
+                        }
                     }
                 }
                 .contentShape(Rectangle())

@@ -2,16 +2,19 @@ import Foundation
 import SwiftData
 import Observation
 
-/// 「今日の約束」カードに出す、現在の期間の消費状況。
+/// 「今日の約束」カードに出す、現在の期間の消費状況(Streaks風: 残り回数が減っていく)。
 struct PromiseUsage {
     let used: Int
+    /// 実効上限(1未満は1)。
     let limit: Int
+    /// 残り回数。
+    var remaining: Int { max(limit - used, 0) }
     /// 「今日 / 今週 / 今月」
     let periodLabel: String
-    /// 円グラフ用 0.0〜1.0(消費 / 上限)。
-    let fraction: Double
-    /// 上限を超えているか。
-    let exceeded: Bool
+    /// チェックボックスの塗り具合 0.0〜1.0(残り / 上限)。満タンからスタートし、タップで減る。
+    var fraction: Double { limit > 0 ? Double(remaining) / Double(limit) : 0 }
+    /// 上限に達した(残り0)= 失敗。チェックボックスは✕になる。
+    var failed: Bool { used >= limit }
 }
 
 @Observable
@@ -47,7 +50,7 @@ final class HomeViewModel {
 
     var newBlockedBehaviorTitle: String = ""
     var newBlockedBehaviorLimitPeriod: BlockedBehaviorLimitPeriod = .day
-    var newBlockedBehaviorLimitCount: Int = 0
+    var newBlockedBehaviorLimitCount: Int = 1
 
     /// 「みんなのざこ速報」に出す項目(いまは自分の記録だけ。最大3件)。
     private(set) var zakoBulletinItems: [ZakoBulletinItem] = []
@@ -107,7 +110,7 @@ final class HomeViewModel {
             entries.append((completedAt, "\(who)が \(title) を達成しました！"))
         }
 
-        if let behavior, behavior.usageInCurrentPeriod(now: now) > behavior.limitCount,
+        if let behavior, behavior.usageInCurrentPeriod(now: now) >= behavior.effectiveLimit,
            let lastUse = behavior.usageEvents.max(),
            calendar.isDate(lastUse, inSameDayAs: now) {
             entries.append((lastUse, "\(who)が \(behavior.title) に負けました…"))
@@ -131,22 +134,12 @@ final class HomeViewModel {
 
     // MARK: - 今日の約束
 
-    /// 約束カードの消費状況(期間内の消費回数 / 上限 と、円グラフ用の割合)。
+    /// 約束カードの消費状況。
     func promiseUsage(for behavior: BlockedBehavior, now: Date = .now) -> PromiseUsage {
-        let used = behavior.usageInCurrentPeriod(now: now)
-        let limit = behavior.limitCount
-        let fraction: Double
-        if limit > 0 {
-            fraction = min(Double(used) / Double(limit), 1)
-        } else {
-            fraction = used > 0 ? 1 : 0
-        }
-        return PromiseUsage(
-            used: used,
-            limit: limit,
-            periodLabel: behavior.limitPeriod.currentUnitLabel,
-            fraction: fraction,
-            exceeded: used > limit
+        PromiseUsage(
+            used: behavior.usageInCurrentPeriod(now: now),
+            limit: behavior.effectiveLimit,
+            periodLabel: behavior.limitPeriod.currentUnitLabel
         )
     }
 

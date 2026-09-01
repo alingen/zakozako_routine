@@ -61,11 +61,15 @@ final class BlockedBehavior {
         get { limitPeriodRawValue.flatMap(BlockedBehaviorLimitPeriod.init(rawValue:)) ?? .day }
         set { limitPeriodRawValue = newValue.rawValue }
     }
-    /// 集計期間あたりの上限回数。0 なら「1回でもやったらアウト」。
+    /// 集計期間あたりの上限回数(設定値)。
     var limitCount: Int {
-        get { limitCountValue ?? 0 }
+        get { limitCountValue ?? 1 }
         set { limitCountValue = newValue }
     }
+
+    /// 実際に使う上限。1未満は1として扱う(「1回で✕」)。
+    /// 期間内の消費回数がこの数に達したら、その期間は「失敗」= チェックボックスが×になる。
+    var effectiveLimit: Int { max(limitCount, 1) }
     /// 「1回消費」した時刻のログ。期間内の件数が `limitCount` を超えたらその日は未達成扱い。
     var usageEvents: [Date] {
         get { usageEventsStore ?? [] }
@@ -86,7 +90,7 @@ final class BlockedBehavior {
         title: String,
         isActive: Bool = true,
         limitPeriod: BlockedBehaviorLimitPeriod = .day,
-        limitCount: Int = 0,
+        limitCount: Int = 1,
         usageEvents: [Date] = [],
         currentStreakDays: Int = 0,
         lastCheckInDate: Date? = nil,
@@ -116,13 +120,13 @@ final class BlockedBehavior {
             ?? DateInterval(start: calendar.startOfDay(for: day), duration: 86_400)
     }
 
-    /// 指定日の終了時点で、その日を含む期間の消費回数が上限を超えているか。
+    /// 指定日の終了時点で、その日を含む期間の消費回数が上限に達しているか(達したら「失敗」)。
     func exceededLimit(on day: Date, calendar: Calendar = .current) -> Bool {
         let window = limitWindow(containing: day, calendar: calendar)
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day)) ?? window.end
         let upperBound = min(window.end, dayEnd)
         let count = usageEvents.filter { $0 >= window.start && $0 < upperBound }.count
-        return count > limitCount
+        return count >= effectiveLimit
     }
 
     /// 現在時刻を含む期間の、これまでの消費回数。

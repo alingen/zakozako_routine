@@ -13,6 +13,8 @@ struct ProgressCircle: View {
     var tint: Color = AppColor.primary
     /// 1.0 到達時にチェックマークを出すか。約束カードでは false(達成の意味にならないように)。
     var showsCheckmarkWhenComplete: Bool = true
+    /// 「失敗」状態。true のとき、進捗に関わらず薄い円 + ✕ を表示する(今日の約束の上限到達)。
+    var failed: Bool = false
 
     private var clamped: Double { min(max(progress, 0), 1) }
     private var isComplete: Bool { clamped >= 1 }
@@ -22,7 +24,12 @@ struct ProgressCircle: View {
             Circle()
                 .stroke(AppColor.border, lineWidth: lineWidth)
 
-            if isComplete {
+            if failed {
+                Circle().fill(AppColor.muted.opacity(0.22))
+                Image(systemName: "xmark")
+                    .font(.system(size: size * 0.5, weight: .bold))
+                    .foregroundStyle(AppColor.muted)
+            } else if isComplete {
                 Circle().fill(tint)
                 if showsCheckmarkWhenComplete {
                     Image(systemName: "checkmark")
@@ -41,7 +48,8 @@ struct ProgressCircle: View {
         }
         .frame(width: size, height: size)
         .animation(.easeInOut(duration: 0.25), value: clamped)
-        .accessibilityValue("\(Int((clamped * 100).rounded()))パーセント")
+        .animation(.easeInOut(duration: 0.25), value: failed)
+        .accessibilityValue(failed ? "上限に達しました" : "\(Int((clamped * 100).rounded()))パーセント")
     }
 }
 
