@@ -88,11 +88,8 @@ struct HomeView: View {
                 Button {
                     isEditingRoutines.toggle()
                 } label: {
-                    if isEditingRoutines {
-                        Text("完了").font(.caption.bold())
-                    } else {
-                        Image(systemName: "square.and.pencil").font(.body)
-                    }
+                    Image(systemName: isEditingRoutines ? "checkmark" : "square.and.pencil")
+                        .font(.title3.weight(.semibold))
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(AppColor.primary)
@@ -291,6 +288,7 @@ struct HomeView: View {
                 editingBehavior = behavior
             } label: {
                 Image(systemName: "square.and.pencil")
+                    .font(.title3)
             }
             .buttonStyle(.borderless)
             .foregroundStyle(AppColor.muted)
