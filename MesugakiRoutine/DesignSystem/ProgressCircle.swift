@@ -15,7 +15,10 @@ struct ProgressCircle: View {
     var showsCheckmarkWhenComplete: Bool = true
     /// 「失敗」状態。true のとき、進捗に関わらず薄い円 + ✕ を表示する(今日の約束の上限到達)。
     var failed: Bool = false
-    /// 未完了時に円の中に表示する SF Symbol。完了・失敗時は出さない(チェック/✕が優先)。
+    /// 円の中に表示する SF Symbol。
+    /// - 未完了: 枠の中にアイコンを `tint` 色で表示(背景は透明=白)。
+    /// - 完了: 背景 `tint` / アイコン白 に反転。
+    /// - 失敗(`failed`): ✕ が優先。
     var centerSystemImage: String? = nil
 
     private var clamped: Double { min(max(progress, 0), 1) }
@@ -33,7 +36,12 @@ struct ProgressCircle: View {
                     .foregroundStyle(AppColor.muted)
             } else if isComplete {
                 Circle().fill(tint)
-                if showsCheckmarkWhenComplete {
+                if let centerSystemImage {
+                    // 完了時は色を反転: 背景 tint / アイコン白。
+                    Image(systemName: centerSystemImage)
+                        .font(.system(size: size * 0.42))
+                        .foregroundStyle(.white)
+                } else if showsCheckmarkWhenComplete {
                     Image(systemName: "checkmark")
                         .font(.system(size: size * 0.44, weight: .bold))
                         .foregroundStyle(.white)
