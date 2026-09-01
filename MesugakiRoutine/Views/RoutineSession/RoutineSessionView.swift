@@ -153,7 +153,7 @@ struct RoutineSessionView: View {
 }
 
 #Preview {
-    let routine = Routine(title: "朝ルーティン", type: .morning)
+    let routine = Routine(title: "10分勉強する")
     return NavigationStack {
         RoutineSessionView(routine: routine)
     }

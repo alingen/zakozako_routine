@@ -241,9 +241,7 @@ struct GeneralSettingsView: View {
             guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
             cursor = previous
         }
-        let routineId = deps.routineRepository.fetch(type: .morning).first?.id
-            ?? deps.routineRepository.fetchAll().first?.id
-            ?? UUID()
+        let routineId = deps.routineRepository.fetchAll().first?.id ?? UUID()
         let noon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: cursor) ?? cursor
         deps.sessionRepository.debugInsertCompletedSession(routineId: routineId, completedAt: noon)
     }

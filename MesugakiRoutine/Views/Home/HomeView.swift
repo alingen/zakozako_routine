@@ -93,7 +93,7 @@ struct HomeView: View {
             startPendingRoutineIfNeeded()
             Task { await viewModel.loadHomeComment() }
         }
-        .onChange(of: siriLaunchCoordinator.pendingRoutineTypeToStart) {
+        .onChange(of: siriLaunchCoordinator.pendingOpenTodayRoutines) {
             startPendingRoutineIfNeeded()
         }
     }
@@ -386,12 +386,12 @@ struct HomeView: View {
         }
     }
 
-    /// App Intent(StartRoutineIntent)経由で「このルーティンを開始して」と指定されていれば、
-    /// 該当ルーティン(無ければ今日のルーティン先頭)へ直接遷移する。
+    /// App Intent「今日のルーティンを開く」(`OpenTodayRoutinesIntent`)が要求されていれば、
+    /// 今日ぶんで未完了の先頭ルーティンへ遷移する。
     private func startPendingRoutineIfNeeded() {
-        guard let routineType = siriLaunchCoordinator.pendingRoutineTypeToStart else { return }
-        siriLaunchCoordinator.pendingRoutineTypeToStart = nil
-        selectedRoutine = viewModel.routineForLegacyType(routineType) ?? viewModel.todayRoutines.first
+        guard siriLaunchCoordinator.pendingOpenTodayRoutines else { return }
+        siriLaunchCoordinator.pendingOpenTodayRoutines = false
+        selectedRoutine = viewModel.firstPendingTodayRoutine()
     }
 
     private static func timeText(_ minute: Int) -> String {

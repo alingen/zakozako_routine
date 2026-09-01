@@ -321,9 +321,9 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
     private func situationInstruction(_ situation: CharacterSituation, referenceLine: String) -> String {
         let instruction: String
         switch situation {
-        case .routineStarted(let stepName, let routineType):
-            instruction = "ユーザーがルーティンを開始した。最初のステップは「\(stepName)」。取り組むよう一言で煽って促して。"
-                + (routineType == .morning ? " 朝ルーティンなので、呼び名で呼びかけた直後に必ず「おはよ〜」を入れて。" : "")
+        case .routineStarted(let routineTitle, let stepName):
+            let named = routineTitle.isEmpty ? "ルーティン" : "「\(routineTitle)」というルーティン"
+            instruction = "ユーザーが\(named)を開始した。最初のステップは「\(stepName)」。取り組むよう一言で煽って促して。"
         case .stepCompleted(let next):
             if let next {
                 instruction = "ユーザーが現在のステップを完了した。次のステップは「\(next)」。軽く褒めつつ次に促して。"
@@ -342,9 +342,10 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
             } else {
                 instruction = "ユーザーが現在のステップをできなかった。励まして。"
             }
-        case .routineCompleted(let routineType):
-            instruction = "ユーザーが全ステップを完了し、ルーティンが終わった。しっかり褒めて締めくくって。"
-                + (routineType == .night ? " 夜ルーティンなので、必ず「おやすみ〜」で締めくくって。" : "")
+        case .routineCompleted(let routineTitle, let allRoutinesCompletedToday):
+            let named = routineTitle.isEmpty ? "ルーティン" : "「\(routineTitle)」"
+            instruction = "ユーザーが\(named)の全ステップを完了し、ルーティンが終わった。しっかり褒めて締めくくって。"
+                + (allRoutinesCompletedToday ? " これで今日やる予定のルーティンは全部終わり。1日ぶんやり切ったことをねぎらって締めて。" : "")
         case .helpRequested(let current):
             instruction = "ユーザーが助けを求めている。今のステップは「\(current)」。それだけに集中すればいいと伝えて安心させて。"
         case .blockedBehaviorDetected(let title, let counter, let reason, let alternativeAction):
@@ -366,9 +367,9 @@ final class OpenAICharacterResponseGenerator: CharacterResponseGenerating {
                 """
             }
             instruction = text
-        case .homeGreeting(let streakDays, let isMorningRoutinePending):
-            if isMorningRoutinePending {
-                instruction = "ユーザーがホーム画面を開いたが、今日の朝ルーティンをまだ始めていない時間帯になっている。サボりを軽く指摘して急かして。"
+        case .homeGreeting(let streakDays, let hasPendingRoutineToday):
+            if hasPendingRoutineToday {
+                instruction = "ユーザーがホーム画面を開いたが、今日やる予定のルーティンがまだ残っている。サボりを軽く指摘して急かして。"
             } else {
                 instruction = "ユーザーがホーム画面を開いた。継続\(streakDays)日目。日数に応じてからかい半分に迎えて(1日目なら今更感、日数が増えるほど少しずつ認めつつ煽る)。"
             }

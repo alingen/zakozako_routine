@@ -38,7 +38,7 @@ enum DataSeeder {
         ]
 
         for sample in samples {
-            let routine = Routine(title: sample.title, type: .custom)
+            let routine = Routine(title: sample.title)
             context.insert(routine)
             for (index, stepTitle) in sample.steps.enumerated() {
                 context.insert(

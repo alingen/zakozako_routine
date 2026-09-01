@@ -53,9 +53,9 @@ struct NotificationSettingsView: View {
                                 Text(timeString(fromMinutes: minute))
                                     .foregroundStyle(AppColor.muted)
                             } else {
-                                Text("開始予定時間 未設定")
+                                Text("通知オフ")
                                     .font(.footnote)
-                                    .foregroundStyle(AppColor.error)
+                                    .foregroundStyle(AppColor.muted)
                             }
                         }
                     }

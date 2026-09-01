@@ -44,9 +44,9 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
 
     private func templateText(for situation: CharacterSituation, userNickname: String) -> String {
         switch situation {
-        case .routineStarted(let stepName, let routineType):
-            let morningGreeting = routineType == .morning ? "おはよ〜♡" : ""
-            return "\(routineStartNameCall(userNickname))\(morningGreeting)きっしょ〜♡\(stepName)からだって。このくらい大人なら余裕できるよね〜"
+        case .routineStarted(let routineTitle, let stepName):
+            let target = routineTitle.isEmpty ? "" : "「\(routineTitle)」やるんだ。"
+            return "\(routineStartNameCall(userNickname))きっしょ〜♡\(target)\(stepName)からだって。このくらい大人なら余裕できるよね〜"
 
         case .stepCompleted(let nextStepName):
             if let next = nextStepName {
@@ -66,9 +66,11 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
             }
             return "負けみとめちゃうんだ〜ざっこ〜♡"
 
-        case .routineCompleted(let routineType):
-            let nightGreeting = routineType == .night ? " おやすみ〜♡" : ""
-            return "ふぅん、今日だけはつよつよってことにしといてあげる〜♡\(nightGreeting)"
+        case .routineCompleted(_, let allRoutinesCompletedToday):
+            if allRoutinesCompletedToday {
+                return "ふぅん、今日のぶんぜんぶ終わったんだ。今日だけはつよつよってことにしといてあげる〜♡おつかれ〜♡"
+            }
+            return "ふぅん、今日だけはつよつよってことにしといてあげる〜♡"
 
         case .helpRequested(let currentStepName):
             return "\(currentStepName)のやり方わかんないの？ざっこ〜♡ほら、体動かすだけでいいのに〜"
@@ -85,10 +87,10 @@ final class LocalCharacterResponseGenerator: CharacterResponseGenerating {
             }
             return text
 
-        case .homeGreeting(let streakDays, let isMorningRoutinePending):
+        case .homeGreeting(let streakDays, let hasPendingRoutineToday):
             let call = nameCall(userNickname)
-            if isMorningRoutinePending {
-                return "\(call)まだ朝ルーティンもやってないじゃん〜♡たいだ〜♡"
+            if hasPendingRoutineToday {
+                return "\(call)今日のルーティンまだ残ってるじゃん〜♡たいだ〜♡"
             }
             switch streakDays {
             case ...1:

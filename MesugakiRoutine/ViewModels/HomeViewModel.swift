@@ -126,12 +126,6 @@ final class HomeViewModel {
             }
     }
 
-    /// 【レガシー互換】Siri ショートカット経由で「朝/夜ルーティンを開始」された時に、
-    /// 対応する既存ルーティンを返す。無ければ nil(呼び出し側で今日のルーティン先頭にフォールバック)。
-    func routineForLegacyType(_ type: RoutineType) -> Routine? {
-        dependencies?.routineRepository.fetchAll().first { $0.isActive && $0.type == type }
-    }
-
     /// 現在挑戦中の項目が無い(未着手 or 卒業済み)場合のみ、新しい「やらないこと」を追加できる。
     var canAddBlockedBehavior: Bool {
         dependencies?.blockedBehaviorRepository.canAddNew() ?? false
@@ -262,44 +256,32 @@ final class HomeViewModel {
         isLoadingHomeComment = true
         let response = await dependencies.characterEngine.respond(
             to: .homeGreeting(
-                streakDays: currentStreakDays(),
-                isMorningRoutinePending: isTodayRoutinePending()
+                streakDays: greetingStreakDays(),
+                hasPendingRoutineToday: hasPendingRoutineToday()
             )
         )
         homeComment = response.text
         isLoadingHomeComment = false
     }
 
-    /// 今日を含めて何日連続でルーティンを完了しているか。記録が無ければ1(今日が初日)を返す。
-    private func currentStreakDays(calendar: Calendar = .current, now: Date = .now) -> Int {
+    /// キャラの挨拶に渡す継続日数。数え方はアプリ共通の `StreakCalculator` に一本化し、
+    /// 挨拶では「初日でも1日目」として扱いたいので下限を1にする。
+    private func greetingStreakDays() -> Int {
         guard let dependencies else { return 1 }
-        let completedDays = Set(
-            dependencies.sessionRepository.fetchAllSessions()
-                .filter { $0.status == .completed }
-                .compactMap { $0.completedAt }
-                .map { calendar.startOfDay(for: $0) }
-        )
-        var streak = 1
-        var cursor = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)) ?? now
-        while completedDays.contains(cursor) {
-            streak += 1
-            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
-            cursor = previous
-        }
-        return streak
+        let streak = StreakCalculator.currentStreak(sessions: dependencies.sessionRepository.fetchAllSessions())
+        return max(streak, 1)
     }
 
     /// 「もう習慣を始めていい時間帯(10時以降)なのに、今日のルーティンがまだ1つも完了していない」かどうか。
-    /// (旧 isMorningRoutinePending の一般化。キャラの `.homeGreeting` にそのまま渡す)
-    private func isTodayRoutinePending(calendar: Calendar = .current, now: Date = .now) -> Bool {
-        guard let dependencies, !todayRoutines.isEmpty else { return false }
+    /// 朝/夜ではなく「今日やる予定のルーティンが残っているか」で判定し、キャラの `.homeGreeting` に渡す。
+    private func hasPendingRoutineToday(calendar: Calendar = .current, now: Date = .now) -> Bool {
+        guard !todayRoutines.isEmpty else { return false }
         guard calendar.component(.hour, from: now) >= 10 else { return false }
-        let sessions = dependencies.sessionRepository.fetchAllSessions()
-        let completedTodayIds = Set(
-            sessions
-                .filter { $0.status == .completed && $0.completedAt.map { calendar.isDate($0, inSameDayAs: now) } == true }
-                .map(\.routineId)
-        )
-        return todayRoutines.contains { !completedTodayIds.contains($0.id) }
+        return todayRoutines.contains { routineProgressById[$0.id]?.isCompletedToday != true }
+    }
+
+    /// 中立 App Intent「今日のルーティンを開く」の遷移先。今日ぶんで未完了の先頭、無ければ先頭のルーティン。
+    func firstPendingTodayRoutine() -> Routine? {
+        todayRoutines.first { routineProgressById[$0.id]?.isCompletedToday != true } ?? todayRoutines.first
     }
 }

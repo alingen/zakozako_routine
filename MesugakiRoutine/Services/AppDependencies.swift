@@ -52,6 +52,7 @@ struct AppDependencies {
         )
         routineEngine = RoutineEngine(sessionRepository: sessionRepository)
         routineCompletionService = RoutineCompletionService(
+            routineRepository: routineRepository,
             sessionRepository: sessionRepository,
             trustRepository: trustRepository,
             freeTalkTopicProgressRepository: freeTalkTopicProgressRepository,

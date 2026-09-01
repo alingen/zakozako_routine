@@ -15,10 +15,25 @@ struct RoutineEditView: View {
                     .onChange(of: viewModel.title) {
                         viewModel.save()
                     }
-                DatePicker("開始予定時間", selection: $viewModel.scheduledStartTime, displayedComponents: .hourAndMinute)
-                    .onChange(of: viewModel.scheduledStartTime) {
+            }
+
+            Section {
+                Toggle("指定時刻に通知する", isOn: $viewModel.notifyAtScheduledTime)
+                    .onChange(of: viewModel.notifyAtScheduledTime) {
                         viewModel.save()
                     }
+                if viewModel.notifyAtScheduledTime {
+                    DatePicker("通知時刻", selection: $viewModel.scheduledStartTime, displayedComponents: .hourAndMinute)
+                        .onChange(of: viewModel.scheduledStartTime) {
+                            viewModel.save()
+                        }
+                }
+            } header: {
+                Text("通知")
+            } footer: {
+                Text(viewModel.notifyAtScheduledTime
+                     ? "この時刻を過ぎてもルーティンが終わっていないと、小悪魔コーチがサボりを指摘します。"
+                     : "このルーティンの通知はオフです。")
             }
 
             Section {

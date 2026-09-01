@@ -58,9 +58,6 @@ final class ConversationCoordinator {
     /// `freeTalk` の応答で伝え終えたと判定されたら nil に戻す。
     private var pendingDisclosureTopic: FreeTalkTopic?
 
-    /// このセッションで実行中のルーティン種別。フリートーク終了時の挨拶(朝/夜)の出し分けに使う。
-    private var currentRoutineType: RoutineType?
-
     init(
         routineEngine: RoutineEngine,
         characterEngine: CharacterEngine,
@@ -98,10 +95,9 @@ final class ConversationCoordinator {
     }
 
     func start(routine: Routine) async -> Turn {
-        currentRoutineType = routine.type
         let progress = routineEngine.startSession(for: routine)
         let response = await respond(
-            to: .routineStarted(stepName: progress.currentStep?.title ?? "", routineType: routine.type)
+            to: .routineStarted(routineTitle: routine.title, stepName: progress.currentStep?.title ?? "")
         )
         appendTurn(userLabel: "(ルーティン開始)", assistantText: response.text)
         return Turn(progress: progress, characterText: response.text)
@@ -113,10 +109,14 @@ final class ConversationCoordinator {
         let situation: CharacterSituation
         var completionResult: RoutineCompletionResult?
         if updated.isFinished {
-            situation = .routineCompleted(routineType: updated.routine.type)
             // 完了副作用(Trust +1 / イベント再評価)は共通サービスに一本化。
             // RoutineEngine が既にセッションを .completed にした後で呼ぶこと。
-            completionResult = routineCompletionService.applyCompletionSideEffects(routineId: updated.routine.id)
+            let result = routineCompletionService.applyCompletionSideEffects(routineId: updated.routine.id)
+            completionResult = result
+            situation = .routineCompleted(
+                routineTitle: updated.routine.title,
+                allRoutinesCompletedToday: result.allRoutinesCompletedToday
+            )
         } else {
             switch outcome {
             case .completed: situation = .stepCompleted(nextStepName: updated.currentStep?.title)
@@ -131,7 +131,10 @@ final class ConversationCoordinator {
 
     func askForHelp(current progress: RoutineProgress) async -> String {
         guard let step = progress.currentStep else {
-            let text = await respond(to: .routineCompleted(routineType: progress.routine.type)).text
+            let text = await respond(to: .routineCompleted(
+                routineTitle: progress.routine.title,
+                allRoutinesCompletedToday: routineCompletionService.allTodayRoutinesCompleted()
+            )).text
             appendTurn(userLabel: "助けて", assistantText: text)
             return text
         }
@@ -217,11 +220,9 @@ final class ConversationCoordinator {
         return true
     }
 
-    /// 話すべき話題を伝え終えた時にキャラクターから添える締めの一言。ルーティン種別によって出し分ける。
+    /// 話すべき話題を伝え終えた時にキャラクターから添える締めの一言。
     private func freeTalkClosingLine() -> String {
-        currentRoutineType == .night
-            ? "そろそろ眠くなっちゃったからきるね、おやすみ〜♡"
-            : "じゃあ今日はここまでね〜ざこなりに今日も頑張ってね♡"
+        "じゃあ今日はここまでね〜ざこなりに今日も頑張ってね♡"
     }
 
     /// 文末の句読点(。！？!?)の直後に続く装飾・空白文字(♡〜~ー等)までを1文としてまとめて分割する。

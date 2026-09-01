@@ -21,19 +21,14 @@ final class RoutineRepository {
         fetchAll().first { $0.id == id }
     }
 
-    func fetch(type: RoutineType) -> [Routine] {
-        fetchAll().filter { $0.type == type && $0.isActive }
-    }
-
     @discardableResult
     func create(
         title: String,
-        type: RoutineType,
         scheduledStartMinute: Int? = nil,
         activeWeekdayValues: [Int] = Weekday.allWeekdayValues
     ) -> Routine {
         let routine = Routine(
-            title: title, type: type,
+            title: title,
             scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: activeWeekdayValues
         )
         context.insert(routine)
@@ -44,13 +39,11 @@ final class RoutineRepository {
     func update(
         _ routine: Routine,
         title: String,
-        type: RoutineType,
         isActive: Bool,
         scheduledStartMinute: Int?,
         activeWeekdayValues: [Int]
     ) {
         routine.title = title
-        routine.type = type
         routine.isActive = isActive
         routine.scheduledStartMinute = scheduledStartMinute
         routine.activeWeekdayValues = activeWeekdayValues

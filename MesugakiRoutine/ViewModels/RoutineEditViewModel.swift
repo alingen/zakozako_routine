@@ -7,9 +7,11 @@ import Observation
 final class RoutineEditViewModel {
     private(set) var routine: Routine?
     var title: String = ""
-    var type: RoutineType = .custom
     /// 開始予定時間。サボり通知はこの時刻を起点に計算されるため、新規作成時もデフォルト値を持たせる。
     var scheduledStartTime: Date = Routine.date(fromMinutes: 8 * 60)
+    /// このルーティンを指定時刻に通知するか。false のとき `scheduledStartMinute` は nil で保存し、通知しない。
+    /// (朝/夜ではなく、ルーティンごとに「通知なし / 指定時刻に通知」を選ぶ)
+    var notifyAtScheduledTime: Bool = true
     /// 対象曜日。デフォルトは全曜日選択。
     var selectedWeekdays: Set<Int> = Set(Weekday.allWeekdayValues)
     private(set) var steps: [RoutineStep] = []
@@ -21,7 +23,7 @@ final class RoutineEditViewModel {
         self.routine = routine
         if let routine {
             title = routine.title
-            type = routine.type
+            notifyAtScheduledTime = routine.scheduledStartMinute != nil
             if let minute = routine.scheduledStartMinute {
                 scheduledStartTime = Routine.date(fromMinutes: minute)
             }
@@ -57,19 +59,19 @@ final class RoutineEditViewModel {
         }
     }
 
-    /// タイトル・種別などを保存する。新規作成の場合はここでルーティンを作成する。
+    /// タイトル・通知・曜日・ステップを保存する。新規作成の場合はここでルーティンを作成する。
     func save() {
         guard let dependencies, canSave else { return }
-        let scheduledStartMinute = Routine.minutes(from: scheduledStartTime)
+        let scheduledStartMinute = notifyAtScheduledTime ? Routine.minutes(from: scheduledStartTime) : nil
         let weekdayValues = Array(selectedWeekdays)
         if let routine {
             dependencies.routineRepository.update(
-                routine, title: title, type: type, isActive: routine.isActive,
+                routine, title: title, isActive: routine.isActive,
                 scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
             )
         } else {
             let created = dependencies.routineRepository.create(
-                title: title, type: type,
+                title: title,
                 scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
             )
             routine = created
