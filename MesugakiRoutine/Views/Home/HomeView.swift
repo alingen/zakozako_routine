@@ -90,6 +90,9 @@ struct HomeView: View {
                 } label: {
                     Image(systemName: isEditingRoutines ? "checkmark" : "square.and.pencil")
                         .font(.title3.weight(.semibold))
+                        // グリフごとの高さ差でヘッダーがガタつかないよう、表示枠を固定する。
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(AppColor.primary)
