@@ -203,16 +203,27 @@ struct HomeView: View {
             } else if showAddPromiseForm {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("やらないこと(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
-                    Picker("ペース", selection: $viewModel.newHabitPeriod) {
-                        ForEach(HabitPeriod.allCases) { period in
-                            Text(period.pickerLabel).tag(period)
-                        }
+
+                    Text("上限設定")
+                        .font(.caption)
+                        .foregroundStyle(AppColor.muted)
+                    Picker("上限", selection: $viewModel.newIsQuitCompletely) {
+                        Text("完全にやめる").tag(true)
+                        Text("回数を決める").tag(false)
                     }
-                    Stepper(
-                        "\(viewModel.newHabitPeriod.pickerLabel) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
-                        value: $viewModel.newBlockedBehaviorLimitCount,
-                        in: 1...50
-                    )
+                    if !viewModel.newIsQuitCompletely {
+                        Picker("ペース", selection: $viewModel.newHabitPeriod) {
+                            ForEach(HabitPeriod.allCases) { period in
+                                Text(period.pickerLabel).tag(period)
+                            }
+                        }
+                        Stepper(
+                            "\(viewModel.newHabitPeriod.pickerLabel) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
+                            value: $viewModel.newBlockedBehaviorLimitCount,
+                            in: 1...50
+                        )
+                    }
+
                     Button("決定") {
                         viewModel.addBlockedBehavior()
                         showAddPromiseForm = false

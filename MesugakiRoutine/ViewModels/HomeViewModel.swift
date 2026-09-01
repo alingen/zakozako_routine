@@ -47,6 +47,8 @@ final class HomeViewModel {
     private(set) var masteredBehaviors: [BlockedBehavior] = []
 
     var newBlockedBehaviorTitle: String = ""
+    /// true: 完全にやめる(1日1回でも✕)。false: ペース・回数を自分で決める。
+    var newIsQuitCompletely: Bool = true
     var newHabitPeriod: HabitPeriod = .day
     var newBlockedBehaviorLimitCount: Int = 1
 
@@ -152,10 +154,11 @@ final class HomeViewModel {
         guard !title.isEmpty else { return }
         dependencies.blockedBehaviorRepository.create(
             title: title,
-            limitPeriod: newHabitPeriod,
-            limitCount: max(1, newBlockedBehaviorLimitCount)
+            limitPeriod: newIsQuitCompletely ? .day : newHabitPeriod,
+            limitCount: newIsQuitCompletely ? 1 : max(1, newBlockedBehaviorLimitCount)
         )
         newBlockedBehaviorTitle = ""
+        newIsQuitCompletely = true
         newHabitPeriod = .day
         newBlockedBehaviorLimitCount = 1
         reload()
