@@ -134,24 +134,26 @@ struct HomeView: View {
                     }
                 }
 
-                Text(routine.title)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(AppColor.text)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                VStack(spacing: 2) {
+                    Text(routine.title)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(AppColor.text)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
 
-                if progress.showsStepBreakdown, !progress.isCompletedToday {
-                    Text("\(progress.completedSteps) / \(progress.totalSteps)ステップ")
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.muted)
-                } else if streak >= 1 {
-                    Text("\(streak)日達成！")
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.success)
-                } else {
-                    Text("今日から")
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.muted)
+                    if progress.showsStepBreakdown, !progress.isCompletedToday {
+                        Text("\(progress.completedSteps) / \(progress.totalSteps)ステップ")
+                            .font(.caption2)
+                            .foregroundStyle(AppColor.muted)
+                    } else if streak >= 1 {
+                        Text("\(streak)日達成！")
+                            .font(.caption2)
+                            .foregroundStyle(AppColor.success)
+                    } else {
+                        Text("今日から")
+                            .font(.caption2)
+                            .foregroundStyle(AppColor.muted)
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
