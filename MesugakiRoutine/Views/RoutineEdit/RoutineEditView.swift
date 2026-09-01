@@ -5,6 +5,7 @@ struct RoutineEditView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RoutineEditViewModel
     @State private var isPresentingDeleteConfirm = false
+    @State private var isPresentingIconPicker = false
 
     private let isExisting: Bool
 
@@ -23,7 +24,27 @@ struct RoutineEditView: View {
             }
 
             Section("アイコン") {
-                iconGrid
+                Button {
+                    isPresentingIconPicker = true
+                } label: {
+                    HStack {
+                        Text("アイコン")
+                            .foregroundStyle(AppColor.text)
+                        Spacer()
+                        if let icon = viewModel.iconName {
+                            Image(systemName: icon)
+                                .foregroundStyle(AppColor.primary)
+                        } else {
+                            Text("なし")
+                                .foregroundStyle(AppColor.muted)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppColor.muted)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
 
             Section {
@@ -118,37 +139,15 @@ struct RoutineEditView: View {
             }
             Button("キャンセル", role: .cancel) {}
         }
+        .sheet(isPresented: $isPresentingIconPicker) {
+            IconPickerView(selected: viewModel.iconName) { name in
+                viewModel.iconName = name
+                viewModel.save()
+            }
+        }
         .task {
             viewModel.configure(context: modelContext)
         }
-    }
-
-    private var iconGrid: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 6)
-        return LazyVGrid(columns: columns, spacing: 10) {
-            iconButton(nil, systemImage: "nosign", label: "なし")
-            ForEach(RoutineIcon.all, id: \.self) { name in
-                iconButton(name, systemImage: name, label: name)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
-    @ViewBuilder
-    private func iconButton(_ name: String?, systemImage: String, label: String) -> some View {
-        let selected = viewModel.iconName == name
-        Button {
-            viewModel.iconName = name
-            viewModel.save()
-        } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 18))
-                .frame(width: 40, height: 40)
-                .foregroundStyle(selected ? Color.white : AppColor.text)
-                .background(selected ? AppColor.primary : AppColor.border.opacity(0.5), in: Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
     }
 }
 
