@@ -122,6 +122,33 @@ struct RoutineEditView: View {
             }
         }
         .navigationTitle(isExisting ? "約束を編集" : "約束を追加")
+        .toolbar {
+            if !isExisting {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") {
+                        viewModel.deleteRoutine()  // 入力途中で作られた分があれば消す
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                viewModel.save()
+                dismiss()
+            } label: {
+                Text(isExisting ? "保存" : "約束を保存")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(AppColor.primary)
+            .disabled(!viewModel.canSave)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(AppColor.background)
+        }
         .confirmationDialog("この約束を削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
             Button("削除する", role: .destructive) {
                 viewModel.deleteRoutine()
