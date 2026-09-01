@@ -160,13 +160,6 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .contextMenu {
-            if !isEditingRoutines, progress.done > 0 {
-                Button("1回取り消す", systemImage: "arrow.uturn.backward") {
-                    viewModel.undoRoutineProgress(routine)
-                }
-            }
-        }
     }
 
     /// 編集モードのときだけ出る「約束を追加」セル。

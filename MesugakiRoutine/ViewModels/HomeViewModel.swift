@@ -206,13 +206,6 @@ final class HomeViewModel {
         }
     }
 
-    /// 直近の「1回やった」を取り消す(誤タップのundo)。
-    func undoRoutineProgress(_ routine: Routine) {
-        guard let dependencies else { return }
-        dependencies.routineRepository.undoLastProgress(routine)
-        reload()
-    }
-
     func clearCompletion() {
         completionContext = nil
     }
