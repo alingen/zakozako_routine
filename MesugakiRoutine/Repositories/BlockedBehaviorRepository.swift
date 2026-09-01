@@ -2,6 +2,8 @@ import Foundation
 import SwiftData
 
 /// 「やらないこと」リストの永続化を担当する。
+/// 悪習慣を1つずつ潰していく設計のため、同時に挑戦中(`isActive == true`)になれるのは1件のみ。
+/// 14日間の連続達成で「卒業」(`masteredAt`が入る)し、次の1件を追加できるようになる。
 @MainActor
 final class BlockedBehaviorRepository {
     private let context: ModelContext
@@ -17,53 +19,100 @@ final class BlockedBehaviorRepository {
         return (try? context.fetch(descriptor)) ?? []
     }
 
-    func fetchActive() -> [BlockedBehavior] {
-        fetchAll().filter(\.isActive)
+    /// 現在挑戦中の項目(あれば1件)。
+    func fetchActive() -> BlockedBehavior? {
+        fetchAll().first { $0.isActive && $0.masteredAt == nil }
+    }
+
+    /// 14日間守り切って卒業した項目。新しい順。
+    func fetchMastered() -> [BlockedBehavior] {
+        fetchAll()
+            .filter { $0.masteredAt != nil }
+            .sorted { ($0.masteredAt ?? .distantPast) > ($1.masteredAt ?? .distantPast) }
+    }
+
+    /// 新しい項目を追加できるか(現在挑戦中の項目が無い場合のみ)。
+    func canAddNew() -> Bool {
+        fetchActive() == nil
     }
 
     @discardableResult
-    func create(title: String, description: String, triggerText: String, counterMessage: String) -> BlockedBehavior {
-        let behavior = BlockedBehavior(
-            title: title,
-            behaviorDescription: description,
-            triggerText: triggerText,
-            counterMessage: counterMessage
-        )
+    func create(
+        title: String,
+        limitPeriod: HabitPeriod = .day,
+        limitCount: Int = 0
+    ) -> BlockedBehavior {
+        let behavior = BlockedBehavior(title: title, limitPeriod: limitPeriod, limitCount: limitCount)
         context.insert(behavior)
         save()
         return behavior
     }
 
-    func update(_ behavior: BlockedBehavior, title: String, description: String, triggerText: String, counterMessage: String, isActive: Bool) {
-        behavior.title = title
-        behavior.behaviorDescription = description
-        behavior.triggerText = triggerText
-        behavior.counterMessage = counterMessage
-        behavior.isActive = isActive
-        behavior.updatedAt = .now
-        save()
-    }
-
-    /// 検出ワード・代替行動・検出時間帯だけをまとめて更新する(ホーム画面の詳細編集シート用)。
+    /// タイトル・回数制限を更新する(詳細編集シート用)。
     func updateDetails(
         _ behavior: BlockedBehavior,
-        triggerText: String,
-        alternativeAction: String,
-        activeStartMinute: Int?,
-        activeEndMinute: Int?
+        title: String,
+        limitPeriod: HabitPeriod,
+        limitCount: Int
     ) {
-        behavior.triggerText = triggerText
-        behavior.alternativeAction = alternativeAction
-        behavior.activeStartMinute = activeStartMinute
-        behavior.activeEndMinute = activeEndMinute
+        behavior.title = title
+        behavior.limitPeriod = limitPeriod
+        behavior.limitCount = limitCount
         behavior.updatedAt = .now
         save()
     }
 
-    func setActive(_ behavior: BlockedBehavior, isActive: Bool) {
-        behavior.isActive = isActive
-        behavior.updatedAt = .now
+    /// カードタップで「1回消費」する。
+    func consume(_ behavior: BlockedBehavior, now: Date = .now, calendar: Calendar = .current) {
+        behavior.usageEvents.append(now)
+        // 配列が無限に伸びないよう、直近3か月より古いイベントは捨てる(判定に不要)。
+        if let cutoff = calendar.date(byAdding: .month, value: -3, to: now) {
+            behavior.usageEvents.removeAll { $0 < cutoff }
+        }
+        behavior.updatedAt = now
         save()
+    }
+
+    /// 前日までの未評価の日を順に自動判定し、連続日数・卒業を更新する。手動チェックインの置き換え。
+    /// - Returns: 今回新たに「達成」と判定された日数(呼び出し側で信頼度・累積回数を加算するのに使う)。
+    @discardableResult
+    func autoEvaluate(_ behavior: BlockedBehavior, calendar: Calendar = .current, now: Date = .now) -> Int {
+        let today = calendar.startOfDay(for: now)
+        let createdDay = calendar.startOfDay(for: behavior.createdAt)
+
+        var cursor: Date
+        if let last = behavior.lastCheckInDate {
+            cursor = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: last)) ?? today
+        } else {
+            // 一度も評価していない場合は、遡りすぎないよう最大でも「昨日」から。
+            cursor = calendar.date(byAdding: .day, value: -1, to: today) ?? today
+        }
+        cursor = max(cursor, createdDay)
+
+        var keptDays = 0
+        var didEvaluate = false
+        while cursor < today {
+            didEvaluate = true
+            if behavior.exceededLimit(on: cursor, calendar: calendar) {
+                behavior.currentStreakDays = 0
+            } else {
+                behavior.currentStreakDays += 1
+                keptDays += 1
+                if behavior.currentStreakDays >= BlockedBehavior.masteryStreakDays, behavior.masteredAt == nil {
+                    behavior.masteredAt = now
+                    behavior.isActive = false
+                }
+            }
+            behavior.lastCheckInDate = cursor
+            if behavior.masteredAt != nil { break }
+            cursor = calendar.date(byAdding: .day, value: 1, to: cursor) ?? today
+        }
+
+        if didEvaluate {
+            behavior.updatedAt = now
+            save()
+        }
+        return keptDays
     }
 
     func delete(_ behavior: BlockedBehavior) {
@@ -71,14 +120,19 @@ final class BlockedBehaviorRepository {
         save()
     }
 
-    /// ユーザー入力テキストにマッチする「やらないこと」を探す(簡易な部分一致 + 時間帯判定)。
-    func firstMatch(for text: String, at date: Date = .now) -> BlockedBehavior? {
-        guard !text.isEmpty else { return nil }
-        return fetchActive().first { behavior in
-            guard !behavior.triggerText.isEmpty else { return false }
-            guard text.localizedCaseInsensitiveContains(behavior.triggerText) else { return false }
-            return behavior.isWithinActiveWindow(at: date)
+    // MARK: - デバッグ用(自動判定の動作確認)
+
+    /// 現在挑戦中の項目の日付を1日ぶん巻き戻し、次回 reload で「昨日ぶん」の自動判定が走るようにする。
+    func debugAgePromiseByOneDay(calendar: Calendar = .current) {
+        guard let active = fetchActive() else { return }
+        if let created = calendar.date(byAdding: .day, value: -1, to: active.createdAt) {
+            active.createdAt = created
         }
+        if let last = active.lastCheckInDate,
+           let shifted = calendar.date(byAdding: .day, value: -1, to: last) {
+            active.lastCheckInDate = shifted
+        }
+        save()
     }
 
     private func save() {

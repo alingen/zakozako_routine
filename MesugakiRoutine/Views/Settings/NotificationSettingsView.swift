@@ -14,7 +14,7 @@ struct NotificationSettingsView: View {
                 Section {
                     Text("通知が許可されていません。設定アプリからこのアプリの通知を許可してください。")
                         .font(.footnote)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppColor.error)
                 }
             }
 
@@ -40,22 +40,22 @@ struct NotificationSettingsView: View {
                     }
                 }
             } footer: {
-                Text("開始予定時刻から指定した時間が経ってもそのルーティンが終わっていない場合に通知します。")
+                Text("開始予定時刻から指定した時間が経っても終わっていない場合に通知します。")
             }
 
             if !viewModel.routines.isEmpty {
-                Section("対象ルーティン") {
+                Section("対象の約束") {
                     ForEach(viewModel.routines) { routine in
                         HStack {
                             Text(routine.title)
                             Spacer()
                             if let minute = routine.scheduledStartMinute {
                                 Text(timeString(fromMinutes: minute))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppColor.muted)
                             } else {
-                                Text("開始予定時間 未設定")
+                                Text("通知オフ")
                                     .font(.footnote)
-                                    .foregroundStyle(.red)
+                                    .foregroundStyle(AppColor.muted)
                             }
                         }
                     }
@@ -80,5 +80,5 @@ struct NotificationSettingsView: View {
     NavigationStack {
         NotificationSettingsView()
     }
-    .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self], inMemory: true)
+    .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
 }

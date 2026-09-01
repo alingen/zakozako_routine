@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// アプリのルート画面。ホーム/記録/設定をボトムタブで切り替える。
+/// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
     var body: some View {
         TabView {
@@ -19,17 +19,27 @@ struct RootTabView: View {
             }
 
             NavigationStack {
+                InteractionView()
+            }
+            .tabItem {
+                Label("交流", systemImage: "sparkles")
+            }
+
+            NavigationStack {
                 SettingsView()
             }
             .tabItem {
                 Label("設定", systemImage: "gearshape")
             }
         }
+        .tint(AppColor.primary)
+        // 配色はライト前提の単一値パレットのため、ダーク時に破綻しないよう固定する。
+        .preferredColorScheme(.light)
     }
 }
 
 #Preview {
     RootTabView()
         .environment(SiriLaunchCoordinator())
-        .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self, CharacterPreset.self, BlockedBehavior.self], inMemory: true)
+        .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
 }

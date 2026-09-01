@@ -18,23 +18,8 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.zakozako.mesugakiroutine</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>zakozakoroutine</string>
-			</array>
-		</dict>
-	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>音声で会話するためにマイクを使用します。</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>話しかけた内容をテキストに変換するために音声認識を使用します。</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

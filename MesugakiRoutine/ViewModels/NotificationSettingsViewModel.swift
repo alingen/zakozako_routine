@@ -51,10 +51,7 @@ final class NotificationSettingsViewModel {
     private func rescheduleAll() {
         guard let dependencies else { return }
         Task {
-            await dependencies.notificationScheduler.reschedule(
-                routines: routines,
-                sessionRepository: dependencies.sessionRepository
-            )
+            await dependencies.notificationScheduler.reschedule(routines: routines)
         }
     }
 

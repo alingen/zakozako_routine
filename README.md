@@ -191,3 +191,21 @@ open MesugakiRoutine.xcodeproj
 ```
 
 `iOS 17.0` 以上のシミュレータ/実機で `MesugakiRoutine` スキームを実行する。
+
+## 会話シナリオの管理（Google Sheets → 生成JSON）
+
+会話データ（今日の会話 / 小イベント / 大イベント）は **Google スプレッドシートが唯一の正本**。
+アプリは `MesugakiRoutine/Resources/GeneratedScenarios/*.generated.json` を読み込むが、これは
+`tools/scenario-sync` がスプレッドシートから生成する成果物なので **直接編集しない**。
+
+```
+Google Sheets を編集 → /sync-scenarios（npm run sync）→ 差分確認 → 反映
+  → xcodegen generate && xcodebuild ...（型チェック・動作確認）→ *.generated.json をコミット
+```
+
+- 同期ツールと詳細手順: [`tools/scenario-sync/README.md`](tools/scenario-sync/README.md)
+- Claude Code から: `/sync-scenarios`
+- スプレッドシートのひな形: `cd tools/scenario-sync && npm run make-template` → `template/scenario-template.xlsx` を Google Sheets にインポート
+- 認証情報が無くても `tools/scenario-sync/fixtures/sheets-snapshot.json`（シート内容のスナップショット）に対して検証・生成・差分確認が可能
+
+生成物の Swift 側読み込みは `Services/DailyConversationProvider.swift` / `Services/EventCatalog.swift`。

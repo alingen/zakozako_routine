@@ -4,85 +4,90 @@ import SwiftData
 /// 「一般」設定画面。
 struct GeneralSettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    @State private var uiMode: AppUIMode = AppSettingsStore.uiMode
-    @State private var userNickname: String = AppSettingsStore.userNickname
-    @State private var completionPhrase: String = AppSettingsStore.completionPhrase
-    @State private var trustPoints: Int = 0
-    @State private var trustStage: Int = 1
+    @State private var userName: String = AppSettingsStore.userName
+    @State private var userHonorific: UserHonorific = AppSettingsStore.userHonorific
+    @State private var routineDebugRows: [RoutineDebugRow] = []
 
-    private var trustRepository: TrustRepository { TrustRepository(context: modelContext) }
+    private struct RoutineDebugRow: Identifiable {
+        let id: UUID
+        let title: String
+        let detail: String
+    }
+
+    private var previewName: String {
+        let name = userName.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? userHonorific.displayName : name + userHonorific.displayName
+    }
 
     var body: some View {
         List {
             Section {
-                TextField("例: おにいさん、おねえさん", text: $userNickname)
-                    .onChange(of: userNickname) {
-                        AppSettingsStore.userNickname = userNickname
+                TextField("例: だいすけ", text: $userName)
+                    .onChange(of: userName) { AppSettingsStore.userName = userName }
+                Picker("よびかた", selection: $userHonorific) {
+                    ForEach(UserHonorific.allCases) { honorific in
+                        Text(honorific.displayName).tag(honorific)
                     }
+                }
+                .onChange(of: userHonorific) { AppSettingsStore.userHonorific = userHonorific }
             } header: {
-                Text("呼び名")
+                Text("あなたのこと")
             } footer: {
-                Text("キャラクターがあなたを呼ぶ時の呼び名です。空欄なら特に呼びかけません。")
+                Text("みんなのざこ速報の表示に使います(例: 「\(previewName)」)。")
             }
 
             Section {
-                Picker(selection: $uiMode) {
-                    ForEach(AppUIMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                } label: {
-                    EmptyView()
+                Button("約束を1日巻き戻す(自動判定テスト)") {
+                    AppDependencies(context: modelContext).blockedBehaviorRepository.debugAgePromiseByOneDay()
                 }
-                .pickerStyle(.inline)
-                .onChange(of: uiMode) {
-                    AppSettingsStore.uiMode = uiMode
+                Button("先頭の約束を昨日達成扱いにする") {
+                    let deps = AppDependencies(context: modelContext)
+                    guard let routine = deps.routineRepository.fetchAll().first else { return }
+                    let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now
+                    for _ in 0..<routine.targetCount {
+                        deps.routineRepository.debugInsertProgress(routine, on: yesterday)
+                    }
+                    reloadRoutineDebug()
                 }
             } header: {
-                Text("モード")
-            } footer: {
-                Text("\(uiMode.description)\n見た目の切り替えは準備中で、現在はまだ反映されません。")
+                Text("デバッグ")
             }
 
             Section {
-                TextField("例: できた", text: $completionPhrase)
-                    .onChange(of: completionPhrase) {
-                        AppSettingsStore.completionPhrase = completionPhrase
+                if routineDebugRows.isEmpty {
+                    Text("約束がありません")
+                        .font(.subheadline)
+                        .foregroundStyle(AppColor.muted)
+                } else {
+                    ForEach(routineDebugRows) { row in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.title).font(.subheadline)
+                            Text(row.detail).font(.caption2).foregroundStyle(AppColor.muted)
+                        }
                     }
-            } header: {
-                Text("音声コマンド")
-            } footer: {
-                Text("音声会話中(またはテキスト入力)でこの発言をすると、現在のステップを完了として次に進みます。")
-            }
-
-            Section {
-                Text("現在: ステージ\(trustStage)(\(trustPoints)pt)")
-                    .font(.subheadline)
-                Button("低ステージにする") {
-                    setTrustPoints(0)
-                }
-                Button("中ステージにする") {
-                    setTrustPoints(TrustStage.pointsPerStage * 2)
-                }
-                Button("高ステージにする") {
-                    setTrustPoints(TrustStage.pointsPerStage * 5)
                 }
             } header: {
-                Text("信頼度(デバッグ用)")
-            } footer: {
-                Text("信頼度ステージによる応答の変化を確認するためのテスト用ボタンです。ここでの切り替えは、そのステージのフリートーク話題が完了しているかに関わらず強制的に反映されます。")
+                Text("約束の進捗・連続達成(デバッグ用)")
             }
         }
         .navigationTitle("一般")
         .task {
-            trustPoints = trustRepository.points
-            trustStage = trustRepository.stage
+            reloadRoutineDebug()
         }
     }
 
-    private func setTrustPoints(_ points: Int) {
-        trustRepository.setPoints(points)
-        trustPoints = points
-        trustStage = trustRepository.stage
+    private func reloadRoutineDebug() {
+        let deps = AppDependencies(context: modelContext)
+        routineDebugRows = deps.routineRepository.fetchAll().map { routine in
+            let progress = routine.todayProgress()
+            let streak = RoutineStreak.currentStreak(routine: routine)
+            let pct = Int((progress.fraction * 100).rounded())
+            return RoutineDebugRow(
+                id: routine.id,
+                title: routine.title,
+                detail: "\(routine.period.currentUnitLabel) \(progress.done)/\(progress.target)回 (\(pct)%) ・ \(streak)日連続"
+            )
+        }
     }
 }
 

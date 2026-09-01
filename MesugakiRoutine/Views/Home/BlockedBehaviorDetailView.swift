@@ -1,71 +1,51 @@
 import SwiftUI
 
-/// 「やらないこと」1件の詳細設定シート。検出ワード・時間帯・代替行動を編集する。
+/// 「今日の約束」1件の編集シート。タイトルと回数制限を編集する。
 struct BlockedBehaviorDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
-    let behaviorTitle: String
-    let onSave: (
-        _ triggerText: String,
-        _ alternativeAction: String,
-        _ useTimeWindow: Bool,
-        _ startTime: Date,
-        _ endTime: Date
-    ) -> Void
+    let onSave: (_ title: String, _ limitPeriod: HabitPeriod, _ limitCount: Int) -> Void
 
-    @State private var triggerText: String
-    @State private var alternativeAction: String
-    @State private var useTimeWindow: Bool
-    @State private var startTime: Date
-    @State private var endTime: Date
+    @State private var title: String
+    @State private var limitPeriod: HabitPeriod
+    @State private var limitCount: Int
 
-    init(behavior: BlockedBehavior, onSave: @escaping (String, String, Bool, Date, Date) -> Void) {
-        self.behaviorTitle = behavior.title
+    init(
+        behavior: BlockedBehavior,
+        onSave: @escaping (String, HabitPeriod, Int) -> Void
+    ) {
         self.onSave = onSave
-        _triggerText = State(initialValue: behavior.triggerText)
-        _alternativeAction = State(initialValue: behavior.alternativeAction)
-        _useTimeWindow = State(initialValue: behavior.activeStartMinute != nil && behavior.activeEndMinute != nil)
-        _startTime = State(initialValue: BlockedBehavior.date(fromMinutes: behavior.activeStartMinute ?? 7 * 60))
-        _endTime = State(initialValue: BlockedBehavior.date(fromMinutes: behavior.activeEndMinute ?? 9 * 60))
+        _title = State(initialValue: behavior.title)
+        _limitPeriod = State(initialValue: behavior.limitPeriod)
+        _limitCount = State(initialValue: behavior.limitCount)
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    TextField("例: YouTube", text: $triggerText)
-                } header: {
-                    Text("検出ワード")
-                } footer: {
-                    Text("会話中にこの言葉が含まれていたら「やらないこと」として反応します。")
+                Section("やらないこと") {
+                    TextField("例: YouTubeを見ない", text: $title)
                 }
 
                 Section {
-                    TextField("例: 水を飲む", text: $alternativeAction)
-                } header: {
-                    Text("代替行動")
-                } footer: {
-                    Text("反応するときに、この代わりの行動を勧めます。空欄でも構いません。")
-                }
-
-                Section {
-                    Toggle("時間帯を指定する", isOn: $useTimeWindow)
-                    if useTimeWindow {
-                        DatePicker("開始", selection: $startTime, displayedComponents: .hourAndMinute)
-                        DatePicker("終了", selection: $endTime, displayedComponents: .hourAndMinute)
+                    Picker("ペース", selection: $limitPeriod) {
+                        ForEach(HabitPeriod.allCases) { period in
+                            Text(period.pickerLabel).tag(period)
+                        }
                     }
+                    Stepper("\(limitPeriod.pickerLabel) \(limitCount) 回で✕", value: $limitCount, in: 1...50)
                 } header: {
-                    Text("時間帯")
+                    Text("回数制限")
                 } footer: {
-                    Text("指定した時間帯の間だけ検出します。指定しなければ常に検出します。")
+                    Text("チェックボックスは満タンからスタートし、カードをタップするたびに1つ減ります。全部なくなると✕になり、その期間は失敗扱いです。")
                 }
             }
-            .navigationTitle(behaviorTitle)
+            .navigationTitle("やらないことを編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("保存") {
-                        onSave(triggerText, alternativeAction, useTimeWindow, startTime, endTime)
+                        onSave(title, limitPeriod, limitCount)
                         dismiss()
                     }
                 }

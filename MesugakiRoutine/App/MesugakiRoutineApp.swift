@@ -9,14 +9,7 @@ struct MesugakiRoutineApp: App {
     init() {
         let schema = Schema([
             Routine.self,
-            RoutineStep.self,
-            RoutineSession.self,
-            RoutineEvent.self,
-            CharacterPreset.self,
             BlockedBehavior.self,
-            TrustState.self,
-            UserProfileFact.self,
-            FreeTalkTopicProgress.self,
         ])
         let configuration = ModelConfiguration(schema: schema)
         do {
@@ -25,16 +18,12 @@ struct MesugakiRoutineApp: App {
             fatalError("Failed to create ModelContainer: \(error)")
         }
         DataSeeder.seedIfNeeded(context: modelContainer.mainContext)
-        LocalSecretsSeeder.seedIfNeeded()
     }
 
     var body: some Scene {
         WindowGroup {
             RootTabView()
                 .environment(SiriLaunchCoordinator.shared)
-                .onOpenURL { url in
-                    SiriLaunchCoordinator.shared.handle(url: url)
-                }
         }
         .modelContainer(modelContainer)
         .onChange(of: scenePhase) {
@@ -49,10 +38,7 @@ struct MesugakiRoutineApp: App {
         let dependencies = AppDependencies(context: modelContainer.mainContext)
         let routines = dependencies.routineRepository.fetchAll().filter { $0.isActive }
         Task {
-            await dependencies.notificationScheduler.reschedule(
-                routines: routines,
-                sessionRepository: dependencies.sessionRepository
-            )
+            await dependencies.notificationScheduler.reschedule(routines: routines)
         }
     }
 }

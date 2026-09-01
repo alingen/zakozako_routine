@@ -26,6 +26,7 @@ struct RoutineLogView: View {
             }
             .padding()
         }
+        .background(AppColor.background)
         .navigationTitle("記録")
         .task {
             viewModel.configure(context: modelContext)
@@ -39,19 +40,19 @@ struct RoutineLogView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "flame.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(AppColor.warning)
                 Text("継続 \(viewModel.streakDays)日")
                     .font(.headline)
             }
 
             Text("直近30日の達成率")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppColor.muted)
 
             ForEach(viewModel.achievements) { achievement in
                 HStack {
-                    Image(systemName: icon(for: achievement.routine.type))
-                        .foregroundStyle(color(for: achievement.routine.type))
+                    Image(systemName: routineIcon)
+                        .foregroundStyle(AppColor.primary)
                     Text(achievement.routine.title)
                         .font(.subheadline)
                     Spacer()
@@ -59,13 +60,14 @@ struct RoutineLogView: View {
                         .font(.subheadline.bold())
                     Text("(\(achievement.completedCount)/\(achievement.applicableCount)日)")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.muted)
                 }
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppColor.border))
     }
 
     private var monthHeader: some View {
@@ -92,7 +94,7 @@ struct RoutineLogView: View {
             ForEach(viewModel.weekdaySymbols, id: \.self) { symbol in
                 Text(symbol)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppColor.muted)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -105,14 +107,14 @@ struct RoutineLogView: View {
         return VStack(spacing: 4) {
             Text("\(day)")
                 .font(.subheadline)
-                .foregroundStyle(isToday ? Color.white : Color.primary)
+                .foregroundStyle(isToday ? Color.white : AppColor.text)
                 .frame(width: 28, height: 28)
-                .background(isToday ? Color.accentColor : Color.clear, in: Circle())
+                .background(isToday ? AppColor.primary : Color.clear, in: Circle())
             HStack(spacing: 3) {
-                ForEach(completed, id: \.id) { routine in
-                    Image(systemName: icon(for: routine.type))
-                        .font(.system(size: 10))
-                        .foregroundStyle(color(for: routine.type))
+                ForEach(completed, id: \.id) { _ in
+                    Circle()
+                        .fill(AppColor.primary)
+                        .frame(width: 6, height: 6)
                 }
             }
             .frame(height: 12)
@@ -124,37 +126,24 @@ struct RoutineLogView: View {
         HStack(spacing: 16) {
             ForEach(viewModel.routines, id: \.id) { routine in
                 HStack(spacing: 4) {
-                    Image(systemName: icon(for: routine.type))
-                        .foregroundStyle(color(for: routine.type))
+                    Circle()
+                        .fill(AppColor.primary)
+                        .frame(width: 6, height: 6)
                     Text(routine.title)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppColor.muted)
                 }
             }
         }
         .padding(.top, 8)
     }
 
-    private func icon(for type: RoutineType) -> String {
-        switch type {
-        case .morning: return "sun.max.fill"
-        case .night: return "moon.stars.fill"
-        case .custom: return "star.fill"
-        }
-    }
-
-    private func color(for type: RoutineType) -> Color {
-        switch type {
-        case .morning: return .orange
-        case .night: return .indigo
-        case .custom: return .gray
-        }
-    }
+    private let routineIcon = "checkmark.circle.fill"
 }
 
 #Preview {
     NavigationStack {
         RoutineLogView()
     }
-    .modelContainer(for: [Routine.self, RoutineStep.self, RoutineSession.self, RoutineEvent.self], inMemory: true)
+    .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
 }
