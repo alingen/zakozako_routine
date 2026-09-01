@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// アプリのルート画面。ホーム/記録/設定をボトムタブで切り替える。
+/// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
     var body: some View {
         TabView {
@@ -16,6 +16,13 @@ struct RootTabView: View {
             }
             .tabItem {
                 Label("記録", systemImage: "list.bullet.clipboard")
+            }
+
+            NavigationStack {
+                InteractionView()
+            }
+            .tabItem {
+                Label("交流", systemImage: "sparkles")
             }
 
             NavigationStack {
