@@ -18,13 +18,13 @@ enum DataSeeder {
         let existing = (try? context.fetch(descriptor)) ?? []
         guard existing.isEmpty else { return }
 
-        let samples: [(title: String, steps: [String])] = [
-            ("10分勉強する", ["10分だけ机に向かう"]),
-            ("散歩する", ["外に出て歩く"]),
+        let samples: [(title: String, icon: String, steps: [String])] = [
+            ("10分勉強する", "book", ["10分だけ机に向かう"]),
+            ("散歩する", "figure.walk", ["外に出て歩く"]),
         ]
 
         for sample in samples {
-            let routine = Routine(title: sample.title)
+            let routine = Routine(title: sample.title, iconName: sample.icon)
             context.insert(routine)
             for (index, stepTitle) in sample.steps.enumerated() {
                 context.insert(

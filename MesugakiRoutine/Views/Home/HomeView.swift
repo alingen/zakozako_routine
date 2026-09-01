@@ -67,7 +67,7 @@ struct HomeView: View {
                     .font(.subheadline)
                     .foregroundStyle(AppColor.muted)
             } else {
-                LazyVGrid(columns: routineGridColumns, spacing: 20) {
+                LazyVGrid(columns: routineGridColumns, spacing: 14) {
                     ForEach(viewModel.todayRoutines) { routine in
                         routineGridCell(routine)
                     }
@@ -75,7 +75,8 @@ struct HomeView: View {
                         addRoutineCell
                     }
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, 6)
+                .listRowInsets(EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10))
             }
         } header: {
             HStack(spacing: 8) {
@@ -85,7 +86,7 @@ struct HomeView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(AppColor.muted)
                 Button {
-                    withAnimation { isEditingRoutines.toggle() }
+                    isEditingRoutines.toggle()
                 } label: {
                     if isEditingRoutines {
                         Text("完了").font(.caption.bold())
@@ -111,17 +112,22 @@ struct HomeView: View {
             if isEditingRoutines {
                 editingRoutine = routine
             } else {
-                withAnimation { viewModel.advanceRoutine(routine) }
+                viewModel.advanceRoutine(routine)
             }
         } label: {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottomTrailing) {
-                    ProgressCircle(progress: progress.fraction, size: 84, lineWidth: 5)
+                    ProgressCircle(
+                        progress: progress.fraction,
+                        size: 116,
+                        lineWidth: 7,
+                        centerSystemImage: routine.iconName
+                    )
                     if isEditingRoutines {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(AppColor.text)
-                            .frame(width: 26, height: 26)
+                            .frame(width: 30, height: 30)
                             .background(AppColor.surface, in: Circle())
                             .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
                             .offset(x: 4, y: 4)
@@ -161,10 +167,10 @@ struct HomeView: View {
         } label: {
             VStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 34, weight: .bold))
+                    .font(.system(size: 44, weight: .bold))
                     .foregroundStyle(AppColor.primary)
-                    .frame(width: 84, height: 84)
-                    .overlay(Circle().stroke(AppColor.border, lineWidth: 5))
+                    .frame(width: 116, height: 116)
+                    .overlay(Circle().stroke(AppColor.border, lineWidth: 7))
                 Text("ルーティンを追加")
                     .font(.subheadline.bold())
                     .foregroundStyle(AppColor.primary)
@@ -239,7 +245,7 @@ struct HomeView: View {
 
         HStack(spacing: 12) {
             Button {
-                withAnimation { viewModel.consumePromise(behavior) }
+                viewModel.consumePromise(behavior)
             } label: {
                 HStack(spacing: 12) {
                     ProgressCircle(

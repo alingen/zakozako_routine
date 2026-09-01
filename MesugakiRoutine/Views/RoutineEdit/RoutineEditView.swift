@@ -22,6 +22,10 @@ struct RoutineEditView: View {
                     }
             }
 
+            Section("アイコン") {
+                iconGrid
+            }
+
             Section {
                 Toggle("指定時刻に通知する", isOn: $viewModel.notifyAtScheduledTime)
                     .onChange(of: viewModel.notifyAtScheduledTime) {
@@ -117,6 +121,34 @@ struct RoutineEditView: View {
         .task {
             viewModel.configure(context: modelContext)
         }
+    }
+
+    private var iconGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 6)
+        return LazyVGrid(columns: columns, spacing: 10) {
+            iconButton(nil, systemImage: "nosign", label: "なし")
+            ForEach(RoutineIcon.all, id: \.self) { name in
+                iconButton(name, systemImage: name, label: name)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private func iconButton(_ name: String?, systemImage: String, label: String) -> some View {
+        let selected = viewModel.iconName == name
+        Button {
+            viewModel.iconName = name
+            viewModel.save()
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 18))
+                .frame(width: 40, height: 40)
+                .foregroundStyle(selected ? Color.white : AppColor.text)
+                .background(selected ? AppColor.primary : AppColor.border.opacity(0.5), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 

@@ -25,11 +25,14 @@ final class RoutineRepository {
     func create(
         title: String,
         scheduledStartMinute: Int? = nil,
-        activeWeekdayValues: [Int] = Weekday.allWeekdayValues
+        activeWeekdayValues: [Int] = Weekday.allWeekdayValues,
+        iconName: String? = nil
     ) -> Routine {
         let routine = Routine(
             title: title,
-            scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: activeWeekdayValues
+            scheduledStartMinute: scheduledStartMinute,
+            activeWeekdayValues: activeWeekdayValues,
+            iconName: iconName
         )
         context.insert(routine)
         save()
@@ -41,12 +44,14 @@ final class RoutineRepository {
         title: String,
         isActive: Bool,
         scheduledStartMinute: Int?,
-        activeWeekdayValues: [Int]
+        activeWeekdayValues: [Int],
+        iconName: String?
     ) {
         routine.title = title
         routine.isActive = isActive
         routine.scheduledStartMinute = scheduledStartMinute
         routine.activeWeekdayValues = activeWeekdayValues
+        routine.iconName = iconName
         routine.updatedAt = .now
         save()
     }

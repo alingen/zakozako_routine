@@ -17,6 +17,9 @@ final class Routine {
     /// 対象曜日(Weekdayのraw value)。デフォルトは全曜日。
     var activeWeekdayValues: [Int] = Weekday.allWeekdayValues
 
+    /// グリッドの円の中に表示する SF Symbol 名。未設定(nil)なら何も表示しない。
+    var iconName: String?
+
     @Relationship(deleteRule: .cascade, inverse: \RoutineStep.routine)
     var steps: [RoutineStep] = []
 
@@ -27,7 +30,8 @@ final class Routine {
         createdAt: Date = .now,
         updatedAt: Date = .now,
         scheduledStartMinute: Int? = nil,
-        activeWeekdayValues: [Int] = Weekday.allWeekdayValues
+        activeWeekdayValues: [Int] = Weekday.allWeekdayValues,
+        iconName: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -36,6 +40,7 @@ final class Routine {
         self.updatedAt = updatedAt
         self.scheduledStartMinute = scheduledStartMinute
         self.activeWeekdayValues = activeWeekdayValues
+        self.iconName = iconName
     }
 
     var orderedSteps: [RoutineStep] {

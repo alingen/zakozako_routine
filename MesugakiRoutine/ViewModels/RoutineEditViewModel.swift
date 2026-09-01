@@ -14,6 +14,8 @@ final class RoutineEditViewModel {
     var notifyAtScheduledTime: Bool = true
     /// 対象曜日。デフォルトは全曜日選択。
     var selectedWeekdays: Set<Int> = Set(Weekday.allWeekdayValues)
+    /// 円の中に表示するアイコン(SF Symbol 名)。未選択なら nil。
+    var iconName: String?
     private(set) var steps: [RoutineStep] = []
     var newStepTitle: String = ""
 
@@ -23,6 +25,7 @@ final class RoutineEditViewModel {
         self.routine = routine
         if let routine {
             title = routine.title
+            iconName = routine.iconName
             notifyAtScheduledTime = routine.scheduledStartMinute != nil
             if let minute = routine.scheduledStartMinute {
                 scheduledStartTime = Routine.date(fromMinutes: minute)
@@ -67,12 +70,14 @@ final class RoutineEditViewModel {
         if let routine {
             dependencies.routineRepository.update(
                 routine, title: title, isActive: routine.isActive,
-                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
+                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues,
+                iconName: iconName
             )
         } else {
             let created = dependencies.routineRepository.create(
                 title: title,
-                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues
+                scheduledStartMinute: scheduledStartMinute, activeWeekdayValues: weekdayValues,
+                iconName: iconName
             )
             routine = created
         }
