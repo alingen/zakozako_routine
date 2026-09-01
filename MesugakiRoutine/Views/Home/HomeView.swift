@@ -12,10 +12,6 @@ struct HomeView: View {
     @State private var showAddPromiseForm = false
 
     private let routineGridColumns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
-    /// グリッドセルの各パーツの固定サイズ。アイコンやタイトル行数で高さがブレないようにする。
-    private let routineCircleSize: CGFloat = 116
-    private let routineCellTitleHeight: CGFloat = 40   // subheadline 2行ぶん
-    private let routineCellSubtitleHeight: CGFloat = 16 // caption2 1行ぶん
 
     var body: some View {
         List {
@@ -116,60 +112,49 @@ struct HomeView: View {
                 viewModel.advanceRoutine(routine)
             }
         } label: {
-            routineCell(
-                circle: AnyView(
-                    ZStack(alignment: .bottomTrailing) {
-                        ProgressCircle(
-                            progress: progress.fraction,
-                            size: routineCircleSize,
-                            lineWidth: 7,
-                            centerSystemImage: routine.iconName
-                        )
-                        if isEditingRoutines {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(AppColor.text)
-                                .frame(width: 30, height: 30)
-                                .background(AppColor.surface, in: Circle())
-                                .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
-                                .offset(x: 4, y: 4)
-                        }
+            VStack(spacing: 8) {
+                ZStack(alignment: .bottomTrailing) {
+                    ProgressCircle(
+                        progress: progress.fraction,
+                        size: 116,
+                        lineWidth: 7,
+                        centerSystemImage: routine.iconName
+                    )
+                    if isEditingRoutines {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(AppColor.text)
+                            .frame(width: 30, height: 30)
+                            .background(AppColor.surface, in: Circle())
+                            .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
+                            .offset(x: 4, y: 4)
                     }
-                ),
-                title: routine.title,
-                titleColor: AppColor.text,
-                subtitle: cellSubtitle(progress: progress, streak: streak),
-                subtitleColor: streak >= 1 && !progress.showsStepBreakdown ? AppColor.success : AppColor.muted
-            )
+                }
+
+                Text(routine.title)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+
+                if progress.showsStepBreakdown, !progress.isCompletedToday {
+                    Text("\(progress.completedSteps) / \(progress.totalSteps)ステップ")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.muted)
+                } else if streak >= 1 {
+                    Text("\(streak)日達成！")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.success)
+                } else {
+                    Text("今日から")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.muted)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    private func cellSubtitle(progress: RoutineTodayProgress, streak: Int) -> String {
-        if progress.showsStepBreakdown, !progress.isCompletedToday {
-            return "\(progress.completedSteps) / \(progress.totalSteps)ステップ"
-        }
-        return streak >= 1 ? "\(streak)日達成！" : "今日から"
-    }
-
-    /// 円 + タイトル + サブ を、高さ固定で縦に積むグリッドセルの共通レイアウト。
-    private func routineCell(circle: AnyView, title: String, titleColor: Color, subtitle: String, subtitleColor: Color) -> some View {
-        VStack(spacing: 8) {
-            circle
-            Text(title)
-                .font(.subheadline.bold())
-                .foregroundStyle(titleColor)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(height: routineCellTitleHeight, alignment: .top)
-            Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(subtitleColor)
-                .lineLimit(1)
-                .frame(height: routineCellSubtitleHeight)
-        }
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
     }
 
     /// 編集モードのときだけ出る「ルーティンを追加」セル。
@@ -177,19 +162,22 @@ struct HomeView: View {
         Button {
             isPresentingNewRoutine = true
         } label: {
-            routineCell(
-                circle: AnyView(
-                    Image(systemName: "plus")
-                        .font(.system(size: 44, weight: .bold))
-                        .foregroundStyle(AppColor.primary)
-                        .frame(width: routineCircleSize, height: routineCircleSize)
-                        .overlay(Circle().stroke(AppColor.border, lineWidth: 7))
-                ),
-                title: "ルーティンを追加",
-                titleColor: AppColor.primary,
-                subtitle: " ",
-                subtitleColor: AppColor.muted
-            )
+            VStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 44, weight: .bold))
+                    .foregroundStyle(AppColor.primary)
+                    .frame(width: 116, height: 116)
+                    .overlay(Circle().stroke(AppColor.border, lineWidth: 7))
+                Text("ルーティンを追加")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppColor.primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                Text(" ")
+                    .font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
