@@ -5,7 +5,8 @@ import SwiftData
 struct GeneralSettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var uiMode: AppUIMode = AppSettingsStore.uiMode
-    @State private var userNickname: String = AppSettingsStore.userNickname
+    @State private var userName: String = AppSettingsStore.userName
+    @State private var userHonorific: UserHonorific = AppSettingsStore.userHonorific
     @State private var trustPoints: Int = 0
     @State private var trustStage: Int = 1
     @State private var dailyConversationIndex: Int = 0
@@ -27,6 +28,12 @@ struct GeneralSettingsView: View {
         let detail: String
     }
 
+    /// フッターに出す呼び名プレビュー。
+    private var previewNickname: String {
+        let name = userName.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? userHonorific.displayName : name + userHonorific.displayName
+    }
+
     private var trustRepository: TrustRepository { TrustRepository(context: modelContext) }
     private var dailyConversationStateRepository: DailyConversationStateRepository {
         DailyConversationStateRepository(context: modelContext)
@@ -38,14 +45,18 @@ struct GeneralSettingsView: View {
     var body: some View {
         List {
             Section {
-                TextField("例: おにいさん、おねえさん", text: $userNickname)
-                    .onChange(of: userNickname) {
-                        AppSettingsStore.userNickname = userNickname
+                TextField("例: だいすけ", text: $userName)
+                    .onChange(of: userName) { AppSettingsStore.userName = userName }
+                Picker("よびかた", selection: $userHonorific) {
+                    ForEach(UserHonorific.allCases) { honorific in
+                        Text(honorific.displayName).tag(honorific)
                     }
+                }
+                .onChange(of: userHonorific) { AppSettingsStore.userHonorific = userHonorific }
             } header: {
-                Text("呼び名")
+                Text("あなたのこと")
             } footer: {
-                Text("キャラクターがあなたを呼ぶ時の呼び名です。空欄なら特に呼びかけません。")
+                Text("キャラクターの呼びかけ(例: 「\(previewNickname)」)や、みんなのざこ速報の表示に使います。")
             }
 
             Section {
@@ -115,8 +126,8 @@ struct GeneralSettingsView: View {
                     AppSettingsStore.blockedBehaviorProtectedCount += 1
                     refreshEventDebug()
                 }
-                Button("約束のチェックインを促す(前日未記録にする)") {
-                    AppDependencies(context: modelContext).blockedBehaviorRepository.debugMakeCheckInPending()
+                Button("約束を1日巻き戻す(自動判定テスト)") {
+                    AppDependencies(context: modelContext).blockedBehaviorRepository.debugAgePromiseByOneDay()
                     refreshEventDebug()
                 }
                 Button("継続日数を +1") {

@@ -1,16 +1,18 @@
 import SwiftUI
 
-/// 「今日の達成量 / 今日の目標量」を表す進捗円。
-/// - 0.0 → 空円(枠線のみ)
-/// - 0.0〜1.0 → 上端から時計回りに弧が伸びる
-/// - 1.0 → 塗りつぶし + チェック(完了状態)
-///
-/// 過去30日の達成率などではなく、あくまで「今日どれだけ進んだか」を渡すこと。
+/// 弧で割合を表す円。用途によって意味は変わる:
+/// - ルーティン: 「今日の達成量 / 目標量」。1.0 で塗りつぶし＋チェック(完了)。
+/// - 今日の約束: 「期間内の消費回数 / 上限」。`showsCheckmarkWhenComplete: false` + 警告色で、
+///   上限到達＝塗りつぶし(チェックは出さない = 達成ではなく注意)。
 struct ProgressCircle: View {
     /// 0.0〜1.0。範囲外は丸める。
     let progress: Double
     var size: CGFloat = 30
     var lineWidth: CGFloat = 3
+    /// 弧・塗りつぶしの色。
+    var tint: Color = AppColor.primary
+    /// 1.0 到達時にチェックマークを出すか。約束カードでは false(達成の意味にならないように)。
+    var showsCheckmarkWhenComplete: Bool = true
 
     private var clamped: Double { min(max(progress, 0), 1) }
     private var isComplete: Bool { clamped >= 1 }
@@ -21,15 +23,17 @@ struct ProgressCircle: View {
                 .stroke(AppColor.border, lineWidth: lineWidth)
 
             if isComplete {
-                Circle().fill(AppColor.primary)
-                Image(systemName: "checkmark")
-                    .font(.system(size: size * 0.44, weight: .bold))
-                    .foregroundStyle(.white)
+                Circle().fill(tint)
+                if showsCheckmarkWhenComplete {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: size * 0.44, weight: .bold))
+                        .foregroundStyle(.white)
+                }
             } else {
                 Circle()
                     .trim(from: 0, to: clamped)
                     .stroke(
-                        AppColor.primary,
+                        tint,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -37,7 +41,6 @@ struct ProgressCircle: View {
         }
         .frame(width: size, height: size)
         .animation(.easeInOut(duration: 0.25), value: clamped)
-        .accessibilityLabel("今日の進捗")
         .accessibilityValue("\(Int((clamped * 100).rounded()))パーセント")
     }
 }

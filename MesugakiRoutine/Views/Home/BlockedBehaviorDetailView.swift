@@ -11,7 +11,9 @@ struct BlockedBehaviorDetailView: View {
         _ triggerText: String,
         _ useTimeWindow: Bool,
         _ startTime: Date,
-        _ endTime: Date
+        _ endTime: Date,
+        _ limitPeriod: BlockedBehaviorLimitPeriod,
+        _ limitCount: Int
     ) -> Void
 
     @State private var reason: String
@@ -20,8 +22,13 @@ struct BlockedBehaviorDetailView: View {
     @State private var useTimeWindow: Bool
     @State private var startTime: Date
     @State private var endTime: Date
+    @State private var limitPeriod: BlockedBehaviorLimitPeriod
+    @State private var limitCount: Int
 
-    init(behavior: BlockedBehavior, onSave: @escaping (String, String, String, Bool, Date, Date) -> Void) {
+    init(
+        behavior: BlockedBehavior,
+        onSave: @escaping (String, String, String, Bool, Date, Date, BlockedBehaviorLimitPeriod, Int) -> Void
+    ) {
         self.behaviorTitle = behavior.title
         self.onSave = onSave
         _reason = State(initialValue: behavior.reason)
@@ -30,11 +37,26 @@ struct BlockedBehaviorDetailView: View {
         _useTimeWindow = State(initialValue: behavior.activeStartMinute != nil && behavior.activeEndMinute != nil)
         _startTime = State(initialValue: BlockedBehavior.date(fromMinutes: behavior.activeStartMinute ?? 7 * 60))
         _endTime = State(initialValue: BlockedBehavior.date(fromMinutes: behavior.activeEndMinute ?? 9 * 60))
+        _limitPeriod = State(initialValue: behavior.limitPeriod)
+        _limitCount = State(initialValue: behavior.limitCount)
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("ペース", selection: $limitPeriod) {
+                        ForEach(BlockedBehaviorLimitPeriod.allCases) { period in
+                            Text(period.displayName).tag(period)
+                        }
+                    }
+                    Stepper("\(limitPeriod.displayName) \(limitCount) 回まで", value: $limitCount, in: 0...50)
+                } header: {
+                    Text("回数制限")
+                } footer: {
+                    Text("カードをタップするたびに1回消費します。この回数以内に収まった日が「達成」としてカウントされます。0回なら1回でもアウトです。")
+                }
+
                 Section {
                     TextField("例: 仕事をさぼらないため", text: $reason)
                 } header: {
@@ -76,7 +98,7 @@ struct BlockedBehaviorDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("保存") {
-                        onSave(reason, alternativeAction, triggerText, useTimeWindow, startTime, endTime)
+                        onSave(reason, alternativeAction, triggerText, useTimeWindow, startTime, endTime, limitPeriod, limitCount)
                         dismiss()
                     }
                 }

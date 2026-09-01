@@ -11,28 +11,17 @@ struct HomeView: View {
     @State private var isPresentingTemptationMessage = false
     @State private var temptationMessage = ""
     @State private var editingBehavior: BlockedBehavior?
-    @State private var isPresentingProfile = false
     @State private var presentedEvent: EventDefinition?
     @State private var showAddPromiseForm = false
 
     var body: some View {
         List {
-            characterCommentSection
             eventTeaserSection
             todayRoutinesSection
             todayPromiseSection
             zakoBulletinSection
         }
         .appScreenBackground()
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isPresentingNewRoutine = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-            }
-        }
         .navigationDestination(item: $selectedRoutine) { routine in
             RoutineSessionView(routine: routine)
         }
@@ -48,9 +37,6 @@ struct HomeView: View {
             Button("がんばる", role: .cancel) {}
         } message: {
             Text(temptationMessage)
-        }
-        .sheet(isPresented: $isPresentingProfile) {
-            CharacterProfileView()
         }
         .fullScreenCover(item: $presentedEvent, onDismiss: { viewModel.reload() }) { event in
             NavigationStack {
@@ -72,7 +58,7 @@ struct HomeView: View {
             )
         }
         .sheet(item: $editingBehavior) { behavior in
-            BlockedBehaviorDetailView(behavior: behavior) { reason, alternativeAction, triggerText, useTimeWindow, start, end in
+            BlockedBehaviorDetailView(behavior: behavior) { reason, alternativeAction, triggerText, useTimeWindow, start, end, limitPeriod, limitCount in
                 viewModel.updateBlockedBehaviorDetails(
                     behavior,
                     reason: reason,
@@ -80,51 +66,25 @@ struct HomeView: View {
                     triggerText: triggerText,
                     useTimeWindow: useTimeWindow,
                     startTime: start,
-                    endTime: end
+                    endTime: end,
+                    limitPeriod: limitPeriod,
+                    limitCount: limitCount
                 )
             }
         }
         .task {
             viewModel.configure(context: modelContext)
-            await viewModel.loadHomeComment()
         }
         .onAppear {
             viewModel.reload()
             startPendingRoutineIfNeeded()
-            Task { await viewModel.loadHomeComment() }
         }
         .onChange(of: siriLaunchCoordinator.pendingOpenTodayRoutines) {
             startPendingRoutineIfNeeded()
         }
     }
 
-    // MARK: - キャラクターの一言 / イベント予告(既存機能。3セクションの上に置く)
-
-    @ViewBuilder
-    private var characterCommentSection: some View {
-        if viewModel.isLoadingHomeComment || !viewModel.homeComment.isEmpty {
-            Section {
-                HStack(alignment: .top, spacing: 12) {
-                    Image("CharacterIcon")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 44, height: 44)
-                        .clipShape(Circle())
-                        .onTapGesture { isPresentingProfile = true }
-                    if viewModel.isLoadingHomeComment {
-                        TypingIndicatorView().frame(height: 22)
-                    } else {
-                        Text(viewModel.homeComment)
-                            .font(.subheadline)
-                            .foregroundStyle(AppColor.text)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-            .appCardRow()
-        }
-    }
+    // MARK: - イベント予告(既存機能)
 
     @ViewBuilder
     private var eventTeaserSection: some View {
@@ -170,12 +130,21 @@ struct HomeView: View {
                 }
             }
         } header: {
-            HStack {
+            HStack(spacing: 8) {
                 Text("今日のルーティン")
                 Spacer()
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(AppColor.muted)
+                Button {
+                    isPresentingNewRoutine = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.body)
+                        .foregroundStyle(AppColor.primary)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("ルーティンを追加")
             }
         }
         .appCardRow()
@@ -248,21 +217,23 @@ struct HomeView: View {
     private var todayPromiseSection: some View {
         Section("今日の約束") {
             if let behavior = viewModel.currentBehavior {
-                VStack(alignment: .leading, spacing: 12) {
-                    // 前日ぶんの自己申告チェックイン(未記録の時だけ)。
-                    // 「やらないこと」専用のふりかえりUX。ルーティンの完了操作とは別物として見せる。
-                    if viewModel.pendingCheckInBehavior != nil {
-                        promiseCheckInPrompt(behavior)
-                        Divider()
-                    }
-                    promiseCard(behavior)
-                }
-                .padding(.vertical, 4)
+                promiseCard(behavior)
+                    .padding(.vertical, 4)
             } else if showAddPromiseForm {
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField("約束(例: YouTubeは30分まで)", text: $viewModel.newBlockedBehaviorTitle)
+                    TextField("約束(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
                     TextField("理由(例: 仕事をさぼらないため)", text: $viewModel.newBlockedBehaviorReason)
                     TextField("代替行動(例: 音楽をかける)", text: $viewModel.newBlockedBehaviorAlternativeAction)
+                    Picker("ペース", selection: $viewModel.newBlockedBehaviorLimitPeriod) {
+                        ForEach(BlockedBehaviorLimitPeriod.allCases) { period in
+                            Text(period.displayName).tag(period)
+                        }
+                    }
+                    Stepper(
+                        "\(viewModel.newBlockedBehaviorLimitPeriod.displayName) \(viewModel.newBlockedBehaviorLimitCount) 回まで",
+                        value: $viewModel.newBlockedBehaviorLimitCount,
+                        in: 0...50
+                    )
                     Button("決定") {
                         viewModel.addBlockedBehavior()
                         showAddPromiseForm = false
@@ -295,15 +266,50 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// 「今日の約束」カード本体(タイトル / 理由 / 14日進捗 / 「負けそう」)。
+    /// 「今日の約束」カード本体。ルーティン行と同じく左に丸マーク。
+    /// 丸マーク＋タイトルをタップすると「1回消費」。「負けそう」ボタンはキャラ相談用に残す。
     @ViewBuilder
     private func promiseCard(_ behavior: BlockedBehavior) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(behavior.title)
-                    .font(.headline)
-                    .foregroundStyle(AppColor.text)
-                Spacer()
+        let usage = viewModel.promiseUsage(for: behavior)
+
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Button {
+                    withAnimation { viewModel.consumePromise(behavior) }
+                } label: {
+                    HStack(spacing: 12) {
+                        ProgressCircle(
+                            progress: usage.fraction,
+                            size: 34,
+                            tint: usage.exceeded ? AppColor.error : AppColor.warning,
+                            showsCheckmarkWhenComplete: false
+                        )
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(behavior.title)
+                                .font(.headline)
+                                .foregroundStyle(AppColor.text)
+
+                            if behavior.currentStreakDays >= 1 {
+                                Text("\(behavior.currentStreakDays)日達成！")
+                                    .font(.caption)
+                                    .foregroundStyle(AppColor.success)
+                            } else {
+                                Text("今日から")
+                                    .font(.caption)
+                                    .foregroundStyle(AppColor.muted)
+                            }
+
+                            Text("\(usage.periodLabel) \(usage.used) / \(usage.limit)回")
+                                .font(.caption2)
+                                .foregroundStyle(usage.exceeded ? AppColor.error : AppColor.muted)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Spacer(minLength: 8)
+
                 Button {
                     editingBehavior = behavior
                 } label: {
@@ -312,21 +318,6 @@ struct HomeView: View {
                 .buttonStyle(.borderless)
                 .foregroundStyle(AppColor.muted)
             }
-
-            if !behavior.reason.isEmpty {
-                Text("理由: \(behavior.reason)")
-                    .font(.caption)
-                    .foregroundStyle(AppColor.muted)
-            }
-
-            ProgressView(
-                value: Double(min(behavior.currentStreakDays, BlockedBehavior.masteryStreakDays)),
-                total: Double(BlockedBehavior.masteryStreakDays)
-            )
-            .tint(AppColor.primary)
-            Text("\(behavior.currentStreakDays) / \(BlockedBehavior.masteryStreakDays)日達成で卒業")
-                .font(.caption2)
-                .foregroundStyle(AppColor.muted)
 
             Button {
                 confrontTemptation()
@@ -341,38 +332,11 @@ struct HomeView: View {
         }
     }
 
-    /// 前日ぶんの自己申告チェックイン。Screen Time 連携が無いため成功は自動判定できず、
-    /// 「まもれた / まもれなかった」を本人に申告してもらう。ルーティンの完了操作とは別扱い。
-    @ViewBuilder
-    private func promiseCheckInPrompt(_ behavior: BlockedBehavior) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("昨日のふりかえり")
-                .font(.caption.bold())
-                .foregroundStyle(AppColor.secondary)
-            Text("「\(behavior.title)」、昨日はまもれた？")
-                .font(.subheadline.bold())
-                .foregroundStyle(AppColor.text)
-            HStack(spacing: 10) {
-                Button("まもれた") { viewModel.answerCheckIn(protected: true) }
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppColor.success)
-                Button("まもれなかった") { viewModel.answerCheckIn(protected: false) }
-                    .buttonStyle(.bordered)
-            }
-            Text("※ 自己申告です。スクリーンタイムで自動判定できるようになれば不要になります。")
-                .font(.caption2)
-                .foregroundStyle(AppColor.muted)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(AppColor.primarySoft.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
-    }
-
     // MARK: - 3. みんなのざこ速報(プレースホルダ。フィード連携は別Step)
 
     private var zakoBulletinSection: some View {
         Section("みんなのざこ速報") {
-            ZakoBulletinFeedView()
+            ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
         }
         .appCardRow()
     }

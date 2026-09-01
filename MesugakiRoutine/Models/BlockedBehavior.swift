@@ -1,9 +1,50 @@
 import Foundation
 import SwiftData
 
+/// 回数制限の集計期間。ユーザーが約束作成時に「日ごと / 週ごと / 月ごと」を選ぶ。
+enum BlockedBehaviorLimitPeriod: String, Codable, CaseIterable, Identifiable {
+    case day
+    case week
+    case month
+
+    var id: String { rawValue }
+
+    /// ピッカー等の表示名。
+    var displayName: String {
+        switch self {
+        case .day: return "日ごと"
+        case .week: return "週ごと"
+        case .month: return "月ごと"
+        }
+    }
+
+    /// 「今日 / 今週 / 今月」の見出し。カードの消費状況表示に使う。
+    var currentUnitLabel: String {
+        switch self {
+        case .day: return "今日"
+        case .week: return "今週"
+        case .month: return "今月"
+        }
+    }
+
+    /// `Calendar.Component` へのマッピング(期間ウィンドウの算出に使う)。
+    var calendarComponent: Calendar.Component {
+        switch self {
+        case .day: return .day
+        case .week: return .weekOfYear
+        case .month: return .month
+        }
+    }
+}
+
 /// ユーザーが「やらないと決めた行動」。悪習慣を1つずつ潰していく想定で、同時に挑戦中(`isActive`)に
 /// できるのは1件のみ(`BlockedBehaviorRepository`側で担保する)。triggerText はユーザー入力との
 /// マッチング用キーワード。
+///
+/// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、ユーザーがカードをタップするたびに1回消費する
+/// (`usageEvents` にタイムスタンプを積む)。期間内の消費が上限以内なら、その日は「達成」として
+/// 連続日数に加算される。判定は `BlockedBehaviorRepository.autoEvaluate` が日付変更時に自動で行う
+/// (手動チェックインは廃止)。
 @Model
 final class BlockedBehavior {
     @Attribute(.unique) var id: UUID
@@ -21,9 +62,33 @@ final class BlockedBehavior {
     var activeEndMinute: Int?
     /// 現在挑戦中かどうか。true になれるのは同時に1件のみ。
     var isActive: Bool
-    /// 「まもれた/まもれなかった」の記録が続いている連続日数。まもれなかった日があると0にリセットされる。
+    /// 回数制限の集計期間(生値)。既存データの軽量マイグレーションを通すため optional String で保持する
+    /// (nil は `.day` 扱い)。参照は必ず computed の `limitPeriod` を使う。
+    var limitPeriodRawValue: String?
+    /// 集計期間あたりの上限回数(生値)。nil は 0 扱い。参照は computed の `limitCount` を使う。
+    var limitCountValue: Int?
+    /// 「1回消費」した時刻のログ(生値)。nil は空配列扱い。参照は computed の `usageEvents` を使う。
+    var usageEventsStore: [Date]?
+
+    /// 回数制限の集計期間。
+    var limitPeriod: BlockedBehaviorLimitPeriod {
+        get { limitPeriodRawValue.flatMap(BlockedBehaviorLimitPeriod.init(rawValue:)) ?? .day }
+        set { limitPeriodRawValue = newValue.rawValue }
+    }
+    /// 集計期間あたりの上限回数。0 なら「1回でもやったらアウト」。
+    var limitCount: Int {
+        get { limitCountValue ?? 0 }
+        set { limitCountValue = newValue }
+    }
+    /// 「1回消費」した時刻のログ。期間内の件数が `limitCount` を超えたらその日は未達成扱い。
+    var usageEvents: [Date] {
+        get { usageEventsStore ?? [] }
+        set { usageEventsStore = newValue }
+    }
+    /// 連続で「達成」している日数。上限超過の日があると0にリセットされる。
+    /// `BlockedBehaviorRepository.autoEvaluate` が日付変更時に自動更新する。
     var currentStreakDays: Int = 0
-    /// 直近で「まもれた/まもれなかった」を記録した対象日(前日分を記録するため、記録した日の前日の日付が入る)。
+    /// 自動判定(autoEvaluate)で最後に評価済みの日。この翌日から未評価。
     var lastCheckInDate: Date?
     /// 14日間守り切って「卒業」した日時。nilならまだ挑戦中。
     var masteredAt: Date?
@@ -40,6 +105,9 @@ final class BlockedBehavior {
         activeStartMinute: Int? = nil,
         activeEndMinute: Int? = nil,
         isActive: Bool = true,
+        limitPeriod: BlockedBehaviorLimitPeriod = .day,
+        limitCount: Int = 0,
+        usageEvents: [Date] = [],
         currentStreakDays: Int = 0,
         lastCheckInDate: Date? = nil,
         masteredAt: Date? = nil,
@@ -55,6 +123,9 @@ final class BlockedBehavior {
         self.activeStartMinute = activeStartMinute
         self.activeEndMinute = activeEndMinute
         self.isActive = isActive
+        self.limitPeriodRawValue = limitPeriod.rawValue
+        self.limitCountValue = limitCount
+        self.usageEventsStore = usageEvents
         self.currentStreakDays = currentStreakDays
         self.lastCheckInDate = lastCheckInDate
         self.masteredAt = masteredAt
@@ -64,6 +135,27 @@ final class BlockedBehavior {
 
     /// 14日間の達成に必要な連続日数。
     static let masteryStreakDays = 14
+
+    /// 指定日を含む集計期間ウィンドウ [start, end)。
+    func limitWindow(containing day: Date, calendar: Calendar = .current) -> DateInterval {
+        calendar.dateInterval(of: limitPeriod.calendarComponent, for: day)
+            ?? DateInterval(start: calendar.startOfDay(for: day), duration: 86_400)
+    }
+
+    /// 指定日の終了時点で、その日を含む期間の消費回数が上限を超えているか。
+    func exceededLimit(on day: Date, calendar: Calendar = .current) -> Bool {
+        let window = limitWindow(containing: day, calendar: calendar)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day)) ?? window.end
+        let upperBound = min(window.end, dayEnd)
+        let count = usageEvents.filter { $0 >= window.start && $0 < upperBound }.count
+        return count > limitCount
+    }
+
+    /// 現在時刻を含む期間の、これまでの消費回数。
+    func usageInCurrentPeriod(now: Date = .now, calendar: Calendar = .current) -> Int {
+        let window = limitWindow(containing: now, calendar: calendar)
+        return usageEvents.filter { $0 >= window.start && $0 <= now }.count
+    }
 
     /// 指定した日時が、この行動の検出対象時間帯に入っているか。時間帯未指定なら常に true。
     func isWithinActiveWindow(at date: Date = .now, calendar: Calendar = .current) -> Bool {

@@ -23,11 +23,32 @@ enum AppUIMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// ユーザーの「よびかた」。キャラクターの呼びかけ・みんなのざこ速報の表示に使う。
+enum UserHonorific: String, CaseIterable, Identifiable {
+    case oniisan
+    case oneesan
+    case ojisan
+    case obasan
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .oniisan: return "おにいさん"
+        case .oneesan: return "おねえさん"
+        case .ojisan: return "おじさん"
+        case .obasan: return "おばさん"
+        }
+    }
+}
+
 /// アプリ全体の簡易設定。秘密情報ではないためUserDefaultsに保存する(APIキー等はKeychainServiceを使う)。
 enum AppSettingsStore {
     private static let completionPhraseKey = "voice_completion_phrase"
     private static let uiModeKey = "app_ui_mode"
     private static let userNicknameKey = "user_nickname"
+    private static let userNameKey = "user_name"
+    private static let userHonorificKey = "user_honorific"
     private static let notificationsEnabledKey = "notifications_enabled"
     private static let notificationDelayMinutesKey = "notification_delay_minutes"
     private static let blockedBehaviorProtectedCountKey = "blocked_behavior_protected_count"
@@ -43,10 +64,31 @@ enum AppSettingsStore {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: uiModeKey) }
     }
 
-    /// キャラクターがユーザーを呼ぶ時の呼び名。空文字なら特に呼びかけない。
+    /// ユーザーネーム(例: 「だいすけ」)。未設定なら空文字。
+    static var userName: String {
+        get { UserDefaults.standard.string(forKey: userNameKey) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: userNameKey) }
+    }
+
+    /// よびかた(おにいさん / おねえさん / おじさん / おばさん)。
+    static var userHonorific: UserHonorific {
+        get {
+            if let raw = UserDefaults.standard.string(forKey: userHonorificKey),
+               let honorific = UserHonorific(rawValue: raw) {
+                return honorific
+            }
+            // レガシー: 旧「呼び名」フリーテキストが よびかた と一致すれば引き継ぐ
+            let legacy = UserDefaults.standard.string(forKey: userNicknameKey) ?? ""
+            return UserHonorific.allCases.first { $0.displayName == legacy } ?? .oniisan
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: userHonorificKey) }
+    }
+
+    /// キャラクターがユーザーを呼ぶ時の呼び名。ユーザーネーム + よびかた から組み立てる
+    /// (例: 「だいすけおにいさん」。ユーザーネーム未設定なら「おにいさん」)。空文字にはならない。
     static var userNickname: String {
-        get { UserDefaults.standard.string(forKey: userNicknameKey) ?? "おにいさん" }
-        set { UserDefaults.standard.set(newValue, forKey: userNicknameKey) }
+        let name = userName.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? userHonorific.displayName : name + userHonorific.displayName
     }
 
     /// サボり通知を有効にするか。全ルーティン共通の設定(ルーティンごとの個別設定は持たない)。
