@@ -7,8 +7,11 @@ struct HomeView: View {
     @State private var viewModel = HomeViewModel()
     @State private var editingRoutine: Routine?
     @State private var isPresentingNewRoutine = false
+    @State private var isEditingRoutines = false
     @State private var editingBehavior: BlockedBehavior?
     @State private var showAddPromiseForm = false
+
+    private let routineGridColumns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
 
     var body: some View {
         List {
@@ -19,6 +22,9 @@ struct HomeView: View {
         .appScreenBackground()
         .navigationDestination(item: $editingRoutine) { routine in
             RoutineEditView(routine: routine)
+        }
+        .onChange(of: editingRoutine) { _, new in
+            if new == nil { viewModel.reload() }
         }
         .sheet(isPresented: $isPresentingNewRoutine, onDismiss: { viewModel.reload() }) {
             NavigationStack {
@@ -52,23 +58,24 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - 1. 今日のルーティン
+    // MARK: - 1. 今日のルーティン(2列グリッド)
 
     private var todayRoutinesSection: some View {
         Section {
-            if viewModel.todayRoutines.isEmpty {
+            if viewModel.todayRoutines.isEmpty && !isEditingRoutines {
                 Text("今日のルーティンはありません")
                     .font(.subheadline)
                     .foregroundStyle(AppColor.muted)
             } else {
-                ForEach(viewModel.todayRoutines) { routine in
-                    routineRow(routine)
-                        .swipeActions(edge: .trailing) {
-                            Button("削除", role: .destructive) { viewModel.deleteRoutine(routine) }
-                            Button("編集") { editingRoutine = routine }
-                                .tint(AppColor.secondary)
-                        }
+                LazyVGrid(columns: routineGridColumns, spacing: 20) {
+                    ForEach(viewModel.todayRoutines) { routine in
+                        routineGridCell(routine)
+                    }
+                    if isEditingRoutines {
+                        addRoutineCell
+                    }
                 }
+                .padding(.vertical, 8)
             }
         } header: {
             HStack(spacing: 8) {
@@ -78,75 +85,98 @@ struct HomeView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(AppColor.muted)
                 Button {
-                    isPresentingNewRoutine = true
+                    withAnimation { isEditingRoutines.toggle() }
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.body)
-                        .foregroundStyle(AppColor.primary)
+                    if isEditingRoutines {
+                        Text("完了").font(.caption.bold())
+                    } else {
+                        Image(systemName: "gearshape").font(.body)
+                    }
                 }
                 .buttonStyle(.borderless)
-                .accessibilityLabel("ルーティンを追加")
+                .foregroundStyle(AppColor.primary)
+                .accessibilityLabel(isEditingRoutines ? "編集を終える" : "ルーティンを編集")
             }
         }
         .appCardRow()
     }
 
-    /// タップで1ステップ進む。最後のステップ(または0ステップ)で完了。
+    /// ルーティン1件の大きな円セル。通常時タップで1ステップ進む / 編集時タップで編集画面へ。
     @ViewBuilder
-    private func routineRow(_ routine: Routine) -> some View {
+    private func routineGridCell(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
         let streak = viewModel.currentRoutineStreak(for: routine)
-        let inProgressStep = viewModel.inProgressStepTitle(for: routine)
 
         Button {
-            withAnimation { viewModel.advanceRoutine(routine) }
+            if isEditingRoutines {
+                editingRoutine = routine
+            } else {
+                withAnimation { viewModel.advanceRoutine(routine) }
+            }
         } label: {
-            HStack(spacing: 12) {
-                ProgressCircle(progress: progress.fraction, size: 34)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(routine.title)
-                        .font(.headline)
-                        .foregroundStyle(AppColor.text)
-
-                    if progress.showsStepBreakdown, !progress.isCompletedToday {
-                        Text("\(progress.completedSteps) / \(progress.totalSteps)ステップ")
-                            .font(.caption)
-                            .foregroundStyle(AppColor.muted)
-                    }
-
-                    if streak >= 1 {
-                        Text("\(streak)日達成！")
-                            .font(.caption)
-                            .foregroundStyle(AppColor.success)
-                    } else {
-                        Text("今日から始めよう")
-                            .font(.caption)
-                            .foregroundStyle(AppColor.muted)
+            VStack(spacing: 8) {
+                ZStack(alignment: .bottomTrailing) {
+                    ProgressCircle(progress: progress.fraction, size: 84, lineWidth: 5)
+                    if isEditingRoutines {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(AppColor.text)
+                            .frame(width: 26, height: 26)
+                            .background(AppColor.surface, in: Circle())
+                            .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
+                            .offset(x: 4, y: 4)
                     }
                 }
 
-                Spacer(minLength: 8)
+                Text(routine.title)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
 
-                if let inProgressStep {
-                    Text(inProgressStep)
-                        .font(.caption)
-                        .foregroundStyle(AppColor.primary)
-                        .lineLimit(1)
-                } else if !progress.isCompletedToday {
-                    Text("タップで進める")
-                        .font(.caption)
+                if progress.showsStepBreakdown, !progress.isCompletedToday {
+                    Text("\(progress.completedSteps) / \(progress.totalSteps)ステップ")
+                        .font(.caption2)
                         .foregroundStyle(AppColor.muted)
-                } else if let minute = routine.scheduledStartMinute {
-                    Text(Self.timeText(minute))
-                        .font(.caption)
+                } else if streak >= 1 {
+                    Text("\(streak)日達成！")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.success)
+                } else {
+                    Text("今日から")
+                        .font(.caption2)
                         .foregroundStyle(AppColor.muted)
                 }
             }
+            .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.vertical, 4)
+    }
+
+    /// 編集モードのときだけ出る「ルーティンを追加」セル。
+    private var addRoutineCell: some View {
+        Button {
+            isPresentingNewRoutine = true
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(AppColor.primary)
+                    .frame(width: 84, height: 84)
+                    .overlay(Circle().stroke(AppColor.border, lineWidth: 5))
+                Text("ルーティンを追加")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppColor.primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                Text(" ")
+                    .font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - 2. 今日の約束
@@ -268,12 +298,6 @@ struct HomeView: View {
             ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
         }
         .appCardRow()
-    }
-
-    // MARK: - helpers
-
-    private static func timeText(_ minute: Int) -> String {
-        String(format: "%d:%02d", minute / 60, minute % 60)
     }
 }
 

@@ -78,6 +78,13 @@ final class RoutineEditViewModel {
         }
     }
 
+    /// このルーティンを削除する(既存ルーティンの編集時のみ)。
+    func deleteRoutine() {
+        guard let dependencies, let routine else { return }
+        dependencies.routineRepository.delete(routine)
+        self.routine = nil
+    }
+
     func addStep() {
         let trimmed = newStepTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let dependencies else { return }

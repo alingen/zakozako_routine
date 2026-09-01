@@ -2,10 +2,15 @@ import SwiftUI
 
 struct RoutineEditView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RoutineEditViewModel
+    @State private var isPresentingDeleteConfirm = false
+
+    private let isExisting: Bool
 
     init(routine: Routine?) {
         _viewModel = State(initialValue: RoutineEditViewModel(routine: routine))
+        isExisting = routine != nil
     }
 
     var body: some View {
@@ -32,7 +37,7 @@ struct RoutineEditView: View {
                 Text("通知")
             } footer: {
                 Text(viewModel.notifyAtScheduledTime
-                     ? "この時刻を過ぎてもルーティンが終わっていないと、小悪魔コーチがサボりを指摘します。"
+                     ? "この時刻を過ぎてもルーティンが終わっていないと、通知でお知らせします。"
                      : "このルーティンの通知はオフです。")
             }
 
@@ -92,8 +97,23 @@ struct RoutineEditView: View {
                     .disabled(viewModel.newStepTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+
+            if isExisting {
+                Section {
+                    Button("このルーティンを削除", role: .destructive) {
+                        isPresentingDeleteConfirm = true
+                    }
+                }
+            }
         }
-        .navigationTitle(viewModel.routine == nil ? "ルーティン新規作成" : "ルーティン編集")
+        .navigationTitle(isExisting ? "ルーティン編集" : "ルーティン新規作成")
+        .confirmationDialog("このルーティンを削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
+            Button("削除する", role: .destructive) {
+                viewModel.deleteRoutine()
+                dismiss()
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
         .task {
             viewModel.configure(context: modelContext)
         }
