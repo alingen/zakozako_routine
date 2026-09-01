@@ -91,7 +91,7 @@ struct HomeView: View {
                     if isEditingRoutines {
                         Text("完了").font(.caption.bold())
                     } else {
-                        Image(systemName: "gearshape").font(.body)
+                        Image(systemName: "square.and.pencil").font(.body)
                     }
                 }
                 .buttonStyle(.borderless)
@@ -290,10 +290,11 @@ struct HomeView: View {
             Button {
                 editingBehavior = behavior
             } label: {
-                Image(systemName: "gearshape")
+                Image(systemName: "square.and.pencil")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(AppColor.muted)
+            .accessibilityLabel("約束を編集")
         }
     }
 
