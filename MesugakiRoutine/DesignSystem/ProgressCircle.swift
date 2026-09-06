@@ -69,7 +69,7 @@ struct ProgressCircle: View {
 }
 
 /// 習慣の達成割合を、円の内側を塗る扇形で表す。
-/// 未達成部分は白、達成部分は `tint`。外周線は表示しない。
+/// 未達成部分は淡いテーマ色、達成部分は `tint`。外周線は表示しない。
 struct RoutineProgressPie: View {
     let progress: Double
     var size: CGFloat = 30
@@ -86,12 +86,12 @@ struct RoutineProgressPie: View {
 
     var body: some View {
         ZStack {
-            Circle().fill(AppColor.surface)
+            Circle().fill(AppColor.primarySoft)
             ProgressPieSlice(progress: clamped)
                 .fill(tint)
 
             if let centerSystemImage {
-                // 白地では tint、塗られた領域では白になるように2色のアイコンを重ねる。
+                // 未達成部分では tint、塗られた領域では白になるように2色のアイコンを重ねる。
                 Image(systemName: centerSystemImage)
                     .font(.system(size: size * 0.42))
                     .foregroundStyle(tint)
@@ -129,10 +129,6 @@ struct RoutineProgressPie: View {
                             .scaleEffect(clampedConfirmation)
                     }
             }
-
-            // 白い画面上でも円の範囲が分かるよう、進捗とは独立した固定枠を最前面に置く。
-            Circle()
-                .strokeBorder(AppColor.border, lineWidth: 2)
         }
         .frame(width: size, height: size)
         .animation(.easeInOut(duration: 0.25), value: clamped)
