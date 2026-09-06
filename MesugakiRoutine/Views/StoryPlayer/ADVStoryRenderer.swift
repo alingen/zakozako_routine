@@ -215,7 +215,7 @@ private struct ADVTextWindow: View {
                 .font(.body)
                 .foregroundStyle(AppColor.text)
                 .lineLimit(3)
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 48)
                 .padding(.top, displaySpeakerName == nil ? 20 : 28)
                 .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -227,10 +227,10 @@ private struct ADVTextWindow: View {
                     .lineLimit(1)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 7)
-                    .background(
-                        AppColor.primary,
-                        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    )
+                    .background {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(AppColor.primary.opacity(1))
+                    }
                     .offset(x: 24, y: -16)
             }
         }
