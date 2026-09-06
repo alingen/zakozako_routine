@@ -82,7 +82,7 @@ struct ADVStoryRenderer: View {
                         StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, contentHorizontalPadding)
                 .padding(.bottom, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: variantAlignment)
 
@@ -98,12 +98,18 @@ struct ADVStoryRenderer: View {
     }
 
     private func textWindowMaxWidth(availableWidth: CGFloat) -> CGFloat {
-        switch scenarioType {
-        case .middleEvent, .largeEvent:
+        if usesLandscapeStillLayout {
             return min(640, availableWidth * 0.95)
-        case .daily, .smallEvent, .unknown:
-            return .infinity
         }
+        return .infinity
+    }
+
+    private var usesLandscapeStillLayout: Bool {
+        scenarioType.supportsLandscapeStillPresentation && effectiveCG != nil
+    }
+
+    private var contentHorizontalPadding: CGFloat {
+        usesLandscapeStillLayout ? 18 : 10
     }
 
     private var variantAlignment: Alignment {

@@ -167,12 +167,49 @@ final class StoryScenarioGraphTests: XCTestCase {
         }
     }
 
-    func testOnlyMiddleAndLargeEventsUseLandscapePresentation() {
-        XCTAssertFalse(StoryScenarioType.daily.usesLandscapeStoryPresentation)
-        XCTAssertFalse(StoryScenarioType.smallEvent.usesLandscapeStoryPresentation)
-        XCTAssertTrue(StoryScenarioType.middleEvent.usesLandscapeStoryPresentation)
-        XCTAssertTrue(StoryScenarioType.largeEvent.usesLandscapeStoryPresentation)
-        XCTAssertFalse(StoryScenarioType.unknown("future_event").usesLandscapeStoryPresentation)
+    func testOnlyMiddleAndLargeStillFramesUseLandscapePresentation() {
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .daily,
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .middleEvent,
+                cgAssetID: nil,
+                isCompleted: false
+            )
+        )
+        XCTAssertTrue(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .middleEvent,
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
+        XCTAssertTrue(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .largeEvent,
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .largeEvent,
+                cgAssetID: "cg_test",
+                isCompleted: true
+            )
+        )
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .unknown("future_event"),
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
     }
 
     private func decodeScenario(_ json: String) throws -> StoryScenario {

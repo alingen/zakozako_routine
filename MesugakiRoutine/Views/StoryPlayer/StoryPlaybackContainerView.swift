@@ -82,16 +82,21 @@ struct StoryPlaybackContainerView: View {
         .onAppear {
             updateOrientationForStory()
         }
+        .onChange(of: usesLandscapePresentation) { _, _ in
+            updateOrientationForStory()
+        }
         .onDisappear {
             player?.close()
-            if usesLandscapePresentation {
-                AppOrientationController.set(.portrait)
-            }
+            AppOrientationController.set(.portrait)
         }
     }
 
     private var usesLandscapePresentation: Bool {
-        launch.scenario.scenarioType.usesLandscapeStoryPresentation
+        StoryPresentationOrientationPolicy.usesLandscape(
+            scenarioType: launch.scenario.scenarioType,
+            cgAssetID: player?.cgAssetID,
+            isCompleted: player?.isCompleted == true
+        )
     }
 
     private func updateOrientationForStory() {
@@ -243,12 +248,28 @@ private struct StoryEventTitleIntroView: View {
 }
 
 extension StoryScenarioType {
-    var usesLandscapeStoryPresentation: Bool {
+    var supportsLandscapeStillPresentation: Bool {
         switch self {
         case .middleEvent, .largeEvent:
             return true
         case .daily, .smallEvent, .unknown:
             return false
         }
+    }
+}
+
+enum StoryPresentationOrientationPolicy {
+    static func usesLandscape(
+        scenarioType: StoryScenarioType,
+        cgAssetID: String?,
+        isCompleted: Bool
+    ) -> Bool {
+        guard scenarioType.supportsLandscapeStillPresentation,
+              !isCompleted,
+              let cgAssetID,
+              !cgAssetID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        return true
     }
 }
