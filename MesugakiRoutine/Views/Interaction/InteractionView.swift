@@ -138,7 +138,7 @@ struct InteractionView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.trailing, 16)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 16)
                 }
 
                 if let loadError = viewModel.loadError {
