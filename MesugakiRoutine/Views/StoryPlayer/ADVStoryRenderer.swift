@@ -75,7 +75,8 @@ struct ADVStoryRenderer: View {
                     variantContent(
                         textWindowMaxWidth: textWindowMaxWidth(
                             availableWidth: proxy.size.width
-                        )
+                        ),
+                        textHorizontalPadding: textHorizontalPadding
                     )
 
                     if !choices.isEmpty {
@@ -112,6 +113,10 @@ struct ADVStoryRenderer: View {
         usesLandscapeStillLayout ? 18 : 10
     }
 
+    private var textHorizontalPadding: CGFloat {
+        usesLandscapeStillLayout ? 48 : 32
+    }
+
     private var variantAlignment: Alignment {
         switch node.uiVariant ?? .dialogue {
         case .titleCard, .cg:
@@ -122,7 +127,10 @@ struct ADVStoryRenderer: View {
     }
 
     @ViewBuilder
-    private func variantContent(textWindowMaxWidth: CGFloat) -> some View {
+    private func variantContent(
+        textWindowMaxWidth: CGFloat,
+        textHorizontalPadding: CGFloat
+    ) -> some View {
         switch node.uiVariant ?? .dialogue {
         case .titleCard:
             StoryTitleCardView(node: node)
@@ -130,10 +138,14 @@ struct ADVStoryRenderer: View {
             ADVTextWindow(
                 node: node,
                 maxWidth: textWindowMaxWidth,
+                horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil
             )
         case .dialogue:
-            defaultMessageContent(textWindowMaxWidth: textWindowMaxWidth)
+            defaultMessageContent(
+                textWindowMaxWidth: textWindowMaxWidth,
+                textHorizontalPadding: textHorizontalPadding
+            )
         case .typing:
             StoryTypingView(node: node)
         case .audioMessage:
@@ -147,6 +159,7 @@ struct ADVStoryRenderer: View {
                 ADVTextWindow(
                     node: node,
                     maxWidth: textWindowMaxWidth,
+                    horizontalPadding: textHorizontalPadding,
                     onAdvance: canAdvance ? onAdvance : nil
                 )
             }
@@ -158,7 +171,10 @@ struct ADVStoryRenderer: View {
     }
 
     @ViewBuilder
-    private func defaultMessageContent(textWindowMaxWidth: CGFloat) -> some View {
+    private func defaultMessageContent(
+        textWindowMaxWidth: CGFloat,
+        textHorizontalPadding: CGFloat
+    ) -> some View {
         switch node.messageType {
         case .image:
             StoryImageMessageView(node: node)
@@ -166,12 +182,14 @@ struct ADVStoryRenderer: View {
             ADVTextWindow(
                 node: node,
                 maxWidth: textWindowMaxWidth,
+                horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil
             )
         case .text, .choice, .unknown:
             ADVTextWindow(
                 node: node,
                 maxWidth: textWindowMaxWidth,
+                horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil
             )
         }
@@ -181,6 +199,7 @@ struct ADVStoryRenderer: View {
 private struct ADVTextWindow: View {
     let node: StoryNode
     let maxWidth: CGFloat
+    let horizontalPadding: CGFloat
     let onAdvance: (() -> Void)?
 
     private var normalizedSpeaker: String {
@@ -234,7 +253,7 @@ private struct ADVTextWindow: View {
                 .font(.title3)
                 .foregroundStyle(AppColor.text)
                 .lineLimit(3)
-                .padding(.horizontal, 48)
+                .padding(.horizontal, horizontalPadding)
                 .padding(.top, 28)
                 .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -258,7 +277,7 @@ private struct ADVTextWindow: View {
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
                             .fill(AppColor.primary)
                     }
-                    .offset(x: 48, y: -19)
+                    .offset(x: horizontalPadding, y: -19)
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
