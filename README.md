@@ -82,7 +82,7 @@ Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれ�
 
 ### Playerとrenderer
 
-`StoryPlayer` はSwiftUIに依存しない `@MainActor` の進行エンジンです。graph traversal、phase filter、choiceとプロフィール保存、checkpointからの再開、restart／reread、完了処理、回収可能エラーを担当します。`StoryCommandDispatcher` はCMSの `command`／`commandArgs` を背景、CG、画面モード、typing、modal、wait、通話状態、音声などの表示効果へ変換します。未知のcommandは致命的エラーにしません。
+`StoryPlayer` はSwiftUIに依存しない `@MainActor` の進行エンジンです。graph traversal、phase filter、choiceとプロフィール保存、checkpointからの再開、restart／reread、スキップ／完了処理、回収可能エラーを担当します。小イベントのスキップは読了扱いにして途中位置を残さず、再度開いた場合は最初から再生します。`StoryCommandDispatcher` はCMSの `command`／`commandArgs` を背景、CG、画面モード、typing、modal、wait、通話状態、音声などの表示効果へ変換します。未知のcommandは致命的エラーにしません。
 
 `StoryPlayerView` は交流画面から `fullScreenCover` で表示する統合画面です。進行状態に応じて以下の純粋なrendererへ描画を委譲し、操作はcallbackでPlayerへ返します。renderer自身はシナリオ遷移や `NavigationStack` を持ちません。
 

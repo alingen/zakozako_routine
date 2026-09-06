@@ -299,6 +299,59 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertFalse(retainedProgress.isRead)
     }
 
+    func testSkipCompletesEventAndNextOpenStartsFromBeginning() async throws {
+        let contentRepository = try makeGeneratedContentRepository()
+        let stateRepository = try makeStateRepository()
+        let event = try XCTUnwrap(contentRepository.event(id: "event_small_001"))
+        let scenario = try XCTUnwrap(contentRepository.scenario(id: event.entryScenarioId))
+        let playbackKey = "integration:skip:small_001"
+        try stateRepository.markUnlocked(eventId: event.eventId, at: fixedNow)
+
+        let firstPlayer = makePlayer(
+            scenario: scenario,
+            event: event,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await firstPlayer.start()
+        let firstNodeID = try XCTUnwrap(firstPlayer.currentNode?.nodeId)
+
+        let didSkip = await firstPlayer.skip()
+
+        XCTAssertTrue(didSkip)
+        XCTAssertTrue(firstPlayer.isCompleted)
+        XCTAssertTrue(try XCTUnwrap(stateRepository.checkpoint(for: playbackKey)).isCompleted)
+        let completedProgress = try XCTUnwrap(
+            stateRepository.eventProgress(for: event.eventId)
+        )
+        XCTAssertTrue(completedProgress.isRead)
+        XCTAssertTrue(completedProgress.isCompleted)
+        XCTAssertEqual(completedProgress.completionCount, 1)
+
+        let rereadPlayer = makePlayer(
+            scenario: scenario,
+            event: event,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await rereadPlayer.start()
+
+        XCTAssertFalse(rereadPlayer.isCompleted)
+        XCTAssertEqual(rereadPlayer.currentNode?.nodeId, firstNodeID)
+        let rereadCheckpoint = try XCTUnwrap(
+            stateRepository.checkpoint(for: playbackKey)
+        )
+        XCTAssertFalse(rereadCheckpoint.isCompleted)
+        XCTAssertEqual(rereadCheckpoint.visitedNodeIds, [firstNodeID])
+        XCTAssertEqual(
+            try XCTUnwrap(stateRepository.eventProgress(for: event.eventId)).completionCount,
+            1,
+            "Starting a reread must not count as another completion"
+        )
+    }
+
     func testMissingAndFullyFilteredChoiceGroupsContinueByLineOrder() async throws {
         let missingScenario = StoryScenario(
             scenarioId: "missing_choice_group",

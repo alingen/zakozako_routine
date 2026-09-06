@@ -73,6 +73,7 @@ struct StoryPlayerView: View {
     let onChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
     let onRestart: () -> Void
+    let onSkip: () -> Void
     let onClose: () -> Void
 
     @State private var isShowingRestartConfirmation = false
@@ -118,6 +119,7 @@ struct StoryPlayerView: View {
             case .adv:
                 ADVStoryRenderer(
                     node: node,
+                    scenarioType: input.scenarioType,
                     backgroundAssetID: input.backgroundAssetID,
                     portraitAssetID: input.portraitAssetID,
                     cgAssetID: input.cgAssetID,
@@ -192,11 +194,14 @@ struct StoryPlayerView: View {
                 } label: {
                     Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
                 }
-                Button(action: onClose) {
-                    Label(
-                        input.scenarioType == .smallEvent ? "会話を中断する" : "閉じる",
-                        systemImage: "xmark"
-                    )
+                if input.scenarioType == .smallEvent, !input.isCompleted {
+                    Button(action: onSkip) {
+                        Label("スキップ", systemImage: "forward.end.fill")
+                    }
+                } else {
+                    Button(action: onClose) {
+                        Label("閉じる", systemImage: "xmark")
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -274,6 +279,7 @@ struct StoryPlayerView: View {
         ZStack(alignment: .top) {
             ADVStoryRenderer(
                 node: node,
+                scenarioType: input.scenarioType,
                 backgroundAssetID: input.backgroundAssetID,
                 portraitAssetID: input.portraitAssetID,
                 cgAssetID: input.cgAssetID,

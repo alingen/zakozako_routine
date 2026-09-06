@@ -43,6 +43,13 @@ struct StoryPlaybackContainerView: View {
                     onRestart: {
                         Task { await player.restart() }
                     },
+                    onSkip: {
+                        Task {
+                            if await player.skip() {
+                                onClose()
+                            }
+                        }
+                    },
                     onClose: {
                         player.close()
                         onClose()
