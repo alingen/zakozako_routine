@@ -4,6 +4,7 @@ import SwiftUI
 struct ChatStoryRenderer: View {
     let node: StoryNode
     let scenarioType: StoryScenarioType
+    var isTerminalNode = false
     var visibleNodes: [StoryNode] = []
     var portraitAssetID: String?
     var cgAssetID: String?
@@ -29,18 +30,27 @@ struct ChatStoryRenderer: View {
             return false
         }
     }
-    private var shouldAutoAdvance: Bool {
+    private var waitsForTerminalAdvance: Bool {
+        isTerminalNode
+            && StoryCompletionPresentationPolicy.returnsToMenuAutomatically(
+                after: scenarioType
+            )
+    }
+    private var shouldAutomaticallyPresentNode: Bool {
         guard canAdvance else { return false }
         if usesEventChatFlow {
             return !isWaitingToSendPlayerMessage
         }
         return node.isRioSpeaker && node.messageType == .text
     }
+    private var shouldAutoAdvance: Bool {
+        shouldAutomaticallyPresentNode && !waitsForTerminalAdvance
+    }
     private var isWaitingToSendPlayerMessage: Bool {
         canAdvance && node.isPlayerSpeaker && node.messageType == .text
     }
     private var isWaitingForRioMessage: Bool {
-        shouldAutoAdvance
+        shouldAutomaticallyPresentNode
             && node.isRioSpeaker
             && node.messageType == .text
             && revealedRioNodeID != node.nodeId
@@ -49,7 +59,7 @@ struct ChatStoryRenderer: View {
         isWaitingForRioMessage && typingStartedRioNodeID == node.nodeId
     }
     private var isWaitingForSystemMessage: Bool {
-        shouldAutoAdvance
+        shouldAutomaticallyPresentNode
             && usesEventChatFlow
             && node.normalizedSpeakerKey == "system"
             && node.messageType == .text
@@ -174,7 +184,7 @@ struct ChatStoryRenderer: View {
             }
         }
         .task(id: node.nodeId) {
-            guard shouldAutoAdvance else { return }
+            guard shouldAutomaticallyPresentNode else { return }
             do {
                 if node.isRioSpeaker && node.messageType == .text {
                     try await Task<Never, Never>.sleep(
@@ -211,7 +221,9 @@ struct ChatStoryRenderer: View {
                 return
             }
             guard !Task.isCancelled else { return }
-            onAdvance()
+            if shouldAutoAdvance {
+                onAdvance()
+            }
         }
     }
 
@@ -236,7 +248,10 @@ struct ChatStoryRenderer: View {
             Group {
                 if !choices.isEmpty {
                     StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
-                } else if canAdvance && !shouldAutoAdvance {
+                } else if canAdvance,
+                          !shouldAutoAdvance,
+                          !isWaitingForRioMessage,
+                          !isWaitingForSystemMessage {
                     manualAdvanceButton
                 } else {
                     Color.clear

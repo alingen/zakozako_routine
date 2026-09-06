@@ -3582,29 +3582,6 @@
       "scenarioType": "middle_event",
       "nodes": [
         {
-          "lineOrder": 1,
-          "nodeId": "middle_001_001",
-          "speaker": "system",
-          "messageType": "text",
-          "text": "Day first",
-          "speakerName": "System",
-          "enabled": true,
-          "notes": "確定原稿: 中イベント１（確定）.docx",
-          "screenMode": "adv",
-          "uiVariant": "title_card"
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "middle_001_002",
-          "speaker": "system",
-          "messageType": "text",
-          "text": "プロローグ",
-          "speakerName": "System",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "title_card"
-        },
-        {
           "lineOrder": 3,
           "nodeId": "middle_001_003",
           "speaker": "narrator",
@@ -6745,17 +6722,6 @@
           "commandArgs": {
             "background": "bg_station_street_evening"
           }
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "middle_002_002",
-          "speaker": "system",
-          "messageType": "text",
-          "text": "Day5",
-          "speakerName": "System",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "title_card"
         },
         {
           "lineOrder": 3,

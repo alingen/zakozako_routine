@@ -97,9 +97,13 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         var didHideCGAfterShowing = false
 
         await largePlayer.start()
-        XCTAssertEqual(largePlayer.currentNode?.nodeId, "large_001_001")
-        XCTAssertEqual(largePlayer.currentNode?.uiVariant, .sceneTransition)
+        XCTAssertEqual(largePlayer.currentNode?.nodeId, "large_001_002")
+        XCTAssertEqual(largePlayer.currentNode?.uiVariant, .narration)
         XCTAssertEqual(largePlayer.backgroundAssetID, "bg_rio_entrance")
+        XCTAssertEqual(
+            try stateRepository.checkpoint(for: "integration:modes:large_001")?.visitedNodeIds,
+            ["large_001_001", "large_001_002"]
+        )
         try await driveStartedPlayerToCompletion(
             largePlayer,
             safetyLimit: largeScenario.nodes.count * 3
@@ -173,6 +177,33 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertTrue(didPresentImageMessage)
         XCTAssertTrue(didPresentModal)
         XCTAssertTrue(sleepProbe.sawTypingDuringWait)
+    }
+
+    func testMiddleEventSkipsMemoTitleAndEmptySystemTransitions() async throws {
+        let contentRepository = try makeGeneratedContentRepository()
+        let stateRepository = try makeStateRepository()
+        let event = try XCTUnwrap(contentRepository.event(id: "event_middle_002"))
+        let scenario = try XCTUnwrap(contentRepository.scenario(id: event.entryScenarioId))
+        let playbackKey = "integration:hidden-system:middle_002"
+        let player = makePlayer(
+            scenario: scenario,
+            event: event,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        XCTAssertFalse(scenario.nodes.contains(where: { $0.uiVariant == .titleCard }))
+
+        await player.start()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "middle_002_004")
+        XCTAssertEqual(player.currentNode?.uiVariant, .narration)
+        XCTAssertEqual(player.backgroundAssetID, "bg_station_street_evening")
+        XCTAssertEqual(
+            try stateRepository.checkpoint(for: playbackKey)?.visitedNodeIds,
+            ["middle_002_001", "middle_002_003", "middle_002_004"]
+        )
     }
 
     func testRealDailyDanglingChoiceRecoversAndAnotherChoicePersistsValue() async throws {
@@ -433,6 +464,55 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             await player.advance()
             XCTAssertTrue(player.isCompleted)
         }
+    }
+
+    func testPlayerIdentifiesTheLastVisibleNodeAsTerminal() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "terminal_node",
+            scenarioType: .middleEvent,
+            nodes: [
+                StoryNode(
+                    nodeId: "first",
+                    lineOrder: 1,
+                    speaker: "protagonist",
+                    messageType: .text,
+                    text: "first"
+                ),
+                StoryNode(
+                    nodeId: "last",
+                    lineOrder: 2,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "last"
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(
+                scenarios: [scenario],
+                choiceGroups: [],
+                events: []
+            )
+        )
+        let stateRepository = try makeStateRepository()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:terminal_node",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+        XCTAssertEqual(player.currentNode?.nodeId, "first")
+        XCTAssertFalse(player.isCurrentNodeTerminal)
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "last")
+        XCTAssertTrue(player.isCurrentNodeTerminal)
+
+        await player.advance()
+        XCTAssertTrue(player.isCompleted)
+        XCTAssertFalse(player.isCurrentNodeTerminal)
     }
 }
 

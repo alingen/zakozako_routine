@@ -13,18 +13,21 @@ struct StoryPlaybackContainerView: View {
     @State private var preparationError: String?
     @State private var isShowingEventTitleIntro = false
     @State private var isEventTitleIntroVisible = false
+    @State private var lastActiveSnapshot: StoryPlayerViewSnapshot?
+    @State private var isCompletionFadeVisible = false
 
     var body: some View {
         ZStack {
             Group {
                 if let player {
-                    let renderedInput = snapshot(of: player)
+                    let liveInput = snapshot(of: player)
+                    let renderedInput = displayedSnapshot(from: liveInput)
                     StoryPlayerView(
                         input: renderedInput,
                         onAdvance: {
                             Task {
                                 await player.advance(
-                                    expectedNodeId: renderedInput.currentNode?.nodeId
+                                    expectedNodeId: liveInput.currentNode?.nodeId
                                 )
                             }
                         },
@@ -32,14 +35,14 @@ struct StoryPlaybackContainerView: View {
                             Task {
                                 await player.selectChoice(
                                     choice,
-                                    expectedNodeId: renderedInput.currentNode?.nodeId
+                                    expectedNodeId: liveInput.currentNode?.nodeId
                                 )
                             }
                         },
                         onDismissModal: {
                             Task {
                                 await player.dismissModal(
-                                    expectedNodeId: renderedInput.currentNode?.nodeId
+                                    expectedNodeId: liveInput.currentNode?.nodeId
                                 )
                             }
                         },
@@ -58,6 +61,12 @@ struct StoryPlaybackContainerView: View {
                             onClose()
                         }
                     )
+                    .onAppear {
+                        cacheActiveSnapshot(liveInput)
+                    }
+                    .onChange(of: presentationCacheKey(for: liveInput)) { _, _ in
+                        cacheActiveSnapshot(liveInput)
+                    }
                 } else if let preparationError {
                     unavailableView(message: preparationError)
                 } else {
@@ -75,6 +84,15 @@ struct StoryPlaybackContainerView: View {
                 )
                 .zIndex(10)
             }
+
+            if shouldRunCompletionFade {
+                Color.black
+                    .opacity(isCompletionFadeVisible ? 1 : 0)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .zIndex(20)
+                    .accessibilityHidden(true)
+            }
         }
         .task(id: launch.id) {
             await prepare()
@@ -84,6 +102,9 @@ struct StoryPlaybackContainerView: View {
         }
         .onChange(of: usesLandscapePresentation) { _, _ in
             updateOrientationForStory()
+        }
+        .task(id: shouldRunCompletionFade) {
+            await runCompletionFadeIfNeeded()
         }
         .onDisappear {
             player?.close()
@@ -99,6 +120,13 @@ struct StoryPlaybackContainerView: View {
         )
     }
 
+    private var shouldRunCompletionFade: Bool {
+        player?.isCompleted == true
+            && StoryCompletionPresentationPolicy.returnsToMenuAutomatically(
+                after: launch.scenario.scenarioType
+            )
+    }
+
     private func updateOrientationForStory() {
         AppOrientationController.set(usesLandscapePresentation ? .landscape : .portrait)
     }
@@ -109,6 +137,8 @@ struct StoryPlaybackContainerView: View {
         preparationError = nil
         isShowingEventTitleIntro = false
         isEventTitleIntroVisible = false
+        lastActiveSnapshot = nil
+        isCompletionFadeVisible = false
 
         do {
             let content = try StoryContentRepository()
@@ -170,8 +200,64 @@ struct StoryPlaybackContainerView: View {
             isTyping: player.isTyping,
             isModalPresented: player.isModalPresented,
             isCompleted: player.isCompleted,
+            isCurrentNodeTerminal: player.isCurrentNodeTerminal,
             recoverableError: player.recoverableError
         )
+    }
+
+    private func displayedSnapshot(
+        from liveInput: StoryPlayerViewSnapshot
+    ) -> StoryPlayerViewSnapshot {
+        guard shouldRunCompletionFade, let lastActiveSnapshot else {
+            return liveInput
+        }
+        return lastActiveSnapshot
+    }
+
+    private func cacheActiveSnapshot(_ snapshot: StoryPlayerViewSnapshot) {
+        guard !snapshot.isCompleted, snapshot.currentNode != nil else { return }
+        lastActiveSnapshot = snapshot
+    }
+
+    private func presentationCacheKey(
+        for snapshot: StoryPlayerViewSnapshot
+    ) -> String {
+        [
+            snapshot.currentNode?.nodeId ?? "",
+            snapshot.currentMode.rawValue,
+            String(snapshot.visibleChatNodes.count),
+            String(snapshot.availableChoices.count),
+            String(snapshot.isTyping),
+            String(snapshot.isModalPresented),
+        ].joined(separator: "|")
+    }
+
+    private func runCompletionFadeIfNeeded() async {
+        guard shouldRunCompletionFade else {
+            isCompletionFadeVisible = false
+            return
+        }
+
+        do {
+            try await Task<Never, Never>.sleep(nanoseconds: 40_000_000)
+        } catch {
+            return
+        }
+        guard !Task.isCancelled, shouldRunCompletionFade else { return }
+
+        withAnimation(.easeIn(duration: 0.35)) {
+            isCompletionFadeVisible = true
+        }
+
+        do {
+            try await Task<Never, Never>.sleep(nanoseconds: 400_000_000)
+        } catch {
+            return
+        }
+        guard !Task.isCancelled, shouldRunCompletionFade else { return }
+
+        player?.close()
+        onClose()
     }
 
     private func unavailableView(message: String) -> some View {
@@ -271,5 +357,16 @@ enum StoryPresentationOrientationPolicy {
             return false
         }
         return true
+    }
+}
+
+enum StoryCompletionPresentationPolicy {
+    static func returnsToMenuAutomatically(after scenarioType: StoryScenarioType) -> Bool {
+        switch scenarioType {
+        case .middleEvent, .largeEvent:
+            return true
+        case .daily, .smallEvent, .unknown:
+            return false
+        }
     }
 }

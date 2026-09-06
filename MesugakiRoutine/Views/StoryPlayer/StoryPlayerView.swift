@@ -15,6 +15,7 @@ protocol StoryPlayerViewInput {
     var isTyping: Bool { get }
     var isModalPresented: Bool { get }
     var isCompleted: Bool { get }
+    var isCurrentNodeTerminal: Bool { get }
     var recoverableError: String? { get }
 }
 
@@ -32,6 +33,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
     let isTyping: Bool
     let isModalPresented: Bool
     let isCompleted: Bool
+    let isCurrentNodeTerminal: Bool
     let recoverableError: String?
 
     init(
@@ -47,6 +49,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         isTyping: Bool = false,
         isModalPresented: Bool = false,
         isCompleted: Bool = false,
+        isCurrentNodeTerminal: Bool = false,
         recoverableError: String? = nil
     ) {
         self.title = title
@@ -61,6 +64,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         self.isTyping = isTyping
         self.isModalPresented = isModalPresented
         self.isCompleted = isCompleted
+        self.isCurrentNodeTerminal = isCurrentNodeTerminal
         self.recoverableError = recoverableError
     }
 }
@@ -78,6 +82,13 @@ struct StoryPlayerView: View {
 
     @State private var isShowingRestartConfirmation = false
 
+    private var isAutomaticallyReturningCompletedEvent: Bool {
+        input.isCompleted
+            && StoryCompletionPresentationPolicy.returnsToMenuAutomatically(
+                after: input.scenarioType
+            )
+    }
+
     private var usesSkipOnlyDismissal: Bool {
         switch input.scenarioType {
         case .smallEvent, .middleEvent, .largeEvent:
@@ -94,17 +105,19 @@ struct StoryPlayerView: View {
                     edges: input.currentMode == .chat ? [.horizontal, .bottom] : .all
                 )
 
-            VStack(spacing: 10) {
-                topBar
+            if !isAutomaticallyReturningCompletedEvent {
+                VStack(spacing: 10) {
+                    topBar
 
-                if let error = input.recoverableError, !error.isEmpty {
-                    recoverableErrorBanner(error)
+                    if let error = input.recoverableError, !error.isEmpty {
+                        recoverableErrorBanner(error)
+                    }
+
+                    Spacer()
                 }
-
-                Spacer()
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 8)
         }
         .background(AppColor.background.ignoresSafeArea())
         .confirmationDialog(
@@ -122,12 +135,15 @@ struct StoryPlayerView: View {
     @ViewBuilder
     private var playerContent: some View {
         if input.isCompleted {
-            if input.scenarioType == .smallEvent {
+            switch input.scenarioType {
+            case .smallEvent:
                 SmallEventCompletionView(
                     visibleNodes: input.visibleChatNodes,
                     onClose: onClose
                 )
-            } else {
+            case .middleEvent, .largeEvent:
+                Color.black.ignoresSafeArea()
+            case .daily, .unknown:
                 completionView
             }
         } else if let node = input.currentNode {
@@ -149,6 +165,7 @@ struct StoryPlayerView: View {
                 ChatStoryRenderer(
                     node: node,
                     scenarioType: input.scenarioType,
+                    isTerminalNode: input.isCurrentNodeTerminal,
                     visibleNodes: input.visibleChatNodes,
                     portraitAssetID: input.portraitAssetID,
                     cgAssetID: input.cgAssetID,

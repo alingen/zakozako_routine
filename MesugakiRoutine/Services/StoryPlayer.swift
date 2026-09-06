@@ -50,6 +50,25 @@ final class StoryPlayer {
     private(set) var isCompleted = false
     private(set) var recoverableError: String?
 
+    var isCurrentNodeTerminal: Bool {
+        guard let graph,
+              let node = currentNode,
+              node.choiceId == nil,
+              node.messageType != .choice else {
+            return false
+        }
+
+        let nextPhase = projectedPhase(
+            applyingProfileKey: node.saveKey,
+            value: node.saveValue
+        )
+        do {
+            return try graph.nextVisibleNode(after: node, phase: nextPhase) == nil
+        } catch {
+            return (try? graph.nextVisibleLineOrderNode(after: node, phase: nextPhase)) == nil
+        }
+    }
+
     /// Additional presentation facts retained for future renderers. Existing
     /// renderers can continue reading `currentNode.assetId` directly.
     private(set) var callState: StoryCallPresentationState?
@@ -714,9 +733,12 @@ private extension StoryPlayer {
         if node.choiceId != nil || node.messageType == .choice { return true }
         if node.messageType == .image { return true }
 
-        // Scene transitions are visible content, not zero-duration state
-        // mutations. Pause so the renderer is guaranteed to present them.
-        if node.uiVariant == .sceneTransition { return true }
+        // A labelled transition is visible content. An empty transition is a
+        // state-only command (background/mode change), so apply it without
+        // exposing a blank "System" dialogue step to the reader.
+        if node.uiVariant == .sceneTransition {
+            return normalized(node.text) != nil
+        }
 
         // An unsupported/malformed command is recoverable, but consuming it
         // automatically could skip a future interaction semantics.

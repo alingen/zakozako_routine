@@ -81,6 +81,17 @@ describe('current Google Sheets fixture', () => {
     }
   });
 
+  it('does not publish memo title cards in middle or large events', () => {
+    const eventNodes = bundle.scenarios
+      .filter(
+        (scenario) =>
+          scenario.scenarioType === 'middle_event' || scenario.scenarioType === 'large_event',
+      )
+      .flatMap((scenario) => scenario.nodes);
+
+    expect(eventNodes.filter((node) => node.uiVariant === 'title_card')).toEqual([]);
+  });
+
   it('preserves every current mode, variant, command, and raw content field', () => {
     const nodes = bundle.scenarios.flatMap((scenario) => scenario.nodes);
     const values = (pick: (node: (typeof nodes)[number]) => string | undefined) =>
