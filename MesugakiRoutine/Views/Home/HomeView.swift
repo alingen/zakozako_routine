@@ -77,6 +77,11 @@ struct HomeView: View {
                 }
                 .padding(.vertical, 6)
                 .listRowInsets(EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10))
+                // 編集モード中、円以外(余白・タイトル)をタップしたら編集を終える。
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isEditingRoutines { isEditingRoutines = false }
+                }
             }
         } header: {
             HStack(spacing: 8) {
@@ -102,20 +107,20 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// 約束1件の大きな円セル。通常時タップで1回進む / 編集時タップで編集画面へ。
+    /// 約束1件の大きな円セル。タップできるのは円だけ。通常時は1回進む / 編集時は編集画面へ。
     @ViewBuilder
     private func routineGridCell(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
         let streak = viewModel.currentRoutineStreak(for: routine)
 
-        Button {
-            if isEditingRoutines {
-                editingRoutine = routine
-            } else {
-                viewModel.advanceRoutine(routine)
-            }
-        } label: {
-            VStack(spacing: 8) {
+        VStack(spacing: 8) {
+            Button {
+                if isEditingRoutines {
+                    editingRoutine = routine
+                } else {
+                    viewModel.advanceRoutine(routine)
+                }
+            } label: {
                 ZStack(alignment: .bottomTrailing) {
                     ProgressCircle(
                         progress: progress.fraction,
@@ -133,40 +138,33 @@ struct HomeView: View {
                             .offset(x: 4, y: 4)
                     }
                 }
-
-                VStack(spacing: 2) {
-                    Text(routine.title)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(AppColor.text)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-
-                    if progress.showsCountBreakdown {
-                        Text("\(progress.done) / \(progress.target)回")
-                            .font(.caption2)
-                            .foregroundStyle(AppColor.muted)
-                    } else if streak >= 1 {
-                        Text("\(streak)日達成！")
-                            .font(.caption2)
-                            .foregroundStyle(AppColor.success)
-                    } else {
-                        Text("今日から")
-                            .font(.caption2)
-                            .foregroundStyle(AppColor.muted)
-                    }
-                }
+                .contentShape(Circle())
             }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            if !isEditingRoutines, progress.done > 0 {
-                Button("1回取り消す", systemImage: "arrow.uturn.backward") {
-                    viewModel.undoRoutineProgress(routine)
+            .buttonStyle(.plain)
+
+            VStack(spacing: 2) {
+                Text(routine.title)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+
+                if progress.showsCountBreakdown {
+                    Text("\(progress.done) / \(progress.target)回")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.muted)
+                } else if streak >= 1 {
+                    Text("\(streak)日達成！")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.success)
+                } else {
+                    Text("今日から")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.muted)
                 }
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
     /// 編集モードのときだけ出る「約束を追加」セル。
@@ -205,16 +203,27 @@ struct HomeView: View {
             } else if showAddPromiseForm {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("やらないこと(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
-                    Picker("ペース", selection: $viewModel.newHabitPeriod) {
-                        ForEach(HabitPeriod.allCases) { period in
-                            Text(period.pickerLabel).tag(period)
-                        }
+
+                    Text("上限設定")
+                        .font(.caption)
+                        .foregroundStyle(AppColor.muted)
+                    Picker("上限", selection: $viewModel.newIsQuitCompletely) {
+                        Text("完全にやめる").tag(true)
+                        Text("回数を決める").tag(false)
                     }
-                    Stepper(
-                        "\(viewModel.newHabitPeriod.pickerLabel) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
-                        value: $viewModel.newBlockedBehaviorLimitCount,
-                        in: 1...50
-                    )
+                    if !viewModel.newIsQuitCompletely {
+                        Picker("ペース", selection: $viewModel.newHabitPeriod) {
+                            ForEach(HabitPeriod.allCases) { period in
+                                Text(period.pickerLabel).tag(period)
+                            }
+                        }
+                        Stepper(
+                            "\(viewModel.newHabitPeriod.pickerLabel) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
+                            value: $viewModel.newBlockedBehaviorLimitCount,
+                            in: 1...50
+                        )
+                    }
+
                     Button("決定") {
                         viewModel.addBlockedBehavior()
                         showAddPromiseForm = false
@@ -323,5 +332,15 @@ struct HomeView: View {
         HomeView()
     }
     .environment(SiriLaunchCoordinator())
-    .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
+    .modelContainer(
+        for: [
+            Routine.self,
+            BlockedBehavior.self,
+            StoryEventProgress.self,
+            StoryPlaybackProgress.self,
+            StoryProfileValue.self,
+            StoryMemoryUnlock.self,
+        ],
+        inMemory: true
+    )
 }

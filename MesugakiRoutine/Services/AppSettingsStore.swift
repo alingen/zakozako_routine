@@ -25,6 +25,7 @@ enum AppSettingsStore {
     private static let userHonorificKey = "user_honorific"
     private static let notificationsEnabledKey = "notifications_enabled"
     private static let notificationDelayMinutesKey = "notification_delay_minutes"
+    private static let dailyConversationAnchorDateKey = "story_daily_conversation_anchor_date"
 
     /// ユーザーネーム(例: 「だいすけ」)。未設定なら空文字。
     static var userName: String {
@@ -60,5 +61,25 @@ enum AppSettingsStore {
             return value == 0 ? 30 : value
         }
         set { UserDefaults.standard.set(newValue, forKey: notificationDelayMinutesKey) }
+    }
+
+    /// 「今日の会話」の1話目を割り当てたアプリ日。CMSに日付列がない間だけ、
+    /// この日を基準に1日1話ずつ進める。日付境界は呼び出し側で `AppDay` に揃える。
+    static var dailyConversationAnchorDate: Date? {
+        get {
+            guard UserDefaults.standard.object(forKey: dailyConversationAnchorDateKey) != nil else {
+                return nil
+            }
+            return Date(
+                timeIntervalSince1970: UserDefaults.standard.double(forKey: dailyConversationAnchorDateKey)
+            )
+        }
+        set {
+            if let newValue {
+                UserDefaults.standard.set(newValue.timeIntervalSince1970, forKey: dailyConversationAnchorDateKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: dailyConversationAnchorDateKey)
+            }
+        }
     }
 }

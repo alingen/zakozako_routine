@@ -80,16 +80,6 @@ final class RoutineRepository {
         save()
     }
 
-    /// 直近の「1回やった」を1件取り消す(誤タップのundo用)。
-    func undoLastProgress(_ routine: Routine) {
-        guard !routine.progressEvents.isEmpty else { return }
-        var events = routine.progressEvents
-        events.removeLast()
-        routine.progressEvents = events
-        routine.updatedAt = .now
-        save()
-    }
-
     // MARK: - デバッグ用
 
     /// 指定日の正午に進捗イベントを1件入れる(連続達成日数の確認用)。

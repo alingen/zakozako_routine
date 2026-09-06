@@ -24,6 +24,9 @@ targets:
     platform: iOS
     sources:
       - path: MesugakiRoutine
+        excludes:
+          # 開発端末専用の秘密情報。生成したXcode projectにも絶対に含めない。
+          - Resources/Secrets.local.json
     info:
       path: MesugakiRoutine/Resources/Info.plist
       properties:
@@ -39,8 +42,17 @@ targets:
         DEVELOPMENT_TEAM: YZZRP6M55K
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     scheme:
-      testTargets: []
-      gatherCoverageData: false
+      testTargets:
+        - MesugakiRoutineTests
+      gatherCoverageData: true
+
+  MesugakiRoutineTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MesugakiRoutineTests
+    dependencies:
+      - target: MesugakiRoutine
 
 schemes:
   MesugakiRoutine:
@@ -49,5 +61,10 @@ schemes:
         MesugakiRoutine: all
     run:
       config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - name: MesugakiRoutineTests
     archive:
       config: Release

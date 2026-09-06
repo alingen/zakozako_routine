@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// 「今日の約束」1件の編集シート。タイトルと回数制限を編集する。
+/// 「やらないこと」1件の編集シート。タイトルと上限を編集する。
 struct BlockedBehaviorDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let onSave: (_ title: String, _ limitPeriod: HabitPeriod, _ limitCount: Int) -> Void
 
     @State private var title: String
+    /// true: 完全にやめる(1日1回でも✕)。false: ペース・回数を自分で決める。
+    @State private var isQuitCompletely: Bool
     @State private var limitPeriod: HabitPeriod
     @State private var limitCount: Int
 
@@ -16,6 +18,7 @@ struct BlockedBehaviorDetailView: View {
     ) {
         self.onSave = onSave
         _title = State(initialValue: behavior.title)
+        _isQuitCompletely = State(initialValue: behavior.limitPeriod == .day && behavior.limitCount == 1)
         _limitPeriod = State(initialValue: behavior.limitPeriod)
         _limitCount = State(initialValue: behavior.limitCount)
     }
@@ -28,16 +31,24 @@ struct BlockedBehaviorDetailView: View {
                 }
 
                 Section {
-                    Picker("ペース", selection: $limitPeriod) {
-                        ForEach(HabitPeriod.allCases) { period in
-                            Text(period.pickerLabel).tag(period)
-                        }
+                    Picker("上限", selection: $isQuitCompletely) {
+                        Text("完全にやめる").tag(true)
+                        Text("回数を決める").tag(false)
                     }
-                    Stepper("\(limitPeriod.pickerLabel) \(limitCount) 回で✕", value: $limitCount, in: 1...50)
+                    if !isQuitCompletely {
+                        Picker("ペース", selection: $limitPeriod) {
+                            ForEach(HabitPeriod.allCases) { period in
+                                Text(period.pickerLabel).tag(period)
+                            }
+                        }
+                        Stepper("\(limitPeriod.pickerLabel) \(limitCount) 回で✕", value: $limitCount, in: 1...50)
+                    }
                 } header: {
-                    Text("回数制限")
+                    Text("上限設定")
                 } footer: {
-                    Text("チェックボックスは満タンからスタートし、カードをタップするたびに1つ減ります。全部なくなると✕になり、その期間は失敗扱いです。")
+                    Text(isQuitCompletely
+                         ? "1回でもやってしまったら、その日は✕になります。"
+                         : "チェックボックスは満タンからスタートし、カードをタップするたびに1つ減ります。全部なくなると✕になり、その期間は失敗扱いです。")
                 }
             }
             .navigationTitle("やらないことを編集")
@@ -45,7 +56,11 @@ struct BlockedBehaviorDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("保存") {
-                        onSave(title, limitPeriod, limitCount)
+                        onSave(
+                            title,
+                            isQuitCompletely ? .day : limitPeriod,
+                            isQuitCompletely ? 1 : limitCount
+                        )
                         dismiss()
                     }
                 }

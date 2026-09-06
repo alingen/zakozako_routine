@@ -1,211 +1,216 @@
-# メスガキルーティン (MesugakiRoutine)
+# ザコルーティン（MesugakiRoutine）
 
-日々のルーティン実行と、「やらないと決めた行動」の抑制を、キャラクターAIが支援するiOSアプリ。
+毎日の「やること」と「やらないこと」を記録し、キャラクターとの会話やストーリーを習慣の継続につなげるiOSアプリです。SwiftUIとSwiftDataで実装しており、対応OSはiOS 17以降です。
 
-このアプリの中心的な価値は「キャラクターと実際に声で会話しながらルーティンを習慣化すること」であり、
-テキストUIはあくまで補助と位置づけている。そのため「ルーティンの進行」「キャラクターの応答生成」
-「テキスト会話」「音声会話」を明確に分離した設計にしている。
+App Store向けの表示名は「小悪魔コーチ」です。`MesugakiRoutine` はXcode targetやコード上の内部名として使用しています。
 
-公開審査リスクを考慮し、アプリ内部の表示名は「メスガキ」ではなく **「小悪魔コーチ」** にしている
-(コードベース・リポジトリ名としての "Mesugaki" は内部識別子としてのみ使用)。
+## 現在の画面
 
-## 現在実装済みの機能
+ルートは4タブ構成で、各タブがそれぞれ1つの `NavigationStack` を持ちます。
 
-- ルーティン管理(作成・編集・削除、朝/夜/カスタム種別)
-- ルーティンステップ管理(追加・削除・並び替え・名称編集)
-- ルーティン実行セッション(開始・再開・完了/スキップ/失敗の記録)
-- ステップごとのイベントログ(RoutineEvent として永続化)
-- キャラクター設定(名前・煽り強度・褒め方・叱り方・禁止表現・プリセット選択)
-- キャラクター応答生成: ローカルテンプレート、およびOpenAI Chat Completions API(APIキーがKeychainにある場合、自動でこちらに切り替わる)
-- 音声会話の基盤: Apple標準の音声認識(Speech framework)+ 音声合成(AVSpeechSynthesizer)による、話しかけると返事をしてくれるループ(`RoutineSessionView`に最小限のマイクボタンとして配線済み。UI/UXの作り込みは別途行う前提)
-- 「やらないこと」リストの管理と、自由入力テキストとの簡易マッチング
-- 初回起動時のサンプルデータ投入(朝/夜ルーティン、やらないことリスト、デフォルトキャラ)
-- SwiftData によるローカル永続化
+| タブ | 主な機能 |
+| --- | --- |
+| ホーム | 現在のコーチ、今日の約束、挑戦中の「やらないこと」、自分の直近記録から作る「みんなのざこ速報」 |
+| 記録 | 月間カレンダー、直近30日の達成率、全体の連続達成日数 |
+| 交流 | キャラクター表示、今日の会話、メイン／サブストーリー一覧、思い出ギャラリー |
+| 設定 | ユーザー名・呼び方、サボり通知、開発用の進捗確認操作 |
 
-未実装(意図的にダミー/未着手):
+ホームから約束の作成・編集・削除、回数の記録、完了演出を行えます。開始予定時刻を設定した約束には、未達成の場合だけローカル通知を予約できます。「今日の約束を開く」App Intentも実装されています。
 
-- OpenAI Realtime API(GPT-Live) 連携本体(`VoiceConversationEngine` の別実装として追加する想定。現状はApple標準音声によるつなぎの実装)
-- Siri Shortcuts / App Intents(「Hey Siri、〜で朝ルーティン」のような特定ルーティン起動)
-- ローカル通知
-- Supabase / Firebase 等とのバックエンド同期
-- 複数キャラクタープリセットの拡充(現状はデフォルト1体のみ投入)
-- 音声会話モードの本格的なUI/UXデザイン(現状は動作確認用の最小限のボタン)
+## 習慣データ
 
-## ディレクトリ構成
+### Routine
 
-```
+`Routine` はユーザーが実行する「約束」です。ステップや実行セッションは持たず、次の値を中心に管理します。
+
+- 集計期間: 1日／1週間／1か月
+- 期間内の目標回数
+- 1回実行した時刻の配列 `progressEvents`
+- 1日単位の場合の対象曜日
+- 任意の開始予定時刻とSF Symbol
+
+ホームでカードをタップするたびに実行時刻を1件追加し、期間内の件数から進捗率と達成を計算します。`RoutineStreak` は各約束の連続達成日数と、「いずれかの約束を達成した日」の全体連続日数を保存値ではなくログから算出します。
+
+古い実行ログは現在、肥大化防止のため `RoutineRepository` が直近3か月より前を削除します。そのため、生涯累積日数を表す正確な指標やストーリー解放条件はまだありません。CMSの継続条件には現在の連続日数 `continuous_days` を使用します。
+
+### BlockedBehavior
+
+`BlockedBehavior` はユーザーが「やらない」と決めた行動です。同時に挑戦できるのは1件で、日／週／月ごとの上限回数と消費時刻 `usageEvents` を持ちます。上限に達した期間は失敗となり、日付が変わると未評価日を自動判定します。14日連続で守ると卒業し、次の項目を追加できます。
+
+### 朝4時の日付境界
+
+日、週、月の集計、対象曜日、連続達成日数、今日の会話はすべて `AppDay` を通し、午前4時をアプリ内の日付境界として扱います。たとえば午前3時59分は前日のアプリ日、午前4時から新しいアプリ日です。通知の発火時刻そのものは通常の時計時刻です。
+
+## 永続化
+
+アプリ起動時に1つのSwiftData `ModelContainer` を構築し、次の6モデルを登録します。
+
+| モデル | 保存内容 |
+| --- | --- |
+| `Routine` | 約束の設定と実行時刻 |
+| `BlockedBehavior` | やらないことの設定、消費時刻、連続日数、卒業状態 |
+| `StoryEventProgress` | イベントの解放、初回閲覧、既読、完了回数 |
+| `StoryPlaybackProgress` | playback keyごとの現在ノード、訪問履歴、選択履歴、閲覧CG |
+| `StoryProfileValue` | 選択肢やノードが保存するプロフィール値、関係phase |
+| `StoryMemoryUnlock` | 解放済みCGと解放元のイベント／シナリオ |
+
+`StoryStateRepository` は選択履歴・プロフィール値・checkpoint、または完了・既読・CG解放・phase更新を同じ `ModelContext` 上でまとめて保存します。「最初から読む」は再生checkpointだけを初期化し、既読状態と解放済みの思い出は保持します。
+
+ユーザー名、呼び方、通知設定、今日の会話の初回割当日は `AppSettingsStore` を介して `UserDefaults` に保存します。バックエンド同期は実装していません。
+
+## ストーリーアーキテクチャ
+
+### Content
+
+`StoryContentBundle` は `scenarios`、`choiceGroups`、`events` の3配列を持つ読み取り専用データです。`StoryContentRepository` がアプリbundle内の `Resources/GeneratedScenarios/story_content.generated.json` を読み込み、scenario／choice／eventの検索、daily scenarioの整列、CGカタログの生成を担います。
+
+`StoryScenarioGraph` はscenario内だけで遷移を解決します。次ノードの優先順位は次の通りです。
+
+1. 選択したchoiceの `nextNodeId`
+2. 現在nodeの `nextNodeId`
+3. `lineOrder` の次node
+
+`minPhase`／`maxPhase` の範囲外にあるnodeは遷移しながら読み飛ばします。参照切れや自動進行cycleはクラッシュさせず、回収可能なエラーとしてPlayerへ返します。
+
+### Conditionと解放
+
+`StoryProgressMetricsProvider` は既存のRoutine連続日数、ストーリープロフィール値、完了イベントIDを条件評価へ渡します。`StoryConditionEvaluator` は同じイベントの複数条件をANDで評価し、`eq`、`ne`、`gt`、`gte`、`lt`、`lte`、`exists` を扱います。未知の条件種別や演算子はfail-closedで未達成とし、診断情報を表示側へ返します。
+
+`StoryUnlockService` は条件を満たしたイベントだけを永続化します。解放は単調増加で、一度解放したイベントは後から条件値が下がっても再ロックしません。
+
+Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれも未定義です。商品アクセス判定は条件評価から分離した `StoryAccessPolicy` の拡張点だけを用意しており、現在の既定実装は全イベントを許可します。Premium条件をイベントIDや日数でハードコードしないでください。
+
+### Playerとrenderer
+
+`StoryPlayer` はSwiftUIに依存しない `@MainActor` の進行エンジンです。graph traversal、phase filter、choiceとプロフィール保存、checkpointからの再開、restart／reread、完了処理、回収可能エラーを担当します。`StoryCommandDispatcher` はCMSの `command`／`commandArgs` を背景、CG、画面モード、typing、modal、wait、通話状態、音声などの表示効果へ変換します。未知のcommandは致命的エラーにしません。
+
+`StoryPlayerView` は交流画面から `fullScreenCover` で表示する統合画面です。進行状態に応じて以下の純粋なrendererへ描画を委譲し、操作はcallbackでPlayerへ返します。renderer自身はシナリオ遷移や `NavigationStack` を持ちません。
+
+- `ADVStoryRenderer`: 背景、立ち絵、CG、台詞・地の文・選択肢
+- `ChatStoryRenderer`: 表示済みメッセージ、typing、画像・音声メッセージ、選択肢
+- `CallStoryRenderer`: 着信／発信／通話／終了などの演出。実際の通話や録音は行いません
+- `StoryVariantViews`: title card、narration、dialogue、scene transition、monologue、modalなどの小部品
+
+画像、背景、CGがbundleにない場合、`StoryAssetView` は用途別アイコンとasset IDを含むプレースホルダーを表示します。未知の画面モード／UI variantにも安全なfallbackがあります。音声メッセージはbundle内に素材がある場合だけ `AVAudioPlayer` で再生し、欠損時はasset IDと警告を表示します。
+
+### 交流画面
+
+交流トップには現在のキャラクター、今日の会話、ストーリー、思い出を表示します。
+
+- 今日の会話: 初回表示日をanchorに、`scenarioId` 順のdaily scenarioをアプリ日ごとに1話選択します。未読でも翌日は次へ進み、末尾まで進むと先頭へ戻ります。playback keyは `daily:yyyy-MM-dd` です。
+- ストーリー一覧: `storyCategory` の `main`／`sub` だけで分類し、chapterと `episodeOrder` 順に表示します。未解放話も隠さず、lock、NEW、既読、条件の達成状況を表示します。
+- 思い出: CGカタログ全体を並べ、未解放項目は伏せて表示します。ストーリー完了時に解放されたCGだけを全画面表示できます。
+
+## 主なディレクトリ
+
+```text
 MesugakiRoutine/
-  App/
-    MesugakiRoutineApp.swift      # @main, ModelContainer構築, 初回シード実行
-  Models/                          # SwiftData @Model
-    Routine.swift
-    RoutineStep.swift
-    RoutineSession.swift
-    RoutineEvent.swift
-    CharacterPreset.swift
-    BlockedBehavior.swift
-  Repositories/                    # SwiftDataへのCRUDをラップ
-    RoutineRepository.swift
-    RoutineSessionRepository.swift
-    CharacterRepository.swift
-    BlockedBehaviorRepository.swift
-  Engines/                         # ドメインロジック本体(UI非依存)
-    RoutineEngine.swift            # セッション進行・現在ステップ判定・完了/スキップ/失敗記録
-    CharacterEngine.swift          # プリセットの選択と応答生成の依頼
-  Services/                        # Engine間の調停・AI応答生成・音声会話・依存構築
-    CharacterResponseGenerating.swift  # AI応答生成のprotocol抽象化(状況・会話履歴を含む)
-    LocalCharacterResponseGenerator.swift # ローカルテンプレート実装
-    OpenAIChatCompletionsClient.swift     # OpenAI Chat Completions APIを叩くネットワーククライアント
-    OpenAICharacterResponseGenerator.swift # ↑を使ったCharacterResponseGenerating実装
-    ForbiddenPhraseFilter.swift     # 禁止表現フィルタ(Local/OpenAI共通)
-    KeychainService.swift           # APIキーなどの秘密情報をKeychainに保存する薄いラッパー
-    LocalSecretsSeeder.swift         # 開発用: Secrets.local.json からKeychainへ初回のみ読み込む
-    VoiceConversationEngine.swift    # 音声会話セッションのprotocol抽象化(状態遷移・イベント)
-    NativeVoiceConversationEngine.swift # Apple標準音声(Speech + AVSpeechSynthesizer)によるつなぎの実装
-    ConversationCoordinator.swift   # Conversation Layerの中核。RoutineEngine/CharacterEngineを束ねる
-    DataSeeder.swift                # 初回起動時のサンプルデータ投入
-    AppDependencies.swift           # ModelContextからRepository/Engineを組み立てるファクトリ
-  ViewModels/                      # 各画面のObservableな状態管理
-    HomeViewModel.swift
-    RoutineListViewModel.swift
-    RoutineEditViewModel.swift
-    RoutineSessionViewModel.swift
-    CharacterSettingsViewModel.swift
-    BlockedBehaviorListViewModel.swift
-    ConversationMessage.swift      # 会話ログ表示用モデル
-  Views/                           # SwiftUI画面(ロジックを持たない)
-    Home/HomeView.swift
-    RoutineList/RoutineListView.swift
-    RoutineEdit/RoutineEditView.swift
-    RoutineSession/RoutineSessionView.swift
-    CharacterSettings/CharacterSettingsView.swift
-    BlockedBehavior/BlockedBehaviorListView.swift
-  Extensions/
-    Collection+Safe.swift
+  App/                 # @main、SwiftData schema、4タブのルート
+  AppIntents/          # 「今日の約束を開く」Intent／Shortcut
+  DesignSystem/        # AppColor、共通テーマ、進捗円、アイコン
+  Models/              # Routine、BlockedBehavior、Story content／persistence
+  Repositories/        # SwiftData CRUDとStory content index
+  Services/            # 日付・進捗・通知・Story graph／condition／player
+  ViewModels/          # Home、記録、交流、設定の画面状態
+  Views/               # タブ画面、編集画面、交流画面、Story renderer
+  Resources/
+    GeneratedScenarios/story_content.generated.json
+MesugakiRoutineTests/  # 日次会話、graph、state、condition、実CMS Playerのtests
+tools/scenario-sync/   # Google Sheets検証・単一JSON生成CLI
+project.yml            # XcodeGenのプロジェクト定義
 ```
 
-`project.yml` は [XcodeGen](https://github.com/yonaskolb/XcodeGen) 用の定義。`.xcodeproj` はこれから生成する
-(リポジトリには `.xcodeproj` をコミットせず、`xcodegen generate` で都度生成する運用を推奨)。
+`AppDependencies` が1つの `ModelContext` から各RepositoryとServiceを組み立てます。ViewModelはObservationの `@Observable` と `@MainActor` を使い、Viewは `AppColor` のセマンティックカラーを参照します。現在のパレットはライト用の単一値なので、ルートでライトモードに固定しています。
 
-## データモデル
+## セットアップ、ビルド、テスト
 
-- **Routine**: id, title, description, type(morning/night/custom), isActive, createdAt, updatedAt。`steps` を cascade delete で保持。
-- **RoutineStep**: id, routineId(親リレーション), title, description, orderIndex, estimatedMinutes, isRequired, createdAt, updatedAt。
-- **RoutineSession**: id, routineId, startedAt, completedAt, status(active/completed/abandoned), currentStepId。`events` を cascade delete で保持。
-- **RoutineEvent**: id, sessionId(親リレーション), stepId(nullable), eventType(started/completed_step/skipped_step/failed_step/blocked_behavior/completed_routine/abandoned), userText, aiText, createdAt。
-- **CharacterPreset**: id, name, description, basePrompt(将来AIのシステムプロンプト用), praiseStyle, scoldStyle, intensity, forbiddenPhrases, isSelected, createdAt, updatedAt。
-- **BlockedBehavior**: id, title, description, triggerText(自由入力とのマッチング用), counterMessage, isActive, createdAt, updatedAt。
+必要環境:
 
-## Routine Engine (`Engines/RoutineEngine.swift`)
-
-ルーティン実行の唯一の真実源。責務は以下に限定している。
-
-- セッションの開始・再開(`startSession`)
-- 現在のステップ・完了済みステップ・残りステップの算出(`progress`)
-- ステップ完了/スキップ/失敗の記録と次ステップへの遷移(`recordOutcome`)。全ステップ終了時は自動的にセッションを `completed` にし `completed_routine` イベントを積む
-- 途中終了の記録(`abandon`)
-- 「やらないこと」検知の記録(`recordBlockedBehavior`)
-- 最近のイベント取得(`recentEvents`)
-
-UIやキャラクター応答には一切依存せず、`RoutineProgress` という不変のスナップショットを返すだけなので、
-将来バックグラウンド実行や音声UIに置き換わっても再利用できる。
-
-## Character Engine (`Engines/CharacterEngine.swift` + `Services/CharacterResponseGenerating.swift`)
-
-キャラクターの口調・煽り強度を管理し、状況(`CharacterSituation`)に応じた応答を返す。
-応答生成そのものは protocol で抽象化されている。
-
-```swift
-protocol CharacterResponseGenerating {
-    func generateResponse(context: CharacterResponseContext) async -> CharacterResponse
-}
-```
-
-現在は2つの実装がある。
-
-- `LocalCharacterResponseGenerator`: AI APIを使わずローカルテンプレートで応答する
-- `OpenAICharacterResponseGenerator`: OpenAI Chat Completions API(`gpt-4o-mini`)で応答を生成する。会話履歴(`ConversationHistoryItem`)を踏まえた返答ができる
-
-`AppDependencies.swift` が Keychain に OpenAI APIキーが保存されているかどうかだけを見て、どちらを使うか自動的に切り替える(ネットワークエラー時は`OpenAICharacterResponseGenerator`内部で`LocalCharacterResponseGenerator`にフォールバックする)。APIキーはアプリの「キャラクター設定」画面から保存・削除でき、`KeychainService`経由でKeychainにのみ保存される(ソースコード・UserDefaultsには書かない)。禁止表現フィルタ(`ForbiddenPhraseFilter`)はどちらの実装の出力にも同じようにかかる。
-
-## Conversation Layer
-
-会話には「テキスト(ターン制)」と「音声(常時接続)」の2つの経路があり、どちらも同じ `RoutineEngine` / `CharacterEngine` を土台にしている。
-
-### テキスト会話 (`Services/ConversationCoordinator.swift`)
-
-ユーザー操作(完了/スキップ/失敗/次なに？/助けて/自由入力)を受け取り、RoutineEngineに進行を委ね、
-CharacterEngineから返答を取得して `Turn`(進行状態 + キャラクターのセリフ)として返すだけの薄い調停役。
-このセッション中の会話履歴も保持し、AI応答生成のたびに文脈として渡す。SwiftUIに一切依存しない。
-
-### 音声会話 (`Services/VoiceConversationEngine.swift` + `NativeVoiceConversationEngine.swift`)
-
-このアプリの本命の体験(「話しかけているうちに習慣化する」)を担う層。`CharacterResponseGenerating` が
-1問1答のテキスト応答を抽象化しているのに対し、こちらは「聞く→考える→話す」を繰り返す持続的な
-セッションのライフサイクルを抽象化している。
-
-```swift
-protocol VoiceConversationEngine: AnyObject {
-    var delegate: VoiceConversationDelegate? { get set }
-    var state: VoiceConversationState { get }  // idle / listening / thinking / speaking / error
-    func start() async throws
-    func stop()
-    func speak(_ text: String)
-}
-```
-
-現在は `NativeVoiceConversationEngine` が唯一の実装で、Apple標準の `SFSpeechRecognizer`(音声認識)と
-`AVSpeechSynthesizer`(音声合成)を組み合わせ、認識したテキストを既存の `ConversationCoordinator.submitFreeText`
-に渡して返答をもらい、読み上げる。声の自然さは標準ボイス相当であり、「女の子のリアルさ」という核の価値は
-まだ出せていない。あくまで「聞く→考える→話す」ループの土台・動作確認用の実装と位置づけている。
-
-`RoutineSessionView` には動作確認用の最小限のマイクボタンとして配線済み(見た目の作り込みは別途行う前提)。
-
-## 将来追加する予定の機能
-
-- **OpenAI Realtime API (GPT-Live)**: `VoiceConversationEngine` に準拠する `OpenAIRealtimeVoiceConversationEngine` を追加し、
-  `NativeVoiceConversationEngine` と差し替えるだけで低遅延・自然な声・割り込み対応の本格的な音声会話に切り替えられる設計にしてある。
-  使用量課金が発生するため、UI/UXが固まってから投入する想定。
-- **音声会話画面のUI/UXデザイン**: `VoiceConversationState`(listening/thinking/speaking)を見た目に反映する画面デザイン。今は最小限のボタン+ラベルのみ。
-- **Siri Shortcuts / App Intents**: 「Hey Siri、[アプリ名]を開いて」はOS標準機能で追加実装なしに動く。「〜で朝ルーティン」のように特定ルーティンへ直接ジャンプさせる場合はApp Shortcuts(App Intents)を追加実装する。
-- **通知**: 朝/夜ルーティンの開始リマインドをローカル通知で実装。
-- **バックエンド同期(Supabase / Firebase)**: `Repositories/` 層の実装をリモートAPI越しに差し替える、もしくは同期レイヤーを追加する。
-
-## 次にやるべき開発タスク
-
-1. 音声会話モード(`RoutineSessionView`のマイクボタン)の実機での一通りの動作確認(認識精度・無音検知のタイミング・割り込みなど)。
-2. 音声会話画面のUI/UXデザイン(マイク状態の可視化、キャラクターの存在感、字幕表示など)。
-3. 音声/ボタン操作で「できた」「スキップ」等の意図を検出してルーティン進行(`recordOutcome`)に反映する仕組み(現状、音声中の自由発話はルーティン進行と連動していない)。
-4. CharacterPreset の複数プリセット化(現状はデフォルト1体のみ)。
-5. RoutineEvent の一覧・詳細表示画面(現状Homeの「最近の完了ログ」のみ)。
-6. `BlockedBehaviorRepository.firstMatch` の精度改善(現状は単純な部分一致)。
-7. ユニットテスト整備(RoutineEngineの状態遷移、LocalCharacterResponseGeneratorのテンプレート出力)。
-8. OpenAI Realtime API(GPT-Live)本体の実装。
-
-## セットアップ
+- Xcode（iOS 17以降のSimulatorまたは実機）
+- XcodeGen
+- ストーリー同期を行う場合はNode.js 20以降
 
 ```bash
-brew install xcodegen   # 未インストールの場合
+brew install xcodegen
 xcodegen generate
 open MesugakiRoutine.xcodeproj
 ```
 
-`iOS 17.0` 以上のシミュレータ/実機で `MesugakiRoutine` スキームを実行する。
+コマンドラインでビルドする場合:
 
-## 会話シナリオの管理（Google Sheets → 生成JSON）
-
-会話データ（今日の会話 / 小イベント / 大イベント）は **Google スプレッドシートが唯一の正本**。
-アプリは `MesugakiRoutine/Resources/GeneratedScenarios/*.generated.json` を読み込むが、これは
-`tools/scenario-sync` がスプレッドシートから生成する成果物なので **直接編集しない**。
-
-```
-Google Sheets を編集 → /sync-scenarios（npm run sync）→ 差分確認 → 反映
-  → xcodegen generate && xcodebuild ...（型チェック・動作確認）→ *.generated.json をコミット
+```bash
+xcodebuild \
+  -project MesugakiRoutine.xcodeproj \
+  -scheme MesugakiRoutine \
+  -destination 'generic/platform=iOS Simulator' \
+  build
 ```
 
-- 同期ツールと詳細手順: [`tools/scenario-sync/README.md`](tools/scenario-sync/README.md)
-- Claude Code から: `/sync-scenarios`
-- スプレッドシートのひな形: `cd tools/scenario-sync && npm run make-template` → `template/scenario-template.xlsx` を Google Sheets にインポート
-- 認証情報が無くても `tools/scenario-sync/fixtures/sheets-snapshot.json`（シート内容のスナップショット）に対して検証・生成・差分確認が可能
+利用可能なSimulator名を確認してunit testsを実行します。
 
-生成物の Swift 側読み込みは `Services/DailyConversationProvider.swift` / `Services/EventCatalog.swift`。
+```bash
+xcrun simctl list devices available
+
+xcodebuild \
+  -project MesugakiRoutine.xcodeproj \
+  -scheme MesugakiRoutine \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  test
+```
+
+`.xcodeproj` は `project.yml` から生成します。ファイル追加後は `xcodegen generate` を再実行し、生成済みプロジェクトを手編集しないでください。
+
+## Google Sheetsからストーリーを同期する
+
+ストーリーCMSは次の一方向フローです。
+
+```text
+Google Sheets（SSOT、scenario-syncはread-onlyで取得）
+  ├─ scenarios: 1行 = 1 node
+  ├─ choices:   1行 = 1 choice option
+  └─ events:    1行 = 1 AND condition
+       ↓ scenario-syncで取得・正規化・検証・安定ソート
+StoryContentBundle
+       ↓ atomic write
+MesugakiRoutine/Resources/GeneratedScenarios/story_content.generated.json
+```
+
+Google Sheetsが唯一の正本（SSOT）です。生成JSONと `fixtures/sheets-snapshot.json` は成果物／再現用snapshotであり正本ではありません。どちらも直接編集せず、必ずGoogle Sheetsを更新して `scenario-sync` から再生成してください。ライブ取得失敗時にsnapshotへ暗黙fallbackすることもありません。
+
+初回セットアップ:
+
+```bash
+npm --prefix tools/scenario-sync ci
+npm --prefix tools/scenario-sync run typecheck
+npm --prefix tools/scenario-sync test
+```
+
+リポジトリルートからの主な同期コマンド:
+
+```bash
+# ライブ取得・検証・差分表示だけ。ファイルは変更しない
+npm --prefix tools/scenario-sync run sync
+
+# ライブ正本とコミット済み生成JSONに差分があれば非ゼロ終了
+npm --prefix tools/scenario-sync run sync:check
+
+# ライブ正本から生成JSONをatomic write
+npm --prefix tools/scenario-sync run sync:write
+
+# オフラインで、明示したsnapshotを検証・比較
+npm --prefix tools/scenario-sync run sync:check -- --snapshot
+```
+
+`--write` がない `sync` は常に非破壊のplanです。`--write` はライブ正本に対してだけ利用できます。認証方法、環境変数、全コマンド、schemaの詳細は [tools/scenario-sync/README.md](tools/scenario-sync/README.md) を参照してください。
+
+### 現行シートの既知warning
+
+現行Google Sheetsには、生成を止めない既知warningが合計5件あります。
+
+- `daily_001` のchoice group `first_day_can_do` から参照する `daily_001_09` と `daily_001_10` が存在しない: 2件
+- 上記の参照切れの影響で `daily_001_06`、`daily_001_07`、`daily_001_08` の本来の到達経路を確定できない: 3件
+
+参照切れchoiceは特定IDの例外ではなく、全scenario共通でwarningにしてPlayerが `line_order` へ復旧します。
+node自身の参照切れやscenario外へのchoice参照、その他の必須値、型、重複、metadata不一致、
+終了不能cycleなどの構造破損はerrorとなります。3タブのどれかが空、または有効行が0件の場合も、
+取得失敗を全削除と誤認しないよう生成物を書き換えず停止します。

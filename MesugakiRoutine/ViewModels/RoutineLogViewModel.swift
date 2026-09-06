@@ -56,7 +56,8 @@ final class RoutineLogViewModel {
         var map: [Date: Set<UUID>] = [:]
         var cursor = windowStart
         while cursor <= today {
-            for routine in routines where routine.wasCompleteOn(day: cursor, now: now, calendar: calendar) {
+            let appDay = AppDay.start(ofCalendarDay: cursor, calendar: calendar)
+            for routine in routines where routine.wasCompleteOn(day: appDay, now: now, calendar: calendar) {
                 map[cursor, default: []].insert(routine.id)
             }
             guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
@@ -80,9 +81,10 @@ final class RoutineLogViewModel {
             var completed = 0
             var cursor = rangeStart
             while cursor <= today {
-                if routine.isScheduled(on: cursor, calendar: calendar) {
+                let appDay = AppDay.start(ofCalendarDay: cursor, calendar: calendar)
+                if routine.isScheduled(on: appDay, calendar: calendar) {
                     applicable += 1
-                    if routine.wasCompleteOn(day: cursor, now: now, calendar: calendar) { completed += 1 }
+                    if routine.wasCompleteOn(day: appDay, now: now, calendar: calendar) { completed += 1 }
                 }
                 guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
                 cursor = next

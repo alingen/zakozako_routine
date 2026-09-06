@@ -88,10 +88,12 @@ final class Routine {
     }
 
     /// 指定日の終了時点(ただし未来は「今」まで)で、その日を含む期間が目標に達していたか。
-    /// 連続達成日数の計算に使う。
+    /// 連続達成日数の計算に使う。`day` は実時刻の一点でも、日付境界を跨がない範囲の値でもよい
+    /// (呼び出し側でカレンダーのマス目を渡す場合は `AppDay.start(ofCalendarDay:)` を通すこと)。
     func wasCompleteOn(day: Date, now: Date = .now, calendar: Calendar = .current) -> Bool {
         let window = period.window(containing: day, calendar: calendar)
-        let dayEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: day)) ?? window.end
+        let dayStart = AppDay.startOfDay(for: day, calendar: calendar)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? window.end
         let upperBound = min(window.end, dayEnd, now)
         let count = progressEvents.filter { $0 >= window.start && $0 < upperBound }.count
         return count >= targetCount
@@ -101,10 +103,12 @@ final class Routine {
     var supportsWeekdaySelection: Bool { period.supportsWeekdaySelection }
 
     /// 指定日にこの約束が「対象」か。1日の期間なら対象曜日、週/月なら常に対象。
+    /// 日付境界は `AppDay`(既定 朝4時)基準。
     func isScheduled(on day: Date = .now, calendar: Calendar = .current) -> Bool {
         guard supportsWeekdaySelection else { return true }
         if activeWeekdayValues.isEmpty { return true }
-        return activeWeekdayValues.contains(calendar.component(.weekday, from: day))
+        let weekday = calendar.component(.weekday, from: AppDay.anchor(day, calendar: calendar))
+        return activeWeekdayValues.contains(weekday)
     }
 
     static func minutes(from date: Date, calendar: Calendar = .current) -> Int {
