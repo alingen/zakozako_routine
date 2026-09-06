@@ -20,6 +20,7 @@ struct InteractionView: View {
         GeometryReader { proxy in
             let visualHeight = proxy.size.height + proxy.safeAreaInsets.bottom
             let backgroundHeight = visualHeight + proxy.safeAreaInsets.top
+            let artworkDrop = min(48, proxy.size.height * 0.055)
 
             ZStack(alignment: .top) {
                 AppColor.background
@@ -42,7 +43,7 @@ struct InteractionView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: proxy.size.width * 1.5)
-                    .offset(y: 128)
+                    .offset(y: 128 + artworkDrop)
                     .frame(
                         width: proxy.size.width,
                         height: visualHeight,
@@ -74,7 +75,7 @@ struct InteractionView: View {
                 )
                 .position(
                     x: proxy.size.width * 0.46,
-                    y: proxy.size.height * 0.55
+                    y: proxy.size.height * 0.55 + artworkDrop * 0.5
                 )
                 .accessibilityLabel("莉央")
                 .accessibilityHint("タップすると莉央が話します")
@@ -84,7 +85,7 @@ struct InteractionView: View {
                         .frame(width: min(300, proxy.size.width - 72))
                         .position(
                             x: proxy.size.width * 0.44,
-                            y: proxy.size.height * 0.39
+                            y: proxy.size.height * 0.39 + artworkDrop
                         )
                         .id(homeDialogueIndex)
                         .transition(
