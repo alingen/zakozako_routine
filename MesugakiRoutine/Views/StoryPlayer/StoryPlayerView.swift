@@ -125,7 +125,6 @@ struct StoryPlayerView: View {
             if input.scenarioType == .smallEvent {
                 SmallEventCompletionView(
                     visibleNodes: input.visibleChatNodes,
-                    backgroundAssetID: input.backgroundAssetID,
                     onClose: onClose
                 )
             } else {
@@ -151,7 +150,6 @@ struct StoryPlayerView: View {
                     node: node,
                     scenarioType: input.scenarioType,
                     visibleNodes: input.visibleChatNodes,
-                    backgroundAssetID: input.backgroundAssetID,
                     portraitAssetID: input.portraitAssetID,
                     cgAssetID: input.cgAssetID,
                     choices: input.availableChoices,

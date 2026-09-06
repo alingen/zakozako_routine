@@ -5,7 +5,6 @@ struct ChatStoryRenderer: View {
     let node: StoryNode
     let scenarioType: StoryScenarioType
     var visibleNodes: [StoryNode] = []
-    var backgroundAssetID: String?
     var portraitAssetID: String?
     var cgAssetID: String?
     var choices: [StoryChoice] = []
@@ -19,7 +18,6 @@ struct ChatStoryRenderer: View {
     @State private var revealedRioNodeID: String?
     @State private var revealedSystemNodeID: String?
 
-    private var effectiveBackground: String? { backgroundAssetID ?? node.background }
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented && !isTyping }
@@ -116,16 +114,6 @@ struct ChatStoryRenderer: View {
     var body: some View {
         ZStack {
             AppColor.background.ignoresSafeArea()
-
-            if let effectiveBackground {
-                StoryAssetView(
-                    assetID: effectiveBackground,
-                    purpose: .background,
-                    contentMode: .fill
-                )
-                .ignoresSafeArea()
-                .opacity(0.18)
-            }
 
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
@@ -351,7 +339,6 @@ private struct RioTypingIndicator: View {
 
 struct SmallEventCompletionView: View {
     let visibleNodes: [StoryNode]
-    let backgroundAssetID: String?
     let onClose: () -> Void
 
     private let bottomAnchorID = "story-chat-completion-bottom"
@@ -359,16 +346,6 @@ struct SmallEventCompletionView: View {
     var body: some View {
         ZStack {
             AppColor.background.ignoresSafeArea()
-
-            if let backgroundAssetID {
-                StoryAssetView(
-                    assetID: backgroundAssetID,
-                    purpose: .background,
-                    contentMode: .fill
-                )
-                .ignoresSafeArea()
-                .opacity(0.18)
-            }
 
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
