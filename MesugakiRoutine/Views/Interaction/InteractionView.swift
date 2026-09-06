@@ -21,7 +21,7 @@ struct InteractionView: View {
             VStack(spacing: 14) {
                 InteractionCharacterCard()
 
-                sectionTitle("今日の会話")
+                sectionTitle("会話")
                 TodayConversationCard(
                     title: viewModel.todayConversationTitle,
                     detail: viewModel.todayConversationDetail,
@@ -30,7 +30,6 @@ struct InteractionView: View {
                     action: { viewModel.openToday() }
                 )
 
-                sectionTitle("コレクション")
                 NavigationLink {
                     StoryCatalogView(
                         mainChapters: viewModel.mainChapters,
@@ -45,6 +44,8 @@ struct InteractionView: View {
                     )
                 }
                 .buttonStyle(.plain)
+
+                sectionTitle("コレクション")
 
                 NavigationLink {
                     MemoryGalleryView(memories: viewModel.memories)
