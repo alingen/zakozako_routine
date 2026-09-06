@@ -46,6 +46,11 @@ struct StoryPlaybackContainerView: View {
                                 )
                             }
                         },
+                        onPresentNode: {
+                            player.markCurrentNodePresented(
+                                expectedNodeId: liveInput.currentNode?.nodeId
+                            )
+                        },
                         onRestart: {
                             Task { await player.restart() }
                         },
@@ -193,6 +198,7 @@ struct StoryPlaybackContainerView: View {
             currentNode: player.currentNode,
             currentMode: player.currentMode,
             visibleChatNodes: player.visibleChatNodes,
+            visibleLogNodes: player.visibleLogNodes,
             backgroundAssetID: player.backgroundAssetID,
             portraitAssetID: player.portraitAssetID,
             cgAssetID: player.cgAssetID,
@@ -226,6 +232,7 @@ struct StoryPlaybackContainerView: View {
             snapshot.currentNode?.nodeId ?? "",
             snapshot.currentMode.rawValue,
             String(snapshot.visibleChatNodes.count),
+            String(snapshot.visibleLogNodes.count),
             String(snapshot.availableChoices.count),
             String(snapshot.isTyping),
             String(snapshot.isModalPresented),
@@ -362,6 +369,17 @@ enum StoryPresentationOrientationPolicy {
 
 enum StoryCompletionPresentationPolicy {
     static func returnsToMenuAutomatically(after scenarioType: StoryScenarioType) -> Bool {
+        switch scenarioType {
+        case .middleEvent, .largeEvent:
+            return true
+        case .daily, .smallEvent, .unknown:
+            return false
+        }
+    }
+}
+
+enum StoryLogPresentationPolicy {
+    static func isAvailable(for scenarioType: StoryScenarioType) -> Bool {
         switch scenarioType {
         case .middleEvent, .largeEvent:
             return true

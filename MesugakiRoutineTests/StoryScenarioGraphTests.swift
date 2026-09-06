@@ -232,6 +232,16 @@ final class StoryScenarioGraphTests: XCTestCase {
         )
     }
 
+    func testLogIsAvailableOnlyForMiddleAndLargeEvents() {
+        XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .daily))
+        XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .smallEvent))
+        XCTAssertTrue(StoryLogPresentationPolicy.isAvailable(for: .middleEvent))
+        XCTAssertTrue(StoryLogPresentationPolicy.isAvailable(for: .largeEvent))
+        XCTAssertFalse(
+            StoryLogPresentationPolicy.isAvailable(for: .unknown("future_event"))
+        )
+    }
+
     private func decodeScenario(_ json: String) throws -> StoryScenario {
         try JSONDecoder().decode(StoryScenario.self, from: Data(json.utf8))
     }

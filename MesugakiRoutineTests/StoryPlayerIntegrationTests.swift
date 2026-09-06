@@ -514,6 +514,104 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertTrue(player.isCompleted)
         XCTAssertFalse(player.isCurrentNodeTerminal)
     }
+
+    func testEventLogIncludesPresentedTextWithoutSpoilingPendingChatMessages() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "event_log",
+            scenarioType: .middleEvent,
+            nodes: [
+                StoryNode(
+                    nodeId: "scene",
+                    lineOrder: 1,
+                    speaker: "system",
+                    messageType: .action,
+                    text: nil,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "scene_change"
+                ),
+                StoryNode(
+                    nodeId: "intro",
+                    lineOrder: 2,
+                    speaker: "narrator",
+                    messageType: .text,
+                    text: "導入",
+                    screenMode: .adv,
+                    uiVariant: .narration
+                ),
+                StoryNode(
+                    nodeId: "to_chat",
+                    lineOrder: 3,
+                    speaker: "system",
+                    messageType: .action,
+                    text: "",
+                    screenMode: .chat,
+                    uiVariant: .sceneTransition,
+                    command: "scene_change"
+                ),
+                StoryNode(
+                    nodeId: "player_message",
+                    lineOrder: 4,
+                    speaker: "protagonist",
+                    messageType: .text,
+                    text: "送信前の内容",
+                    screenMode: .chat,
+                    uiVariant: .dialogue
+                ),
+                StoryNode(
+                    nodeId: "rio_message",
+                    lineOrder: 5,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "莉央の返信",
+                    screenMode: .chat,
+                    uiVariant: .dialogue
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(
+                scenarios: [scenario],
+                choiceGroups: [],
+                events: []
+            )
+        )
+        let stateRepository = try makeStateRepository()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:event_log",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+        XCTAssertEqual(player.currentNode?.nodeId, "intro")
+        XCTAssertEqual(player.visibleLogNodes.map(\.nodeId), ["intro"])
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "player_message")
+        XCTAssertEqual(player.visibleLogNodes.map(\.nodeId), ["intro"])
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "rio_message")
+        XCTAssertEqual(
+            player.visibleLogNodes.map(\.nodeId),
+            ["intro", "player_message"]
+        )
+
+        player.markCurrentNodePresented(expectedNodeId: "rio_message")
+        XCTAssertEqual(
+            player.visibleLogNodes.map(\.nodeId),
+            ["intro", "player_message", "rio_message"]
+        )
+
+        await player.advance()
+        XCTAssertTrue(player.isCompleted)
+        XCTAssertEqual(
+            player.visibleLogNodes.map(\.nodeId),
+            ["intro", "player_message", "rio_message"]
+        )
+    }
 }
 
 private extension StoryPlayerIntegrationTests {

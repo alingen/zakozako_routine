@@ -12,6 +12,7 @@ struct ChatStoryRenderer: View {
     var isTyping = false
     var isModalPresented = false
     let onAdvance: () -> Void
+    let onPresentNode: () -> Void
     let onSelectChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
 
@@ -201,6 +202,7 @@ struct ChatStoryRenderer: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         revealedRioNodeID = node.nodeId
                     }
+                    onPresentNode()
                     try await Task<Never, Never>.sleep(
                         nanoseconds: automaticAdvanceDelayNanoseconds
                     )
@@ -212,7 +214,9 @@ struct ChatStoryRenderer: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         revealedSystemNodeID = node.nodeId
                     }
+                    onPresentNode()
                 } else {
+                    onPresentNode()
                     try await Task<Never, Never>.sleep(
                         nanoseconds: automaticContentDelayNanoseconds
                     )
@@ -283,7 +287,10 @@ struct ChatStoryRenderer: View {
     }
 
     private var manualAdvanceButton: some View {
-        Button(action: onAdvance) {
+        Button {
+            onPresentNode()
+            onAdvance()
+        } label: {
             HStack(spacing: 10) {
                 Image(systemName: manualAdvanceSymbol)
                     .accessibilityHidden(true)

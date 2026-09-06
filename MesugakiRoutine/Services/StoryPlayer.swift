@@ -41,6 +41,7 @@ final class StoryPlayer {
     private(set) var currentNode: StoryNode?
     private(set) var currentMode: StoryScreenMode
     private(set) var visibleChatNodes: [StoryNode] = []
+    private(set) var visibleLogNodes: [StoryNode] = []
     private(set) var backgroundAssetID: String?
     private(set) var portraitAssetID: String?
     private(set) var cgAssetID: String?
@@ -352,6 +353,16 @@ final class StoryPlayer {
         }
     }
 
+    /// Records a renderer-controlled chat reveal without advancing playback.
+    /// This keeps typing or unsent messages out of the event log.
+    func markCurrentNodePresented(expectedNodeId: String? = nil) {
+        guard expectedNodeId == nil || currentNode?.nodeId == expectedNodeId,
+              let currentNode else {
+            return
+        }
+        appendVisibleLogNodeIfNeeded(currentNode)
+    }
+
     /// Clears playback only; event read/unlock state and memory unlocks remain.
     func restart() async {
         let token = beginReplacingOperation()
@@ -484,6 +495,9 @@ private extension StoryPlayer {
                     allowTransientEffects: true
                 )
                 appendVisibleChatNodeIfNeeded(displayedNode)
+                if currentMode != .chat {
+                    appendVisibleLogNodeIfNeeded(displayedNode)
+                }
                 availableChoices = resolvedChoices
                 try persistEntry(node: node, encounteredCGs: encounteredCGs)
             }
@@ -531,6 +545,11 @@ private extension StoryPlayer {
         guard var updated = checkpoint else {
             throw StoryPlayerError.invalidCheckpoint("checkpointがありません")
         }
+
+        // Chat messages become part of the log only after they have actually
+        // been sent/revealed and consumed. ADV/call nodes are already added on
+        // entry, and the helper de-duplicates them.
+        appendVisibleLogNodeIfNeeded(node)
 
         let profileKey = selectedChoice?.saveKey ?? node.saveKey
         let profileValue = selectedChoice?.saveValue ?? node.saveValue
@@ -612,6 +631,10 @@ private extension StoryPlayer {
                 allowTransientEffects: index == replayedCurrentIndex
             )
             appendVisibleChatNodeIfNeeded(displayedNode)
+            let isReplayedCurrentNode = index == replayedCurrentIndex
+            if !isReplayedCurrentNode || currentMode != .chat {
+                appendVisibleLogNodeIfNeeded(displayedNode)
+            }
             if index == replayedCurrentIndex { currentNode = displayedNode }
             if let diagnostic = dispatch.diagnostic { report(diagnostic) }
         }
@@ -884,10 +907,29 @@ private extension StoryPlayer {
         visibleChatNodes.append(node)
     }
 
+    func appendVisibleLogNodeIfNeeded(_ node: StoryNode) {
+        switch scenario.scenarioType {
+        case .middleEvent, .largeEvent:
+            break
+        case .daily, .smallEvent, .unknown:
+            return
+        }
+        let text = normalized(node.text)
+            ?? normalized(node.commandArgs?["text"]?.stringValue)
+        guard text != nil,
+              node.uiVariant != .titleCard,
+              node.uiVariant != .typing,
+              !visibleLogNodes.contains(where: { $0.nodeId == node.nodeId }) else {
+            return
+        }
+        visibleLogNodes.append(node)
+    }
+
     func resetPresentation(clearError: Bool) {
         currentNode = nil
         currentMode = initialMode
         visibleChatNodes = []
+        visibleLogNodes = []
         backgroundAssetID = event?.background
         portraitAssetID = nil
         cgAssetID = nil

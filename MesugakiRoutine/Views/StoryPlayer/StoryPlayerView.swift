@@ -8,6 +8,7 @@ protocol StoryPlayerViewInput {
     var currentNode: StoryNode? { get }
     var currentMode: StoryScreenMode { get }
     var visibleChatNodes: [StoryNode] { get }
+    var visibleLogNodes: [StoryNode] { get }
     var backgroundAssetID: String? { get }
     var portraitAssetID: String? { get }
     var cgAssetID: String? { get }
@@ -26,6 +27,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
     let currentNode: StoryNode?
     let currentMode: StoryScreenMode
     let visibleChatNodes: [StoryNode]
+    let visibleLogNodes: [StoryNode]
     let backgroundAssetID: String?
     let portraitAssetID: String?
     let cgAssetID: String?
@@ -42,6 +44,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         currentNode: StoryNode?,
         currentMode: StoryScreenMode = .adv,
         visibleChatNodes: [StoryNode] = [],
+        visibleLogNodes: [StoryNode] = [],
         backgroundAssetID: String? = nil,
         portraitAssetID: String? = nil,
         cgAssetID: String? = nil,
@@ -57,6 +60,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         self.currentNode = currentNode
         self.currentMode = currentMode
         self.visibleChatNodes = visibleChatNodes
+        self.visibleLogNodes = visibleLogNodes
         self.backgroundAssetID = backgroundAssetID
         self.portraitAssetID = portraitAssetID
         self.cgAssetID = cgAssetID
@@ -76,11 +80,13 @@ struct StoryPlayerView: View {
     let onAdvance: () -> Void
     let onChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
+    let onPresentNode: () -> Void
     let onRestart: () -> Void
     let onSkip: () -> Void
     let onClose: () -> Void
 
     @State private var isShowingRestartConfirmation = false
+    @State private var isShowingLog = false
 
     private var isAutomaticallyReturningCompletedEvent: Bool {
         input.isCompleted
@@ -100,23 +106,36 @@ struct StoryPlayerView: View {
 
     var body: some View {
         ZStack {
-            playerContent
-                .ignoresSafeArea(
-                    edges: input.currentMode == .chat ? [.horizontal, .bottom] : .all
-                )
-
-            if !isAutomaticallyReturningCompletedEvent {
-                VStack(spacing: 10) {
-                    topBar
-
-                    if let error = input.recoverableError, !error.isEmpty {
-                        recoverableErrorBanner(error)
+            if isShowingLog {
+                StoryLogView(
+                    title: input.title,
+                    nodes: input.visibleLogNodes,
+                    onClose: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            isShowingLog = false
+                        }
                     }
+                )
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                playerContent
+                    .ignoresSafeArea(
+                        edges: input.currentMode == .chat ? [.horizontal, .bottom] : .all
+                    )
 
-                    Spacer()
+                if !isAutomaticallyReturningCompletedEvent {
+                    VStack(spacing: 10) {
+                        topBar
+
+                        if let error = input.recoverableError, !error.isEmpty {
+                            recoverableErrorBanner(error)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 8)
             }
         }
         .background(AppColor.background.ignoresSafeArea())
@@ -173,6 +192,7 @@ struct StoryPlayerView: View {
                     isTyping: input.isTyping,
                     isModalPresented: input.isModalPresented,
                     onAdvance: onAdvance,
+                    onPresentNode: onPresentNode,
                     onSelectChoice: onChoice,
                     onDismissModal: onDismissModal
                 )
@@ -221,6 +241,15 @@ struct StoryPlayerView: View {
             Spacer(minLength: 0)
 
             Menu {
+                if StoryLogPresentationPolicy.isAvailable(for: input.scenarioType) {
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            isShowingLog = true
+                        }
+                    } label: {
+                        Label("ログ", systemImage: "list.bullet.rectangle")
+                    }
+                }
                 if input.scenarioType != .smallEvent || !input.isCompleted {
                     Button {
                         isShowingRestartConfirmation = true
@@ -359,5 +388,137 @@ struct StoryPlayerView: View {
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColor.background)
+    }
+}
+
+private struct StoryLogView: View {
+    let title: String
+    let nodes: [StoryNode]
+    let onClose: () -> Void
+
+    private let bottomAnchorID = "story-log-bottom"
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("ログ")
+                        .font(.title2.bold())
+                        .foregroundStyle(AppColor.text)
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(AppColor.muted)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.body.bold())
+                        .frame(width: 40, height: 40)
+                        .background(AppColor.surface, in: Circle())
+                        .overlay(Circle().stroke(AppColor.border))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(AppColor.text)
+                .accessibilityLabel("ログを閉じる")
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
+            Divider()
+
+            if nodes.isEmpty {
+                ContentUnavailableView(
+                    "ログはまだありません",
+                    systemImage: "text.bubble",
+                    description: Text("表示されたセリフがここに記録されます")
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(nodes) { node in
+                                StoryLogRow(node: node)
+
+                                if node.id != nodes.last?.id {
+                                    Divider()
+                                        .padding(.leading, 20)
+                                }
+                            }
+
+                            Color.clear
+                                .frame(height: 1)
+                                .id(bottomAnchorID)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .onAppear {
+                        proxy.scrollTo(bottomAnchorID, anchor: .bottom)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppColor.background)
+    }
+}
+
+private struct StoryLogRow: View {
+    let node: StoryNode
+
+    private var normalizedSpeaker: String {
+        node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isProtagonist: Bool {
+        ["user", "player", "protagonist"].contains(normalizedSpeaker)
+            || node.storyDisplaySpeakerName == "主人公"
+    }
+
+    private var displaySpeakerName: String? {
+        if normalizedSpeaker == "narrator" || normalizedSpeaker == "system" {
+            return nil
+        }
+        if isProtagonist {
+            let nickname = AppSettingsStore.userName
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return nickname.isEmpty ? "主人公" : nickname
+        }
+        if let speakerName = node.storyDisplaySpeakerName {
+            switch speakerName.lowercased() {
+            case "system", "地の文": return nil
+            default: return speakerName
+            }
+        }
+        switch normalizedSpeaker {
+        case "rio", "character": return "莉央"
+        default: return node.speaker.isEmpty ? nil : node.speaker
+        }
+    }
+
+    private var isNarration: Bool {
+        displaySpeakerName == nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if let displaySpeakerName {
+                Text(displaySpeakerName)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppColor.primary)
+            }
+
+            Text(node.storyDisplayText)
+                .font(.body)
+                .foregroundStyle(isNarration ? AppColor.muted : AppColor.text)
+                .italic(isNarration)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .accessibilityElement(children: .combine)
     }
 }
