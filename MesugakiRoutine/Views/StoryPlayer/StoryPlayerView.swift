@@ -78,6 +78,10 @@ struct StoryPlayerView: View {
 
     @State private var isShowingRestartConfirmation = false
 
+    private var usesSkipOnlyDismissal: Bool {
+        input.scenarioType == .smallEvent || input.scenarioType == .largeEvent
+    }
+
     var body: some View {
         ZStack {
             playerContent
@@ -166,7 +170,7 @@ struct StoryPlayerView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            if input.scenarioType != .smallEvent {
+            if !usesSkipOnlyDismissal {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.body.bold())
@@ -194,7 +198,7 @@ struct StoryPlayerView: View {
                 } label: {
                     Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
                 }
-                if input.scenarioType == .smallEvent, !input.isCompleted {
+                if usesSkipOnlyDismissal, !input.isCompleted {
                     Button(action: onSkip) {
                         Label("スキップ", systemImage: "forward.end.fill")
                     }

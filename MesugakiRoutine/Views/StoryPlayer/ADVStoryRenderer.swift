@@ -181,9 +181,24 @@ private struct ADVTextWindow: View {
         node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
+    private var isProtagonist: Bool {
+        ["user", "player", "protagonist"].contains(normalizedSpeaker)
+            || node.storyDisplaySpeakerName == "主人公"
+    }
+
+    private var protagonistDisplayName: String {
+        let nickname = AppSettingsStore.userName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return nickname.isEmpty ? "主人公" : nickname
+    }
+
     private var displaySpeakerName: String? {
         if normalizedSpeaker == "narrator" {
             return nil
+        }
+
+        if isProtagonist {
+            return protagonistDisplayName
         }
 
         if let providedName = node.storyDisplaySpeakerName {
@@ -202,8 +217,6 @@ private struct ADVTextWindow: View {
             return "システム"
         case "rio", "character":
             return "莉央"
-        case "user", "player", "protagonist":
-            return "主人公"
         default:
             return node.speaker.isEmpty ? nil : node.speaker
         }
