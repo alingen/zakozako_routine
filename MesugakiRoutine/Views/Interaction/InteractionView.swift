@@ -17,11 +17,13 @@ struct InteractionView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: proxy.size.width * 1.5)
+                    .offset(y: 128)
                     .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
+                        width: proxy.size.width,
+                        height: proxy.size.height,
                         alignment: .top
                     )
+                    .clipped()
                     .accessibilityHidden(true)
 
                 LinearGradient(
@@ -93,6 +95,7 @@ struct InteractionView: View {
                     }
                 }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
         }
         .toolbar(.hidden, for: .navigationBar)
