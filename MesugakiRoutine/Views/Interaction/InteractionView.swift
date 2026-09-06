@@ -9,16 +9,23 @@ struct InteractionView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack {
+            let backgroundHeight = proxy.size.height + proxy.safeAreaInsets.top
+
+            ZStack(alignment: .top) {
                 AppColor.background
                     .ignoresSafeArea()
 
                 Image("rio_interaction_background")
                     .resizable()
                     .scaledToFill()
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .frame(
+                        width: proxy.size.width,
+                        height: backgroundHeight,
+                        alignment: .bottom
+                    )
                     .clipped()
-                    .ignoresSafeArea()
+                    .offset(y: -proxy.safeAreaInsets.top)
+                    .ignoresSafeArea(edges: .top)
                     .accessibilityHidden(true)
 
                 Image("rio_interaction_home")
