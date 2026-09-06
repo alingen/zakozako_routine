@@ -6,6 +6,15 @@ struct InteractionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = InteractionViewModel()
+    @State private var homeDialogueIndex: Int?
+
+    private var homeDialogue: String? {
+        guard let homeDialogueIndex,
+              InteractionHomeDialogue.defaultLines.indices.contains(homeDialogueIndex) else {
+            return nil
+        }
+        return InteractionHomeDialogue.defaultLines[homeDialogueIndex]
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -51,6 +60,37 @@ struct InteractionView: View {
                     endPoint: .bottom
                 )
                 .allowsHitTesting(false)
+
+                Button(action: showNextHomeDialogue) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(
+                    width: proxy.size.width * 0.72,
+                    height: proxy.size.height * 0.68
+                )
+                .position(
+                    x: proxy.size.width * 0.46,
+                    y: proxy.size.height * 0.55
+                )
+                .accessibilityLabel("莉央")
+                .accessibilityHint("タップすると莉央が話します")
+
+                if let homeDialogue {
+                    InteractionCharacterSpeechBubble(text: homeDialogue)
+                        .frame(width: min(300, proxy.size.width - 72))
+                        .position(
+                            x: proxy.size.width * 0.44,
+                            y: proxy.size.height * 0.39
+                        )
+                        .id(homeDialogueIndex)
+                        .transition(
+                            .scale(scale: 0.92, anchor: .top)
+                                .combined(with: .opacity)
+                        )
+                        .allowsHitTesting(false)
+                }
 
                 VStack(spacing: 0) {
                     if viewModel.showsTodayConversationCard {
@@ -135,6 +175,15 @@ struct InteractionView: View {
             StoryPlaybackContainerView(launch: launch) {
                 viewModel.closePlayer()
             }
+        }
+    }
+
+    private func showNextHomeDialogue() {
+        guard let nextIndex = InteractionHomeDialogue.nextIndex(after: homeDialogueIndex) else {
+            return
+        }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+            homeDialogueIndex = nextIndex
         }
     }
 }
