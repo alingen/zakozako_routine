@@ -15,6 +15,7 @@ struct HomeView: View {
 
     var body: some View {
         List {
+            currentCharacterSection
             todayRoutinesSection
             todayPromiseSection
             zakoBulletinSection
@@ -56,6 +57,29 @@ struct HomeView: View {
             viewModel.reload()
             siriLaunchCoordinator.pendingOpenTodayRoutines = false
         }
+    }
+
+    // MARK: - 現在のキャラクター
+
+    private var currentCharacterSection: some View {
+        Section("現在のコーチ") {
+            HStack(spacing: 12) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 42))
+                    .foregroundStyle(AppColor.primary)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("莉央")
+                        .font(.headline)
+                        .foregroundStyle(AppColor.text)
+                    Text("会話やストーリーは「交流」から")
+                        .font(.caption)
+                        .foregroundStyle(AppColor.muted)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .appCardRow()
     }
 
     // MARK: - 1. 今日の約束(2列グリッド)
@@ -332,5 +356,15 @@ struct HomeView: View {
         HomeView()
     }
     .environment(SiriLaunchCoordinator())
-    .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
+    .modelContainer(
+        for: [
+            Routine.self,
+            BlockedBehavior.self,
+            StoryEventProgress.self,
+            StoryPlaybackProgress.self,
+            StoryProfileValue.self,
+            StoryMemoryUnlock.self,
+        ],
+        inMemory: true
+    )
 }

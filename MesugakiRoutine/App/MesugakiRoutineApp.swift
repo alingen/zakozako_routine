@@ -10,6 +10,10 @@ struct MesugakiRoutineApp: App {
         let schema = Schema([
             Routine.self,
             BlockedBehavior.self,
+            StoryEventProgress.self,
+            StoryPlaybackProgress.self,
+            StoryProfileValue.self,
+            StoryMemoryUnlock.self,
         ])
         let configuration = ModelConfiguration(schema: schema)
         do {

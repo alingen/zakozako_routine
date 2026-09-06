@@ -87,6 +87,8 @@ final class HomeViewModel {
         currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
         masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
         zakoBulletinItems = Self.buildBulletin(routines: allRoutines, behavior: currentBehavior)
+        // eventsシートの条件を現在のルーティン値で評価する。解放は単調増加かつ冪等。
+        _ = try? dependencies.storyUnlockService?.refreshUnlocks()
         rescheduleNotifications()
     }
 
