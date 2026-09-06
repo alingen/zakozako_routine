@@ -60,9 +60,23 @@ struct StoryPlaybackContainerView: View {
         .task(id: launch.id) {
             await prepare()
         }
+        .onAppear {
+            updateOrientationForStory()
+        }
         .onDisappear {
             player?.close()
+            if usesLandscapePresentation {
+                AppOrientationController.set(.portrait)
+            }
         }
+    }
+
+    private var usesLandscapePresentation: Bool {
+        launch.scenario.scenarioType.usesLandscapeStoryPresentation
+    }
+
+    private func updateOrientationForStory() {
+        AppOrientationController.set(usesLandscapePresentation ? .landscape : .portrait)
     }
 
     private func prepare() async {
@@ -124,5 +138,16 @@ struct StoryPlaybackContainerView: View {
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppColor.background)
+    }
+}
+
+extension StoryScenarioType {
+    var usesLandscapeStoryPresentation: Bool {
+        switch self {
+        case .middleEvent, .largeEvent:
+            return true
+        case .daily, .smallEvent, .unknown:
+            return false
+        }
     }
 }

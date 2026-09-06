@@ -167,6 +167,14 @@ final class StoryScenarioGraphTests: XCTestCase {
         }
     }
 
+    func testOnlyMiddleAndLargeEventsUseLandscapePresentation() {
+        XCTAssertFalse(StoryScenarioType.daily.usesLandscapeStoryPresentation)
+        XCTAssertFalse(StoryScenarioType.smallEvent.usesLandscapeStoryPresentation)
+        XCTAssertTrue(StoryScenarioType.middleEvent.usesLandscapeStoryPresentation)
+        XCTAssertTrue(StoryScenarioType.largeEvent.usesLandscapeStoryPresentation)
+        XCTAssertFalse(StoryScenarioType.unknown("future_event").usesLandscapeStoryPresentation)
+    }
+
     private func decodeScenario(_ json: String) throws -> StoryScenario {
         try JSONDecoder().decode(StoryScenario.self, from: Data(json.utf8))
     }

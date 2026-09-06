@@ -13,7 +13,7 @@ App Store向けの表示名は「小悪魔コーチ」です。`MesugakiRoutine`
 | ホーム | 現在のコーチ、今日の約束、挑戦中の「やらないこと」、自分の直近記録から作る「みんなのざこ速報」 |
 | 記録 | 月間カレンダー、直近30日の達成率、全体の連続達成日数 |
 | 交流 | キャラクター表示、今日の会話、メイン／サブストーリー一覧、思い出ギャラリー |
-| 設定 | ユーザー名・呼び方、サボり通知、開発用の進捗確認操作 |
+| 設定 | ユーザー名・呼び方、サボり通知、Debugビルド専用の進行値・進捗操作 |
 
 ホームから約束の作成・編集・削除、回数の記録、完了演出を行えます。開始予定時刻を設定した約束には、未達成の場合だけローカル通知を予約できます。「今日の約束を開く」App Intentも実装されています。
 
@@ -86,7 +86,7 @@ Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれ�
 
 `StoryPlayerView` は交流画面から `fullScreenCover` で表示する統合画面です。進行状態に応じて以下の純粋なrendererへ描画を委譲し、操作はcallbackでPlayerへ返します。renderer自身はシナリオ遷移や `NavigationStack` を持ちません。
 
-- `ADVStoryRenderer`: 背景、立ち絵、CG、台詞・地の文・選択肢
+- `ADVStoryRenderer`: 中・大イベントを横画面で表示し、背景、立ち絵、CG、3行固定の台詞・地の文、選択肢を描画
 - `ChatStoryRenderer`: 表示済みメッセージ、typing、画像・音声メッセージ、選択肢
 - `CallStoryRenderer`: 着信／発信／通話／終了などの演出。実際の通話や録音は行いません
 - `StoryVariantViews`: title card、narration、dialogue、scene transition、monologue、modalなどの小部品

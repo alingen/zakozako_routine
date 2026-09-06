@@ -139,6 +139,29 @@ final class StoryConditionEvaluatorTests: XCTestCase {
         )
     }
 
+    func testRelationshipTrustUsesStoryMetric() throws {
+        let condition = try decodeCondition(
+            type: "relationship",
+            key: "trust",
+            operatorName: "gte",
+            threshold: "10"
+        )
+        let evaluator = StoryConditionEvaluator()
+
+        XCTAssertFalse(
+            evaluator.evaluate(
+                condition: condition,
+                metrics: StoryProgressMetrics(continuousDays: 0, trust: 9)
+            ).satisfied
+        )
+        XCTAssertTrue(
+            evaluator.evaluate(
+                condition: condition,
+                metrics: StoryProgressMetrics(continuousDays: 0, trust: 10)
+            ).satisfied
+        )
+    }
+
     func testUnlockRemainsMonotonicWhenConditionLaterBecomesFalse() throws {
         let content = try decodeContent(
             conditionsJSON:

@@ -38,11 +38,11 @@ struct ADVStoryRenderer: View {
                     StoryAssetView(assetID: effectivePortrait, purpose: .image, contentMode: .fit)
                         .frame(
                             maxWidth: proxy.size.width * 0.78,
-                            maxHeight: proxy.size.height * 0.66,
+                            maxHeight: proxy.size.height * 0.72,
                             alignment: .bottom
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                        .padding(.bottom, 116)
+                        .padding(.bottom, 150)
                 }
 
                 if canAdvance {
@@ -78,7 +78,7 @@ struct ADVStoryRenderer: View {
 
     private var variantAlignment: Alignment {
         switch node.uiVariant ?? .dialogue {
-        case .titleCard, .sceneTransition, .cg:
+        case .titleCard, .cg:
             return .center
         default:
             return .bottom
@@ -90,14 +90,10 @@ struct ADVStoryRenderer: View {
         switch node.uiVariant ?? .dialogue {
         case .titleCard:
             StoryTitleCardView(node: node)
-        case .narration, .beat:
-            StoryNarrationView(node: node)
+        case .narration, .beat, .sceneTransition, .monologue:
+            ADVTextWindow(node: node)
         case .dialogue:
             defaultMessageContent
-        case .sceneTransition:
-            StorySceneTransitionView(node: node)
-        case .monologue:
-            StoryMonologueView(node: node)
         case .typing:
             StoryTypingView(node: node)
         case .audioMessage:
@@ -108,7 +104,7 @@ struct ADVStoryRenderer: View {
             EmptyView()
         case .modal:
             if !isModalPresented {
-                StoryDialogueView(node: node)
+                ADVTextWindow(node: node)
             }
         case .incomingCall, .recording, .callEnd, .outgoingCall, .callConnected:
             StoryUnknownVariantView(node: node, variant: node.uiVariant)
@@ -123,9 +119,65 @@ struct ADVStoryRenderer: View {
         case .image:
             StoryImageMessageView(node: node)
         case .action:
-            StoryNarrationView(node: node)
+            ADVTextWindow(node: node)
         case .text, .choice, .unknown:
-            StoryDialogueView(node: node)
+            ADVTextWindow(node: node)
         }
+    }
+}
+
+private struct ADVTextWindow: View {
+    let node: StoryNode
+
+    private var normalizedSpeaker: String {
+        node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSystemMessage: Bool {
+        ["system", "narrator"].contains(normalizedSpeaker)
+    }
+
+    private var displaySpeakerName: String {
+        if let providedName = node.storyDisplaySpeakerName {
+            return providedName.lowercased() == "system" ? "システム" : providedName
+        }
+
+        switch normalizedSpeaker {
+        case "system":
+            return "システム"
+        case "narrator":
+            return "地の文"
+        case "rio", "character":
+            return "莉央"
+        case "user", "player", "protagonist":
+            return "主人公"
+        default:
+            return node.speaker
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(displaySpeakerName)
+                .font(.title3.bold())
+                .foregroundStyle(isSystemMessage ? AppColor.secondary : AppColor.primary)
+                .lineLimit(1)
+
+            Text(node.storyDisplayText)
+                .font(.body)
+                .foregroundStyle(AppColor.text)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+        .frame(height: 136, alignment: .topLeading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.75), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
     }
 }

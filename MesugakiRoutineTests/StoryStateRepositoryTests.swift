@@ -69,6 +69,29 @@ final class StoryStateRepositoryTests: XCTestCase {
         XCTAssertEqual(try repository.profileValue(for: "answer"), "accepted")
     }
 
+    func testDebugProfileValuesCanBeUpdatedAndRemovedTogether() throws {
+        let repository = try makeRepository()
+        try repository.updateProfileValues([
+            StoryStateRepository.debugContinuousAchievementDaysKey: "7",
+            StoryStateRepository.trustKey: "12",
+        ])
+
+        try repository.updateProfileValues(
+            [StoryStateRepository.trustKey: "20"],
+            removingKeys: [StoryStateRepository.debugContinuousAchievementDaysKey]
+        )
+
+        XCTAssertNil(
+            try repository.profileValue(
+                for: StoryStateRepository.debugContinuousAchievementDaysKey
+            )
+        )
+        XCTAssertEqual(
+            try repository.profileValue(for: StoryStateRepository.trustKey),
+            "20"
+        )
+    }
+
     func testCompletionMarksEventReadAndUnlocksEverySeenCG() throws {
         let repository = try makeRepository()
         let event = try decodeEvent()

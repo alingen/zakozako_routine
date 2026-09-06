@@ -17,6 +17,7 @@ struct ChatStoryRenderer: View {
 
     @State private var typingStartedRioNodeID: String?
     @State private var revealedRioNodeID: String?
+    @State private var revealedSystemNodeID: String?
 
     private var effectiveBackground: String? { backgroundAssetID ?? node.background }
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
@@ -40,6 +41,13 @@ struct ChatStoryRenderer: View {
     }
     private var isShowingRioTyping: Bool {
         isWaitingForRioMessage && typingStartedRioNodeID == node.nodeId
+    }
+    private var isWaitingForSystemMessage: Bool {
+        shouldAutoAdvance
+            && scenarioType == .smallEvent
+            && node.normalizedSpeakerKey == "system"
+            && node.messageType == .text
+            && revealedSystemNodeID != node.nodeId
     }
 
     private var isInitialSmallEventPlayerMessage: Bool {
@@ -66,7 +74,7 @@ struct ChatStoryRenderer: View {
     }
 
     private let rioResponsePauseNanoseconds: UInt64 = 700_000_000
-    private let defaultRioTypingDurationMilliseconds = 800
+    private let defaultRioTypingDurationMilliseconds = 600
     private let automaticContentDelayNanoseconds: UInt64 = 900_000_000
 
     private var rioTypingDelayNanoseconds: UInt64 {
@@ -83,11 +91,14 @@ struct ChatStoryRenderer: View {
 
     private var renderedNodes: [StoryNode] {
         let sentNodes = visibleNodes.filter {
-            (!isWaitingToSendPlayerMessage && !isWaitingForRioMessage)
+            (!isWaitingToSendPlayerMessage
+                && !isWaitingForRioMessage
+                && !isWaitingForSystemMessage)
                 || $0.nodeId != node.nodeId
         }
         guard !isWaitingToSendPlayerMessage,
               !isWaitingForRioMessage,
+              !isWaitingForSystemMessage,
               !sentNodes.contains(where: { $0.nodeId == node.nodeId }) else {
             return sentNodes
         }
@@ -187,6 +198,14 @@ struct ChatStoryRenderer: View {
                     try await Task<Never, Never>.sleep(
                         nanoseconds: automaticAdvanceDelayNanoseconds
                     )
+                } else if isWaitingForSystemMessage {
+                    try await Task<Never, Never>.sleep(
+                        nanoseconds: automaticContentDelayNanoseconds
+                    )
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        revealedSystemNodeID = node.nodeId
+                    }
                 } else {
                     try await Task<Never, Never>.sleep(
                         nanoseconds: automaticContentDelayNanoseconds

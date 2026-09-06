@@ -89,6 +89,10 @@ extension StoryConditionValueProvider {
             }
         }
 
+        provider.register(conditionType: "relationship", conditionKey: "trust") { _, metrics in
+            .number(Double(metrics.trust))
+        }
+
         // Profile facts and story flags share the key/value persistence layer.
         // The type namespace remains distinct in the CMS and can be separated
         // later without changing the evaluator.
