@@ -195,7 +195,7 @@ final class HomeViewModel {
         reload()
     }
 
-    /// 約束をタップした時: 1回進める。目標に達したら完了演出を出す。
+    /// 約束のホールド操作が成立した時: 1回進める。目標に達したら完了演出を出す。
     func advanceRoutine(_ routine: Routine) {
         guard let dependencies else { return }
         let wasComplete = routine.isComplete()

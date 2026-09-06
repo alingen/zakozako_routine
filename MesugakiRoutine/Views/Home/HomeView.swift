@@ -107,40 +107,21 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// 約束1件の大きな円セル。タップできるのは円だけ。通常時は1回進む / 編集時は編集画面へ。
+    /// 約束1件の大きな円セル。通常時は円のホールドで1回進む / 編集時はタップで編集画面へ。
     @ViewBuilder
     private func routineGridCell(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
         let streak = viewModel.currentRoutineStreak(for: routine)
 
         VStack(spacing: 8) {
-            Button {
-                if isEditingRoutines {
-                    editingRoutine = routine
-                } else {
-                    viewModel.advanceRoutine(routine)
-                }
-            } label: {
-                ZStack(alignment: .bottomTrailing) {
-                    ProgressCircle(
-                        progress: progress.fraction,
-                        size: 116,
-                        lineWidth: 7,
-                        centerSystemImage: routine.iconName
-                    )
-                    if isEditingRoutines {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(AppColor.text)
-                            .frame(width: 30, height: 30)
-                            .background(AppColor.surface, in: Circle())
-                            .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
-                            .offset(x: 4, y: 4)
-                    }
-                }
-                .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
+            RoutineProgressButton(
+                progress: progress.fraction,
+                iconName: routine.iconName,
+                isEditing: isEditingRoutines,
+                accessibilityLabel: routine.title,
+                onAdvance: { viewModel.advanceRoutine(routine) },
+                onEdit: { editingRoutine = routine }
+            )
 
             VStack(spacing: 2) {
                 Text(routine.title)
@@ -324,6 +305,85 @@ struct HomeView: View {
             ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
         }
         .appCardRow()
+    }
+}
+
+/// 短いタップでは反応せず、円が中央から外周まで広がる長押しで進捗を記録する。
+private struct RoutineProgressButton: View {
+    private static let holdDuration: TimeInterval = 0.8
+
+    let progress: Double
+    let iconName: String?
+    let isEditing: Bool
+    let accessibilityLabel: String
+    let onAdvance: () -> Void
+    let onEdit: () -> Void
+
+    @State private var confirmationProgress = 0.0
+
+    var body: some View {
+        Group {
+            if isEditing {
+                Button(action: onEdit) {
+                    content
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("タップして編集")
+            } else {
+                content
+                    .onLongPressGesture(
+                        minimumDuration: Self.holdDuration,
+                        maximumDistance: 24,
+                        perform: onAdvance,
+                        onPressingChanged: updateHoldingState
+                    )
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("長押しして1回分を記録")
+                    .accessibilityAction(named: "1回分を記録", onAdvance)
+            }
+        }
+        .accessibilityLabel(accessibilityLabel)
+        .onChange(of: isEditing) {
+            resetConfirmation()
+        }
+    }
+
+    private var content: some View {
+        ZStack(alignment: .bottomTrailing) {
+            RoutineProgressPie(
+                progress: progress,
+                size: 116,
+                centerSystemImage: iconName,
+                confirmationProgress: confirmationProgress
+            )
+            if isEditing {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(AppColor.text)
+                    .frame(width: 30, height: 30)
+                    .background(AppColor.surface, in: Circle())
+                    .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
+                    .offset(x: 4, y: 4)
+            }
+        }
+        .contentShape(Circle())
+    }
+
+    private func updateHoldingState(_ isHolding: Bool) {
+        if isHolding {
+            confirmationProgress = 0
+            withAnimation(.linear(duration: Self.holdDuration)) {
+                confirmationProgress = 1
+            }
+        } else {
+            resetConfirmation()
+        }
+    }
+
+    private func resetConfirmation() {
+        withAnimation(.easeOut(duration: 0.18)) {
+            confirmationProgress = 0
+        }
     }
 }
 
