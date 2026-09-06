@@ -18,7 +18,8 @@ struct InteractionView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let backgroundHeight = proxy.size.height + proxy.safeAreaInsets.top
+            let visualHeight = proxy.size.height + proxy.safeAreaInsets.bottom
+            let backgroundHeight = visualHeight + proxy.safeAreaInsets.top
 
             ZStack(alignment: .top) {
                 AppColor.background
@@ -34,7 +35,7 @@ struct InteractionView: View {
                     )
                     .clipped()
                     .offset(y: -proxy.safeAreaInsets.top)
-                    .ignoresSafeArea(edges: .top)
+                    .ignoresSafeArea(edges: [.top, .bottom])
                     .accessibilityHidden(true)
 
                 Image("rio_interaction_home")
@@ -44,10 +45,11 @@ struct InteractionView: View {
                     .offset(y: 128)
                     .frame(
                         width: proxy.size.width,
-                        height: proxy.size.height,
+                        height: visualHeight,
                         alignment: .top
                     )
                     .clipped()
+                    .ignoresSafeArea(edges: .bottom)
                     .accessibilityHidden(true)
 
                 LinearGradient(
@@ -136,7 +138,7 @@ struct InteractionView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.trailing, 16)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 40)
                 }
 
                 if let loadError = viewModel.loadError {
@@ -153,7 +155,6 @@ struct InteractionView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            .clipped()
         }
         .toolbar(.hidden, for: .navigationBar)
         .task {
