@@ -122,7 +122,15 @@ struct StoryPlayerView: View {
     @ViewBuilder
     private var playerContent: some View {
         if input.isCompleted {
-            completionView
+            if input.scenarioType == .smallEvent {
+                SmallEventCompletionView(
+                    visibleNodes: input.visibleChatNodes,
+                    backgroundAssetID: input.backgroundAssetID,
+                    onClose: onClose
+                )
+            } else {
+                completionView
+            }
         } else if let node = input.currentNode {
             switch input.currentMode {
             case .adv:
@@ -198,10 +206,12 @@ struct StoryPlayerView: View {
             Spacer(minLength: 0)
 
             Menu {
-                Button {
-                    isShowingRestartConfirmation = true
-                } label: {
-                    Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
+                if input.scenarioType != .smallEvent || !input.isCompleted {
+                    Button {
+                        isShowingRestartConfirmation = true
+                    } label: {
+                        Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
+                    }
                 }
                 if usesSkipOnlyDismissal, !input.isCompleted {
                     Button(action: onSkip) {

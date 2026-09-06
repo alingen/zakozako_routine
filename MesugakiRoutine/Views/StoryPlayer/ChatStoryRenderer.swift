@@ -341,6 +341,90 @@ private struct RioTypingIndicator: View {
     }
 }
 
+struct SmallEventCompletionView: View {
+    let visibleNodes: [StoryNode]
+    let backgroundAssetID: String?
+    let onClose: () -> Void
+
+    private let bottomAnchorID = "story-chat-completion-bottom"
+
+    var body: some View {
+        ZStack {
+            AppColor.background.ignoresSafeArea()
+
+            if let backgroundAssetID {
+                StoryAssetView(
+                    assetID: backgroundAssetID,
+                    purpose: .background,
+                    contentMode: .fill
+                )
+                .ignoresSafeArea()
+                .opacity(0.18)
+            }
+
+            VStack(spacing: 0) {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(visibleNodes) { messageNode in
+                                StoryChatBubble(
+                                    node: messageNode,
+                                    scenarioType: .smallEvent,
+                                    portraitAssetID: messageNode.portrait,
+                                    cgAssetID: messageNode.cg
+                                )
+                                .id(messageNode.nodeId)
+                            }
+
+                            SmallEventSystemMessageView(text: "end")
+
+                            Color.clear
+                                .frame(height: 16)
+                                .id(bottomAnchorID)
+                                .accessibilityHidden(true)
+                        }
+                        .padding(16)
+                    }
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            proxy.scrollTo(bottomAnchorID, anchor: .bottom)
+                        }
+                    }
+                }
+                .padding(.top, 58)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+
+                closeActionArea
+            }
+        }
+    }
+
+    private var closeActionArea: some View {
+        VStack(spacing: 0) {
+            Divider()
+
+            Button(action: onClose) {
+                Text("閉じる")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .contentShape(Capsule())
+                    .background(AppColor.primary, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("小イベントを閉じます")
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 81)
+        .safeAreaPadding(.bottom, 8)
+        .background(AppColor.background)
+    }
+}
+
 private struct StoryChatBubble: View {
     let node: StoryNode
     let scenarioType: StoryScenarioType
@@ -387,16 +471,7 @@ private struct StoryChatBubble: View {
     }
 
     private var smallEventSystemMessage: some View {
-        Text(node.text ?? "")
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.white)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .frame(maxWidth: .infinity)
-            .background(AppColor.secondary)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("場面転換。\(node.text ?? "")")
+        SmallEventSystemMessageView(text: node.text ?? "")
     }
 
     @ViewBuilder
@@ -483,6 +558,40 @@ private struct StoryChatBubble: View {
             }
             .accessibilityElement(children: .combine)
         }
+    }
+}
+
+private struct SmallEventSystemMessageView: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            divider
+
+            Text(text)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppColor.secondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .layoutPriority(1)
+
+            divider
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("場面転換。\(text)")
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(AppColor.secondary.opacity(0.45))
+            .frame(maxWidth: .infinity)
+            .frame(height: 1)
+            .accessibilityHidden(true)
     }
 }
 
