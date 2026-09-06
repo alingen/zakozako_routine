@@ -73,9 +73,19 @@ struct StoryPlayerView: View {
     let onChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
     let onRestart: () -> Void
+    let onSkip: () -> Void
     let onClose: () -> Void
 
     @State private var isShowingRestartConfirmation = false
+
+    private var usesSkipOnlyDismissal: Bool {
+        switch input.scenarioType {
+        case .smallEvent, .middleEvent, .largeEvent:
+            return true
+        case .daily, .unknown:
+            return false
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -112,12 +122,21 @@ struct StoryPlayerView: View {
     @ViewBuilder
     private var playerContent: some View {
         if input.isCompleted {
-            completionView
+            if input.scenarioType == .smallEvent {
+                SmallEventCompletionView(
+                    visibleNodes: input.visibleChatNodes,
+                    backgroundAssetID: input.backgroundAssetID,
+                    onClose: onClose
+                )
+            } else {
+                completionView
+            }
         } else if let node = input.currentNode {
             switch input.currentMode {
             case .adv:
                 ADVStoryRenderer(
                     node: node,
+                    scenarioType: input.scenarioType,
                     backgroundAssetID: input.backgroundAssetID,
                     portraitAssetID: input.portraitAssetID,
                     cgAssetID: input.cgAssetID,
@@ -164,7 +183,7 @@ struct StoryPlayerView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            if input.scenarioType != .smallEvent {
+            if !usesSkipOnlyDismissal {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.body.bold())
@@ -187,16 +206,21 @@ struct StoryPlayerView: View {
             Spacer(minLength: 0)
 
             Menu {
-                Button {
-                    isShowingRestartConfirmation = true
-                } label: {
-                    Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
+                if input.scenarioType != .smallEvent || !input.isCompleted {
+                    Button {
+                        isShowingRestartConfirmation = true
+                    } label: {
+                        Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
+                    }
                 }
-                Button(action: onClose) {
-                    Label(
-                        input.scenarioType == .smallEvent ? "会話を中断する" : "閉じる",
-                        systemImage: "xmark"
-                    )
+                if usesSkipOnlyDismissal, !input.isCompleted {
+                    Button(action: onSkip) {
+                        Label("スキップ", systemImage: "forward.end.fill")
+                    }
+                } else {
+                    Button(action: onClose) {
+                        Label("閉じる", systemImage: "xmark")
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -274,6 +298,7 @@ struct StoryPlayerView: View {
         ZStack(alignment: .top) {
             ADVStoryRenderer(
                 node: node,
+                scenarioType: input.scenarioType,
                 backgroundAssetID: input.backgroundAssetID,
                 portraitAssetID: input.portraitAssetID,
                 cgAssetID: input.cgAssetID,

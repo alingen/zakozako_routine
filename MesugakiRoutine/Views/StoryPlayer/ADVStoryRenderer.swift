@@ -3,6 +3,7 @@ import SwiftUI
 /// ADV表示専用のrenderer。シナリオ遷移は行わず、渡されたnodeと表示状態だけを描画する。
 struct ADVStoryRenderer: View {
     let node: StoryNode
+    let scenarioType: StoryScenarioType
     var backgroundAssetID: String?
     var portraitAssetID: String?
     var cgAssetID: String?
@@ -16,6 +17,19 @@ struct ADVStoryRenderer: View {
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented }
+
+    private var advancesFromTextWindow: Bool {
+        switch node.uiVariant ?? .dialogue {
+        case .narration, .beat, .sceneTransition, .monologue:
+            return true
+        case .dialogue:
+            return node.messageType != .image
+        case .modal:
+            return !isModalPresented
+        default:
+            return false
+        }
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -38,14 +52,17 @@ struct ADVStoryRenderer: View {
                     StoryAssetView(assetID: effectivePortrait, purpose: .image, contentMode: .fit)
                         .frame(
                             maxWidth: proxy.size.width * 0.78,
-                            maxHeight: proxy.size.height * 0.66,
+                            maxHeight: proxy.size.height * 0.72,
                             alignment: .bottom
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                        .padding(.bottom, 116)
+                        .padding(.bottom, 150)
                 }
 
-                if canAdvance {
+                // Nodes without a text window retain a full-screen advance
+                // target. Dialogue and narration advance only from their
+                // visible window so an accidental background tap is ignored.
+                if canAdvance, !advancesFromTextWindow {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture(perform: onAdvance)
@@ -55,7 +72,11 @@ struct ADVStoryRenderer: View {
                 }
 
                 VStack(spacing: 14) {
-                    variantContent
+                    variantContent(
+                        textWindowMaxWidth: textWindowMaxWidth(
+                            availableWidth: proxy.size.width
+                        )
+                    )
 
                     if !choices.isEmpty {
                         StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
@@ -76,9 +97,18 @@ struct ADVStoryRenderer: View {
         .background(AppColor.background)
     }
 
+    private func textWindowMaxWidth(availableWidth: CGFloat) -> CGFloat {
+        switch scenarioType {
+        case .middleEvent, .largeEvent:
+            return min(640, availableWidth * 0.95)
+        case .daily, .smallEvent, .unknown:
+            return .infinity
+        }
+    }
+
     private var variantAlignment: Alignment {
         switch node.uiVariant ?? .dialogue {
-        case .titleCard, .sceneTransition, .cg:
+        case .titleCard, .cg:
             return .center
         default:
             return .bottom
@@ -86,18 +116,18 @@ struct ADVStoryRenderer: View {
     }
 
     @ViewBuilder
-    private var variantContent: some View {
+    private func variantContent(textWindowMaxWidth: CGFloat) -> some View {
         switch node.uiVariant ?? .dialogue {
         case .titleCard:
             StoryTitleCardView(node: node)
-        case .narration, .beat:
-            StoryNarrationView(node: node)
+        case .narration, .beat, .sceneTransition, .monologue:
+            ADVTextWindow(
+                node: node,
+                maxWidth: textWindowMaxWidth,
+                onAdvance: canAdvance ? onAdvance : nil
+            )
         case .dialogue:
-            defaultMessageContent
-        case .sceneTransition:
-            StorySceneTransitionView(node: node)
-        case .monologue:
-            StoryMonologueView(node: node)
+            defaultMessageContent(textWindowMaxWidth: textWindowMaxWidth)
         case .typing:
             StoryTypingView(node: node)
         case .audioMessage:
@@ -108,7 +138,11 @@ struct ADVStoryRenderer: View {
             EmptyView()
         case .modal:
             if !isModalPresented {
-                StoryDialogueView(node: node)
+                ADVTextWindow(
+                    node: node,
+                    maxWidth: textWindowMaxWidth,
+                    onAdvance: canAdvance ? onAdvance : nil
+                )
             }
         case .incomingCall, .recording, .callEnd, .outgoingCall, .callConnected:
             StoryUnknownVariantView(node: node, variant: node.uiVariant)
@@ -118,14 +152,115 @@ struct ADVStoryRenderer: View {
     }
 
     @ViewBuilder
-    private var defaultMessageContent: some View {
+    private func defaultMessageContent(textWindowMaxWidth: CGFloat) -> some View {
         switch node.messageType {
         case .image:
             StoryImageMessageView(node: node)
         case .action:
-            StoryNarrationView(node: node)
+            ADVTextWindow(
+                node: node,
+                maxWidth: textWindowMaxWidth,
+                onAdvance: canAdvance ? onAdvance : nil
+            )
         case .text, .choice, .unknown:
-            StoryDialogueView(node: node)
+            ADVTextWindow(
+                node: node,
+                maxWidth: textWindowMaxWidth,
+                onAdvance: canAdvance ? onAdvance : nil
+            )
         }
+    }
+}
+
+private struct ADVTextWindow: View {
+    let node: StoryNode
+    let maxWidth: CGFloat
+    let onAdvance: (() -> Void)?
+
+    private var normalizedSpeaker: String {
+        node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isProtagonist: Bool {
+        ["user", "player", "protagonist"].contains(normalizedSpeaker)
+            || node.storyDisplaySpeakerName == "主人公"
+    }
+
+    private var protagonistDisplayName: String {
+        let nickname = AppSettingsStore.userName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return nickname.isEmpty ? "主人公" : nickname
+    }
+
+    private var displaySpeakerName: String? {
+        if normalizedSpeaker == "narrator" {
+            return nil
+        }
+
+        if isProtagonist {
+            return protagonistDisplayName
+        }
+
+        if let providedName = node.storyDisplaySpeakerName {
+            switch providedName.lowercased() {
+            case "system":
+                return "システム"
+            case "地の文":
+                return nil
+            default:
+                return providedName
+            }
+        }
+
+        switch normalizedSpeaker {
+        case "system":
+            return "システム"
+        case "rio", "character":
+            return "莉央"
+        default:
+            return node.speaker.isEmpty ? nil : node.speaker
+        }
+    }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Text(node.storyDisplayText)
+                .font(.title3)
+                .foregroundStyle(AppColor.text)
+                .lineLimit(3)
+                .padding(.horizontal, 48)
+                .padding(.top, 28)
+                .padding(.bottom, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .frame(maxWidth: maxWidth)
+        .frame(height: 136, alignment: .topLeading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.75), lineWidth: 1)
+        }
+        .overlay(alignment: .topLeading) {
+            if let displaySpeakerName {
+                Text(displaySpeakerName)
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
+                    .background {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(AppColor.primary)
+                    }
+                    .offset(x: 48, y: -19)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .onTapGesture {
+            onAdvance?()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(onAdvance == nil ? [] : .isButton)
+        .accessibilityHint(onAdvance == nil ? "" : "ダブルタップして次へ進みます")
     }
 }

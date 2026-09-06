@@ -13,7 +13,7 @@ App Store向けの表示名は「小悪魔コーチ」です。`MesugakiRoutine`
 | ホーム | 現在のコーチ、今日の約束、挑戦中の「やらないこと」、自分の直近記録から作る「みんなのざこ速報」 |
 | 記録 | 月間カレンダー、直近30日の達成率、全体の連続達成日数 |
 | 交流 | キャラクター表示、今日の会話、メイン／サブストーリー一覧、思い出ギャラリー |
-| 設定 | ユーザー名・呼び方、サボり通知、開発用の進捗確認操作 |
+| 設定 | ユーザー名・呼び方、サボり通知、Debugビルド専用の進行値・進捗操作 |
 
 ホームから約束の作成・編集・削除、回数の記録、完了演出を行えます。開始予定時刻を設定した約束には、未達成の場合だけローカル通知を予約できます。「今日の約束を開く」App Intentも実装されています。
 
@@ -82,11 +82,11 @@ Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれ�
 
 ### Playerとrenderer
 
-`StoryPlayer` はSwiftUIに依存しない `@MainActor` の進行エンジンです。graph traversal、phase filter、choiceとプロフィール保存、checkpointからの再開、restart／reread、完了処理、回収可能エラーを担当します。`StoryCommandDispatcher` はCMSの `command`／`commandArgs` を背景、CG、画面モード、typing、modal、wait、通話状態、音声などの表示効果へ変換します。未知のcommandは致命的エラーにしません。
+`StoryPlayer` はSwiftUIに依存しない `@MainActor` の進行エンジンです。graph traversal、phase filter、choiceとプロフィール保存、checkpointからの再開、restart／reread、スキップ／完了処理、回収可能エラーを担当します。小イベントのスキップは読了扱いにして途中位置を残さず、再度開いた場合は最初から再生します。`StoryCommandDispatcher` はCMSの `command`／`commandArgs` を背景、CG、画面モード、typing、modal、wait、通話状態、音声などの表示効果へ変換します。未知のcommandは致命的エラーにしません。
 
 `StoryPlayerView` は交流画面から `fullScreenCover` で表示する統合画面です。進行状態に応じて以下の純粋なrendererへ描画を委譲し、操作はcallbackでPlayerへ返します。renderer自身はシナリオ遷移や `NavigationStack` を持ちません。
 
-- `ADVStoryRenderer`: 背景、立ち絵、CG、台詞・地の文・選択肢
+- `ADVStoryRenderer`: 中・大イベントを横画面で表示し、背景、立ち絵、CG、3行固定の台詞・地の文、選択肢を描画
 - `ChatStoryRenderer`: 表示済みメッセージ、typing、画像・音声メッセージ、選択肢
 - `CallStoryRenderer`: 着信／発信／通話／終了などの演出。実際の通話や録音は行いません
 - `StoryVariantViews`: title card、narration、dialogue、scene transition、monologue、modalなどの小部品
@@ -97,7 +97,7 @@ Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれ�
 
 交流トップには現在のキャラクター、今日の会話、ストーリー、思い出を表示します。
 
-- 今日の会話: 初回表示日をanchorに、`scenarioId` 順のdaily scenarioをアプリ日ごとに1話選択します。未読でも翌日は次へ進み、末尾まで進むと先頭へ戻ります。playback keyは `daily:yyyy-MM-dd` です。
+- 今日の会話: 初回表示日をanchorに、`scenarioId` 順のdaily scenarioをアプリ日ごとに1話選択します。未読時だけ交流トップに表示し、読了後は非表示になります。未読でも翌日は次へ進み、末尾まで進むと先頭へ戻ります。playback keyは `daily:yyyy-MM-dd` です。Debugビルドでは設定から当日分を未読へ戻せます。
 - ストーリー一覧: `storyCategory` の `main`／`sub` だけで分類し、chapterと `episodeOrder` 順に表示します。未解放話も隠さず、lock、NEW、既読、条件の達成状況を表示します。
 - 思い出: CGカタログ全体を並べ、未解放項目は伏せて表示します。ストーリー完了時に解放されたCGだけを全画面表示できます。
 

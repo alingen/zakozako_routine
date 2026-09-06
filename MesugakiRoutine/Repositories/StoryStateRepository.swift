@@ -23,6 +23,9 @@ enum StoryStateRepositoryError: LocalizedError, Equatable {
 @MainActor
 final class StoryStateRepository {
     static let relationshipPhaseKey = "relationship_phase"
+    static let trustKey = "trust"
+    static let debugCumulativeAchievementDaysKey = "__debug_cumulative_achievement_days"
+    static let debugContinuousAchievementDaysKey = "__debug_continuous_achievement_days"
 
     private let context: ModelContext
 
@@ -250,6 +253,24 @@ final class StoryStateRepository {
 
     func relationshipPhase() throws -> Int {
         try profileValue(for: Self.relationshipPhaseKey).flatMap(Int.init) ?? 0
+    }
+
+    /// Debug tools use the same profile persistence as story choices so the
+    /// values are immediately visible to condition evaluation and playback.
+    func updateProfileValues(
+        _ values: [String: String],
+        removingKeys: Set<String> = [],
+        at date: Date = .now
+    ) throws {
+        for (key, value) in values {
+            try upsertProfileValueIfPresent(key: key, value: value, at: date)
+        }
+        for key in removingKeys where values[key] == nil {
+            if let existing = try profileValueModel(for: key) {
+                context.delete(existing)
+            }
+        }
+        try context.save()
     }
 
     // MARK: - Memory unlocks
