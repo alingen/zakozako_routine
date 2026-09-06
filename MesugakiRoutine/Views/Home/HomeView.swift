@@ -118,6 +118,7 @@ struct HomeView: View {
                 progress: progress.fraction,
                 iconName: routine.iconName,
                 isEditing: isEditingRoutines,
+                isCompleted: progress.isCompletedToday,
                 accessibilityLabel: routine.title,
                 onAdvance: { viewModel.advanceRoutine(routine) },
                 onEdit: { editingRoutine = routine }
@@ -315,6 +316,7 @@ private struct RoutineProgressButton: View {
     let progress: Double
     let iconName: String?
     let isEditing: Bool
+    let isCompleted: Bool
     let accessibilityLabel: String
     let onAdvance: () -> Void
     let onEdit: () -> Void
@@ -331,6 +333,10 @@ private struct RoutineProgressButton: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("タップして編集")
+            } else if isCompleted {
+                content
+                    .accessibilityValue("達成済み")
+                    .accessibilityHint("次の集計期間まで記録できません")
             } else {
                 content
                     .onLongPressGesture(
@@ -353,6 +359,9 @@ private struct RoutineProgressButton: View {
         .sensoryFeedback(.success, trigger: confirmationFeedbackTrigger)
         .onChange(of: isEditing) {
             resetConfirmation()
+        }
+        .onChange(of: isCompleted) {
+            if isCompleted { resetConfirmation() }
         }
     }
 
@@ -392,14 +401,14 @@ private struct RoutineProgressButton: View {
 
     /// 円が満たされた時点で振動とチェック表示を確定し、記録自体は指を離すまで待つ。
     private func confirmHold() {
-        guard !isHoldConfirmed else { return }
+        guard !isCompleted, !isHoldConfirmed else { return }
         isHoldConfirmed = true
         confirmationProgress = 1
         confirmationFeedbackTrigger += 1
     }
 
     private func finishHold() {
-        let shouldAdvance = isHoldConfirmed
+        let shouldAdvance = isHoldConfirmed && !isCompleted
         resetConfirmation()
         if shouldAdvance {
             onAdvance()

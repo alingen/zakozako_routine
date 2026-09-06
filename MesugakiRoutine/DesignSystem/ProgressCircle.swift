@@ -129,6 +129,10 @@ struct RoutineProgressPie: View {
                             .scaleEffect(clampedConfirmation)
                     }
             }
+
+            // 白い画面上でも円の範囲が分かるよう、進捗とは独立した固定枠を最前面に置く。
+            Circle()
+                .strokeBorder(AppColor.border, lineWidth: 2)
         }
         .frame(width: size, height: size)
         .animation(.easeInOut(duration: 0.25), value: clamped)
