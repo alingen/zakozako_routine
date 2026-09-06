@@ -4,8 +4,8 @@ import Foundation
 /// 条件分岐を追加するときは、ここで表示候補を組み立ててViewへ渡す。
 enum InteractionHomeDialogue {
     static let defaultLines = [
-        "よわよわおにいさんがんばってね♡",
-        "ざこなりにがんばって〜♡",
+        "がんばってね、ざこざこおにいさん♡",
+        "また負けちゃったんだ、ざ〜こ♡",
         "今回は何日もつかな〜？",
     ]
 
