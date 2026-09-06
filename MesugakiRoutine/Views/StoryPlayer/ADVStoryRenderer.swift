@@ -229,23 +229,9 @@ private struct ADVTextWindow: View {
                 .foregroundStyle(AppColor.text)
                 .lineLimit(3)
                 .padding(.horizontal, 48)
-                .padding(.top, displaySpeakerName == nil ? 20 : 28)
+                .padding(.top, 28)
                 .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            if let displaySpeakerName {
-                Text(displaySpeakerName)
-                    .font(.headline.bold())
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 7)
-                    .background {
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(AppColor.primary.opacity(1))
-                    }
-                    .offset(x: 24, y: -16)
-            }
         }
         .frame(maxWidth: maxWidth)
         .frame(height: 136, alignment: .topLeading)
@@ -253,6 +239,21 @@ private struct ADVTextWindow: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(.white.opacity(0.75), lineWidth: 1)
+        }
+        .overlay(alignment: .topLeading) {
+            if let displaySpeakerName {
+                Text(displaySpeakerName)
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
+                    .background {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(AppColor.primary)
+                    }
+                    .offset(x: 48, y: -19)
+            }
         }
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .onTapGesture {
