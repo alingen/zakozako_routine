@@ -97,7 +97,7 @@ Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれ�
 
 交流トップには現在のキャラクター、今日の会話、ストーリー、思い出を表示します。
 
-- 今日の会話: 初回表示日をanchorに、`scenarioId` 順のdaily scenarioをアプリ日ごとに1話選択します。未読でも翌日は次へ進み、末尾まで進むと先頭へ戻ります。playback keyは `daily:yyyy-MM-dd` です。
+- 今日の会話: 初回表示日をanchorに、`scenarioId` 順のdaily scenarioをアプリ日ごとに1話選択します。未読時だけ交流トップに表示し、読了後は非表示になります。未読でも翌日は次へ進み、末尾まで進むと先頭へ戻ります。playback keyは `daily:yyyy-MM-dd` です。Debugビルドでは設定から当日分を未読へ戻せます。
 - ストーリー一覧: `storyCategory` の `main`／`sub` だけで分類し、chapterと `episodeOrder` 順に表示します。未解放話も隠さず、lock、NEW、既読、条件の達成状況を表示します。
 - 思い出: CGカタログ全体を並べ、未解放項目は伏せて表示します。ストーリー完了時に解放されたCGだけを全画面表示できます。
 

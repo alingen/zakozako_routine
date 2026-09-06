@@ -25,6 +25,10 @@ final class InteractionViewModel {
     private(set) var loadError: String?
     private(set) var activeLaunch: StoryLaunchRequest?
 
+    var showsTodayConversationCard: Bool {
+        todayConversationIsAvailable && todayConversationIsUnread
+    }
+
     private var dependencies: AppDependencies?
     private var todayScenario: StoryScenario?
 

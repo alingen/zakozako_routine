@@ -36,6 +36,8 @@ private struct DebugSettingsView: View {
     @State private var relationshipPhase = 0
     @State private var feedbackMessage: String?
     @State private var feedbackIsError = false
+    @State private var todayConversationFeedback: String?
+    @State private var todayConversationFeedbackIsError = false
     @State private var routineDebugRows: [RoutineDebugRow] = []
 
     private struct RoutineDebugRow: Identifiable {
@@ -86,6 +88,25 @@ private struct DebugSettingsView: View {
             }
 
             Section("日付・進捗操作") {
+                Button("今日の会話を未読にする") {
+                    markTodayConversationUnread()
+                }
+
+                if let todayConversationFeedback {
+                    Label(
+                        todayConversationFeedback,
+                        systemImage: todayConversationFeedbackIsError
+                            ? "exclamationmark.triangle.fill"
+                            : "checkmark.circle.fill"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(
+                        todayConversationFeedbackIsError
+                            ? AppColor.warning
+                            : AppColor.success
+                    )
+                }
+
                 Button("約束を1日巻き戻す（自動判定テスト）") {
                     AppDependencies(context: modelContext)
                         .blockedBehaviorRepository
@@ -211,6 +232,35 @@ private struct DebugSettingsView: View {
         } catch {
             feedbackMessage = "保存に失敗しました: \(error.localizedDescription)"
             feedbackIsError = true
+        }
+    }
+
+    private func markTodayConversationUnread(
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) {
+        let state = AppDependencies(context: modelContext).storyStateRepository
+        let playbackKey = DailyConversationSchedule.playbackKey(
+            on: now,
+            calendar: calendar
+        )
+
+        do {
+            guard let checkpoint = try state.checkpoint(for: playbackKey) else {
+                todayConversationFeedback = "今日の会話はすでに未読です"
+                todayConversationFeedbackIsError = false
+                return
+            }
+            _ = try state.restartPlayback(
+                playbackKey: playbackKey,
+                scenarioId: checkpoint.scenarioId,
+                at: now
+            )
+            todayConversationFeedback = "今日の会話を未読に戻しました"
+            todayConversationFeedbackIsError = false
+        } catch {
+            todayConversationFeedback = "未読に戻せませんでした: \(error.localizedDescription)"
+            todayConversationFeedbackIsError = true
         }
     }
 }
