@@ -181,44 +181,59 @@ private struct ADVTextWindow: View {
         node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
-    private var isSystemMessage: Bool {
-        ["system", "narrator"].contains(normalizedSpeaker)
-    }
+    private var displaySpeakerName: String? {
+        if normalizedSpeaker == "narrator" {
+            return nil
+        }
 
-    private var displaySpeakerName: String {
         if let providedName = node.storyDisplaySpeakerName {
-            return providedName.lowercased() == "system" ? "システム" : providedName
+            switch providedName.lowercased() {
+            case "system":
+                return "システム"
+            case "地の文":
+                return nil
+            default:
+                return providedName
+            }
         }
 
         switch normalizedSpeaker {
         case "system":
             return "システム"
-        case "narrator":
-            return "地の文"
         case "rio", "character":
             return "莉央"
         case "user", "player", "protagonist":
             return "主人公"
         default:
-            return node.speaker
+            return node.speaker.isEmpty ? nil : node.speaker
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(displaySpeakerName)
-                .font(.title3.bold())
-                .foregroundStyle(isSystemMessage ? AppColor.secondary : AppColor.primary)
-                .lineLimit(1)
-
+        ZStack(alignment: .topLeading) {
             Text(node.storyDisplayText)
                 .font(.body)
                 .foregroundStyle(AppColor.text)
                 .lineLimit(3)
+                .padding(.horizontal, 30)
+                .padding(.top, displaySpeakerName == nil ? 20 : 28)
+                .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            if let displaySpeakerName {
+                Text(displaySpeakerName)
+                    .font(.headline.bold())
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 7)
+                    .background(
+                        AppColor.primary,
+                        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    )
+                    .offset(x: 24, y: -16)
+            }
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 16)
         .frame(maxWidth: maxWidth)
         .frame(height: 136, alignment: .topLeading)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
