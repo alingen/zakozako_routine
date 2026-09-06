@@ -15,6 +15,7 @@ export const SCENARIO_COLUMNS = [
   'min_phase',
   'max_phase',
   'speaker_name',
+  'typing_duration_ms',
   'background',
   'portrait',
   'cg',

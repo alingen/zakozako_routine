@@ -53,6 +53,11 @@ struct ChatStoryRenderer: View {
 
     private var manualAdvanceLabel: String {
         guard node.isPlayerSpeaker else { return "次へ" }
+        if scenarioType == .smallEvent,
+           let replyText = node.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !replyText.isEmpty {
+            return replyText
+        }
         return isInitialSmallEventPlayerMessage ? "送信する" : "返信する"
     }
 
@@ -61,8 +66,14 @@ struct ChatStoryRenderer: View {
     }
 
     private let rioResponsePauseNanoseconds: UInt64 = 700_000_000
-    private let rioTypingDelayNanoseconds: UInt64 = 1_000_000_000
+    private let defaultRioTypingDurationMilliseconds = 800
     private let automaticContentDelayNanoseconds: UInt64 = 900_000_000
+
+    private var rioTypingDelayNanoseconds: UInt64 {
+        let configuredMilliseconds = node.typingDurationMs ?? defaultRioTypingDurationMilliseconds
+        let milliseconds = min(30_000, max(0, configuredMilliseconds))
+        return UInt64(milliseconds) * 1_000_000
+    }
 
     private var automaticAdvanceDelayNanoseconds: UInt64 {
         let characterCount = node.text?.count ?? 0
@@ -243,7 +254,14 @@ struct ChatStoryRenderer: View {
 
     private var manualAdvanceButton: some View {
         Button(action: onAdvance) {
-            Label(manualAdvanceLabel, systemImage: manualAdvanceSymbol)
+            HStack(spacing: 10) {
+                Image(systemName: manualAdvanceSymbol)
+                    .accessibilityHidden(true)
+                Text(manualAdvanceLabel)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+            }
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)

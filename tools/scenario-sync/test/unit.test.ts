@@ -55,6 +55,21 @@ describe('source normalization', () => {
     });
   });
 
+  it('preserves a per-line Rio typing duration', () => {
+    const raw = sheets({ scenarios: [scenario({ typing_duration_ms: 650 })] });
+    const result = process(raw);
+    const node = generate(result.data).scenarios[0]!.nodes[0]!;
+
+    expect(result.errors).toEqual([]);
+    expect(node.typingDurationMs).toBe(650);
+  });
+
+  it('rejects a typing duration outside the supported range', () => {
+    const result = process(sheets({ scenarios: [scenario({ typing_duration_ms: 30_001 })] }));
+
+    expect(result.errors.map((issue) => issue.code)).toContain('invalid_typing_duration');
+  });
+
   it('reports a non-object command_args value without discarding the parsed JSON', () => {
     const normalized = normalize(
       sheets({ scenarios: [scenario({ command: 'wait', command_args: '[1,{"future":true}]' })] }),

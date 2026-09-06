@@ -763,6 +763,7 @@ private extension StoryPlayer {
             minPhase: node.minPhase,
             maxPhase: node.maxPhase,
             speakerName: node.speakerName,
+            typingDurationMs: node.typingDurationMs,
             background: node.background,
             portrait: node.portrait,
             cg: node.cg,

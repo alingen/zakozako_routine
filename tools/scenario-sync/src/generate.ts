@@ -55,6 +55,7 @@ function mapNode(row: NormalizedScenarioRow): StoryNode {
     minPhase: row.minPhase,
     maxPhase: row.maxPhase,
     speakerName: row.speakerName,
+    typingDurationMs: row.typingDurationMs,
     background: row.background,
     portrait: row.portrait,
     cg: row.cg,

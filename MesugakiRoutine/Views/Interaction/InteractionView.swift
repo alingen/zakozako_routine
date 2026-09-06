@@ -13,6 +13,14 @@ struct InteractionView: View {
                 AppColor.background
                     .ignoresSafeArea()
 
+                Image("rio_interaction_background")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
+                    .ignoresSafeArea()
+                    .accessibilityHidden(true)
+
                 Image("rio_interaction_home")
                     .resizable()
                     .scaledToFit()

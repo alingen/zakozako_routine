@@ -110,6 +110,15 @@ function validateScenarioRows(
         value: `${row.minPhase} > ${row.maxPhase}`,
       });
     }
+    if (
+      row.typingDurationMs !== undefined &&
+      (row.typingDurationMs < 0 || row.typingDurationMs > 30_000)
+    ) {
+      issues.error('invalid_typing_duration', 'typing_duration_ms must be between 0 and 30000', {
+        at: { sheet: 'scenarios', row: row.__row, column: 'typing_duration_ms' },
+        value: String(row.typingDurationMs),
+      });
+    }
 
     warnUnknown(issues, KNOWN_SCENARIO_TYPES, row.scenarioType, 'scenario_type', row.__row);
     warnUnknown(issues, KNOWN_MESSAGE_TYPES, row.messageType, 'message_type', row.__row);

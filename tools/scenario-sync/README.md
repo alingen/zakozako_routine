@@ -79,12 +79,12 @@ story_content.generated.json
 シート上部にタイトルや説明行があっても、`scenario_id` / `choice_id` / `event_id` を含む行を
 実ヘッダーとして自動検出します。`enabled` は空欄を `TRUE` と解釈し、`FALSE` の行は除外します。
 
-### scenarios（24列）
+### scenarios（25列）
 
 `scenario_id`, `scenario_type`, `line_order`, `node_id`, `speaker`, `message_type`, `text`,
 `choice_id`, `next_node_id`, `save_key`, `save_value`, `asset_id`, `min_phase`, `max_phase`,
-`speaker_name`, `background`, `portrait`, `cg`, `enabled`, `notes`, `screen_mode`, `ui_variant`,
-`command`, `command_args`
+`speaker_name`, `typing_duration_ms`, `background`, `portrait`, `cg`, `enabled`, `notes`,
+`screen_mode`, `ui_variant`, `command`, `command_args`
 
 - `node_id` と `line_order` は同一 `scenario_id` 内で一意にします。
 - 遷移優先順位は `choice.next_node_id` → nodeの `next_node_id` → `line_order` の次行です。
@@ -92,6 +92,8 @@ story_content.generated.json
 - `command_args` はJSON objectです。配列・scalarは破棄せず診断しますが、検証エラーになります。
 - nested object/array/scalarを含む任意のJSON値を保持します。
 - `scenario_type` は現在 `daily`, `small_event`, `middle_event`, `large_event` を利用しています。
+- `typing_duration_ms` は莉央の各セリフで「入力中…」を表示する時間です。空欄時はアプリ既定の
+  800msを使い、個別指定する場合は0〜30000の整数を入力します。
 
 ### choices（11列）
 

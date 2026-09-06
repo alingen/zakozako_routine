@@ -407,6 +407,7 @@ struct StoryNode: Codable, Hashable, Identifiable {
     let minPhase: Int?
     let maxPhase: Int?
     let speakerName: String?
+    let typingDurationMs: Int?
     let background: String?
     let portrait: String?
     let cg: String?
@@ -432,6 +433,7 @@ struct StoryNode: Codable, Hashable, Identifiable {
         minPhase: Int? = nil,
         maxPhase: Int? = nil,
         speakerName: String? = nil,
+        typingDurationMs: Int? = nil,
         background: String? = nil,
         portrait: String? = nil,
         cg: String? = nil,
@@ -454,6 +456,7 @@ struct StoryNode: Codable, Hashable, Identifiable {
         self.minPhase = minPhase
         self.maxPhase = maxPhase
         self.speakerName = speakerName
+        self.typingDurationMs = typingDurationMs
         self.background = background
         self.portrait = portrait
         self.cg = cg

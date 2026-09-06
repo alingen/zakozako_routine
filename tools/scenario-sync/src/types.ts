@@ -51,6 +51,7 @@ export interface NormalizedScenarioRow {
   minPhase?: number;
   maxPhase?: number;
   speakerName?: string;
+  typingDurationMs?: number;
   background?: string;
   portrait?: string;
   cg?: string;

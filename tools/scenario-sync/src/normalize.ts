@@ -176,6 +176,7 @@ function normalizeScenarios(bag: IssueBag, rows: RawRow[]): NormalizedScenarioRo
 
     const minPhase = integer(bag, sheet, row, 'min_phase', false);
     const maxPhase = integer(bag, sheet, row, 'max_phase', false);
+    const typingDurationMs = integer(bag, sheet, row, 'typing_duration_ms', false);
     const commandArgs = parseCommandArgs(bag, row);
 
     if (
@@ -206,6 +207,7 @@ function normalizeScenarios(bag: IssueBag, rows: RawRow[]): NormalizedScenarioRo
       minPhase,
       maxPhase,
       speakerName: optionalString(row, 'speaker_name'),
+      typingDurationMs,
       background: optionalString(row, 'background'),
       portrait: optionalString(row, 'portrait'),
       cg: optionalString(row, 'cg'),
