@@ -100,7 +100,7 @@ struct ADVStoryRenderer: View {
     private func textWindowMaxWidth(availableWidth: CGFloat) -> CGFloat {
         switch scenarioType {
         case .middleEvent, .largeEvent:
-            return min(720, availableWidth * 0.8)
+            return min(640, availableWidth * 0.95)
         case .daily, .smallEvent, .unknown:
             return .infinity
         }
@@ -225,7 +225,7 @@ private struct ADVTextWindow: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Text(node.storyDisplayText)
-                .font(.body)
+                .font(.title3)
                 .foregroundStyle(AppColor.text)
                 .lineLimit(3)
                 .padding(.horizontal, 48)

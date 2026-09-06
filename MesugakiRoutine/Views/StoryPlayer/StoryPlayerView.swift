@@ -79,7 +79,12 @@ struct StoryPlayerView: View {
     @State private var isShowingRestartConfirmation = false
 
     private var usesSkipOnlyDismissal: Bool {
-        input.scenarioType == .smallEvent || input.scenarioType == .largeEvent
+        switch input.scenarioType {
+        case .smallEvent, .middleEvent, .largeEvent:
+            return true
+        case .daily, .unknown:
+            return false
+        }
     }
 
     var body: some View {
