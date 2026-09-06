@@ -37,9 +37,6 @@ struct ZakoBulletinFeedView: View {
                 }
                 .padding(.vertical, 2)
             }
-            Text("※ いまは自分の記録だけ表示しています（フィード連携は今後）")
-                .font(.caption2)
-                .foregroundStyle(AppColor.muted)
         }
     }
 }

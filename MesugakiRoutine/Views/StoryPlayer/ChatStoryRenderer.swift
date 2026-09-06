@@ -3,6 +3,7 @@ import SwiftUI
 /// チャット表示専用のrenderer。表示済みnode列を受け取り、進行処理はcallbackへ返す。
 struct ChatStoryRenderer: View {
     let node: StoryNode
+    let scenarioType: StoryScenarioType
     var visibleNodes: [StoryNode] = []
     var backgroundAssetID: String?
     var portraitAssetID: String?
@@ -14,16 +15,72 @@ struct ChatStoryRenderer: View {
     let onSelectChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
 
+    @State private var typingStartedRioNodeID: String?
+    @State private var revealedRioNodeID: String?
+
     private var effectiveBackground: String? { backgroundAssetID ?? node.background }
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented && !isTyping }
+    private var shouldAutoAdvance: Bool {
+        guard canAdvance else { return false }
+        if scenarioType == .smallEvent {
+            return !isWaitingToSendPlayerMessage
+        }
+        return node.isRioSpeaker && node.messageType == .text
+    }
+    private var isWaitingToSendPlayerMessage: Bool {
+        canAdvance && node.isPlayerSpeaker && node.messageType == .text
+    }
+    private var isWaitingForRioMessage: Bool {
+        shouldAutoAdvance
+            && node.isRioSpeaker
+            && node.messageType == .text
+            && revealedRioNodeID != node.nodeId
+    }
+    private var isShowingRioTyping: Bool {
+        isWaitingForRioMessage && typingStartedRioNodeID == node.nodeId
+    }
+
+    private var isInitialSmallEventPlayerMessage: Bool {
+        guard scenarioType == .smallEvent, isWaitingToSendPlayerMessage else {
+            return false
+        }
+        return !visibleNodes.contains {
+            $0.nodeId != node.nodeId && ($0.isPlayerSpeaker || $0.isRioSpeaker)
+        }
+    }
+
+    private var manualAdvanceLabel: String {
+        guard node.isPlayerSpeaker else { return "次へ" }
+        return isInitialSmallEventPlayerMessage ? "送信する" : "返信する"
+    }
+
+    private var manualAdvanceSymbol: String {
+        node.isPlayerSpeaker ? "paperplane.fill" : "chevron.right"
+    }
+
+    private let rioResponsePauseNanoseconds: UInt64 = 700_000_000
+    private let rioTypingDelayNanoseconds: UInt64 = 1_000_000_000
+    private let automaticContentDelayNanoseconds: UInt64 = 900_000_000
+
+    private var automaticAdvanceDelayNanoseconds: UInt64 {
+        let characterCount = node.text?.count ?? 0
+        let milliseconds = min(3_200, max(1_100, 900 + characterCount * 55))
+        return UInt64(milliseconds) * 1_000_000
+    }
 
     private var renderedNodes: [StoryNode] {
-        guard !visibleNodes.contains(where: { $0.nodeId == node.nodeId }) else {
-            return visibleNodes
+        let sentNodes = visibleNodes.filter {
+            (!isWaitingToSendPlayerMessage && !isWaitingForRioMessage)
+                || $0.nodeId != node.nodeId
         }
-        return visibleNodes + [node]
+        guard !isWaitingToSendPlayerMessage,
+              !isWaitingForRioMessage,
+              !sentNodes.contains(where: { $0.nodeId == node.nodeId }) else {
+            return sentNodes
+        }
+        return sentNodes + [node]
     }
 
     var body: some View {
@@ -47,6 +104,7 @@ struct ChatStoryRenderer: View {
                             ForEach(renderedNodes) { messageNode in
                                 StoryChatBubble(
                                     node: messageNode,
+                                    scenarioType: scenarioType,
                                     portraitAssetID: messageNode.nodeId == node.nodeId
                                         ? effectivePortrait
                                         : messageNode.portrait,
@@ -57,42 +115,38 @@ struct ChatStoryRenderer: View {
                                     .id(messageNode.nodeId)
                             }
 
-                            if isTyping {
+                            if isShowingRioTyping {
+                                HStack(alignment: .bottom, spacing: 8) {
+                                    rioAvatar
+                                    RioTypingIndicator()
+                                    Spacer(minLength: 52)
+                                }
+                                .id("story-chat-rio-typing")
+                            } else if isTyping {
                                 HStack {
                                     StoryTypingView(node: node)
                                     Spacer(minLength: 52)
                                 }
                                 .id("story-chat-typing")
                             }
+
+                            Color.clear
+                                .frame(height: 16)
+                                .id("story-chat-bottom-spacing")
+                                .accessibilityHidden(true)
                         }
                         .padding(16)
                     }
                     .onAppear { scrollToLatest(proxy) }
                     .onChange(of: renderedNodes.count) { _, _ in scrollToLatest(proxy) }
                     .onChange(of: isTyping) { _, _ in scrollToLatest(proxy) }
+                    .onChange(of: isShowingRioTyping) { _, _ in scrollToLatest(proxy) }
                 }
+                .padding(.top, 58)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
 
-                if !choices.isEmpty {
-                    Divider()
-                    StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
-                        .padding(16)
-                        .background(AppColor.background.opacity(0.96))
-                } else if canAdvance {
-                    Button(action: onAdvance) {
-                        HStack(spacing: 6) {
-                            Text("タップして次へ")
-                            Image(systemName: "chevron.down")
-                        }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(AppColor.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .background(AppColor.surface.opacity(0.94))
-                    .accessibilityLabel("次へ")
-                }
+                actionArea
             }
 
             if isModalPresented {
@@ -101,36 +155,181 @@ struct ChatStoryRenderer: View {
                 StoryModalView(node: node, onDismiss: onDismissModal)
             }
         }
+        .task(id: node.nodeId) {
+            guard shouldAutoAdvance else { return }
+            do {
+                if node.isRioSpeaker && node.messageType == .text {
+                    try await Task<Never, Never>.sleep(
+                        nanoseconds: rioResponsePauseNanoseconds
+                    )
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        typingStartedRioNodeID = node.nodeId
+                    }
+                    try await Task<Never, Never>.sleep(
+                        nanoseconds: rioTypingDelayNanoseconds
+                    )
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        revealedRioNodeID = node.nodeId
+                    }
+                    try await Task<Never, Never>.sleep(
+                        nanoseconds: automaticAdvanceDelayNanoseconds
+                    )
+                } else {
+                    try await Task<Never, Never>.sleep(
+                        nanoseconds: automaticContentDelayNanoseconds
+                    )
+                }
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            onAdvance()
+        }
+    }
+
+    @ViewBuilder
+    private var actionArea: some View {
+        if scenarioType == .smallEvent {
+            fixedSmallEventActionArea
+        } else if !choices.isEmpty {
+            Divider()
+            StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
+                .padding(16)
+                .background(AppColor.background.opacity(0.96))
+        } else if canAdvance && !node.isRioSpeaker {
+            manualAdvanceArea
+        }
+    }
+
+    private var fixedSmallEventActionArea: some View {
+        VStack(spacing: 0) {
+            Divider()
+
+            Group {
+                if !choices.isEmpty {
+                    StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
+                } else if canAdvance && !shouldAutoAdvance {
+                    manualAdvanceButton
+                } else {
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 81)
+        .safeAreaPadding(.bottom, 8)
+        .background(AppColor.background)
+    }
+
+    private var manualAdvanceArea: some View {
+        VStack(spacing: 0) {
+            Divider()
+            manualAdvanceButton
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 81)
+        .safeAreaPadding(.bottom, 8)
+        .background(AppColor.background)
+    }
+
+    private var manualAdvanceButton: some View {
+        Button(action: onAdvance) {
+            Label(manualAdvanceLabel, systemImage: manualAdvanceSymbol)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .contentShape(Capsule())
+                .background(AppColor.primary, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(manualAdvanceLabel)
+        .accessibilityHint("会話を次へ進めます")
+    }
+
+    @ViewBuilder
+    private var rioAvatar: some View {
+        if let effectivePortrait {
+            StoryAssetView(
+                assetID: effectivePortrait,
+                purpose: .image,
+                contentMode: .fill,
+                cornerRadius: 15
+            )
+            .frame(width: 30, height: 30)
+            .overlay(Circle().stroke(AppColor.border))
+            .accessibilityHidden(true)
+        } else {
+            Image(systemName: "sparkles")
+                .font(.caption.bold())
+                .foregroundStyle(AppColor.primary)
+                .frame(width: 30, height: 30)
+                .background(AppColor.primarySoft, in: Circle())
+                .accessibilityHidden(true)
+        }
     }
 
     private func scrollToLatest(_ proxy: ScrollViewProxy) {
-        let target: AnyHashable? = isTyping ? "story-chat-typing" : renderedNodes.last?.nodeId
-        guard let target else { return }
         withAnimation(.easeOut(duration: 0.2)) {
-            proxy.scrollTo(target, anchor: .bottom)
+            proxy.scrollTo("story-chat-bottom-spacing", anchor: .bottom)
         }
+    }
+}
+
+private struct RioTypingIndicator: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+                .tint(AppColor.primary)
+            Text("入力中…")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(AppColor.muted)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(AppColor.surface, in: Capsule())
+        .overlay(Capsule().stroke(AppColor.border))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("莉央が入力中")
     }
 }
 
 private struct StoryChatBubble: View {
     let node: StoryNode
+    let scenarioType: StoryScenarioType
     let portraitAssetID: String?
     let cgAssetID: String?
 
     private var speakerKey: String {
-        node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        node.normalizedSpeakerKey
     }
 
     private var isUser: Bool {
-        ["user", "player", "protagonist"].contains(speakerKey)
+        node.isPlayerSpeaker
     }
 
     private var isSystem: Bool {
         speakerKey == "system"
     }
 
+    private var isSmallEventSystemMessage: Bool {
+        scenarioType == .smallEvent && isSystem
+    }
+
     var body: some View {
-        if isSystem {
+        if isSmallEventSystemMessage {
+            smallEventSystemMessage
+        } else if isSystem {
             HStack {
                 Spacer(minLength: 28)
                 bubbleContent
@@ -148,6 +347,19 @@ private struct StoryChatBubble: View {
                 }
             }
         }
+    }
+
+    private var smallEventSystemMessage: some View {
+        Text(node.text ?? "")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity)
+            .background(AppColor.secondary)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("場面転換。\(node.text ?? "")")
     }
 
     @ViewBuilder
@@ -234,5 +446,20 @@ private struct StoryChatBubble: View {
             }
             .accessibilityElement(children: .combine)
         }
+    }
+}
+
+private extension StoryNode {
+    var normalizedSpeakerKey: String {
+        speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    var isPlayerSpeaker: Bool {
+        ["user", "player", "protagonist"].contains(normalizedSpeakerKey)
+    }
+
+    var isRioSpeaker: Bool {
+        ["rio", "character"].contains(normalizedSpeakerKey)
+            || speakerName?.trimmingCharacters(in: .whitespacesAndNewlines) == "莉央"
     }
 }

@@ -90,6 +90,7 @@ struct StoryPlaybackContainerView: View {
     private func snapshot(of player: StoryPlayer) -> StoryPlayerViewSnapshot {
         StoryPlayerViewSnapshot(
             title: launch.title,
+            scenarioType: launch.scenario.scenarioType,
             currentNode: player.currentNode,
             currentMode: player.currentMode,
             visibleChatNodes: player.visibleChatNodes,

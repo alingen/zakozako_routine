@@ -1,123 +1,99 @@
 import SwiftUI
 
-struct InteractionCharacterCard: View {
-    var name = "莉央"
-
-    var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(AppColor.primarySoft)
-                Image(systemName: "sparkles")
-                    .font(.title.bold())
-                    .foregroundStyle(AppColor.primary)
-            }
-            .frame(width: 64, height: 64)
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("現在のコーチ")
-                    .font(.caption)
-                    .foregroundStyle(AppColor.muted)
-                Text(name)
-                    .font(.title3.bold())
-                    .foregroundStyle(AppColor.text)
-                Text("今日の会話とストーリー")
-                    .font(.subheadline)
-                    .foregroundStyle(AppColor.text)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(18)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppColor.border)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 struct TodayConversationCard: View {
     let title: String
-    let detail: String
+    let isUnread: Bool
     let hasResumePosition: Bool
     let isAvailable: Bool
     let action: () -> Void
 
+    private var statusText: String {
+        guard isAvailable else { return "今日はまだ会話がありません" }
+        if isUnread { return "莉央から話があるようです" }
+        return "今日の会話は読み終えました"
+    }
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.title2)
-                    .foregroundStyle(AppColor.primary)
-                    .frame(width: 48, height: 48)
-                    .background(AppColor.primarySoft, in: Circle())
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(AppColor.primary, in: Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(AppColor.text)
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(AppColor.muted)
-                        .multilineTextAlignment(.leading)
-                    if hasResumePosition {
-                        Label("続きから", systemImage: "bookmark.fill")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(AppColor.secondary)
+                    HStack(spacing: 7) {
+                        Text(title)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppColor.muted)
+
+                        if isUnread && isAvailable {
+                            Text("NEW")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(AppColor.primary, in: Capsule())
+                        } else if hasResumePosition {
+                            Text("続きから")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(AppColor.secondary)
+                        }
                     }
+
+                    Text(statusText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppColor.text)
+                        .multilineTextAlignment(.leading)
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(AppColor.muted)
+                    .font(.caption.bold())
+                    .foregroundStyle(AppColor.primary)
             }
-            .padding(16)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(AppColor.border)
+                    .stroke(.white.opacity(0.9))
             }
+            .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 5)
         }
         .buttonStyle(.plain)
         .disabled(!isAvailable)
-        .opacity(isAvailable ? 1 : 0.55)
+        .opacity(isAvailable ? 1 : 0.68)
     }
 }
 
-struct InteractionDestinationCard: View {
+struct InteractionHomeDestinationButton: View {
     let title: String
-    let detail: String
     let systemImage: String
 
     var body: some View {
-        HStack(spacing: 14) {
+        VStack(spacing: 7) {
             Image(systemName: systemImage)
-                .font(.title3.bold())
-                .foregroundStyle(AppColor.secondary)
+                .font(.title2.bold())
+                .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
-                .background(AppColor.secondary.opacity(0.12), in: Circle())
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(AppColor.text)
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(AppColor.muted)
-            }
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.right")
-                .foregroundStyle(AppColor.muted)
+                .background(AppColor.secondary, in: Circle())
+
+            Text(title)
+                .font(.caption2.bold())
+                .foregroundStyle(AppColor.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
         }
-        .padding(16)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .frame(width: 88, height: 78)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(AppColor.border)
+                .stroke(.white.opacity(0.9))
         }
+        .shadow(color: AppColor.text.opacity(0.16), radius: 10, y: 4)
         .contentShape(Rectangle())
     }
 }

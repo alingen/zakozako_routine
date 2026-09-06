@@ -4,6 +4,7 @@ import SwiftUI
 /// Core側のObservableなplayerは、このprotocolへ直接準拠するかSnapshotへ変換できる。
 protocol StoryPlayerViewInput {
     var title: String { get }
+    var scenarioType: StoryScenarioType { get }
     var currentNode: StoryNode? { get }
     var currentMode: StoryScreenMode { get }
     var visibleChatNodes: [StoryNode] { get }
@@ -20,6 +21,7 @@ protocol StoryPlayerViewInput {
 /// Core player未接続時やPreview、テストでも使える値型adapter。
 struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
     let title: String
+    let scenarioType: StoryScenarioType
     let currentNode: StoryNode?
     let currentMode: StoryScreenMode
     let visibleChatNodes: [StoryNode]
@@ -34,6 +36,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
 
     init(
         title: String,
+        scenarioType: StoryScenarioType,
         currentNode: StoryNode?,
         currentMode: StoryScreenMode = .adv,
         visibleChatNodes: [StoryNode] = [],
@@ -47,6 +50,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         recoverableError: String? = nil
     ) {
         self.title = title
+        self.scenarioType = scenarioType
         self.currentNode = currentNode
         self.currentMode = currentMode
         self.visibleChatNodes = visibleChatNodes
@@ -76,7 +80,9 @@ struct StoryPlayerView: View {
     var body: some View {
         ZStack {
             playerContent
-                .ignoresSafeArea()
+                .ignoresSafeArea(
+                    edges: input.currentMode == .chat ? [.horizontal, .bottom] : .all
+                )
 
             VStack(spacing: 10) {
                 topBar
@@ -124,6 +130,7 @@ struct StoryPlayerView: View {
             case .chat:
                 ChatStoryRenderer(
                     node: node,
+                    scenarioType: input.scenarioType,
                     visibleNodes: input.visibleChatNodes,
                     backgroundAssetID: input.backgroundAssetID,
                     portraitAssetID: input.portraitAssetID,
@@ -157,14 +164,16 @@ struct StoryPlayerView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.body.bold())
-                    .frame(width: 40, height: 40)
-                    .background(.ultraThinMaterial, in: Circle())
+            if input.scenarioType != .smallEvent {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.body.bold())
+                        .frame(width: 40, height: 40)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .foregroundStyle(AppColor.text)
+                .accessibilityLabel("ストーリーを閉じる")
             }
-            .foregroundStyle(AppColor.text)
-            .accessibilityLabel("ストーリーを閉じる")
 
             Text(input.title)
                 .font(.subheadline.weight(.semibold))
@@ -184,7 +193,10 @@ struct StoryPlayerView: View {
                     Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
                 }
                 Button(action: onClose) {
-                    Label("閉じる", systemImage: "xmark")
+                    Label(
+                        input.scenarioType == .smallEvent ? "会話を中断する" : "閉じる",
+                        systemImage: "xmark"
+                    )
                 }
             } label: {
                 Image(systemName: "ellipsis")

@@ -20,6 +20,7 @@ final class InteractionViewModel {
     private(set) var todayConversationTitle = "今日の会話"
     private(set) var todayConversationDetail = "日付ごとに入れ替わる、莉央との短い会話"
     private(set) var todayConversationIsAvailable = false
+    private(set) var todayConversationIsUnread = false
     private(set) var todayConversationHasResumePosition = false
     private(set) var loadError: String?
     private(set) var activeLaunch: StoryLaunchRequest?
@@ -135,6 +136,7 @@ final class InteractionViewModel {
               content.dailyScenarios.indices.contains(index) else {
             todayScenario = nil
             todayConversationIsAvailable = false
+            todayConversationIsUnread = false
             todayConversationHasResumePosition = false
             return
         }
@@ -144,6 +146,7 @@ final class InteractionViewModel {
         todayScenario = scenario
         todayConversationIsAvailable = true
         let checkpoint = try? state.checkpoint(for: key)
+        todayConversationIsUnread = checkpoint?.isCompleted != true
         todayConversationHasResumePosition = checkpoint?.currentNodeId != nil
             && checkpoint?.isCompleted == false
     }
@@ -223,6 +226,7 @@ final class InteractionViewModel {
         memories = []
         todayScenario = nil
         todayConversationIsAvailable = false
+        todayConversationIsUnread = false
         todayConversationHasResumePosition = false
         loadError = error
     }
