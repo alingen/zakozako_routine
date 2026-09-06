@@ -23,9 +23,17 @@ struct ChatStoryRenderer: View {
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented && !isTyping }
+    private var usesEventChatFlow: Bool {
+        switch scenarioType {
+        case .smallEvent, .middleEvent, .largeEvent:
+            return true
+        case .daily, .unknown:
+            return false
+        }
+    }
     private var shouldAutoAdvance: Bool {
         guard canAdvance else { return false }
-        if scenarioType == .smallEvent {
+        if usesEventChatFlow {
             return !isWaitingToSendPlayerMessage
         }
         return node.isRioSpeaker && node.messageType == .text
@@ -44,14 +52,14 @@ struct ChatStoryRenderer: View {
     }
     private var isWaitingForSystemMessage: Bool {
         shouldAutoAdvance
-            && scenarioType == .smallEvent
+            && usesEventChatFlow
             && node.normalizedSpeakerKey == "system"
             && node.messageType == .text
             && revealedSystemNodeID != node.nodeId
     }
 
-    private var isInitialSmallEventPlayerMessage: Bool {
-        guard scenarioType == .smallEvent, isWaitingToSendPlayerMessage else {
+    private var isInitialEventPlayerMessage: Bool {
+        guard usesEventChatFlow, isWaitingToSendPlayerMessage else {
             return false
         }
         return !visibleNodes.contains {
@@ -61,12 +69,12 @@ struct ChatStoryRenderer: View {
 
     private var manualAdvanceLabel: String {
         guard node.isPlayerSpeaker else { return "次へ" }
-        if scenarioType == .smallEvent,
+        if usesEventChatFlow,
            let replyText = node.text?.trimmingCharacters(in: .whitespacesAndNewlines),
            !replyText.isEmpty {
             return replyText
         }
-        return isInitialSmallEventPlayerMessage ? "送信する" : "返信する"
+        return isInitialEventPlayerMessage ? "送信する" : "返信する"
     }
 
     private var manualAdvanceSymbol: String {
@@ -221,8 +229,8 @@ struct ChatStoryRenderer: View {
 
     @ViewBuilder
     private var actionArea: some View {
-        if scenarioType == .smallEvent {
-            fixedSmallEventActionArea
+        if usesEventChatFlow {
+            fixedEventActionArea
         } else if !choices.isEmpty {
             Divider()
             StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
@@ -233,7 +241,7 @@ struct ChatStoryRenderer: View {
         }
     }
 
-    private var fixedSmallEventActionArea: some View {
+    private var fixedEventActionArea: some View {
         VStack(spacing: 0) {
             Divider()
 
