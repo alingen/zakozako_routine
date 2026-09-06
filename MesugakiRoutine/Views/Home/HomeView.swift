@@ -320,6 +320,8 @@ private struct RoutineProgressButton: View {
     let onEdit: () -> Void
 
     @State private var confirmationProgress = 0.0
+    @State private var isHoldConfirmed = false
+    @State private var confirmationFeedbackTrigger = 0
 
     var body: some View {
         Group {
@@ -334,8 +336,13 @@ private struct RoutineProgressButton: View {
                     .onLongPressGesture(
                         minimumDuration: Self.holdDuration,
                         maximumDistance: 24,
-                        perform: onAdvance,
+                        perform: confirmHold,
                         onPressingChanged: updateHoldingState
+                    )
+                    // LongPressGestureは成立時に終了するため、指を離した瞬間は並行するDragGestureで拾う。
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 0)
+                            .onEnded { _ in finishHold() }
                     )
                     .accessibilityAddTraits(.isButton)
                     .accessibilityHint("長押しして1回分を記録")
@@ -343,6 +350,7 @@ private struct RoutineProgressButton: View {
             }
         }
         .accessibilityLabel(accessibilityLabel)
+        .sensoryFeedback(.success, trigger: confirmationFeedbackTrigger)
         .onChange(of: isEditing) {
             resetConfirmation()
         }
@@ -354,7 +362,8 @@ private struct RoutineProgressButton: View {
                 progress: progress,
                 size: 116,
                 centerSystemImage: iconName,
-                confirmationProgress: confirmationProgress
+                confirmationProgress: confirmationProgress,
+                showsConfirmationCheckmark: isHoldConfirmed
             )
             if isEditing {
                 Image(systemName: "ellipsis")
@@ -371,16 +380,34 @@ private struct RoutineProgressButton: View {
 
     private func updateHoldingState(_ isHolding: Bool) {
         if isHolding {
+            isHoldConfirmed = false
             confirmationProgress = 0
             withAnimation(.linear(duration: Self.holdDuration)) {
                 confirmationProgress = 1
             }
-        } else {
+        } else if !isHoldConfirmed {
             resetConfirmation()
         }
     }
 
+    /// 円が満たされた時点で振動とチェック表示を確定し、記録自体は指を離すまで待つ。
+    private func confirmHold() {
+        guard !isHoldConfirmed else { return }
+        isHoldConfirmed = true
+        confirmationProgress = 1
+        confirmationFeedbackTrigger += 1
+    }
+
+    private func finishHold() {
+        let shouldAdvance = isHoldConfirmed
+        resetConfirmation()
+        if shouldAdvance {
+            onAdvance()
+        }
+    }
+
     private func resetConfirmation() {
+        isHoldConfirmed = false
         withAnimation(.easeOut(duration: 0.18)) {
             confirmationProgress = 0
         }

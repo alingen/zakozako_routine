@@ -77,6 +77,8 @@ struct RoutineProgressPie: View {
     var centerSystemImage: String? = nil
     /// ホールド操作中の確認アニメーション。0で非表示、1で円全体を覆う。
     var confirmationProgress: Double = 0
+    /// ホールド成立後、指を離すまで中央にチェックマークを表示する。
+    var showsConfirmationCheckmark: Bool = false
 
     private var clamped: Double { min(max(progress, 0), 1) }
     private var clampedConfirmation: Double { min(max(confirmationProgress, 0), 1) }
@@ -113,7 +115,11 @@ struct RoutineProgressPie: View {
                 .fill(tint)
                 .scaleEffect(clampedConfirmation)
 
-            if let centerSystemImage {
+            if showsConfirmationCheckmark {
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.44, weight: .bold))
+                    .foregroundStyle(.white)
+            } else if let centerSystemImage {
                 Image(systemName: centerSystemImage)
                     .font(.system(size: size * 0.42))
                     .foregroundStyle(.white)
