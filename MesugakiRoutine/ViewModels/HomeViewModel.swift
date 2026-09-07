@@ -195,13 +195,13 @@ final class HomeViewModel {
         reload()
     }
 
-    /// 約束をタップした時: 1回進める。目標に達したら完了演出を出す。
+    /// 約束のホールド操作が成立した時: 1回進める。目標に達したら完了演出を出す。
     func advanceRoutine(_ routine: Routine) {
-        guard let dependencies else { return }
-        let wasComplete = routine.isComplete()
+        // 達成済みの期間には追加ログを積まない。日/週/月の次の期間に入ると再び記録できる。
+        guard let dependencies, !routine.isComplete() else { return }
         dependencies.routineRepository.recordProgress(routine)
         reload()
-        if !wasComplete && routine.isComplete() {
+        if routine.isComplete() {
             completionContext = RoutineCompletionContext(
                 routineTitle: routine.title,
                 currentStreak: RoutineStreak.currentStreak(routine: routine)

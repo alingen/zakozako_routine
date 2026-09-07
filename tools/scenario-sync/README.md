@@ -93,7 +93,7 @@ story_content.generated.json
 - nested object/array/scalarを含む任意のJSON値を保持します。
 - `scenario_type` は現在 `daily`, `small_event`, `middle_event`, `large_event` を利用しています。
 - `typing_duration_ms` は莉央の各セリフで「入力中…」を表示する時間です。空欄時はアプリ既定の
-  800msを使い、個別指定する場合は0〜30000の整数を入力します。
+  600msを使い、個別指定する場合は0〜30000の整数を入力します。
 
 ### choices（11列）
 

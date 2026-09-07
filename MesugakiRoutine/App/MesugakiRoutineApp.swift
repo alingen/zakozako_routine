@@ -1,8 +1,43 @@
 import SwiftUI
 import SwiftData
+import UIKit
+
+@MainActor
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    static var supportedOrientations: UIInterfaceOrientationMask = .portrait
+
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        Self.supportedOrientations
+    }
+}
+
+@MainActor
+enum AppOrientationController {
+    static func set(_ orientations: UIInterfaceOrientationMask) {
+        AppDelegate.supportedOrientations = orientations
+
+        let activeScenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+
+        for scene in activeScenes {
+            scene.windows
+                .first(where: \.isKeyWindow)?
+                .rootViewController?
+                .setNeedsUpdateOfSupportedInterfaceOrientations()
+            scene.requestGeometryUpdate(
+                .iOS(interfaceOrientations: orientations)
+            )
+        }
+    }
+}
 
 @main
 struct MesugakiRoutineApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     let modelContainer: ModelContainer
     @Environment(\.scenePhase) private var scenePhase
 

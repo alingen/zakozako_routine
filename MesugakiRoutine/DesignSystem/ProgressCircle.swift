@@ -68,13 +68,122 @@ struct ProgressCircle: View {
     }
 }
 
+/// 習慣の達成割合を、円の内側を塗る扇形で表す。
+/// 未達成部分は淡いテーマ色、達成部分は `tint`。外周線は表示しない。
+struct RoutineProgressPie: View {
+    let progress: Double
+    var size: CGFloat = 30
+    var tint: Color = AppColor.primary
+    var centerSystemImage: String? = nil
+    /// ホールド操作中の確認アニメーション。0で非表示、1で円全体を覆う。
+    var confirmationProgress: Double = 0
+    /// ホールド成立後、指を離すまで中央にチェックマークを表示する。
+    var showsConfirmationCheckmark: Bool = false
+
+    private var clamped: Double { min(max(progress, 0), 1) }
+    private var clampedConfirmation: Double { min(max(confirmationProgress, 0), 1) }
+    private var isComplete: Bool { clamped >= 1 }
+
+    var body: some View {
+        ZStack {
+            Circle().fill(AppColor.primarySoft)
+            ProgressPieSlice(progress: clamped)
+                .fill(tint)
+
+            if let centerSystemImage {
+                // 未達成部分では tint、塗られた領域では白になるように2色のアイコンを重ねる。
+                Image(systemName: centerSystemImage)
+                    .font(.system(size: size * 0.42))
+                    .foregroundStyle(tint)
+                    .frame(width: size, height: size)
+                Image(systemName: centerSystemImage)
+                    .font(.system(size: size * 0.42))
+                    .foregroundStyle(.white)
+                    .frame(width: size, height: size)
+                    .mask {
+                        ProgressPieSlice(progress: clamped)
+                            .fill(.black)
+                    }
+            } else if isComplete {
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.44, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+
+            // ホールド中は中央から赤い円を広げ、操作が確定するまでの時間を見せる。
+            Circle()
+                .fill(tint)
+                .scaleEffect(clampedConfirmation)
+
+            if showsConfirmationCheckmark {
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.44, weight: .bold))
+                    .foregroundStyle(.white)
+            } else if let centerSystemImage {
+                Image(systemName: centerSystemImage)
+                    .font(.system(size: size * 0.42))
+                    .foregroundStyle(.white)
+                    .frame(width: size, height: size)
+                    .mask {
+                        Circle()
+                            .scaleEffect(clampedConfirmation)
+                    }
+            }
+        }
+        .frame(width: size, height: size)
+        .animation(.easeInOut(duration: 0.25), value: clamped)
+        .accessibilityValue("\(Int((clamped * 100).rounded()))パーセント")
+    }
+}
+
+/// 12時位置から時計回りに伸びる、円グラフ状の進捗面。
+private struct ProgressPieSlice: Shape {
+    var progress: Double
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let clamped = min(max(progress, 0), 1)
+        guard clamped > 0 else { return Path() }
+        guard clamped < 1 else { return Path(ellipseIn: rect) }
+
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        var path = Path()
+        path.move(to: center)
+        path.addLine(to: CGPoint(x: center.x, y: center.y - radius))
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: .degrees(-90),
+            endAngle: .degrees(-90 + 360 * clamped),
+            clockwise: false
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
 #Preview {
-    HStack(spacing: 20) {
-        ProgressCircle(progress: 0)
-        ProgressCircle(progress: 0.25)
-        ProgressCircle(progress: 0.5)
-        ProgressCircle(progress: 0.75)
-        ProgressCircle(progress: 1)
+    VStack(spacing: 20) {
+        HStack(spacing: 20) {
+            ProgressCircle(progress: 0)
+            ProgressCircle(progress: 0.25)
+            ProgressCircle(progress: 0.5)
+            ProgressCircle(progress: 0.75)
+            ProgressCircle(progress: 1)
+        }
+        HStack(spacing: 20) {
+            RoutineProgressPie(progress: 0, size: 64, centerSystemImage: "figure.walk")
+            RoutineProgressPie(progress: 0.25, size: 64, centerSystemImage: "figure.walk")
+            RoutineProgressPie(progress: 0.5, size: 64, centerSystemImage: "figure.walk")
+            RoutineProgressPie(progress: 0.75, size: 64, centerSystemImage: "figure.walk")
+            RoutineProgressPie(progress: 1, size: 64, centerSystemImage: "figure.walk")
+        }
     }
     .padding()
+    .background(AppColor.background)
 }

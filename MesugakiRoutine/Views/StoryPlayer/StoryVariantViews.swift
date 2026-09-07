@@ -2,7 +2,7 @@ import AVFoundation
 import Combine
 import SwiftUI
 
-private extension StoryNode {
+extension StoryNode {
     var storyDisplayText: String {
         let direct = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !direct.isEmpty { return direct }

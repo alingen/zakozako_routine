@@ -107,40 +107,22 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// 約束1件の大きな円セル。タップできるのは円だけ。通常時は1回進む / 編集時は編集画面へ。
+    /// 約束1件の大きな円セル。通常時は円のホールドで1回進む / 編集時はタップで編集画面へ。
     @ViewBuilder
     private func routineGridCell(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
         let streak = viewModel.currentRoutineStreak(for: routine)
 
         VStack(spacing: 8) {
-            Button {
-                if isEditingRoutines {
-                    editingRoutine = routine
-                } else {
-                    viewModel.advanceRoutine(routine)
-                }
-            } label: {
-                ZStack(alignment: .bottomTrailing) {
-                    ProgressCircle(
-                        progress: progress.fraction,
-                        size: 116,
-                        lineWidth: 7,
-                        centerSystemImage: routine.iconName
-                    )
-                    if isEditingRoutines {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(AppColor.text)
-                            .frame(width: 30, height: 30)
-                            .background(AppColor.surface, in: Circle())
-                            .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
-                            .offset(x: 4, y: 4)
-                    }
-                }
-                .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
+            RoutineProgressButton(
+                progress: progress.fraction,
+                iconName: routine.iconName,
+                isEditing: isEditingRoutines,
+                isCompleted: progress.isCompletedToday,
+                accessibilityLabel: routine.title,
+                onAdvance: { viewModel.advanceRoutine(routine) },
+                onEdit: { editingRoutine = routine }
+            )
 
             VStack(spacing: 2) {
                 Text(routine.title)
@@ -324,6 +306,120 @@ struct HomeView: View {
             ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
         }
         .appCardRow()
+    }
+}
+
+/// 短いタップでは反応せず、円が中央から外周まで広がる長押しで進捗を記録する。
+private struct RoutineProgressButton: View {
+    private static let holdDuration: TimeInterval = 0.8
+
+    let progress: Double
+    let iconName: String?
+    let isEditing: Bool
+    let isCompleted: Bool
+    let accessibilityLabel: String
+    let onAdvance: () -> Void
+    let onEdit: () -> Void
+
+    @State private var confirmationProgress = 0.0
+    @State private var isHoldConfirmed = false
+    @State private var confirmationFeedbackTrigger = 0
+
+    var body: some View {
+        Group {
+            if isEditing {
+                Button(action: onEdit) {
+                    content
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("タップして編集")
+            } else if isCompleted {
+                content
+                    .accessibilityValue("達成済み")
+                    .accessibilityHint("次の集計期間まで記録できません")
+            } else {
+                content
+                    .onLongPressGesture(
+                        minimumDuration: Self.holdDuration,
+                        maximumDistance: 24,
+                        perform: confirmHold,
+                        onPressingChanged: updateHoldingState
+                    )
+                    // LongPressGestureは成立時に終了するため、指を離した瞬間は並行するDragGestureで拾う。
+                    .simultaneousGesture(
+                        DragGesture(minimumDistance: 0)
+                            .onEnded { _ in finishHold() }
+                    )
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("長押しして1回分を記録")
+                    .accessibilityAction(named: "1回分を記録", onAdvance)
+            }
+        }
+        .accessibilityLabel(accessibilityLabel)
+        .sensoryFeedback(.success, trigger: confirmationFeedbackTrigger)
+        .onChange(of: isEditing) {
+            resetConfirmation()
+        }
+        .onChange(of: isCompleted) {
+            if isCompleted { resetConfirmation() }
+        }
+    }
+
+    private var content: some View {
+        ZStack(alignment: .bottomTrailing) {
+            RoutineProgressPie(
+                progress: progress,
+                size: 116,
+                centerSystemImage: iconName,
+                confirmationProgress: confirmationProgress,
+                showsConfirmationCheckmark: isHoldConfirmed
+            )
+            if isEditing {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(AppColor.text)
+                    .frame(width: 30, height: 30)
+                    .background(AppColor.surface, in: Circle())
+                    .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
+                    .offset(x: 4, y: 4)
+            }
+        }
+        .contentShape(Circle())
+    }
+
+    private func updateHoldingState(_ isHolding: Bool) {
+        if isHolding {
+            isHoldConfirmed = false
+            confirmationProgress = 0
+            withAnimation(.linear(duration: Self.holdDuration)) {
+                confirmationProgress = 1
+            }
+        } else if !isHoldConfirmed {
+            resetConfirmation()
+        }
+    }
+
+    /// 円が満たされた時点で振動とチェック表示を確定し、記録自体は指を離すまで待つ。
+    private func confirmHold() {
+        guard !isCompleted, !isHoldConfirmed else { return }
+        isHoldConfirmed = true
+        confirmationProgress = 1
+        confirmationFeedbackTrigger += 1
+    }
+
+    private func finishHold() {
+        let shouldAdvance = isHoldConfirmed && !isCompleted
+        resetConfirmation()
+        if shouldAdvance {
+            onAdvance()
+        }
+    }
+
+    private func resetConfirmation() {
+        isHoldConfirmed = false
+        withAnimation(.easeOut(duration: 0.18)) {
+            confirmationProgress = 0
+        }
     }
 }
 

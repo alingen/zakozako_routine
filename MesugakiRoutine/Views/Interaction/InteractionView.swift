@@ -53,15 +53,17 @@ struct InteractionView: View {
                 .allowsHitTesting(false)
 
                 VStack(spacing: 0) {
-                    TodayConversationCard(
-                        title: viewModel.todayConversationTitle,
-                        isUnread: viewModel.todayConversationIsUnread,
-                        hasResumePosition: viewModel.todayConversationHasResumePosition,
-                        isAvailable: viewModel.todayConversationIsAvailable,
-                        action: { viewModel.openToday() }
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
+                    if viewModel.showsTodayConversationCard {
+                        TodayConversationCard(
+                            title: viewModel.todayConversationTitle,
+                            isUnread: viewModel.todayConversationIsUnread,
+                            hasResumePosition: viewModel.todayConversationHasResumePosition,
+                            isAvailable: viewModel.todayConversationIsAvailable,
+                            action: { viewModel.openToday() }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 40)
+                    }
 
                     Spacer(minLength: 0)
 

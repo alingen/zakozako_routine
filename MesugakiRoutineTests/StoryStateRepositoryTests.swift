@@ -69,6 +69,29 @@ final class StoryStateRepositoryTests: XCTestCase {
         XCTAssertEqual(try repository.profileValue(for: "answer"), "accepted")
     }
 
+    func testDebugProfileValuesCanBeUpdatedAndRemovedTogether() throws {
+        let repository = try makeRepository()
+        try repository.updateProfileValues([
+            StoryStateRepository.debugContinuousAchievementDaysKey: "7",
+            StoryStateRepository.trustKey: "12",
+        ])
+
+        try repository.updateProfileValues(
+            [StoryStateRepository.trustKey: "20"],
+            removingKeys: [StoryStateRepository.debugContinuousAchievementDaysKey]
+        )
+
+        XCTAssertNil(
+            try repository.profileValue(
+                for: StoryStateRepository.debugContinuousAchievementDaysKey
+            )
+        )
+        XCTAssertEqual(
+            try repository.profileValue(for: StoryStateRepository.trustKey),
+            "20"
+        )
+    }
+
     func testCompletionMarksEventReadAndUnlocksEverySeenCG() throws {
         let repository = try makeRepository()
         let event = try decodeEvent()
@@ -139,6 +162,38 @@ final class StoryStateRepositoryTests: XCTestCase {
         XCTAssertTrue(restarted.seenCGAssetIds.isEmpty)
         XCTAssertTrue(try XCTUnwrap(repository.eventProgress(for: event.eventId)).isRead)
         XCTAssertNotNil(try repository.memoryUnlock(for: "cg_kept"))
+    }
+
+    func testCompletedDailyConversationCanBeResetToUnread() throws {
+        let repository = try makeRepository()
+        let playbackKey = "daily:2026-09-06"
+        let scenarioId = "daily_001"
+        let completedAt = Date(timeIntervalSince1970: 1_700_000_500)
+        let checkpoint = StoryPlaybackCheckpoint(
+            playbackKey: playbackKey,
+            scenarioId: scenarioId,
+            currentNodeId: "ending",
+            visitedNodeIds: ["start", "ending"],
+            updatedAt: completedAt
+        )
+
+        _ = try repository.complete(
+            event: nil,
+            checkpoint: checkpoint,
+            at: completedAt
+        )
+        XCTAssertTrue(try XCTUnwrap(repository.checkpoint(for: playbackKey)).isCompleted)
+
+        let reset = try repository.restartPlayback(
+            playbackKey: playbackKey,
+            scenarioId: scenarioId,
+            at: completedAt.addingTimeInterval(60)
+        )
+
+        XCTAssertFalse(reset.isCompleted)
+        XCTAssertNil(reset.currentNodeId)
+        XCTAssertTrue(reset.visitedNodeIds.isEmpty)
+        XCTAssertEqual(try repository.checkpoint(for: playbackKey), reset)
     }
 
     private func makeRepository() throws -> StoryStateRepository {

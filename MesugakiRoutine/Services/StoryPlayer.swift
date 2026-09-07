@@ -167,10 +167,23 @@ final class StoryPlayer {
             restorePresentation(from: checkpoint, graph: graph)
 
             if checkpoint.isCompleted {
-                currentNode = nil
-                availableChoices = []
-                isCompleted = true
-                return
+                // Opening an already-read event is a reread. Preserve its read
+                // state and unlocked memories, but always begin playback from
+                // the first node instead of returning to an old position.
+                if event != nil {
+                    checkpoint = try stateRepository.restartPlayback(
+                        playbackKey: playbackKey,
+                        scenarioId: scenario.scenarioId,
+                        at: now()
+                    )
+                    self.checkpoint = checkpoint
+                    resetPresentation(clearError: false)
+                } else {
+                    currentNode = nil
+                    availableChoices = []
+                    isCompleted = true
+                    return
+                }
             }
 
             // The last transition and `complete` are separate repository
@@ -357,6 +370,30 @@ final class StoryPlayer {
 
     func reread() async {
         await restart()
+    }
+
+    /// Ends the current event without preserving a resumable position. Event
+    /// completion/read state is retained; opening it again starts a reread at
+    /// the first node via `start()`.
+    @discardableResult
+    func skip() async -> Bool {
+        let token = beginReplacingOperation()
+        isClosed = false
+        defer { endOperation(token) }
+
+        do {
+            let checkpointToComplete = checkpoint ?? StoryPlaybackCheckpoint(
+                playbackKey: playbackKey,
+                scenarioId: scenario.scenarioId,
+                updatedAt: now()
+            )
+            try complete(checkpoint: checkpointToComplete)
+            return true
+        } catch {
+            guard operationGeneration == token else { return false }
+            report(error.localizedDescription)
+            return false
+        }
     }
 
     /// Invalidates an in-flight wait. Entry checkpoints are already durable,
