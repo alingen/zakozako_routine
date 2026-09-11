@@ -20,10 +20,13 @@ const EXPECTED_VARIANTS = [
   'monologue',
   'narration',
   'outgoing_call',
+  'premium_gate',
   'recording',
   'scene_transition',
-  'title_card',
+  'silence',
+  'state',
   'typing',
+  'wait',
 ];
 const EXPECTED_COMMANDS = [
   'call_connected',
@@ -31,8 +34,10 @@ const EXPECTED_COMMANDS = [
   'call_start',
   'hide_cg',
   'play_audio',
+  'premium_gate',
   'record_audio',
   'scene_change',
+  'set_state',
   'show_cg',
   'show_modal',
   'typing_hide',
@@ -79,6 +84,17 @@ describe('current Google Sheets fixture', () => {
     for (const event of chapterOne) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);
     }
+  });
+
+  it('does not publish memo title cards in middle or large events', () => {
+    const eventNodes = bundle.scenarios
+      .filter(
+        (scenario) =>
+          scenario.scenarioType === 'middle_event' || scenario.scenarioType === 'large_event',
+      )
+      .flatMap((scenario) => scenario.nodes);
+
+    expect(eventNodes.filter((node) => node.uiVariant === 'title_card')).toEqual([]);
   });
 
   it('preserves every current mode, variant, command, and raw content field', () => {

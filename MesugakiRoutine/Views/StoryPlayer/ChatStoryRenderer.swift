@@ -4,14 +4,15 @@ import SwiftUI
 struct ChatStoryRenderer: View {
     let node: StoryNode
     let scenarioType: StoryScenarioType
+    var isTerminalNode = false
     var visibleNodes: [StoryNode] = []
-    var backgroundAssetID: String?
     var portraitAssetID: String?
     var cgAssetID: String?
     var choices: [StoryChoice] = []
     var isTyping = false
     var isModalPresented = false
     let onAdvance: () -> Void
+    let onPresentNode: () -> Void
     let onSelectChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
 
@@ -19,22 +20,38 @@ struct ChatStoryRenderer: View {
     @State private var revealedRioNodeID: String?
     @State private var revealedSystemNodeID: String?
 
-    private var effectiveBackground: String? { backgroundAssetID ?? node.background }
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented && !isTyping }
-    private var shouldAutoAdvance: Bool {
+    private var usesEventChatFlow: Bool {
+        switch scenarioType {
+        case .smallEvent, .middleEvent, .largeEvent:
+            return true
+        case .daily, .unknown:
+            return false
+        }
+    }
+    private var waitsForTerminalAdvance: Bool {
+        isTerminalNode
+            && StoryCompletionPresentationPolicy.returnsToMenuAutomatically(
+                after: scenarioType
+            )
+    }
+    private var shouldAutomaticallyPresentNode: Bool {
         guard canAdvance else { return false }
-        if scenarioType == .smallEvent {
+        if usesEventChatFlow {
             return !isWaitingToSendPlayerMessage
         }
         return node.isRioSpeaker && node.messageType == .text
+    }
+    private var shouldAutoAdvance: Bool {
+        shouldAutomaticallyPresentNode && !waitsForTerminalAdvance
     }
     private var isWaitingToSendPlayerMessage: Bool {
         canAdvance && node.isPlayerSpeaker && node.messageType == .text
     }
     private var isWaitingForRioMessage: Bool {
-        shouldAutoAdvance
+        shouldAutomaticallyPresentNode
             && node.isRioSpeaker
             && node.messageType == .text
             && revealedRioNodeID != node.nodeId
@@ -43,15 +60,15 @@ struct ChatStoryRenderer: View {
         isWaitingForRioMessage && typingStartedRioNodeID == node.nodeId
     }
     private var isWaitingForSystemMessage: Bool {
-        shouldAutoAdvance
-            && scenarioType == .smallEvent
+        shouldAutomaticallyPresentNode
+            && usesEventChatFlow
             && node.normalizedSpeakerKey == "system"
             && node.messageType == .text
             && revealedSystemNodeID != node.nodeId
     }
 
-    private var isInitialSmallEventPlayerMessage: Bool {
-        guard scenarioType == .smallEvent, isWaitingToSendPlayerMessage else {
+    private var isInitialEventPlayerMessage: Bool {
+        guard usesEventChatFlow, isWaitingToSendPlayerMessage else {
             return false
         }
         return !visibleNodes.contains {
@@ -61,12 +78,12 @@ struct ChatStoryRenderer: View {
 
     private var manualAdvanceLabel: String {
         guard node.isPlayerSpeaker else { return "次へ" }
-        if scenarioType == .smallEvent,
+        if usesEventChatFlow,
            let replyText = node.text?.trimmingCharacters(in: .whitespacesAndNewlines),
            !replyText.isEmpty {
             return replyText
         }
-        return isInitialSmallEventPlayerMessage ? "送信する" : "返信する"
+        return isInitialEventPlayerMessage ? "送信する" : "返信する"
     }
 
     private var manualAdvanceSymbol: String {
@@ -105,25 +122,34 @@ struct ChatStoryRenderer: View {
         return sentNodes + [node]
     }
 
+    private var chatHistoryNodes: [StoryNode] {
+        renderedNodes.filter {
+            !EventChatSystemPresentationPolicy.omitsFromChatHistory(
+                node: $0,
+                scenarioType: scenarioType
+            )
+        }
+    }
+
+    private var activeEventSystemNode: StoryNode? {
+        guard EventChatSystemPresentationPolicy.usesADVTextWindow(
+            node: node,
+            scenarioType: scenarioType
+        ), renderedNodes.contains(where: { $0.nodeId == node.nodeId }) else {
+            return nil
+        }
+        return node
+    }
+
     var body: some View {
         ZStack {
             AppColor.background.ignoresSafeArea()
-
-            if let effectiveBackground {
-                StoryAssetView(
-                    assetID: effectiveBackground,
-                    purpose: .background,
-                    contentMode: .fill
-                )
-                .ignoresSafeArea()
-                .opacity(0.18)
-            }
 
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(renderedNodes) { messageNode in
+                            ForEach(chatHistoryNodes) { messageNode in
                                 StoryChatBubble(
                                     node: messageNode,
                                     scenarioType: scenarioType,
@@ -171,14 +197,34 @@ struct ChatStoryRenderer: View {
                 actionArea
             }
 
+            if let activeEventSystemNode {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.46)
+                        .ignoresSafeArea()
+
+                    ADVTextWindow(
+                        node: activeEventSystemNode,
+                        maxWidth: .infinity,
+                        horizontalPadding: 32,
+                        onAdvance: canAdvance ? advanceFromEventSystemText : nil,
+                        backgroundStyle: .baseColor
+                    )
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 101)
+                }
+                .transition(.opacity)
+                .zIndex(1)
+            }
+
             if isModalPresented {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
                 StoryModalView(node: node, onDismiss: onDismissModal)
+                    .zIndex(2)
             }
         }
         .task(id: node.nodeId) {
-            guard shouldAutoAdvance else { return }
+            guard shouldAutomaticallyPresentNode else { return }
             do {
                 if node.isRioSpeaker && node.messageType == .text {
                     try await Task<Never, Never>.sleep(
@@ -195,6 +241,7 @@ struct ChatStoryRenderer: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         revealedRioNodeID = node.nodeId
                     }
+                    onPresentNode()
                     try await Task<Never, Never>.sleep(
                         nanoseconds: automaticAdvanceDelayNanoseconds
                     )
@@ -206,7 +253,9 @@ struct ChatStoryRenderer: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         revealedSystemNodeID = node.nodeId
                     }
+                    onPresentNode()
                 } else {
+                    onPresentNode()
                     try await Task<Never, Never>.sleep(
                         nanoseconds: automaticContentDelayNanoseconds
                     )
@@ -215,14 +264,16 @@ struct ChatStoryRenderer: View {
                 return
             }
             guard !Task.isCancelled else { return }
-            onAdvance()
+            if shouldAutoAdvance {
+                onAdvance()
+            }
         }
     }
 
     @ViewBuilder
     private var actionArea: some View {
-        if scenarioType == .smallEvent {
-            fixedSmallEventActionArea
+        if usesEventChatFlow {
+            fixedEventActionArea
         } else if !choices.isEmpty {
             Divider()
             StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
@@ -233,14 +284,17 @@ struct ChatStoryRenderer: View {
         }
     }
 
-    private var fixedSmallEventActionArea: some View {
+    private var fixedEventActionArea: some View {
         VStack(spacing: 0) {
             Divider()
 
             Group {
                 if !choices.isEmpty {
                     StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
-                } else if canAdvance && !shouldAutoAdvance {
+                } else if canAdvance,
+                          !shouldAutoAdvance,
+                          !isWaitingForRioMessage,
+                          !isWaitingForSystemMessage {
                     manualAdvanceButton
                 } else {
                     Color.clear
@@ -272,7 +326,10 @@ struct ChatStoryRenderer: View {
     }
 
     private var manualAdvanceButton: some View {
-        Button(action: onAdvance) {
+        Button {
+            onPresentNode()
+            onAdvance()
+        } label: {
             HStack(spacing: 10) {
                 Image(systemName: manualAdvanceSymbol)
                     .accessibilityHidden(true)
@@ -320,6 +377,48 @@ struct ChatStoryRenderer: View {
             proxy.scrollTo("story-chat-bottom-spacing", anchor: .bottom)
         }
     }
+
+    private func advanceFromEventSystemText() {
+        onPresentNode()
+        onAdvance()
+    }
+}
+
+enum EventChatSystemPresentationPolicy {
+    static func usesADVTextWindow(
+        node: StoryNode,
+        scenarioType: StoryScenarioType
+    ) -> Bool {
+        guard isMiddleOrLargeEvent(scenarioType),
+              !node.storyDisplayText.isEmpty else {
+            return false
+        }
+        return isSystemLike(node) || node.uiVariant == .narration
+    }
+
+    static func omitsFromChatHistory(
+        node: StoryNode,
+        scenarioType: StoryScenarioType
+    ) -> Bool {
+        guard isMiddleOrLargeEvent(scenarioType) else { return false }
+        return usesADVTextWindow(node: node, scenarioType: scenarioType)
+            || (isSystemLike(node) && node.storyDisplayText.isEmpty)
+    }
+
+    private static func isMiddleOrLargeEvent(
+        _ scenarioType: StoryScenarioType
+    ) -> Bool {
+        switch scenarioType {
+        case .middleEvent, .largeEvent:
+            return true
+        case .daily, .smallEvent, .unknown:
+            return false
+        }
+    }
+
+    private static func isSystemLike(_ node: StoryNode) -> Bool {
+        ["system", "narrator"].contains(node.normalizedSpeakerKey)
+    }
 }
 
 private struct RioTypingIndicator: View {
@@ -343,7 +442,6 @@ private struct RioTypingIndicator: View {
 
 struct SmallEventCompletionView: View {
     let visibleNodes: [StoryNode]
-    let backgroundAssetID: String?
     let onClose: () -> Void
 
     private let bottomAnchorID = "story-chat-completion-bottom"
@@ -351,16 +449,6 @@ struct SmallEventCompletionView: View {
     var body: some View {
         ZStack {
             AppColor.background.ignoresSafeArea()
-
-            if let backgroundAssetID {
-                StoryAssetView(
-                    assetID: backgroundAssetID,
-                    purpose: .background,
-                    contentMode: .fill
-                )
-                .ignoresSafeArea()
-                .opacity(0.18)
-            }
 
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in

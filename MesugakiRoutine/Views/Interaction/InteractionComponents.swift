@@ -1,5 +1,56 @@
 import SwiftUI
 
+struct InteractionCharacterSpeechBubble: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.body.weight(.bold))
+            .foregroundStyle(AppColor.text)
+            .multilineTextAlignment(.center)
+            .lineLimit(3)
+            .minimumScaleFactor(0.86)
+            .padding(.horizontal, 22)
+            .padding(.top, 50)
+            .padding(.bottom, 22)
+            .frame(maxWidth: .infinity, minHeight: 112)
+            .background {
+                InteractionSpeechBubbleShape()
+                    .fill(AppColor.surface.opacity(0.94))
+                    .shadow(color: AppColor.text.opacity(0.18), radius: 14, y: 7)
+            }
+            .overlay {
+                InteractionSpeechBubbleShape()
+                    .stroke(.white.opacity(0.96), lineWidth: 1.5)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("莉央、\(text)")
+    }
+}
+
+private struct InteractionSpeechBubbleShape: Shape {
+    private let tailHeight: CGFloat = 32
+    private let cornerRadius: CGFloat = 22
+
+    func path(in rect: CGRect) -> Path {
+        let bodyRect = CGRect(
+            x: rect.minX,
+            y: rect.minY + tailHeight,
+            width: rect.width,
+            height: max(0, rect.height - tailHeight)
+        )
+        let tailCenterX = rect.minX + rect.width * 0.56
+        let tailHalfWidth: CGFloat = 18
+
+        var path = Path(roundedRect: bodyRect, cornerRadius: cornerRadius)
+        path.move(to: CGPoint(x: tailCenterX - tailHalfWidth, y: bodyRect.minY + 1))
+        path.addLine(to: CGPoint(x: tailCenterX, y: rect.minY))
+        path.addLine(to: CGPoint(x: tailCenterX + tailHalfWidth, y: bodyRect.minY + 1))
+        path.closeSubpath()
+        return path
+    }
+}
+
 struct TodayConversationCard: View {
     let title: String
     let isUnread: Bool

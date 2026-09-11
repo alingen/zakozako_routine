@@ -75,14 +75,15 @@ struct ADVStoryRenderer: View {
                     variantContent(
                         textWindowMaxWidth: textWindowMaxWidth(
                             availableWidth: proxy.size.width
-                        )
+                        ),
+                        textHorizontalPadding: textHorizontalPadding
                     )
 
                     if !choices.isEmpty {
                         StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, contentHorizontalPadding)
                 .padding(.bottom, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: variantAlignment)
 
@@ -98,12 +99,22 @@ struct ADVStoryRenderer: View {
     }
 
     private func textWindowMaxWidth(availableWidth: CGFloat) -> CGFloat {
-        switch scenarioType {
-        case .middleEvent, .largeEvent:
+        if usesLandscapeStillLayout {
             return min(640, availableWidth * 0.95)
-        case .daily, .smallEvent, .unknown:
-            return .infinity
         }
+        return .infinity
+    }
+
+    private var usesLandscapeStillLayout: Bool {
+        scenarioType.supportsLandscapeStillPresentation && effectiveCG != nil
+    }
+
+    private var contentHorizontalPadding: CGFloat {
+        usesLandscapeStillLayout ? 18 : 10
+    }
+
+    private var textHorizontalPadding: CGFloat {
+        usesLandscapeStillLayout ? 48 : 32
     }
 
     private var variantAlignment: Alignment {
@@ -116,7 +127,10 @@ struct ADVStoryRenderer: View {
     }
 
     @ViewBuilder
-    private func variantContent(textWindowMaxWidth: CGFloat) -> some View {
+    private func variantContent(
+        textWindowMaxWidth: CGFloat,
+        textHorizontalPadding: CGFloat
+    ) -> some View {
         switch node.uiVariant ?? .dialogue {
         case .titleCard:
             StoryTitleCardView(node: node)
@@ -124,10 +138,14 @@ struct ADVStoryRenderer: View {
             ADVTextWindow(
                 node: node,
                 maxWidth: textWindowMaxWidth,
+                horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil
             )
         case .dialogue:
-            defaultMessageContent(textWindowMaxWidth: textWindowMaxWidth)
+            defaultMessageContent(
+                textWindowMaxWidth: textWindowMaxWidth,
+                textHorizontalPadding: textHorizontalPadding
+            )
         case .typing:
             StoryTypingView(node: node)
         case .audioMessage:
@@ -141,6 +159,7 @@ struct ADVStoryRenderer: View {
                 ADVTextWindow(
                     node: node,
                     maxWidth: textWindowMaxWidth,
+                    horizontalPadding: textHorizontalPadding,
                     onAdvance: canAdvance ? onAdvance : nil
                 )
             }
@@ -152,7 +171,10 @@ struct ADVStoryRenderer: View {
     }
 
     @ViewBuilder
-    private func defaultMessageContent(textWindowMaxWidth: CGFloat) -> some View {
+    private func defaultMessageContent(
+        textWindowMaxWidth: CGFloat,
+        textHorizontalPadding: CGFloat
+    ) -> some View {
         switch node.messageType {
         case .image:
             StoryImageMessageView(node: node)
@@ -160,22 +182,26 @@ struct ADVStoryRenderer: View {
             ADVTextWindow(
                 node: node,
                 maxWidth: textWindowMaxWidth,
+                horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil
             )
         case .text, .choice, .unknown:
             ADVTextWindow(
                 node: node,
                 maxWidth: textWindowMaxWidth,
+                horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil
             )
         }
     }
 }
 
-private struct ADVTextWindow: View {
+struct ADVTextWindow: View {
     let node: StoryNode
     let maxWidth: CGFloat
+    let horizontalPadding: CGFloat
     let onAdvance: (() -> Void)?
+    var backgroundStyle: ADVTextWindowBackgroundStyle = .material
 
     private var normalizedSpeaker: String {
         node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -228,14 +254,23 @@ private struct ADVTextWindow: View {
                 .font(.title3)
                 .foregroundStyle(AppColor.text)
                 .lineLimit(3)
-                .padding(.horizontal, 48)
+                .padding(.horizontal, horizontalPadding)
                 .padding(.top, 28)
                 .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: maxWidth)
         .frame(height: 136, alignment: .topLeading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background {
+            switch backgroundStyle {
+            case .material:
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            case .baseColor:
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppColor.background)
+            }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(.white.opacity(0.75), lineWidth: 1)
@@ -252,7 +287,7 @@ private struct ADVTextWindow: View {
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
                             .fill(AppColor.primary)
                     }
-                    .offset(x: 48, y: -19)
+                    .offset(x: horizontalPadding, y: -19)
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -263,4 +298,9 @@ private struct ADVTextWindow: View {
         .accessibilityAddTraits(onAdvance == nil ? [] : .isButton)
         .accessibilityHint(onAdvance == nil ? "" : "ダブルタップして次へ進みます")
     }
+}
+
+enum ADVTextWindowBackgroundStyle {
+    case material
+    case baseColor
 }

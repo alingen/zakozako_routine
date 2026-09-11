@@ -167,12 +167,183 @@ final class StoryScenarioGraphTests: XCTestCase {
         }
     }
 
-    func testOnlyMiddleAndLargeEventsUseLandscapePresentation() {
-        XCTAssertFalse(StoryScenarioType.daily.usesLandscapeStoryPresentation)
-        XCTAssertFalse(StoryScenarioType.smallEvent.usesLandscapeStoryPresentation)
-        XCTAssertTrue(StoryScenarioType.middleEvent.usesLandscapeStoryPresentation)
-        XCTAssertTrue(StoryScenarioType.largeEvent.usesLandscapeStoryPresentation)
-        XCTAssertFalse(StoryScenarioType.unknown("future_event").usesLandscapeStoryPresentation)
+    func testOnlyMiddleAndLargeStillFramesUseLandscapePresentation() {
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .daily,
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .middleEvent,
+                cgAssetID: nil,
+                isCompleted: false
+            )
+        )
+        XCTAssertTrue(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .middleEvent,
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
+        XCTAssertTrue(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .largeEvent,
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .largeEvent,
+                cgAssetID: "cg_test",
+                isCompleted: true
+            )
+        )
+        XCTAssertFalse(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .unknown("future_event"),
+                cgAssetID: "cg_test",
+                isCompleted: false
+            )
+        )
+    }
+
+    func testOnlyMiddleAndLargeEventsReturnToMenuAutomaticallyAfterCompletion() {
+        XCTAssertFalse(
+            StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .daily)
+        )
+        XCTAssertFalse(
+            StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .smallEvent)
+        )
+        XCTAssertTrue(
+            StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .middleEvent)
+        )
+        XCTAssertTrue(
+            StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .largeEvent)
+        )
+        XCTAssertFalse(
+            StoryCompletionPresentationPolicy.returnsToMenuAutomatically(
+                after: .unknown("future_event")
+            )
+        )
+    }
+
+    func testLogIsAvailableOnlyForMiddleAndLargeEvents() {
+        XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .daily))
+        XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .smallEvent))
+        XCTAssertTrue(StoryLogPresentationPolicy.isAvailable(for: .middleEvent))
+        XCTAssertTrue(StoryLogPresentationPolicy.isAvailable(for: .largeEvent))
+        XCTAssertFalse(
+            StoryLogPresentationPolicy.isAvailable(for: .unknown("future_event"))
+        )
+    }
+
+    func testMiddleAndLargeChatSystemTextUsesADVPresentation() {
+        let narration = StoryNode(
+            nodeId: "narration",
+            lineOrder: 1,
+            speaker: "narrator",
+            messageType: .text,
+            text: "少しして。",
+            screenMode: .chat,
+            uiVariant: .narration
+        )
+
+        XCTAssertTrue(
+            EventChatSystemPresentationPolicy.usesADVTextWindow(
+                node: narration,
+                scenarioType: .middleEvent
+            )
+        )
+        XCTAssertTrue(
+            EventChatSystemPresentationPolicy.usesADVTextWindow(
+                node: narration,
+                scenarioType: .largeEvent
+            )
+        )
+        XCTAssertFalse(
+            EventChatSystemPresentationPolicy.usesADVTextWindow(
+                node: narration,
+                scenarioType: .smallEvent
+            )
+        )
+    }
+
+    func testEmptySystemCommandIsOmittedFromEventChatHistory() {
+        let sceneChange = StoryNode(
+            nodeId: "scene-change",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            text: "",
+            screenMode: .chat,
+            uiVariant: .sceneTransition
+        )
+
+        XCTAssertTrue(
+            EventChatSystemPresentationPolicy.omitsFromChatHistory(
+                node: sceneChange,
+                scenarioType: .middleEvent
+            )
+        )
+        XCTAssertFalse(
+            EventChatSystemPresentationPolicy.omitsFromChatHistory(
+                node: sceneChange,
+                scenarioType: .smallEvent
+            )
+        )
+    }
+
+    func testMiddleAndLargeEventsRequireExplicitChatEntry() {
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .middleEvent,
+                hasExplicitTransition: false
+            ),
+            .adv
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .largeEvent,
+                hasExplicitTransition: false
+            ),
+            .adv
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .chat,
+                scenarioType: .middleEvent,
+                hasExplicitTransition: false
+            ),
+            .chat
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .smallEvent,
+                hasExplicitTransition: false
+            ),
+            .chat
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .middleEvent,
+                hasExplicitTransition: true
+            ),
+            .chat
+        )
     }
 
     private func decodeScenario(_ json: String) throws -> StoryScenario {

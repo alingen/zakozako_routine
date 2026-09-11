@@ -93,18 +93,27 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             stateRepository: stateRepository
         )
         var largeModes: [StoryScreenMode] = []
+        var quotedLineModes: [StoryScreenMode] = []
         var didShowCG = false
         var didHideCGAfterShowing = false
 
         await largePlayer.start()
-        XCTAssertEqual(largePlayer.currentNode?.nodeId, "large_001_001")
-        XCTAssertEqual(largePlayer.currentNode?.uiVariant, .sceneTransition)
+        XCTAssertEqual(largePlayer.currentNode?.nodeId, "large_001_002")
+        XCTAssertEqual(largePlayer.currentNode?.uiVariant, .narration)
         XCTAssertEqual(largePlayer.backgroundAssetID, "bg_rio_entrance")
+        XCTAssertEqual(
+            try stateRepository.checkpoint(for: "integration:modes:large_001")?.visitedNodeIds,
+            ["large_001_001", "large_001_002"]
+        )
         try await driveStartedPlayerToCompletion(
             largePlayer,
             safetyLimit: largeScenario.nodes.count * 3
         ) { player in
             largeModes.append(player.currentMode)
+            if player.currentNode?.lineOrder ?? .max < 235,
+               player.currentNode?.storyDisplayText.contains("『") == true {
+                quotedLineModes.append(player.currentMode)
+            }
             if player.cgAssetID == "cg_day7_under_table" {
                 didShowCG = true
                 if !player.isCompleted {
@@ -118,7 +127,9 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             }
         }
 
-        XCTAssertTrue(containsSubsequence([.adv, .chat, .adv], in: compressed(largeModes)))
+        XCTAssertEqual(compressed(largeModes), [.adv, .chat])
+        XCTAssertFalse(quotedLineModes.isEmpty)
+        XCTAssertTrue(quotedLineModes.allSatisfy { $0 == .adv })
         XCTAssertTrue(didShowCG)
         XCTAssertTrue(didHideCGAfterShowing)
         let unlockedCG = try XCTUnwrap(
@@ -173,6 +184,33 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertTrue(didPresentImageMessage)
         XCTAssertTrue(didPresentModal)
         XCTAssertTrue(sleepProbe.sawTypingDuringWait)
+    }
+
+    func testMiddleEventSkipsMemoTitleAndEmptySystemTransitions() async throws {
+        let contentRepository = try makeGeneratedContentRepository()
+        let stateRepository = try makeStateRepository()
+        let event = try XCTUnwrap(contentRepository.event(id: "event_middle_002"))
+        let scenario = try XCTUnwrap(contentRepository.scenario(id: event.entryScenarioId))
+        let playbackKey = "integration:hidden-system:middle_002"
+        let player = makePlayer(
+            scenario: scenario,
+            event: event,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        XCTAssertFalse(scenario.nodes.contains(where: { $0.uiVariant == .titleCard }))
+
+        await player.start()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "middle_002_004")
+        XCTAssertEqual(player.currentNode?.uiVariant, .narration)
+        XCTAssertEqual(player.backgroundAssetID, "bg_station_street_evening")
+        XCTAssertEqual(
+            try stateRepository.checkpoint(for: playbackKey)?.visitedNodeIds,
+            ["middle_002_001", "middle_002_003", "middle_002_004"]
+        )
     }
 
     func testRealDailyDanglingChoiceRecoversAndAnotherChoicePersistsValue() async throws {
@@ -433,6 +471,153 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             await player.advance()
             XCTAssertTrue(player.isCompleted)
         }
+    }
+
+    func testPlayerIdentifiesTheLastVisibleNodeAsTerminal() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "terminal_node",
+            scenarioType: .middleEvent,
+            nodes: [
+                StoryNode(
+                    nodeId: "first",
+                    lineOrder: 1,
+                    speaker: "protagonist",
+                    messageType: .text,
+                    text: "first"
+                ),
+                StoryNode(
+                    nodeId: "last",
+                    lineOrder: 2,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "last"
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(
+                scenarios: [scenario],
+                choiceGroups: [],
+                events: []
+            )
+        )
+        let stateRepository = try makeStateRepository()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:terminal_node",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+        XCTAssertEqual(player.currentNode?.nodeId, "first")
+        XCTAssertFalse(player.isCurrentNodeTerminal)
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "last")
+        XCTAssertTrue(player.isCurrentNodeTerminal)
+
+        await player.advance()
+        XCTAssertTrue(player.isCompleted)
+        XCTAssertFalse(player.isCurrentNodeTerminal)
+    }
+
+    func testEventLogIncludesPresentedTextWithoutSpoilingPendingChatMessages() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "event_log",
+            scenarioType: .middleEvent,
+            nodes: [
+                StoryNode(
+                    nodeId: "scene",
+                    lineOrder: 1,
+                    speaker: "system",
+                    messageType: .action,
+                    text: nil,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "scene_change"
+                ),
+                StoryNode(
+                    nodeId: "intro",
+                    lineOrder: 2,
+                    speaker: "narrator",
+                    messageType: .text,
+                    text: "導入",
+                    screenMode: .adv,
+                    uiVariant: .narration
+                ),
+                StoryNode(
+                    nodeId: "to_chat",
+                    lineOrder: 3,
+                    speaker: "system",
+                    messageType: .action,
+                    text: "",
+                    screenMode: .chat,
+                    uiVariant: .sceneTransition,
+                    command: "scene_change"
+                ),
+                StoryNode(
+                    nodeId: "player_message",
+                    lineOrder: 4,
+                    speaker: "protagonist",
+                    messageType: .text,
+                    text: "送信前の内容",
+                    screenMode: .chat,
+                    uiVariant: .dialogue
+                ),
+                StoryNode(
+                    nodeId: "rio_message",
+                    lineOrder: 5,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "莉央の返信",
+                    screenMode: .chat,
+                    uiVariant: .dialogue
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(
+                scenarios: [scenario],
+                choiceGroups: [],
+                events: []
+            )
+        )
+        let stateRepository = try makeStateRepository()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:event_log",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+        XCTAssertEqual(player.currentNode?.nodeId, "intro")
+        XCTAssertEqual(player.visibleLogNodes.map(\.nodeId), ["intro"])
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "player_message")
+        XCTAssertEqual(player.visibleLogNodes.map(\.nodeId), ["intro"])
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "rio_message")
+        XCTAssertEqual(
+            player.visibleLogNodes.map(\.nodeId),
+            ["intro", "player_message"]
+        )
+
+        player.markCurrentNodePresented(expectedNodeId: "rio_message")
+        XCTAssertEqual(
+            player.visibleLogNodes.map(\.nodeId),
+            ["intro", "player_message", "rio_message"]
+        )
+
+        await player.advance()
+        XCTAssertTrue(player.isCompleted)
+        XCTAssertEqual(
+            player.visibleLogNodes.map(\.nodeId),
+            ["intro", "player_message", "rio_message"]
+        )
     }
 }
 

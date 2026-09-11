@@ -41,6 +41,7 @@ final class StoryPlayer {
     private(set) var currentNode: StoryNode?
     private(set) var currentMode: StoryScreenMode
     private(set) var visibleChatNodes: [StoryNode] = []
+    private(set) var visibleLogNodes: [StoryNode] = []
     private(set) var backgroundAssetID: String?
     private(set) var portraitAssetID: String?
     private(set) var cgAssetID: String?
@@ -49,6 +50,25 @@ final class StoryPlayer {
     private(set) var isModalPresented = false
     private(set) var isCompleted = false
     private(set) var recoverableError: String?
+
+    var isCurrentNodeTerminal: Bool {
+        guard let graph,
+              let node = currentNode,
+              node.choiceId == nil,
+              node.messageType != .choice else {
+            return false
+        }
+
+        let nextPhase = projectedPhase(
+            applyingProfileKey: node.saveKey,
+            value: node.saveValue
+        )
+        do {
+            return try graph.nextVisibleNode(after: node, phase: nextPhase) == nil
+        } catch {
+            return (try? graph.nextVisibleLineOrderNode(after: node, phase: nextPhase)) == nil
+        }
+    }
 
     /// Additional presentation facts retained for future renderers. Existing
     /// renderers can continue reading `currentNode.assetId` directly.
@@ -333,6 +353,16 @@ final class StoryPlayer {
         }
     }
 
+    /// Records a renderer-controlled chat reveal without advancing playback.
+    /// This keeps typing or unsent messages out of the event log.
+    func markCurrentNodePresented(expectedNodeId: String? = nil) {
+        guard expectedNodeId == nil || currentNode?.nodeId == expectedNodeId,
+              let currentNode else {
+            return
+        }
+        appendVisibleLogNodeIfNeeded(currentNode)
+    }
+
     /// Clears playback only; event read/unlock state and memory unlocks remain.
     func restart() async {
         let token = beginReplacingOperation()
@@ -465,6 +495,9 @@ private extension StoryPlayer {
                     allowTransientEffects: true
                 )
                 appendVisibleChatNodeIfNeeded(displayedNode)
+                if currentMode != .chat {
+                    appendVisibleLogNodeIfNeeded(displayedNode)
+                }
                 availableChoices = resolvedChoices
                 try persistEntry(node: node, encounteredCGs: encounteredCGs)
             }
@@ -512,6 +545,11 @@ private extension StoryPlayer {
         guard var updated = checkpoint else {
             throw StoryPlayerError.invalidCheckpoint("checkpointがありません")
         }
+
+        // Chat messages become part of the log only after they have actually
+        // been sent/revealed and consumed. ADV/call nodes are already added on
+        // entry, and the helper de-duplicates them.
+        appendVisibleLogNodeIfNeeded(node)
 
         let profileKey = selectedChoice?.saveKey ?? node.saveKey
         let profileValue = selectedChoice?.saveValue ?? node.saveValue
@@ -593,6 +631,10 @@ private extension StoryPlayer {
                 allowTransientEffects: index == replayedCurrentIndex
             )
             appendVisibleChatNodeIfNeeded(displayedNode)
+            let isReplayedCurrentNode = index == replayedCurrentIndex
+            if !isReplayedCurrentNode || currentMode != .chat {
+                appendVisibleLogNodeIfNeeded(displayedNode)
+            }
             if index == replayedCurrentIndex { currentNode = displayedNode }
             if let diagnostic = dispatch.diagnostic { report(diagnostic) }
         }
@@ -606,7 +648,7 @@ private extension StoryPlayer {
     }
 
     /// Applies node fields even when `command` is absent. For scene_change,
-    /// command_args may set a mode, but an explicit node.screenMode wins.
+    /// command_args may set a mode before the row-level mode is resolved.
     @discardableResult
     func applyPresentation(
         node: StoryNode,
@@ -662,9 +704,14 @@ private extension StoryPlayer {
             }
         }
 
-        // The row-level field is the most specific source and therefore wins
-        // over scene_change.command_args.screen_mode on the same node.
-        if let mode = node.screenMode { currentMode = mode }
+        if let mode = node.screenMode {
+            currentMode = StoryScreenModeTransitionPolicy.resolveRowMode(
+                mode,
+                currentMode: currentMode,
+                scenarioType: scenario.scenarioType,
+                hasExplicitTransition: normalized(node.command)?.lowercased() == "scene_change"
+            )
+        }
         return encounteredCGs
     }
 
@@ -714,9 +761,12 @@ private extension StoryPlayer {
         if node.choiceId != nil || node.messageType == .choice { return true }
         if node.messageType == .image { return true }
 
-        // Scene transitions are visible content, not zero-duration state
-        // mutations. Pause so the renderer is guaranteed to present them.
-        if node.uiVariant == .sceneTransition { return true }
+        // A labelled transition is visible content. An empty transition is a
+        // state-only command (background/mode change), so apply it without
+        // exposing a blank "System" dialogue step to the reader.
+        if node.uiVariant == .sceneTransition {
+            return normalized(node.text) != nil
+        }
 
         // An unsupported/malformed command is recoverable, but consuming it
         // automatically could skip a future interaction semantics.
@@ -813,6 +863,39 @@ private extension StoryPlayer {
     }
 }
 
+enum StoryScreenModeTransitionPolicy {
+    static func resolveRowMode(
+        _ requestedMode: StoryScreenMode,
+        currentMode: StoryScreenMode,
+        scenarioType: StoryScenarioType,
+        hasExplicitTransition: Bool
+    ) -> StoryScreenMode {
+        guard requestedMode == .chat,
+              currentMode != .chat,
+              requiresExplicitChatEntry(scenarioType),
+              !hasExplicitTransition else {
+            return requestedMode
+        }
+
+        // Middle and large events use scene_change to enter a chat section.
+        // Its dispatch effect may already have changed currentMode before
+        // this resolver runs. A lone row-level `chat` value must not flash
+        // the chat UI for a single quoted line.
+        return currentMode
+    }
+
+    private static func requiresExplicitChatEntry(
+        _ scenarioType: StoryScenarioType
+    ) -> Bool {
+        switch scenarioType {
+        case .middleEvent, .largeEvent:
+            return true
+        case .daily, .smallEvent, .unknown:
+            return false
+        }
+    }
+}
+
 private extension StoryPlayer {
     func resolveNext(
         after node: StoryNode,
@@ -862,10 +945,29 @@ private extension StoryPlayer {
         visibleChatNodes.append(node)
     }
 
+    func appendVisibleLogNodeIfNeeded(_ node: StoryNode) {
+        switch scenario.scenarioType {
+        case .middleEvent, .largeEvent:
+            break
+        case .daily, .smallEvent, .unknown:
+            return
+        }
+        let text = normalized(node.text)
+            ?? normalized(node.commandArgs?["text"]?.stringValue)
+        guard text != nil,
+              node.uiVariant != .titleCard,
+              node.uiVariant != .typing,
+              !visibleLogNodes.contains(where: { $0.nodeId == node.nodeId }) else {
+            return
+        }
+        visibleLogNodes.append(node)
+    }
+
     func resetPresentation(clearError: Bool) {
         currentNode = nil
         currentMode = initialMode
         visibleChatNodes = []
+        visibleLogNodes = []
         backgroundAssetID = event?.background
         portraitAssetID = nil
         cgAssetID = nil

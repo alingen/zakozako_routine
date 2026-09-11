@@ -6,10 +6,21 @@ struct InteractionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = InteractionViewModel()
+    @State private var homeDialogueIndex: Int?
+
+    private var homeDialogue: String? {
+        guard let homeDialogueIndex,
+              InteractionHomeDialogue.defaultLines.indices.contains(homeDialogueIndex) else {
+            return nil
+        }
+        return InteractionHomeDialogue.defaultLines[homeDialogueIndex]
+    }
 
     var body: some View {
         GeometryReader { proxy in
-            let backgroundHeight = proxy.size.height + proxy.safeAreaInsets.top
+            let visualHeight = proxy.size.height + proxy.safeAreaInsets.bottom
+            let backgroundHeight = visualHeight + proxy.safeAreaInsets.top
+            let artworkDrop = min(48, proxy.size.height * 0.055)
 
             ZStack(alignment: .top) {
                 AppColor.background
@@ -25,20 +36,21 @@ struct InteractionView: View {
                     )
                     .clipped()
                     .offset(y: -proxy.safeAreaInsets.top)
-                    .ignoresSafeArea(edges: .top)
+                    .ignoresSafeArea(edges: [.top, .bottom])
                     .accessibilityHidden(true)
 
                 Image("rio_interaction_home")
                     .resizable()
                     .scaledToFit()
                     .frame(width: proxy.size.width * 1.5)
-                    .offset(y: 128)
+                    .offset(y: 128 + artworkDrop)
                     .frame(
                         width: proxy.size.width,
-                        height: proxy.size.height,
+                        height: visualHeight,
                         alignment: .top
                     )
                     .clipped()
+                    .ignoresSafeArea(edges: .bottom)
                     .accessibilityHidden(true)
 
                 LinearGradient(
@@ -51,6 +63,37 @@ struct InteractionView: View {
                     endPoint: .bottom
                 )
                 .allowsHitTesting(false)
+
+                Button(action: showNextHomeDialogue) {
+                    Color.clear
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(
+                    width: proxy.size.width * 0.72,
+                    height: proxy.size.height * 0.68
+                )
+                .position(
+                    x: proxy.size.width * 0.46,
+                    y: proxy.size.height * 0.55 + artworkDrop * 0.5
+                )
+                .accessibilityLabel("莉央")
+                .accessibilityHint("タップすると莉央が話します")
+
+                if let homeDialogue {
+                    InteractionCharacterSpeechBubble(text: homeDialogue)
+                        .frame(width: min(300, proxy.size.width - 72))
+                        .position(
+                            x: proxy.size.width * 0.44,
+                            y: proxy.size.height * 0.39 + artworkDrop
+                        )
+                        .id(homeDialogueIndex)
+                        .transition(
+                            .scale(scale: 0.92, anchor: .top)
+                                .combined(with: .opacity)
+                        )
+                        .allowsHitTesting(false)
+                }
 
                 VStack(spacing: 0) {
                     if viewModel.showsTodayConversationCard {
@@ -96,7 +139,7 @@ struct InteractionView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.trailing, 16)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 16)
                 }
 
                 if let loadError = viewModel.loadError {
@@ -113,7 +156,6 @@ struct InteractionView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            .clipped()
         }
         .toolbar(.hidden, for: .navigationBar)
         .task {
@@ -135,6 +177,15 @@ struct InteractionView: View {
             StoryPlaybackContainerView(launch: launch) {
                 viewModel.closePlayer()
             }
+        }
+    }
+
+    private func showNextHomeDialogue() {
+        guard let nextIndex = InteractionHomeDialogue.nextIndex(after: homeDialogueIndex) else {
+            return
+        }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+            homeDialogueIndex = nextIndex
         }
     }
 }

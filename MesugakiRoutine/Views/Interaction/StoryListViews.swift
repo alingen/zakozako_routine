@@ -59,9 +59,11 @@ private struct StoryListRow: View {
                     assetID: item.backgroundAssetId,
                     purpose: .background,
                     contentMode: .fill,
-                    cornerRadius: 10
+                    cornerRadius: 0
                 )
                 .frame(width: 68, height: 68)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .saturation(item.isUnlocked ? 1 : 0)
                 .opacity(item.isUnlocked ? 1 : 0.55)
 
