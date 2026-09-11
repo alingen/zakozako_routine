@@ -32,24 +32,23 @@ struct InteractionView: View {
                     .frame(
                         width: proxy.size.width,
                         height: backgroundHeight,
-                        alignment: .bottom
+                        alignment: .top
                     )
-                    .clipped()
-                    .offset(y: -proxy.safeAreaInsets.top)
-                    .ignoresSafeArea(edges: [.top, .bottom])
+                    .offset(y: -proxy.safeAreaInsets.top + 60 )
+                    .ignoresSafeArea(edges: .bottom)
                     .accessibilityHidden(true)
+                    .scaleEffect(1.2)
 
                 Image("rio_interaction_home")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: proxy.size.width * 1.5)
-                    .offset(y: 128 + artworkDrop)
+                    .frame(width: proxy.size.width * 1.2)
+                    .offset(y: 182 + artworkDrop)
                     .frame(
                         width: proxy.size.width,
                         height: visualHeight,
                         alignment: .top
                     )
-                    .clipped()
                     .ignoresSafeArea(edges: .bottom)
                     .accessibilityHidden(true)
 
@@ -85,7 +84,7 @@ struct InteractionView: View {
                         .frame(width: min(300, proxy.size.width - 72))
                         .position(
                             x: proxy.size.width * 0.44,
-                            y: proxy.size.height * 0.39 + artworkDrop
+                            y: proxy.size.height * 0.49 + artworkDrop
                         )
                         .id(homeDialogueIndex)
                         .transition(
@@ -105,7 +104,7 @@ struct InteractionView: View {
                             action: { viewModel.openToday() }
                         )
                         .padding(.horizontal, 16)
-                        .padding(.top, 40)
+                        .padding(.top, 60)
                     }
 
                     Spacer(minLength: 0)
@@ -139,7 +138,7 @@ struct InteractionView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.trailing, 16)
-                    .padding(.bottom, proxy.safeAreaInsets.bottom + 16)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 48)
                 }
 
                 if let loadError = viewModel.loadError {
