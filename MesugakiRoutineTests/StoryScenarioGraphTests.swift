@@ -242,6 +242,110 @@ final class StoryScenarioGraphTests: XCTestCase {
         )
     }
 
+    func testMiddleAndLargeChatSystemTextUsesADVPresentation() {
+        let narration = StoryNode(
+            nodeId: "narration",
+            lineOrder: 1,
+            speaker: "narrator",
+            messageType: .text,
+            text: "少しして。",
+            screenMode: .chat,
+            uiVariant: .narration
+        )
+
+        XCTAssertTrue(
+            EventChatSystemPresentationPolicy.usesADVTextWindow(
+                node: narration,
+                scenarioType: .middleEvent
+            )
+        )
+        XCTAssertTrue(
+            EventChatSystemPresentationPolicy.usesADVTextWindow(
+                node: narration,
+                scenarioType: .largeEvent
+            )
+        )
+        XCTAssertFalse(
+            EventChatSystemPresentationPolicy.usesADVTextWindow(
+                node: narration,
+                scenarioType: .smallEvent
+            )
+        )
+    }
+
+    func testEmptySystemCommandIsOmittedFromEventChatHistory() {
+        let sceneChange = StoryNode(
+            nodeId: "scene-change",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            text: "",
+            screenMode: .chat,
+            uiVariant: .sceneTransition
+        )
+
+        XCTAssertTrue(
+            EventChatSystemPresentationPolicy.omitsFromChatHistory(
+                node: sceneChange,
+                scenarioType: .middleEvent
+            )
+        )
+        XCTAssertFalse(
+            EventChatSystemPresentationPolicy.omitsFromChatHistory(
+                node: sceneChange,
+                scenarioType: .smallEvent
+            )
+        )
+    }
+
+    func testMiddleAndLargeEventsRequireExplicitChatEntry() {
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .middleEvent,
+                hasExplicitTransition: false
+            ),
+            .adv
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .largeEvent,
+                hasExplicitTransition: false
+            ),
+            .adv
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .chat,
+                scenarioType: .middleEvent,
+                hasExplicitTransition: false
+            ),
+            .chat
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .smallEvent,
+                hasExplicitTransition: false
+            ),
+            .chat
+        )
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .middleEvent,
+                hasExplicitTransition: true
+            ),
+            .chat
+        )
+    }
+
     private func decodeScenario(_ json: String) throws -> StoryScenario {
         try JSONDecoder().decode(StoryScenario.self, from: Data(json.utf8))
     }

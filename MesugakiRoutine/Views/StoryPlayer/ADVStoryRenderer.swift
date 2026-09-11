@@ -196,11 +196,12 @@ struct ADVStoryRenderer: View {
     }
 }
 
-private struct ADVTextWindow: View {
+struct ADVTextWindow: View {
     let node: StoryNode
     let maxWidth: CGFloat
     let horizontalPadding: CGFloat
     let onAdvance: (() -> Void)?
+    var backgroundStyle: ADVTextWindowBackgroundStyle = .material
 
     private var normalizedSpeaker: String {
         node.speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -260,7 +261,16 @@ private struct ADVTextWindow: View {
         }
         .frame(maxWidth: maxWidth)
         .frame(height: 136, alignment: .topLeading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background {
+            switch backgroundStyle {
+            case .material:
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            case .baseColor:
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppColor.background)
+            }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(.white.opacity(0.75), lineWidth: 1)
@@ -288,4 +298,9 @@ private struct ADVTextWindow: View {
         .accessibilityAddTraits(onAdvance == nil ? [] : .isButton)
         .accessibilityHint(onAdvance == nil ? "" : "ダブルタップして次へ進みます")
     }
+}
+
+enum ADVTextWindowBackgroundStyle {
+    case material
+    case baseColor
 }

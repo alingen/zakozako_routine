@@ -648,7 +648,7 @@ private extension StoryPlayer {
     }
 
     /// Applies node fields even when `command` is absent. For scene_change,
-    /// command_args may set a mode, but an explicit node.screenMode wins.
+    /// command_args may set a mode before the row-level mode is resolved.
     @discardableResult
     func applyPresentation(
         node: StoryNode,
@@ -704,9 +704,14 @@ private extension StoryPlayer {
             }
         }
 
-        // The row-level field is the most specific source and therefore wins
-        // over scene_change.command_args.screen_mode on the same node.
-        if let mode = node.screenMode { currentMode = mode }
+        if let mode = node.screenMode {
+            currentMode = StoryScreenModeTransitionPolicy.resolveRowMode(
+                mode,
+                currentMode: currentMode,
+                scenarioType: scenario.scenarioType,
+                hasExplicitTransition: normalized(node.command)?.lowercased() == "scene_change"
+            )
+        }
         return encounteredCGs
     }
 
@@ -855,6 +860,39 @@ private extension StoryPlayer {
             commandArgs: node.commandArgs,
             notes: node.notes
         )
+    }
+}
+
+enum StoryScreenModeTransitionPolicy {
+    static func resolveRowMode(
+        _ requestedMode: StoryScreenMode,
+        currentMode: StoryScreenMode,
+        scenarioType: StoryScenarioType,
+        hasExplicitTransition: Bool
+    ) -> StoryScreenMode {
+        guard requestedMode == .chat,
+              currentMode != .chat,
+              requiresExplicitChatEntry(scenarioType),
+              !hasExplicitTransition else {
+            return requestedMode
+        }
+
+        // Middle and large events use scene_change to enter a chat section.
+        // Its dispatch effect may already have changed currentMode before
+        // this resolver runs. A lone row-level `chat` value must not flash
+        // the chat UI for a single quoted line.
+        return currentMode
+    }
+
+    private static func requiresExplicitChatEntry(
+        _ scenarioType: StoryScenarioType
+    ) -> Bool {
+        switch scenarioType {
+        case .middleEvent, .largeEvent:
+            return true
+        case .daily, .smallEvent, .unknown:
+            return false
+        }
     }
 }
 

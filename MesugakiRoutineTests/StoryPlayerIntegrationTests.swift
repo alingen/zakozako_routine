@@ -93,6 +93,7 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             stateRepository: stateRepository
         )
         var largeModes: [StoryScreenMode] = []
+        var quotedLineModes: [StoryScreenMode] = []
         var didShowCG = false
         var didHideCGAfterShowing = false
 
@@ -109,6 +110,10 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             safetyLimit: largeScenario.nodes.count * 3
         ) { player in
             largeModes.append(player.currentMode)
+            if player.currentNode?.lineOrder ?? .max < 235,
+               player.currentNode?.storyDisplayText.contains("『") == true {
+                quotedLineModes.append(player.currentMode)
+            }
             if player.cgAssetID == "cg_day7_under_table" {
                 didShowCG = true
                 if !player.isCompleted {
@@ -122,7 +127,9 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             }
         }
 
-        XCTAssertTrue(containsSubsequence([.adv, .chat, .adv], in: compressed(largeModes)))
+        XCTAssertEqual(compressed(largeModes), [.adv, .chat])
+        XCTAssertFalse(quotedLineModes.isEmpty)
+        XCTAssertTrue(quotedLineModes.allSatisfy { $0 == .adv })
         XCTAssertTrue(didShowCG)
         XCTAssertTrue(didHideCGAfterShowing)
         let unlockedCG = try XCTUnwrap(

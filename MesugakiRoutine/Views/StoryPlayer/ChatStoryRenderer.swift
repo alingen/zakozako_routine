@@ -122,6 +122,25 @@ struct ChatStoryRenderer: View {
         return sentNodes + [node]
     }
 
+    private var chatHistoryNodes: [StoryNode] {
+        renderedNodes.filter {
+            !EventChatSystemPresentationPolicy.omitsFromChatHistory(
+                node: $0,
+                scenarioType: scenarioType
+            )
+        }
+    }
+
+    private var activeEventSystemNode: StoryNode? {
+        guard EventChatSystemPresentationPolicy.usesADVTextWindow(
+            node: node,
+            scenarioType: scenarioType
+        ), renderedNodes.contains(where: { $0.nodeId == node.nodeId }) else {
+            return nil
+        }
+        return node
+    }
+
     var body: some View {
         ZStack {
             AppColor.background.ignoresSafeArea()
@@ -130,7 +149,7 @@ struct ChatStoryRenderer: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(renderedNodes) { messageNode in
+                            ForEach(chatHistoryNodes) { messageNode in
                                 StoryChatBubble(
                                     node: messageNode,
                                     scenarioType: scenarioType,
@@ -178,10 +197,30 @@ struct ChatStoryRenderer: View {
                 actionArea
             }
 
+            if let activeEventSystemNode {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.46)
+                        .ignoresSafeArea()
+
+                    ADVTextWindow(
+                        node: activeEventSystemNode,
+                        maxWidth: .infinity,
+                        horizontalPadding: 32,
+                        onAdvance: canAdvance ? advanceFromEventSystemText : nil,
+                        backgroundStyle: .baseColor
+                    )
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 101)
+                }
+                .transition(.opacity)
+                .zIndex(1)
+            }
+
             if isModalPresented {
                 Color.black.opacity(0.35)
                     .ignoresSafeArea()
                 StoryModalView(node: node, onDismiss: onDismissModal)
+                    .zIndex(2)
             }
         }
         .task(id: node.nodeId) {
@@ -337,6 +376,48 @@ struct ChatStoryRenderer: View {
         withAnimation(.easeOut(duration: 0.2)) {
             proxy.scrollTo("story-chat-bottom-spacing", anchor: .bottom)
         }
+    }
+
+    private func advanceFromEventSystemText() {
+        onPresentNode()
+        onAdvance()
+    }
+}
+
+enum EventChatSystemPresentationPolicy {
+    static func usesADVTextWindow(
+        node: StoryNode,
+        scenarioType: StoryScenarioType
+    ) -> Bool {
+        guard isMiddleOrLargeEvent(scenarioType),
+              !node.storyDisplayText.isEmpty else {
+            return false
+        }
+        return isSystemLike(node) || node.uiVariant == .narration
+    }
+
+    static func omitsFromChatHistory(
+        node: StoryNode,
+        scenarioType: StoryScenarioType
+    ) -> Bool {
+        guard isMiddleOrLargeEvent(scenarioType) else { return false }
+        return usesADVTextWindow(node: node, scenarioType: scenarioType)
+            || (isSystemLike(node) && node.storyDisplayText.isEmpty)
+    }
+
+    private static func isMiddleOrLargeEvent(
+        _ scenarioType: StoryScenarioType
+    ) -> Bool {
+        switch scenarioType {
+        case .middleEvent, .largeEvent:
+            return true
+        case .daily, .smallEvent, .unknown:
+            return false
+        }
+    }
+
+    private static func isSystemLike(_ node: StoryNode) -> Bool {
+        ["system", "narrator"].contains(node.normalizedSpeakerKey)
     }
 }
 

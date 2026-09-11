@@ -120,9 +120,10 @@ story_content.generated.json
 
 choiceの `next_node_id` が参照切れの場合はwarningとし、Playerと同じくそのchoice node直後の
 `line_order` へ復旧できる前提で到達性も診断します。この方針はIDに依存せず全scenarioへ共通です。
-現行シートでは `daily_001` / `first_day_can_do` の `daily_001_09` と `daily_001_10` が該当し、
-その影響を受ける3ノードの到達経路を確定できない警告を含めて5 warningsです。node自身の `next_node_id` 参照切れ、
-scenario外へのchoice参照、その他の必須値・型・重複・終了不能cycleはerrorで生成を止めます。
+現行シートでは、未登録の `ui_variant` / `command` を保持する15件と、`daily_001` /
+`first_day_can_do` の参照切れおよび影響を受ける3ノードの到達性に関する5件を合わせ、
+20 warningsです。node自身の `next_node_id` 参照切れ、scenario外へのchoice参照、その他の必須値・型・
+重複・終了不能cycleはerrorで生成を止めます。
 
 また、取得失敗や誤ったheader検出を全削除と誤認しないよう、scenarios／choices／eventsのいずれかが
 空、または有効な正規化行が0件なら生成物を書き換えずerrorで停止します。
