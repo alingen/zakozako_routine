@@ -42,7 +42,8 @@ struct InteractionView: View {
                 Image("rio_interaction_home")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: proxy.size.width * 1.2)
+                    .frame(width: proxy.size.width * 1.5)
+                    .scaleEffect(1.2, anchor: .top)
                     .offset(y: 182 + artworkDrop)
                     .frame(
                         width: proxy.size.width,
@@ -84,7 +85,7 @@ struct InteractionView: View {
                         .frame(width: min(300, proxy.size.width - 72))
                         .position(
                             x: proxy.size.width * 0.44,
-                            y: proxy.size.height * 0.49 + artworkDrop
+                            y: proxy.size.height * 0.55 + artworkDrop
                         )
                         .id(homeDialogueIndex)
                         .transition(
@@ -104,7 +105,7 @@ struct InteractionView: View {
                             action: { viewModel.openToday() }
                         )
                         .padding(.horizontal, 16)
-                        .padding(.top, 60)
+                        .padding(.top, 80)
                     }
 
                     Spacer(minLength: 0)
