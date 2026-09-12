@@ -49,6 +49,19 @@ struct HomeView: View {
                 )
             }
         }
+        .alert(
+            "記録できませんでした",
+            isPresented: Binding(
+                get: { viewModel.routineOperationErrorMessage != nil },
+                set: { if !$0 { viewModel.clearRoutineOperationError() } }
+            )
+        ) {
+            Button("OK") {
+                viewModel.clearRoutineOperationError()
+            }
+        } message: {
+            Text(viewModel.routineOperationErrorMessage ?? "不明なエラーです")
+        }
         .task {
             viewModel.configure(context: modelContext)
         }
@@ -136,7 +149,7 @@ struct HomeView: View {
                         .font(.caption2)
                         .foregroundStyle(AppColor.muted)
                 } else if streak >= 1 {
-                    Text("\(streak)日達成！")
+                    Text("\(streak)\(routine.period.streakUnitLabel)達成！")
                         .font(.caption2)
                         .foregroundStyle(AppColor.success)
                 } else {

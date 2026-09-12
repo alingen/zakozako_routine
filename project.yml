@@ -58,6 +58,9 @@ targets:
     platform: iOS
     sources:
       - path: MesugakiRoutineTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: MesugakiRoutine
 

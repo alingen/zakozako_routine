@@ -124,13 +124,20 @@ private struct DebugSettingsView: View {
                         value: -1,
                         to: .now
                     ) ?? .now
-                    for _ in 0..<routine.targetCount {
-                        dependencies.routineRepository.debugInsertProgress(
-                            routine,
-                            on: yesterday
-                        )
+                    do {
+                        for _ in 0..<routine.targetCount {
+                            try dependencies.routineRepository.debugInsertProgress(
+                                routine,
+                                on: yesterday
+                            )
+                        }
+                        todayConversationFeedback = "昨日の達成記録を追加しました"
+                        todayConversationFeedbackIsError = false
+                        reload()
+                    } catch {
+                        todayConversationFeedback = "達成記録を追加できませんでした: \(error.localizedDescription)"
+                        todayConversationFeedbackIsError = true
                     }
-                    reload()
                 }
             }
 
@@ -195,7 +202,7 @@ private struct DebugSettingsView: View {
             return RoutineDebugRow(
                 id: routine.id,
                 title: routine.title,
-                detail: "\(routine.period.currentUnitLabel) \(progress.done)/\(progress.target)回 (\(percentage)%) ・ \(streak)日連続"
+                detail: "\(routine.period.currentUnitLabel) \(progress.done)/\(progress.target)回 (\(percentage)%) ・ \(streak)\(routine.period.streakUnitLabel)連続"
             )
         }
     }

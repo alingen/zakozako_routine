@@ -2,11 +2,12 @@ import Foundation
 import SwiftData
 import Observation
 
-/// 1つの約束の直近30日ぶんの達成率。「対象日(1日なら対象曜日、週/月は全日)」を分母に数える。
+/// 1つの約束の直近30暦日ぶんの達成率。日／週／月はそれぞれ期間を1機会として数える。
 struct RoutineAchievement: Identifiable {
     let routine: Routine
     let completedCount: Int
     let applicableCount: Int
+    let unitLabel: String
 
     var id: UUID { routine.id }
     var rate: Double { applicableCount == 0 ? 0 : Double(completedCount) / Double(applicableCount) }
@@ -21,14 +22,19 @@ final class RoutineLogViewModel {
     private(set) var achievements: [RoutineAchievement] = []
     /// いずれかの約束を達成した日が今日(または昨日)から連続している数。
     private(set) var streakDays: Int = 0
+    private(set) var hasLoaded = false
     var displayedMonth: Date
 
     private var dependencies: AppDependencies?
+    private var completionDatesByRoutineID: [UUID: [Date]] = [:]
     private let calendar: Calendar
 
     init(calendar: Calendar = .current) {
         self.calendar = calendar
-        self.displayedMonth = Self.startOfMonth(for: .now, calendar: calendar)
+        self.displayedMonth = Self.startOfMonth(
+            for: AppDay.anchor(.now, calendar: calendar),
+            calendar: calendar
+        )
     }
 
     func configure(context: ModelContext) {
@@ -50,57 +56,55 @@ final class RoutineLogViewModel {
         }
 
         let now = Date()
-        let today = calendar.startOfDay(for: now)
-        guard let windowStart = calendar.date(byAdding: .day, value: -120, to: today) else { return }
-
-        var map: [Date: Set<UUID>] = [:]
-        var cursor = windowStart
-        while cursor <= today {
-            let appDay = AppDay.start(ofCalendarDay: cursor, calendar: calendar)
-            for routine in routines where routine.wasCompleteOn(day: appDay, now: now, calendar: calendar) {
-                map[cursor, default: []].insert(routine.id)
+        completionDatesByRoutineID = Dictionary(
+            uniqueKeysWithValues: routines.map { routine in
+                (
+                    routine.id,
+                    RoutineYearStatisticsCalculator.completionDates(
+                        for: routine,
+                        now: now,
+                        calendar: calendar
+                    )
+                )
             }
-            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
-            cursor = next
-        }
-        completionsByDay = map
-
+        )
+        rebuildDisplayedMonthCompletions()
         achievements = computeAchievements(now: now)
-        streakDays = RoutineStreak.overallStreak(routines: routines, now: now, calendar: calendar)
+        streakDays = RoutineStreak.overallStreak(
+            completionDates: completionDatesByRoutineID.values.flatMap { $0 },
+            now: now,
+            calendar: calendar
+        )
+        hasLoaded = true
     }
 
     private func computeAchievements(now: Date, windowDays: Int = 30) -> [RoutineAchievement] {
-        let today = calendar.startOfDay(for: now)
-        guard let windowStart = calendar.date(byAdding: .day, value: -(windowDays - 1), to: today) else { return [] }
-
         return routines.filter(\.isActive).map { routine in
-            let createdDay = calendar.startOfDay(for: routine.createdAt)
-            let rangeStart = max(windowStart, createdDay)
-
-            var applicable = 0
-            var completed = 0
-            var cursor = rangeStart
-            while cursor <= today {
-                let appDay = AppDay.start(ofCalendarDay: cursor, calendar: calendar)
-                if routine.isScheduled(on: appDay, calendar: calendar) {
-                    applicable += 1
-                    if routine.wasCompleteOn(day: appDay, now: now, calendar: calendar) { completed += 1 }
-                }
-                guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
-                cursor = next
-            }
-            return RoutineAchievement(routine: routine, completedCount: completed, applicableCount: applicable)
+            let summary = RoutineYearStatisticsCalculator.recentSummary(
+                for: routine,
+                trailingCalendarDays: windowDays,
+                now: now,
+                calendar: calendar
+            )
+            return RoutineAchievement(
+                routine: routine,
+                completedCount: summary.completedCount,
+                applicableCount: summary.applicableCount,
+                unitLabel: summary.unitLabel
+            )
         }
     }
 
     func goToPreviousMonth() {
         guard let newMonth = calendar.date(byAdding: .month, value: -1, to: displayedMonth) else { return }
         displayedMonth = newMonth
+        rebuildDisplayedMonthCompletions()
     }
 
     func goToNextMonth() {
         guard let newMonth = calendar.date(byAdding: .month, value: 1, to: displayedMonth) else { return }
         displayedMonth = newMonth
+        rebuildDisplayedMonthCompletions()
     }
 
     func daysInDisplayedMonth() -> [Date?] {
@@ -132,6 +136,28 @@ final class RoutineLogViewModel {
         let key = calendar.startOfDay(for: day)
         guard let ids = completionsByDay[key] else { return [] }
         return routines.filter { ids.contains($0.id) }
+    }
+
+    private func rebuildDisplayedMonthCompletions() {
+        guard let monthInterval = calendar.dateInterval(of: .month, for: displayedMonth) else {
+            completionsByDay = [:]
+            return
+        }
+
+        var map: [Date: Set<UUID>] = [:]
+        for routine in routines {
+            let completionDates = completionDatesByRoutineID[routine.id] ?? []
+            for completedAt in completionDates {
+                let completedCalendarDay = calendar.startOfDay(
+                    for: AppDay.anchor(completedAt, calendar: calendar)
+                )
+                if completedCalendarDay >= monthInterval.start,
+                   completedCalendarDay < monthInterval.end {
+                    map[completedCalendarDay, default: []].insert(routine.id)
+                }
+            }
+        }
+        completionsByDay = map
     }
 
     private static func startOfMonth(for date: Date, calendar: Calendar) -> Date {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RoutineLogView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel = RoutineLogViewModel()
 
     private let calendar = Calendar.current
@@ -49,18 +50,27 @@ struct RoutineLogView: View {
                 .foregroundStyle(AppColor.muted)
 
             ForEach(viewModel.achievements) { achievement in
-                HStack {
-                    Image(systemName: routineIcon)
-                        .foregroundStyle(AppColor.primary)
-                    Text(achievement.routine.title)
-                        .font(.subheadline)
-                    Spacer()
-                    Text("\(Int((achievement.rate * 100).rounded()))%")
-                        .font(.subheadline.bold())
-                    Text("(\(achievement.completedCount)/\(achievement.applicableCount)日)")
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.muted)
+                NavigationLink {
+                    RoutineStatisticsView(routine: achievement.routine)
+                } label: {
+                    achievementRow(achievement)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    "\(achievement.routine.title)、達成率\(Int((achievement.rate * 100).rounded()))パーセント、"
+                        + "\(achievement.applicableCount)\(achievement.unitLabel)中"
+                        + "\(achievement.completedCount)\(achievement.unitLabel)達成"
+                )
+                .accessibilityHint("個別の達成状況を表示")
+            }
+
+            if viewModel.hasLoaded && viewModel.achievements.isEmpty {
+                Text("達成状況を表示する約束がありません")
+                    .font(.subheadline)
+                    .foregroundStyle(AppColor.muted)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
         }
         .padding()
@@ -93,6 +103,8 @@ struct RoutineLogView: View {
             ForEach(viewModel.weekdaySymbols, id: \.self) { symbol in
                 Text(symbol)
                     .font(.caption2)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
                     .foregroundStyle(AppColor.muted)
                     .frame(maxWidth: .infinity)
             }
@@ -100,26 +112,92 @@ struct RoutineLogView: View {
     }
 
     private func dayCell(for date: Date) -> some View {
-        let isToday = calendar.isDateInToday(date)
+        let isToday = calendar.isDate(date, inSameDayAs: AppDay.anchor(.now, calendar: calendar))
         let day = calendar.component(.day, from: date)
         let completed = viewModel.completedRoutines(on: date)
+        let iconColumns = Array(
+            repeating: GridItem(.flexible(), spacing: 1),
+            count: min(max(completed.count, 1), 3)
+        )
         return VStack(spacing: 4) {
             Text("\(day)")
                 .font(.subheadline)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
                 .foregroundStyle(isToday ? Color.white : AppColor.text)
                 .frame(width: 28, height: 28)
                 .background(isToday ? AppColor.primary : Color.clear, in: Circle())
-            HStack(spacing: 3) {
+            LazyVGrid(columns: iconColumns, spacing: 1) {
                 ForEach(completed, id: \.id) { routine in
                     Image(systemName: routine.iconName ?? routineIcon)
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: 8, weight: .semibold))
                         .foregroundStyle(AppColor.primary)
-                        .accessibilityLabel(routine.title)
                 }
             }
-            .frame(height: 12)
+            .frame(maxWidth: .infinity, minHeight: 12, alignment: .top)
         }
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(calendarAccessibilityLabel(for: date, completed: completed))
+    }
+
+    @ViewBuilder
+    private func achievementRow(_ achievement: RoutineAchievement) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    achievementTitle(achievement)
+                    Spacer()
+                    chevron
+                }
+                HStack(spacing: 8) {
+                    Spacer()
+                    achievementNumbers(achievement)
+                }
+            }
+            .padding(.vertical, 4)
+        } else {
+            HStack(spacing: 8) {
+                achievementTitle(achievement)
+                Spacer()
+                achievementNumbers(achievement)
+                chevron
+            }
+        }
+    }
+
+    private func achievementTitle(_ achievement: RoutineAchievement) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: routineIcon)
+                .foregroundStyle(AppColor.primary)
+            Text(achievement.routine.title)
+                .font(.subheadline)
+                .foregroundStyle(AppColor.text)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+        }
+    }
+
+    private func achievementNumbers(_ achievement: RoutineAchievement) -> some View {
+        HStack(spacing: 8) {
+            Text("\(Int((achievement.rate * 100).rounded()))%")
+                .font(.subheadline.bold())
+                .foregroundStyle(AppColor.text)
+            Text("(\(achievement.completedCount)/\(achievement.applicableCount)\(achievement.unitLabel))")
+                .font(.caption2)
+                .foregroundStyle(AppColor.muted)
+        }
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(AppColor.muted)
+    }
+
+    private func calendarAccessibilityLabel(for date: Date, completed: [Routine]) -> String {
+        let dateLabel = date.formatted(.dateTime.month().day().weekday(.wide))
+        guard !completed.isEmpty else { return "\(dateLabel)、達成なし" }
+        return "\(dateLabel)、達成：\(completed.map(\.title).joined(separator: "、"))"
     }
 
     private let routineIcon = "checkmark.circle.fill"

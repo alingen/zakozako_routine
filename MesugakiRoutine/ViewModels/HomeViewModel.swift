@@ -24,7 +24,7 @@ final class HomeViewModel {
     private(set) var todayRoutines: [Routine] = []
     /// Routine.id → 現在の期間の進捗。
     private(set) var routineProgressById: [UUID: RoutineTodayProgress] = [:]
-    /// Routine.id → 連続達成日数。
+    /// Routine.id → 連続達成期間数（日／週／月）。
     private(set) var routineStreakById: [UUID: Int] = [:]
 
     var todayCompletedCount: Int {
@@ -57,6 +57,7 @@ final class HomeViewModel {
 
     /// 約束が完了した直後に、完了演出へ渡す表示データが入る。閉じる時は `clearCompletion()`。
     private(set) var completionContext: RoutineCompletionContext?
+    private(set) var routineOperationErrorMessage: String?
 
     private var dependencies: AppDependencies?
 
@@ -191,26 +192,42 @@ final class HomeViewModel {
 
     func deleteRoutine(_ routine: Routine) {
         guard let dependencies else { return }
-        dependencies.routineRepository.delete(routine)
-        reload()
+        do {
+            try dependencies.routineRepository.delete(routine)
+            routineOperationErrorMessage = nil
+            reload()
+        } catch {
+            routineOperationErrorMessage = error.localizedDescription
+        }
     }
 
     /// 約束のホールド操作が成立した時: 1回進める。目標に達したら完了演出を出す。
     func advanceRoutine(_ routine: Routine) {
         // 達成済みの期間には追加ログを積まない。日/週/月の次の期間に入ると再び記録できる。
         guard let dependencies, !routine.isComplete() else { return }
-        dependencies.routineRepository.recordProgress(routine)
+        do {
+            try dependencies.routineRepository.recordProgress(routine)
+            routineOperationErrorMessage = nil
+        } catch {
+            routineOperationErrorMessage = error.localizedDescription
+            return
+        }
         reload()
         if routine.isComplete() {
             completionContext = RoutineCompletionContext(
                 routineTitle: routine.title,
-                currentStreak: RoutineStreak.currentStreak(routine: routine)
+                currentStreak: RoutineStreak.currentStreak(routine: routine),
+                streakUnitLabel: routine.period.streakUnitLabel
             )
         }
     }
 
     func clearCompletion() {
         completionContext = nil
+    }
+
+    func clearRoutineOperationError() {
+        routineOperationErrorMessage = nil
     }
 
     /// 中立 App Intent「今日の約束を開く」の遷移先。今日ぶんで未完了の先頭、無ければ先頭。

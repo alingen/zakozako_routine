@@ -18,7 +18,6 @@ struct RoutineEditView: View {
         Form {
             Section("約束") {
                 TextField("タイトル", text: $viewModel.title)
-                    .onChange(of: viewModel.title) { viewModel.save() }
             }
 
             Section("アイコン") {
@@ -51,10 +50,8 @@ struct RoutineEditView: View {
                         Text(period.pickerLabel).tag(period)
                     }
                 }
-                .onChange(of: viewModel.period) { viewModel.save() }
 
                 Stepper("\(viewModel.period.pickerLabel) \(viewModel.targetCount)回", value: $viewModel.targetCount, in: 1...50)
-                    .onChange(of: viewModel.targetCount) { viewModel.save() }
             } header: {
                 Text("回数")
             } footer: {
@@ -67,7 +64,6 @@ struct RoutineEditView: View {
                         ForEach(Weekday.allCases) { weekday in
                             Button {
                                 viewModel.toggleWeekday(weekday)
-                                viewModel.save()
                             } label: {
                                 Text(weekday.shortLabel)
                                     .font(.subheadline.weight(.semibold))
@@ -100,10 +96,8 @@ struct RoutineEditView: View {
 
             Section {
                 Toggle("指定時刻に通知する", isOn: $viewModel.notifyAtScheduledTime)
-                    .onChange(of: viewModel.notifyAtScheduledTime) { viewModel.save() }
                 if viewModel.notifyAtScheduledTime {
                     DatePicker("通知時刻", selection: $viewModel.scheduledStartTime, displayedComponents: .hourAndMinute)
-                        .onChange(of: viewModel.scheduledStartTime) { viewModel.save() }
                 }
             } header: {
                 Text("通知")
@@ -126,7 +120,6 @@ struct RoutineEditView: View {
             if !isExisting {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {
-                        viewModel.deleteRoutine()  // 入力途中で作られた分があれば消す
                         dismiss()
                     }
                 }
@@ -134,8 +127,9 @@ struct RoutineEditView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                viewModel.save()
-                dismiss()
+                if viewModel.save() {
+                    dismiss()
+                }
             } label: {
                 Text(isExisting ? "保存" : "約束を保存")
                     .font(.headline)
@@ -151,16 +145,29 @@ struct RoutineEditView: View {
         }
         .confirmationDialog("この約束を削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
             Button("削除する", role: .destructive) {
-                viewModel.deleteRoutine()
-                dismiss()
+                if viewModel.deleteRoutine() {
+                    dismiss()
+                }
             }
             Button("キャンセル", role: .cancel) {}
         }
         .sheet(isPresented: $isPresentingIconPicker) {
             IconPickerView(selected: viewModel.iconName) { name in
                 viewModel.iconName = name
-                viewModel.save()
             }
+        }
+        .alert(
+            "保存できませんでした",
+            isPresented: Binding(
+                get: { viewModel.saveErrorMessage != nil },
+                set: { if !$0 { viewModel.clearSaveError() } }
+            )
+        ) {
+            Button("OK") {
+                viewModel.clearSaveError()
+            }
+        } message: {
+            Text(viewModel.saveErrorMessage ?? "不明なエラーです")
         }
         .task {
             viewModel.configure(context: modelContext)

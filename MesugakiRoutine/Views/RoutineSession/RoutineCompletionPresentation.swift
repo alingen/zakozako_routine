@@ -6,9 +6,10 @@ struct RoutineCompletionContext: Identifiable, Equatable {
     let routineTitle: String
     /// 完了後時点での、そのルーティンの連続達成回数。
     let currentStreak: Int
+    let streakUnitLabel: String
 }
 
-/// ルーティン完了時のシンプルな完了画面。チェック＋「◯◯ 完了！ N日達成」＋とじるボタンだけ。
+/// ルーティン完了時のシンプルな完了画面。チェック＋完了内容＋とじるボタンだけ。
 struct RoutineCompletionPresentation: View {
     let context: RoutineCompletionContext
     var onFinish: () -> Void
@@ -33,7 +34,7 @@ struct RoutineCompletionPresentation: View {
                     .multilineTextAlignment(.center)
 
                 if context.currentStreak >= 1 {
-                    Text("\(context.currentStreak)日達成！")
+                    Text("\(context.currentStreak)\(context.streakUnitLabel)達成！")
                         .font(.headline)
                         .foregroundStyle(AppColor.success)
                 }
@@ -54,7 +55,11 @@ struct RoutineCompletionPresentation: View {
 
 #Preview {
     RoutineCompletionPresentation(
-        context: RoutineCompletionContext(routineTitle: "10分勉強する", currentStreak: 5),
+        context: RoutineCompletionContext(
+            routineTitle: "10分勉強する",
+            currentStreak: 5,
+            streakUnitLabel: "日"
+        ),
         onFinish: {}
     )
 }

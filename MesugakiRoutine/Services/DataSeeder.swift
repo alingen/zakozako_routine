@@ -2,7 +2,6 @@ import Foundation
 import SwiftData
 
 /// 初回起動時にサンプルデータ(シンプルなルーティン数件、やらないこと1件)を投入する。
-/// 既存ユーザー(すでにデータがある)には一切触れない。
 @MainActor
 enum DataSeeder {
     static func seedIfNeeded(context: ModelContext) {

@@ -18,6 +18,7 @@ final class RoutineEditViewModel {
     var notifyAtScheduledTime: Bool = false
     /// 対象曜日。period == .day のときだけ有効。デフォルトは全曜日。
     var selectedWeekdays: Set<Int> = Set(Weekday.allWeekdayValues)
+    private(set) var saveErrorMessage: String?
 
     private var dependencies: AppDependencies?
 
@@ -65,40 +66,60 @@ final class RoutineEditViewModel {
     }
 
     /// 変更を保存する。新規作成の場合はここで約束を作成する。
-    func save() {
-        guard let dependencies, canSave else { return }
+    @discardableResult
+    func save() -> Bool {
+        guard let dependencies, canSave else { return false }
         let scheduledStartMinute = notifyAtScheduledTime ? Routine.minutes(from: scheduledStartTime) : nil
         // 週/月の期間では対象曜日は全曜日扱いにする。
         let weekdayValues = canSelectWeekdays ? Array(selectedWeekdays) : Weekday.allWeekdayValues
         let count = max(targetCount, 1)
 
-        if let routine {
-            dependencies.routineRepository.update(
-                routine,
-                title: title,
-                isActive: routine.isActive,
-                iconName: iconName,
-                period: period,
-                targetCount: count,
-                scheduledStartMinute: scheduledStartMinute,
-                activeWeekdayValues: weekdayValues
-            )
-        } else {
-            routine = dependencies.routineRepository.create(
-                title: title,
-                iconName: iconName,
-                period: period,
-                targetCount: count,
-                scheduledStartMinute: scheduledStartMinute,
-                activeWeekdayValues: weekdayValues
-            )
+        do {
+            if let routine {
+                try dependencies.routineRepository.update(
+                    routine,
+                    title: title,
+                    isActive: routine.isActive,
+                    iconName: iconName,
+                    period: period,
+                    targetCount: count,
+                    scheduledStartMinute: scheduledStartMinute,
+                    activeWeekdayValues: weekdayValues
+                )
+            } else {
+                routine = try dependencies.routineRepository.create(
+                    title: title,
+                    iconName: iconName,
+                    period: period,
+                    targetCount: count,
+                    scheduledStartMinute: scheduledStartMinute,
+                    activeWeekdayValues: weekdayValues
+                )
+            }
+            saveErrorMessage = nil
+            return true
+        } catch {
+            saveErrorMessage = error.localizedDescription
+            return false
         }
     }
 
+    func clearSaveError() {
+        saveErrorMessage = nil
+    }
+
     /// この約束を削除する(既存の編集時のみ)。
-    func deleteRoutine() {
-        guard let dependencies, let routine else { return }
-        dependencies.routineRepository.delete(routine)
-        self.routine = nil
+    @discardableResult
+    func deleteRoutine() -> Bool {
+        guard let dependencies, let routine else { return false }
+        do {
+            try dependencies.routineRepository.delete(routine)
+            saveErrorMessage = nil
+            self.routine = nil
+            return true
+        } catch {
+            saveErrorMessage = error.localizedDescription
+            return false
+        }
     }
 }

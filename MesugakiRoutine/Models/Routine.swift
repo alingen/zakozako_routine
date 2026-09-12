@@ -23,23 +23,31 @@ final class Routine {
     /// 対象曜日(Weekdayのraw value)。**期間が「1日」のときだけ意味を持つ。**
     var activeWeekdayValues: [Int] = Weekday.allWeekdayValues
 
-    /// 集計期間(生値)。既存データの軽量マイグレーションのため optional。nil は `.day`。
-    var periodRawValue: String?
-    /// 期間あたりの目標回数(生値)。nil / 1未満は 1。
-    var targetCountValue: Int?
-    /// 「1回やった」時刻のログ(生値)。nil は空配列。
-    var progressEventsStore: [Date]?
+    /// SwiftDataへ保存する集計期間の生値。
+    var periodRawValue: String
+    /// 期間あたりの目標回数。
+    var targetCountValue: Int
+    /// 「1回やった」時刻のログ。
+    var progressEventsStore: [Date]
+
+    /// 現在の回数・期間・対象曜日ルールを適用し始めた時刻。
+    /// 設定変更時にだけ更新し、変更前後の進捗を混ぜない。
+    var currentRuleStartedAt: Date
+
+    /// 達成ルールを変更する前に確定した、期間ごとの統計結果。
+    /// Data にしておくことで、集計用の値型をSwiftDataスキーマから独立させる。
+    var progressStatisticsArchiveData: Data?
 
     var period: HabitPeriod {
-        get { periodRawValue.flatMap(HabitPeriod.init(rawValue:)) ?? .day }
+        get { HabitPeriod(rawValue: periodRawValue) ?? .day }
         set { periodRawValue = newValue.rawValue }
     }
     var targetCount: Int {
-        get { max(targetCountValue ?? 1, 1) }
+        get { max(targetCountValue, 1) }
         set { targetCountValue = max(newValue, 1) }
     }
     var progressEvents: [Date] {
-        get { progressEventsStore ?? [] }
+        get { progressEventsStore }
         set { progressEventsStore = newValue }
     }
 
@@ -65,8 +73,10 @@ final class Routine {
         self.activeWeekdayValues = activeWeekdayValues
         self.iconName = iconName
         self.periodRawValue = period.rawValue
-        self.targetCountValue = targetCount
+        self.targetCountValue = max(targetCount, 1)
         self.progressEventsStore = progressEvents
+        self.currentRuleStartedAt = createdAt
+        self.progressStatisticsArchiveData = nil
     }
 
     // MARK: - 進捗
@@ -74,7 +84,9 @@ final class Routine {
     /// 現在時刻を含む期間の、これまでの消費回数。
     func progressCount(now: Date = .now, calendar: Calendar = .current) -> Int {
         let window = period.window(containing: now, calendar: calendar)
-        return progressEvents.filter { $0 >= window.start && $0 <= now }.count
+        return progressEvents.filter {
+            $0 >= max(window.start, currentRuleStartedAt) && $0 <= now
+        }.count
     }
 
     /// 現在の期間の目標を達成しているか。
@@ -95,7 +107,9 @@ final class Routine {
         let dayStart = AppDay.startOfDay(for: day, calendar: calendar)
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? window.end
         let upperBound = min(window.end, dayEnd, now)
-        let count = progressEvents.filter { $0 >= window.start && $0 < upperBound }.count
+        let count = progressEvents.filter {
+            $0 >= max(window.start, currentRuleStartedAt) && $0 < upperBound
+        }.count
         return count >= targetCount
     }
 

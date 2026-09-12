@@ -26,6 +26,15 @@ enum HabitPeriod: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// 連続達成の回数に付ける単位。
+    var streakUnitLabel: String {
+        switch self {
+        case .day: return "日"
+        case .week: return "週"
+        case .month: return "か月"
+        }
+    }
+
     var calendarComponent: Calendar.Component {
         switch self {
         case .day: return .day
