@@ -51,6 +51,23 @@ final class RoutineEditViewModel {
         canSelectWeekdays && selectedWeekdays.count < Weekday.allCases.count
     }
 
+    /// プリセットの内容を新規作成用の下書きへ反映する。選択しただけでは保存しない。
+    func applyPreset(_ preset: RoutinePreset) {
+        guard routine == nil else { return }
+        resetCreationDraft(
+            title: preset.title,
+            iconName: preset.iconName,
+            period: preset.period,
+            targetCount: preset.targetCount
+        )
+    }
+
+    /// 自由入力用に、新規作成の下書きを初期状態へ戻す。
+    func prepareCustomRoutine() {
+        guard routine == nil else { return }
+        resetCreationDraft(title: "", iconName: nil, period: .day, targetCount: 1)
+    }
+
     func toggleWeekday(_ weekday: Weekday) {
         if selectedWeekdays.contains(weekday.rawValue) {
             selectedWeekdays.remove(weekday.rawValue)
@@ -105,6 +122,22 @@ final class RoutineEditViewModel {
     }
 
     func clearSaveError() {
+        saveErrorMessage = nil
+    }
+
+    private func resetCreationDraft(
+        title: String,
+        iconName: String?,
+        period: HabitPeriod,
+        targetCount: Int
+    ) {
+        self.title = title
+        self.iconName = iconName
+        self.period = period
+        self.targetCount = max(targetCount, 1)
+        scheduledStartTime = Routine.date(fromMinutes: 8 * 60)
+        notifyAtScheduledTime = false
+        selectedWeekdays = Set(Weekday.allWeekdayValues)
         saveErrorMessage = nil
     }
 

@@ -46,12 +46,6 @@ final class HomeViewModel {
     /// 14日間守り切って卒業した「やらないこと」。新しい順。
     private(set) var masteredBehaviors: [BlockedBehavior] = []
 
-    var newBlockedBehaviorTitle: String = ""
-    /// true: 完全にやめる(1日1回でも✕)。false: ペース・回数を自分で決める。
-    var newIsQuitCompletely: Bool = true
-    var newHabitPeriod: HabitPeriod = .day
-    var newBlockedBehaviorLimitCount: Int = 1
-
     /// 「みんなのざこ速報」に出す項目(いまは自分の記録だけ。最大3件)。
     private(set) var zakoBulletinItems: [ZakoBulletinItem] = []
 
@@ -149,43 +143,56 @@ final class HomeViewModel {
         dependencies?.blockedBehaviorRepository.canAddNew() ?? false
     }
 
-    func addBlockedBehavior() {
-        guard let dependencies, canAddBlockedBehavior else { return }
-        let title = newBlockedBehaviorTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-        dependencies.blockedBehaviorRepository.create(
+    /// 下書きから新しい「やらないこと」を保存する。保存できたときだけ true。
+    @discardableResult
+    func addBlockedBehavior(_ draft: BlockedBehaviorDraft) -> Bool {
+        guard let dependencies, canAddBlockedBehavior else { return false }
+        let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return false }
+        guard dependencies.blockedBehaviorRepository.create(
             title: title,
-            limitPeriod: newIsQuitCompletely ? .day : newHabitPeriod,
-            limitCount: newIsQuitCompletely ? 1 : max(1, newBlockedBehaviorLimitCount)
-        )
-        newBlockedBehaviorTitle = ""
-        newIsQuitCompletely = true
-        newHabitPeriod = .day
-        newBlockedBehaviorLimitCount = 1
+            iconName: draft.iconName,
+            limitPeriod: draft.effectiveLimitPeriod,
+            limitCount: draft.effectiveLimitCount
+        ) != nil else { return false }
         reload()
+        return true
     }
 
+    @discardableResult
     func updateBlockedBehaviorDetails(
         _ behavior: BlockedBehavior,
         title: String,
+        iconName: String?,
         limitPeriod: HabitPeriod,
         limitCount: Int
-    ) {
-        guard let dependencies else { return }
+    ) -> Bool {
+        guard let dependencies else { return false }
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        dependencies.blockedBehaviorRepository.updateDetails(
+        guard dependencies.blockedBehaviorRepository.updateDetails(
             behavior,
             title: trimmed.isEmpty ? behavior.title : trimmed,
+            iconName: iconName,
             limitPeriod: limitPeriod,
             limitCount: max(1, limitCount)
-        )
+        ) else { return false }
         reload()
+        return true
+    }
+
+    @discardableResult
+    func deleteBlockedBehavior(_ behavior: BlockedBehavior) -> Bool {
+        guard let dependencies else { return false }
+        guard dependencies.blockedBehaviorRepository.delete(behavior) else { return false }
+        reload()
+        return true
     }
 
     func deleteMasteredBehavior(_ behavior: BlockedBehavior) {
         guard let dependencies else { return }
-        dependencies.blockedBehaviorRepository.delete(behavior)
-        reload()
+        if dependencies.blockedBehaviorRepository.delete(behavior) {
+            reload()
+        }
     }
 
     // MARK: - 約束(Routine)

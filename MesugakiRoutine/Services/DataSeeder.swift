@@ -1,12 +1,11 @@
 import Foundation
 import SwiftData
 
-/// 初回起動時にサンプルデータ(シンプルなルーティン数件、やらないこと1件)を投入する。
+/// 初回起動時に、操作例になるシンプルなルーティンを投入する。
 @MainActor
 enum DataSeeder {
     static func seedIfNeeded(context: ModelContext) {
         seedRoutinesIfNeeded(context: context)
-        seedBlockedBehaviorsIfNeeded(context: context)
         try? context.save()
     }
 
@@ -26,12 +25,4 @@ enum DataSeeder {
         }
     }
 
-    /// 「やらないこと」は同時に1件しか挑戦できない設計のため、サンプルも1件だけ投入する。
-    private static func seedBlockedBehaviorsIfNeeded(context: ModelContext) {
-        let descriptor = FetchDescriptor<BlockedBehavior>()
-        let existing = (try? context.fetch(descriptor)) ?? []
-        guard existing.isEmpty else { return }
-
-        context.insert(BlockedBehavior(title: "YouTubeを見ない"))
-    }
 }

@@ -3,18 +3,29 @@ import SwiftUI
 /// アイコン選択のスライドモーダル。選ぶと閉じる。
 struct IconPickerView: View {
     let selected: String?
+    let icons: [String]
     let onSelect: (String?) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 5)
 
+    init(
+        selected: String?,
+        icons: [String] = RoutineIcon.all,
+        onSelect: @escaping (String?) -> Void
+    ) {
+        self.selected = selected
+        self.icons = icons
+        self.onSelect = onSelect
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 12) {
                     cell(nil, systemImage: "nosign", label: "なし")
-                    ForEach(RoutineIcon.all, id: \.self) { name in
+                    ForEach(icons, id: \.self) { name in
                         cell(name, systemImage: name, label: name)
                     }
                 }

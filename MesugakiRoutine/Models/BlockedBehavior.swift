@@ -10,6 +10,8 @@ import SwiftData
 final class BlockedBehavior {
     @Attribute(.unique) var id: UUID
     var title: String
+    /// カードの円の中に表示する SF Symbol 名。既存データは nil のまま扱える。
+    var iconName: String?
     /// 現在挑戦中かどうか。true になれるのは同時に1件のみ。
     var isActive: Bool
     /// 回数制限の集計期間(生値)。既存データの軽量マイグレーションを通すため optional String で保持する
@@ -52,6 +54,7 @@ final class BlockedBehavior {
     init(
         id: UUID = UUID(),
         title: String,
+        iconName: String? = nil,
         isActive: Bool = true,
         limitPeriod: HabitPeriod = .day,
         limitCount: Int = 1,
@@ -64,6 +67,7 @@ final class BlockedBehavior {
     ) {
         self.id = id
         self.title = title
+        self.iconName = iconName
         self.isActive = isActive
         self.limitPeriodRawValue = limitPeriod.rawValue
         self.limitCountValue = limitCount

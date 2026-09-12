@@ -1,20 +1,111 @@
 import SwiftUI
 
 struct RoutineEditView: View {
+    private enum CreationStep {
+        case presetSelection
+        case details
+    }
+
+    private enum DraftSource: Equatable {
+        case custom
+        case preset(String)
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RoutineEditViewModel
     @State private var isPresentingDeleteConfirm = false
     @State private var isPresentingIconPicker = false
+    @State private var creationStep: CreationStep
+    @State private var draftSource: DraftSource?
 
     private let isExisting: Bool
 
     init(routine: Routine?) {
         _viewModel = State(initialValue: RoutineEditViewModel(routine: routine))
+        _creationStep = State(initialValue: routine == nil ? .presetSelection : .details)
+        _draftSource = State(initialValue: nil)
         isExisting = routine != nil
     }
 
     var body: some View {
+        Group {
+            if isSelectingPreset {
+                RoutinePresetSelectionView(
+                    onSelectCustom: showCustomDetails,
+                    onSelectPreset: showPresetDetails
+                )
+            } else {
+                detailsForm
+            }
+        }
+        .navigationTitle(navigationTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !isExisting {
+                ToolbarItem(placement: .cancellationAction) {
+                    if isSelectingPreset {
+                        Button("キャンセル") {
+                            dismiss()
+                        }
+                    } else {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                creationStep = .presetSelection
+                            }
+                        } label: {
+                            Label("プリセット", systemImage: "chevron.left")
+                        }
+                    }
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if !isSelectingPreset {
+                saveButton
+            }
+        }
+        .confirmationDialog("この約束を削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
+            Button("削除する", role: .destructive) {
+                if viewModel.deleteRoutine() {
+                    dismiss()
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .sheet(isPresented: $isPresentingIconPicker) {
+            IconPickerView(selected: viewModel.iconName) { name in
+                viewModel.iconName = name
+            }
+        }
+        .alert(
+            "保存できませんでした",
+            isPresented: Binding(
+                get: { viewModel.saveErrorMessage != nil },
+                set: { if !$0 { viewModel.clearSaveError() } }
+            )
+        ) {
+            Button("OK") {
+                viewModel.clearSaveError()
+            }
+        } message: {
+            Text(viewModel.saveErrorMessage ?? "不明なエラーです")
+        }
+        .task {
+            viewModel.configure(context: modelContext)
+        }
+    }
+
+    private var isSelectingPreset: Bool {
+        !isExisting && creationStep == .presetSelection
+    }
+
+    private var navigationTitle: String {
+        if isExisting { return "約束を編集" }
+        return isSelectingPreset ? "約束を追加" : "約束を確認"
+    }
+
+    private var detailsForm: some View {
         Form {
             Section("約束") {
                 TextField("タイトル", text: $viewModel.title)
@@ -55,7 +146,7 @@ struct RoutineEditView: View {
             } header: {
                 Text("回数")
             } footer: {
-                Text("この期間のあいだに、円をタップしてこの回数をこなすと「達成」です。")
+                Text("この期間のあいだに、円を長押ししてこの回数をこなすと「達成」です。")
             }
 
             if viewModel.canSelectWeekdays {
@@ -115,62 +206,47 @@ struct RoutineEditView: View {
                 }
             }
         }
-        .navigationTitle(isExisting ? "約束を編集" : "約束を追加")
-        .toolbar {
-            if !isExisting {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") {
-                        dismiss()
-                    }
-                }
+    }
+
+    private var saveButton: some View {
+        Button {
+            if viewModel.save() {
+                dismiss()
             }
+        } label: {
+            Text(isExisting ? "保存" : "約束を保存")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
         }
-        .safeAreaInset(edge: .bottom) {
-            Button {
-                if viewModel.save() {
-                    dismiss()
-                }
-            } label: {
-                Text(isExisting ? "保存" : "約束を保存")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(AppColor.primary)
-            .disabled(!viewModel.canSave)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(AppColor.background)
+        .buttonStyle(.borderedProminent)
+        .tint(AppColor.primary)
+        .disabled(!viewModel.canSave)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(AppColor.background)
+    }
+
+    private func showCustomDetails() {
+        if draftSource != .custom {
+            viewModel.prepareCustomRoutine()
         }
-        .confirmationDialog("この約束を削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
-            Button("削除する", role: .destructive) {
-                if viewModel.deleteRoutine() {
-                    dismiss()
-                }
-            }
-            Button("キャンセル", role: .cancel) {}
+        draftSource = .custom
+        showDetails()
+    }
+
+    private func showPresetDetails(_ preset: RoutinePreset) {
+        let selectedSource = DraftSource.preset(preset.id)
+        if draftSource != selectedSource {
+            viewModel.applyPreset(preset)
         }
-        .sheet(isPresented: $isPresentingIconPicker) {
-            IconPickerView(selected: viewModel.iconName) { name in
-                viewModel.iconName = name
-            }
-        }
-        .alert(
-            "保存できませんでした",
-            isPresented: Binding(
-                get: { viewModel.saveErrorMessage != nil },
-                set: { if !$0 { viewModel.clearSaveError() } }
-            )
-        ) {
-            Button("OK") {
-                viewModel.clearSaveError()
-            }
-        } message: {
-            Text(viewModel.saveErrorMessage ?? "不明なエラーです")
-        }
-        .task {
-            viewModel.configure(context: modelContext)
+        draftSource = selectedSource
+        showDetails()
+    }
+
+    private func showDetails() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            creationStep = .details
         }
     }
 }

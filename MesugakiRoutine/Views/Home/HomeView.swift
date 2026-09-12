@@ -9,7 +9,7 @@ struct HomeView: View {
     @State private var isPresentingNewRoutine = false
     @State private var isEditingRoutines = false
     @State private var editingBehavior: BlockedBehavior?
-    @State private var showAddPromiseForm = false
+    @State private var isPresentingNewBlockedBehavior = false
 
     private let routineGridColumns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
 
@@ -31,6 +31,13 @@ struct HomeView: View {
                 RoutineEditView(routine: nil)
             }
         }
+        .sheet(isPresented: $isPresentingNewBlockedBehavior, onDismiss: { viewModel.reload() }) {
+            NavigationStack {
+                BlockedBehaviorCreateView { draft in
+                    viewModel.addBlockedBehavior(draft)
+                }
+            }
+        }
         .fullScreenCover(
             item: Binding(
                 get: { viewModel.completionContext },
@@ -40,13 +47,16 @@ struct HomeView: View {
             RoutineCompletionPresentation(context: context, onFinish: { viewModel.clearCompletion() })
         }
         .sheet(item: $editingBehavior) { behavior in
-            BlockedBehaviorDetailView(behavior: behavior) { title, limitPeriod, limitCount in
+            BlockedBehaviorDetailView(behavior: behavior) { title, iconName, limitPeriod, limitCount in
                 viewModel.updateBlockedBehaviorDetails(
                     behavior,
                     title: title,
+                    iconName: iconName,
                     limitPeriod: limitPeriod,
                     limitCount: limitCount
                 )
+            } onDelete: {
+                viewModel.deleteBlockedBehavior(behavior)
             }
         }
         .alert(
@@ -195,39 +205,9 @@ struct HomeView: View {
             if let behavior = viewModel.currentBehavior {
                 promiseCard(behavior)
                     .padding(.vertical, 4)
-            } else if showAddPromiseForm {
-                VStack(alignment: .leading, spacing: 8) {
-                    TextField("やらないこと(例: YouTubeを見ない)", text: $viewModel.newBlockedBehaviorTitle)
-
-                    Text("上限設定")
-                        .font(.caption)
-                        .foregroundStyle(AppColor.muted)
-                    Picker("上限", selection: $viewModel.newIsQuitCompletely) {
-                        Text("完全にやめる").tag(true)
-                        Text("回数を決める").tag(false)
-                    }
-                    if !viewModel.newIsQuitCompletely {
-                        Picker("ペース", selection: $viewModel.newHabitPeriod) {
-                            ForEach(HabitPeriod.allCases) { period in
-                                Text(period.pickerLabel).tag(period)
-                            }
-                        }
-                        Stepper(
-                            "\(viewModel.newHabitPeriod.pickerLabel) \(viewModel.newBlockedBehaviorLimitCount) 回で✕",
-                            value: $viewModel.newBlockedBehaviorLimitCount,
-                            in: 1...50
-                        )
-                    }
-
-                    Button("決定") {
-                        viewModel.addBlockedBehavior()
-                        showAddPromiseForm = false
-                    }
-                    .disabled(viewModel.newBlockedBehaviorTitle.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
             } else {
                 Button {
-                    showAddPromiseForm = true
+                    isPresentingNewBlockedBehavior = true
                 } label: {
                     Label("やらないことを決める", systemImage: "hand.raised")
                 }
@@ -266,7 +246,8 @@ struct HomeView: View {
                         size: 34,
                         tint: AppColor.primary,
                         showsCheckmarkWhenComplete: false,
-                        failed: usage.failed
+                        failed: usage.failed,
+                        centerSystemImage: behavior.iconName
                     )
                     VStack(alignment: .leading, spacing: 2) {
                         Text(behavior.title)

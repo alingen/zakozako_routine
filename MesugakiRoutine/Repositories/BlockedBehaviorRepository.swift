@@ -39,27 +39,48 @@ final class BlockedBehaviorRepository {
     @discardableResult
     func create(
         title: String,
+        iconName: String? = nil,
         limitPeriod: HabitPeriod = .day,
         limitCount: Int = 0
-    ) -> BlockedBehavior {
-        let behavior = BlockedBehavior(title: title, limitPeriod: limitPeriod, limitCount: limitCount)
+    ) -> BlockedBehavior? {
+        guard canAddNew() else { return nil }
+        let behavior = BlockedBehavior(
+            title: title,
+            iconName: iconName,
+            limitPeriod: limitPeriod,
+            limitCount: limitCount
+        )
         context.insert(behavior)
-        save()
-        return behavior
+        do {
+            try context.save()
+            return behavior
+        } catch {
+            context.delete(behavior)
+            return nil
+        }
     }
 
     /// タイトル・回数制限を更新する(詳細編集シート用)。
+    @discardableResult
     func updateDetails(
         _ behavior: BlockedBehavior,
         title: String,
+        iconName: String?,
         limitPeriod: HabitPeriod,
         limitCount: Int
-    ) {
+    ) -> Bool {
         behavior.title = title
+        behavior.iconName = iconName
         behavior.limitPeriod = limitPeriod
         behavior.limitCount = limitCount
         behavior.updatedAt = .now
-        save()
+        do {
+            try context.save()
+            return true
+        } catch {
+            context.rollback()
+            return false
+        }
     }
 
     /// カードタップで「1回消費」する。
@@ -115,9 +136,16 @@ final class BlockedBehaviorRepository {
         return keptDays
     }
 
-    func delete(_ behavior: BlockedBehavior) {
+    @discardableResult
+    func delete(_ behavior: BlockedBehavior) -> Bool {
         context.delete(behavior)
-        save()
+        do {
+            try context.save()
+            return true
+        } catch {
+            context.rollback()
+            return false
+        }
     }
 
     // MARK: - デバッグ用(自動判定の動作確認)
