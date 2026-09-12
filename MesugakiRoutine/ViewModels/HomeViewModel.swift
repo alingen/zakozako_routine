@@ -143,7 +143,7 @@ final class HomeViewModel {
         dependencies?.blockedBehaviorRepository.canAddNew() ?? false
     }
 
-    /// 下書きから新しい「やらないこと」を保存する。保存できたときだけ true。
+    /// 「やらないことを決める」画面の下書きを保存する。保存できたときだけ true。
     @discardableResult
     func addBlockedBehavior(_ draft: BlockedBehaviorDraft) -> Bool {
         guard let dependencies, canAddBlockedBehavior else { return false }
@@ -155,27 +155,6 @@ final class HomeViewModel {
             limitPeriod: draft.effectiveLimitPeriod,
             limitCount: draft.effectiveLimitCount
         ) != nil else { return false }
-        reload()
-        return true
-    }
-
-    @discardableResult
-    func updateBlockedBehaviorDetails(
-        _ behavior: BlockedBehavior,
-        title: String,
-        iconName: String?,
-        limitPeriod: HabitPeriod,
-        limitCount: Int
-    ) -> Bool {
-        guard let dependencies else { return false }
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard dependencies.blockedBehaviorRepository.updateDetails(
-            behavior,
-            title: trimmed.isEmpty ? behavior.title : trimmed,
-            iconName: iconName,
-            limitPeriod: limitPeriod,
-            limitCount: max(1, limitCount)
-        ) else { return false }
         reload()
         return true
     }

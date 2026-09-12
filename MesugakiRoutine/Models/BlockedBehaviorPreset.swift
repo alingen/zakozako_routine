@@ -52,19 +52,9 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
             iconName: "lungs"
         ),
         BlockedBehaviorPreset(
-            id: "no-harsh-words",
-            title: "悪態をつかない",
-            iconName: "bubble.left"
-        ),
-        BlockedBehaviorPreset(
-            id: "improve-posture",
-            title: "猫背をやめる",
-            iconName: "figure.stand"
-        ),
-        BlockedBehaviorPreset(
-            id: "stop-nail-biting",
-            title: "爪を噛まない",
-            iconName: "hand.raised"
+            id: "quit-alcohol",
+            title: "断酒する",
+            iconName: "wineglass"
         ),
         BlockedBehaviorPreset(
             id: "stop-nose-picking",
@@ -72,10 +62,9 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
             iconName: "hand.raised"
         ),
         BlockedBehaviorPreset(
-            id: "reduce-alcohol",
-            title: "アルコールの消費量を減らす",
-            iconName: "wineglass",
-            limitRule: .counted(period: .week, failureCount: 4)
+            id: "avoid-junk-food",
+            title: "ジャンクフードを食べない",
+            iconName: "fork.knife"
         ),
         BlockedBehaviorPreset(
             id: "no-coffee",
@@ -83,24 +72,14 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
             iconName: "cup.and.saucer"
         ),
         BlockedBehaviorPreset(
-            id: "avoid-unhealthy-food",
-            title: "体に悪い食べ物を避ける",
-            iconName: "fork.knife"
+            id: "no-sweets",
+            title: "甘いものをたべない",
+            iconName: "birthday.cake"
         ),
         BlockedBehaviorPreset(
-            id: "no-procrastination",
-            title: "先延ばしにしない",
-            iconName: "hourglass"
-        ),
-        BlockedBehaviorPreset(
-            id: "less-phone",
-            title: "スマホを見すぎない",
-            iconName: "phone.down"
-        ),
-        BlockedBehaviorPreset(
-            id: "no-impulse-buying",
-            title: "衝動買いをしない",
-            iconName: "cart"
+            id: "no-social-media",
+            title: "SNSを見ない",
+            iconName: "bubble.left.and.bubble.right"
         ),
         BlockedBehaviorPreset(
             id: "no-staying-up-late",

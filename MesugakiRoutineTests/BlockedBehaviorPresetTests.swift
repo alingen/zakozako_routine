@@ -10,6 +10,19 @@ final class BlockedBehaviorPresetTests: XCTestCase {
     func testCatalogUsesUniqueIdentifiersAndAvailableIcons() {
         XCTAssertFalse(BlockedBehaviorPreset.all.isEmpty)
         XCTAssertEqual(
+            BlockedBehaviorPreset.all.map(\.title),
+            [
+                "禁煙する",
+                "断酒する",
+                "鼻をほじらない",
+                "ジャンクフードを食べない",
+                "コーヒーを飲まない",
+                "甘いものをたべない",
+                "SNSを見ない",
+                "夜ふかしをしない",
+            ]
+        )
+        XCTAssertEqual(
             Set(BlockedBehaviorPreset.all.map(\.id)).count,
             BlockedBehaviorPreset.all.count
         )
@@ -41,19 +54,10 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertEqual(draft.effectiveLimitCount, 1)
     }
 
-    func testApplyingCountedPresetFillsItsLimitRule() throws {
-        let preset = try XCTUnwrap(
-            BlockedBehaviorPreset.all.first { $0.id == "reduce-alcohol" }
-        )
-        var draft = BlockedBehaviorDraft()
-
-        draft.apply(preset)
-
-        XCTAssertFalse(draft.isQuitCompletely)
-        XCTAssertEqual(draft.limitPeriod, .week)
-        XCTAssertEqual(draft.limitCount, 4)
-        XCTAssertEqual(draft.effectiveLimitPeriod, .week)
-        XCTAssertEqual(draft.effectiveLimitCount, 4)
+    func testAllPresetsDefaultToQuitCompletely() {
+        for preset in BlockedBehaviorPreset.all {
+            XCTAssertEqual(preset.limitRule, .quitCompletely, preset.title)
+        }
     }
 
     func testCustomResetClearsPreviouslySelectedPreset() {

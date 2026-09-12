@@ -10,6 +10,8 @@ enum BlockedBehaviorIcon {
         "wineglass",
         "cup.and.saucer",
         "fork.knife",
+        "birthday.cake",
+        "bubble.left.and.bubble.right",
         "hourglass",
         "phone.down",
         "dollarsign.circle",

@@ -8,10 +8,16 @@ struct HomeView: View {
     @State private var editingRoutine: Routine?
     @State private var isPresentingNewRoutine = false
     @State private var isEditingRoutines = false
-    @State private var editingBehavior: BlockedBehavior?
     @State private var isPresentingNewBlockedBehavior = false
+    @State private var isShowingBlockedBehaviorDeleteError = false
+
+    @Binding private var destructiveConfirmation: DestructiveConfirmationRequest?
 
     private let routineGridColumns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
+
+    init(destructiveConfirmation: Binding<DestructiveConfirmationRequest?> = .constant(nil)) {
+        _destructiveConfirmation = destructiveConfirmation
+    }
 
     var body: some View {
         List {
@@ -46,18 +52,10 @@ struct HomeView: View {
         ) { context in
             RoutineCompletionPresentation(context: context, onFinish: { viewModel.clearCompletion() })
         }
-        .sheet(item: $editingBehavior) { behavior in
-            BlockedBehaviorDetailView(behavior: behavior) { title, iconName, limitPeriod, limitCount in
-                viewModel.updateBlockedBehaviorDetails(
-                    behavior,
-                    title: title,
-                    iconName: iconName,
-                    limitPeriod: limitPeriod,
-                    limitCount: limitCount
-                )
-            } onDelete: {
-                viewModel.deleteBlockedBehavior(behavior)
-            }
+        .alert("削除できませんでした", isPresented: $isShowingBlockedBehaviorDeleteError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("時間をおいて、もう一度お試しください。")
         }
         .alert(
             "記録できませんでした",
@@ -205,6 +203,20 @@ struct HomeView: View {
             if let behavior = viewModel.currentBehavior {
                 promiseCard(behavior)
                     .padding(.vertical, 4)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            destructiveConfirmation = DestructiveConfirmationRequest(
+                                title: "本当に削除しますか？",
+                                message: "「\(behavior.title)」を削除します。"
+                            ) {
+                                if !viewModel.deleteBlockedBehavior(behavior) {
+                                    isShowingBlockedBehaviorDeleteError = true
+                                }
+                            }
+                        } label: {
+                            Label("削除", systemImage: "trash")
+                        }
+                    }
             } else {
                 Button {
                     isPresentingNewBlockedBehavior = true
@@ -236,61 +248,48 @@ struct HomeView: View {
     private func promiseCard(_ behavior: BlockedBehavior) -> some View {
         let usage = viewModel.promiseUsage(for: behavior)
 
-        HStack(spacing: 12) {
-            Button {
-                viewModel.consumePromise(behavior)
-            } label: {
-                HStack(spacing: 12) {
-                    ProgressCircle(
-                        progress: usage.fraction,
-                        size: 34,
-                        tint: AppColor.primary,
-                        showsCheckmarkWhenComplete: false,
-                        failed: usage.failed,
-                        centerSystemImage: behavior.iconName
-                    )
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(behavior.title)
-                            .font(.headline)
-                            .foregroundStyle(AppColor.text)
+        Button {
+            viewModel.consumePromise(behavior)
+        } label: {
+            HStack(spacing: 12) {
+                ProgressCircle(
+                    progress: usage.fraction,
+                    size: 34,
+                    tint: AppColor.primary,
+                    showsCheckmarkWhenComplete: false,
+                    failed: usage.failed,
+                    centerSystemImage: behavior.iconName
+                )
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(behavior.title)
+                        .font(.headline)
+                        .foregroundStyle(AppColor.text)
 
-                        if behavior.currentStreakDays >= 1 {
-                            Text("\(behavior.currentStreakDays)日達成！")
-                                .font(.caption)
-                                .foregroundStyle(AppColor.success)
-                        } else {
-                            Text("今日から")
-                                .font(.caption)
-                                .foregroundStyle(AppColor.muted)
-                        }
+                    if behavior.currentStreakDays >= 1 {
+                        Text("\(behavior.currentStreakDays)日達成！")
+                            .font(.caption)
+                            .foregroundStyle(AppColor.success)
+                    } else {
+                        Text("今日から")
+                            .font(.caption)
+                            .foregroundStyle(AppColor.muted)
+                    }
 
-                        if usage.failed {
-                            Text("\(usage.periodLabel)は上限に達しました")
-                                .font(.caption2)
-                                .foregroundStyle(AppColor.error)
-                        } else {
-                            Text("\(usage.periodLabel) あと \(usage.remaining) 回")
-                                .font(.caption2)
-                                .foregroundStyle(AppColor.muted)
-                        }
+                    if usage.failed {
+                        Text("\(usage.periodLabel)は上限に達しました")
+                            .font(.caption2)
+                            .foregroundStyle(AppColor.error)
+                    } else {
+                        Text("\(usage.periodLabel) あと \(usage.remaining) 回")
+                            .font(.caption2)
+                            .foregroundStyle(AppColor.muted)
                     }
                 }
-                .contentShape(Rectangle())
+                Spacer(minLength: 8)
             }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 8)
-
-            Button {
-                editingBehavior = behavior
-            } label: {
-                Image(systemName: "square.and.pencil")
-                    .font(.title3)
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(AppColor.muted)
-            .accessibilityLabel("やらないことを編集")
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - 3. みんなのざこ速報

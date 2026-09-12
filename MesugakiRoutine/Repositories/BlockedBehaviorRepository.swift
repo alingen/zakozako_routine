@@ -60,29 +60,6 @@ final class BlockedBehaviorRepository {
         }
     }
 
-    /// タイトル・回数制限を更新する(詳細編集シート用)。
-    @discardableResult
-    func updateDetails(
-        _ behavior: BlockedBehavior,
-        title: String,
-        iconName: String?,
-        limitPeriod: HabitPeriod,
-        limitCount: Int
-    ) -> Bool {
-        behavior.title = title
-        behavior.iconName = iconName
-        behavior.limitPeriod = limitPeriod
-        behavior.limitCount = limitCount
-        behavior.updatedAt = .now
-        do {
-            try context.save()
-            return true
-        } catch {
-            context.rollback()
-            return false
-        }
-    }
-
     /// カードタップで「1回消費」する。
     func consume(_ behavior: BlockedBehavior, now: Date = .now, calendar: Calendar = .current) {
         behavior.usageEvents.append(now)

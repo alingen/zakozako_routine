@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// プリセット選択から確認・保存までを扱う「やらないこと」の新規作成画面。
+/// プリセットまたはカスタム入力から、内容をすべて決めて保存する「やらないこと」の新規作成画面。
 struct BlockedBehaviorCreateView: View {
     private enum CreationStep {
         case presetSelection

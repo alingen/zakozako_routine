@@ -26,12 +26,7 @@ struct BlockedBehaviorPresetSelectionView: View {
 
     var body: some View {
         List {
-            Section {
-                Text("やめたいことを選ぶと、タイトル・アイコン・上限を自動で入力します。内容は保存前に変更できます。")
-                    .font(.subheadline)
-                    .foregroundStyle(AppColor.muted)
-            }
-            .listRowBackground(Color.clear)
+
 
             Section("自由に作る") {
                 selectionButton(
