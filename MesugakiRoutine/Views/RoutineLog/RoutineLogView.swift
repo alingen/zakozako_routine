@@ -22,7 +22,6 @@ struct RoutineLogView: View {
                         }
                     }
                 }
-                legend
             }
             .padding()
         }
@@ -111,31 +110,16 @@ struct RoutineLogView: View {
                 .frame(width: 28, height: 28)
                 .background(isToday ? AppColor.primary : Color.clear, in: Circle())
             HStack(spacing: 3) {
-                ForEach(completed, id: \.id) { _ in
-                    Circle()
-                        .fill(AppColor.primary)
-                        .frame(width: 6, height: 6)
+                ForEach(completed, id: \.id) { routine in
+                    Image(systemName: routine.iconName ?? routineIcon)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(AppColor.primary)
+                        .accessibilityLabel(routine.title)
                 }
             }
             .frame(height: 12)
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var legend: some View {
-        HStack(spacing: 16) {
-            ForEach(viewModel.routines, id: \.id) { routine in
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(AppColor.primary)
-                        .frame(width: 6, height: 6)
-                    Text(routine.title)
-                        .font(.caption)
-                        .foregroundStyle(AppColor.muted)
-                }
-            }
-        }
-        .padding(.top, 8)
     }
 
     private let routineIcon = "checkmark.circle.fill"
