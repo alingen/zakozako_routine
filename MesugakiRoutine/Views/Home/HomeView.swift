@@ -10,13 +10,15 @@ struct HomeView: View {
     @State private var isEditingRoutines = false
     @State private var isPresentingNewBlockedBehavior = false
     @State private var isShowingBlockedBehaviorDeleteError = false
+    @State private var nextStrugglingTauntIndex = 0
+    @State private var nextDefeatedTauntIndex = 0
 
-    @Binding private var destructiveConfirmation: DestructiveConfirmationRequest?
+    @Binding private var appDialog: AppDialogRequest?
 
     private let routineGridColumns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
 
-    init(destructiveConfirmation: Binding<DestructiveConfirmationRequest?> = .constant(nil)) {
-        _destructiveConfirmation = destructiveConfirmation
+    init(appDialog: Binding<AppDialogRequest?> = .constant(nil)) {
+        _appDialog = appDialog
     }
 
     var body: some View {
@@ -69,6 +71,19 @@ struct HomeView: View {
             }
         } message: {
             Text(viewModel.routineOperationErrorMessage ?? "不明なエラーです")
+        }
+        .alert(
+            "失敗を記録できませんでした",
+            isPresented: Binding(
+                get: { viewModel.blockedBehaviorOperationErrorMessage != nil },
+                set: { if !$0 { viewModel.clearBlockedBehaviorOperationError() } }
+            )
+        ) {
+            Button("OK") {
+                viewModel.clearBlockedBehaviorOperationError()
+            }
+        } message: {
+            Text(viewModel.blockedBehaviorOperationErrorMessage ?? "不明なエラーです")
         }
         .task {
             viewModel.configure(context: modelContext)
@@ -205,14 +220,21 @@ struct HomeView: View {
                     .padding(.vertical, 4)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            destructiveConfirmation = DestructiveConfirmationRequest(
+                            appDialog = AppDialogRequest(
                                 title: "本当に削除しますか？",
-                                message: "「\(behavior.title)」を削除します。"
-                            ) {
-                                if !viewModel.deleteBlockedBehavior(behavior) {
-                                    isShowingBlockedBehaviorDeleteError = true
-                                }
-                            }
+                                message: "「\(behavior.title)」を削除します。",
+                                actions: [
+                                    AppDialogAction("いいえ") {
+                                        .dismiss
+                                    },
+                                    AppDialogAction("はい", style: .destructive) {
+                                        if !viewModel.deleteBlockedBehavior(behavior) {
+                                            isShowingBlockedBehaviorDeleteError = true
+                                        }
+                                        return .dismiss
+                                    },
+                                ]
+                            )
                         } label: {
                             Label("削除", systemImage: "trash")
                         }
@@ -243,13 +265,13 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// 「今日の約束」カード。ルーティン行と同じ左丸マーク。丸マーク＋タイトルのタップで1回消費。
+    /// 「やらないこと」カード。タップすると危機／失敗の選択肢を表示する。
     @ViewBuilder
     private func promiseCard(_ behavior: BlockedBehavior) -> some View {
         let usage = viewModel.promiseUsage(for: behavior)
 
         Button {
-            viewModel.consumePromise(behavior)
+            presentBlockedBehaviorActions(for: behavior)
         } label: {
             HStack(spacing: 12) {
                 ProgressCircle(
@@ -265,21 +287,21 @@ struct HomeView: View {
                         .font(.headline)
                         .foregroundStyle(AppColor.text)
 
-                    if behavior.currentStreakDays >= 1 {
-                        Text("\(behavior.currentStreakDays)日達成！")
-                            .font(.caption)
-                            .foregroundStyle(AppColor.success)
-                    } else {
-                        Text("今日から")
-                            .font(.caption)
-                            .foregroundStyle(AppColor.muted)
-                    }
-
                     if usage.failed {
                         Text("\(usage.periodLabel)は上限に達しました")
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(AppColor.error)
                     } else {
+                        if behavior.currentStreakDays >= 1 {
+                            Text("\(behavior.currentStreakDays)日達成！")
+                                .font(.caption)
+                                .foregroundStyle(AppColor.success)
+                        } else {
+                            Text("今日から")
+                                .font(.caption)
+                                .foregroundStyle(AppColor.muted)
+                        }
+
                         Text("\(usage.periodLabel) あと \(usage.remaining) 回")
                             .font(.caption2)
                             .foregroundStyle(AppColor.muted)
@@ -292,6 +314,52 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
+    private func presentBlockedBehaviorActions(for behavior: BlockedBehavior) {
+        appDialog = AppDialogRequest(
+            title: nil,
+            message: "「\(behavior.title)」",
+            actions: [
+                AppDialogAction("負けそう…") {
+                    .showTaunt(nextTaunt(for: .struggling))
+                },
+                AppDialogAction("負けました", style: .destructive) {
+                    .replace(failureConfirmation(for: behavior))
+                },
+            ]
+        )
+    }
+
+    private func failureConfirmation(for behavior: BlockedBehavior) -> AppDialogRequest {
+        AppDialogRequest(
+            title: "本当に負けましたか？",
+            message: "「\(behavior.title)」の失敗を記録します。",
+            actions: [
+                AppDialogAction("まだ耐える") {
+                    .dismiss
+                },
+                AppDialogAction("負けました…", style: .destructive) {
+                    guard viewModel.recordPromiseFailure(behavior) else {
+                        return .dismiss
+                    }
+                    return .showTaunt(nextTaunt(for: .defeated))
+                },
+            ]
+        )
+    }
+
+    private func nextTaunt(for kind: BlockedBehaviorTauntKind) -> BlockedBehaviorTauntRequest {
+        let index: Int
+        switch kind {
+        case .struggling:
+            index = nextStrugglingTauntIndex % kind.messages.count
+            nextStrugglingTauntIndex = (nextStrugglingTauntIndex + 1) % kind.messages.count
+        case .defeated:
+            index = nextDefeatedTauntIndex % kind.messages.count
+            nextDefeatedTauntIndex = (nextDefeatedTauntIndex + 1) % kind.messages.count
+        }
+        return BlockedBehaviorTauntRequest(text: kind.messages[index])
+    }
+
     // MARK: - 3. みんなのざこ速報
 
     private var zakoBulletinSection: some View {
@@ -299,6 +367,28 @@ struct HomeView: View {
             ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
         }
         .appCardRow()
+    }
+}
+
+enum BlockedBehaviorTauntKind {
+    case struggling
+    case defeated
+
+    var messages: [String] {
+        switch self {
+        case .struggling:
+            return [
+                "よわよわメンタル出てきたね♡",
+                "負けそうだから莉央ちゃんに助け求めにきたんだw",
+                "はいはい、見ててあげるから我慢して〜",
+            ]
+        case .defeated:
+            return [
+                "ほんとに負けてきたの？w",
+                "わざわざ敗北報告しに来たんだ♡",
+                "うわ、大人なのに我慢できなかったんだ〜",
+            ]
+        }
     }
 }
 

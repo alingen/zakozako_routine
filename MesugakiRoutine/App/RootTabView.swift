@@ -1,21 +1,59 @@
 import SwiftUI
 
-struct DestructiveConfirmationRequest: Identifiable {
+enum AppDialogActionStyle: Equatable {
+    case standard
+    case destructive
+}
+
+enum AppDialogActionResult {
+    case dismiss
+    case replace(AppDialogRequest)
+    case showTaunt(BlockedBehaviorTauntRequest)
+}
+
+struct AppDialogAction: Identifiable {
     let id = UUID()
     let title: String
-    let message: String
-    let onConfirm: () -> Void
+    let style: AppDialogActionStyle
+    let action: () -> AppDialogActionResult
+
+    init(
+        _ title: String,
+        style: AppDialogActionStyle = .standard,
+        action: @escaping () -> AppDialogActionResult
+    ) {
+        self.title = title
+        self.style = style
+        self.action = action
+    }
+}
+
+struct AppDialogRequest: Identifiable {
+    let id = UUID()
+    let title: String?
+    let message: String?
+    let actions: [AppDialogAction]
+}
+
+struct BlockedBehaviorTauntRequest: Identifiable {
+    let id = UUID()
+    let text: String
 }
 
 /// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
-    @State private var destructiveConfirmation: DestructiveConfirmationRequest?
+    @State private var appDialog: AppDialogRequest?
+    @State private var blockedBehaviorTaunt: BlockedBehaviorTauntRequest?
+
+    private var isPresentingOverlay: Bool {
+        appDialog != nil || blockedBehaviorTaunt != nil
+    }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             TabView {
                 NavigationStack {
-                    HomeView(destructiveConfirmation: $destructiveConfirmation)
+                    HomeView(appDialog: $appDialog)
                 }
                 .tabItem {
                     Label("ホーム", systemImage: "house")
@@ -43,62 +81,171 @@ struct RootTabView: View {
                 }
             }
             .tint(AppColor.primary)
+            .allowsHitTesting(!isPresentingOverlay)
+            .accessibilityHidden(isPresentingOverlay)
 
-            if let destructiveConfirmation {
-                destructiveConfirmationOverlay(destructiveConfirmation)
+            if isPresentingOverlay {
+                Color.black.opacity(0.48)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: dismissPresentedOverlay)
                     .transition(.opacity)
                     .zIndex(1)
             }
+
+            if let appDialog {
+                appDialogCard(appDialog)
+                    .id(appDialog.id)
+                    .transition(.scale(scale: 0.98).combined(with: .opacity))
+                    .zIndex(2)
+            }
+
+            if let blockedBehaviorTaunt {
+                Button(action: dismissBlockedBehaviorTaunt) {
+                    blockedBehaviorTauntOverlay(blockedBehaviorTaunt)
+                }
+                .buttonStyle(.plain)
+                .id(blockedBehaviorTaunt.id)
+                .transition(
+                    .asymmetric(
+                        insertion: .offset(y: 32)
+                            .combined(with: .opacity),
+                        removal: .opacity
+                    )
+                )
+                .zIndex(3)
+            }
         }
-        .animation(.easeInOut(duration: 0.18), value: destructiveConfirmation?.id)
+        .animation(.easeInOut(duration: 0.18), value: isPresentingOverlay)
+        .animation(.easeInOut(duration: 0.18), value: appDialog?.id)
+        .animation(.easeOut(duration: 0.28), value: blockedBehaviorTaunt?.id)
         // 配色はライト前提の単一値パレットのため、ダーク時に破綻しないよう固定する。
         .preferredColorScheme(.light)
     }
 
-    private func destructiveConfirmationOverlay(_ request: DestructiveConfirmationRequest) -> some View {
+    private func appDialogCard(_ request: AppDialogRequest) -> some View {
         ZStack {
-            Color.black.opacity(0.48)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    destructiveConfirmation = nil
-                }
+            Color.clear
+                .allowsHitTesting(false)
 
             VStack(spacing: 20) {
                 VStack(spacing: 8) {
-                    Text(request.title)
-                        .font(.headline)
-                        .foregroundStyle(AppColor.text)
+                    if let title = request.title {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundStyle(AppColor.text)
+                    }
 
-                    Text(request.message)
-                        .font(.subheadline)
-                        .foregroundStyle(AppColor.muted)
-                        .multilineTextAlignment(.center)
+                    if let message = request.message {
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundStyle(AppColor.muted)
+                            .multilineTextAlignment(.center)
+                    }
                 }
 
-                HStack(spacing: 12) {
-                    Button("いいえ") {
-                        destructiveConfirmation = nil
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        dialogButtons(for: request)
                     }
-                    .font(.headline)
-                    .foregroundStyle(AppColor.text)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(AppColor.background, in: Capsule())
 
-                    Button("はい", role: .destructive) {
-                        destructiveConfirmation = nil
-                        request.onConfirm()
+                    VStack(spacing: 12) {
+                        dialogButtons(for: request)
                     }
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(AppColor.error, in: Capsule())
                 }
             }
             .padding(24)
+            .frame(maxWidth: 420)
             .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .padding(.horizontal, 32)
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isModal)
+            .accessibilityAction(.escape) {
+                appDialog = nil
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func dialogButtons(for request: AppDialogRequest) -> some View {
+        ForEach(request.actions) { action in
+            Button(role: action.style == .destructive ? .destructive : nil) {
+                handle(action.action())
+            } label: {
+                Text(action.title)
+                    .font(.headline)
+                    .foregroundStyle(action.style == .destructive ? Color.white : AppColor.text)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        action.style == .destructive ? AppColor.error : AppColor.background,
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func handle(_ result: AppDialogActionResult) {
+        switch result {
+        case .dismiss:
+            appDialog = nil
+        case let .replace(request):
+            appDialog = request
+        case let .showTaunt(request):
+            appDialog = nil
+            blockedBehaviorTaunt = request
+        }
+    }
+
+    private func blockedBehaviorTauntOverlay(_ request: BlockedBehaviorTauntRequest) -> some View {
+        GeometryReader { proxy in
+            let artworkWidth = min(
+                430,
+                min(proxy.size.width * 1.04, proxy.size.height * 0.50)
+            )
+            let bubbleWidth = min(312, proxy.size.width - 40)
+            let bubbleBottomPadding = max(
+                proxy.safeAreaInsets.bottom + 96,
+                proxy.size.height * 0.26
+            )
+
+            ZStack(alignment: .bottom) {
+                Color.clear
+                    .contentShape(Rectangle())
+
+                Image("rio_blocked_behavior_taunt")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: artworkWidth)
+                    .offset(x: max(12, proxy.size.width * 0.04))
+                    .padding(.bottom, bubbleBottomPadding + 42)
+                    .accessibilityHidden(true)
+
+                InteractionCharacterSpeechBubble(text: request.text)
+                    .frame(width: bubbleWidth)
+                    .padding(.bottom, bubbleBottomPadding)
+                    .allowsHitTesting(false)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        }
+        .ignoresSafeArea(edges: .bottom)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("莉央、\(request.text)")
+        .accessibilityHint("タップして閉じる")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(.escape, dismissBlockedBehaviorTaunt)
+    }
+
+    private func dismissBlockedBehaviorTaunt() {
+        blockedBehaviorTaunt = nil
+    }
+
+    private func dismissPresentedOverlay() {
+        if blockedBehaviorTaunt != nil {
+            dismissBlockedBehaviorTaunt()
+        } else {
+            appDialog = nil
         }
     }
 }

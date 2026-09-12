@@ -3,8 +3,8 @@ import SwiftData
 
 /// ユーザーが「やらないと決めた行動」。同時に挑戦中(`isActive`)にできるのは1件のみ。
 ///
-/// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、カードをタップするたびに1回消費する
-/// (`usageEvents` にタイムスタンプを積む)。期間内の消費が上限以内なら、その日は「達成」として
+/// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、ユーザーが敗北を確定すると
+/// `usageEvents` が上限まで記録される。期間内の消費が上限未満なら、その日は「達成」として
 /// 連続日数に加算される。判定は `BlockedBehaviorRepository.autoEvaluate` が日付変更時に自動で行う。
 @Model
 final class BlockedBehavior {
@@ -19,7 +19,7 @@ final class BlockedBehavior {
     var limitPeriodRawValue: String?
     /// 集計期間あたりの上限回数(生値)。nil は 0 扱い。参照は computed の `limitCount` を使う。
     var limitCountValue: Int?
-    /// 「1回消費」した時刻のログ(生値)。nil は空配列扱い。参照は computed の `usageEvents` を使う。
+    /// 失敗判定用の時刻ログ(生値)。nil は空配列扱い。参照は computed の `usageEvents` を使う。
     var usageEventsStore: [Date]?
 
     /// 回数制限の集計期間。
@@ -36,7 +36,7 @@ final class BlockedBehavior {
     /// 実際に使う上限。1未満は1として扱う(「1回で✕」)。
     /// 期間内の消費回数がこの数に達したら、その期間は「失敗」= チェックボックスが×になる。
     var effectiveLimit: Int { max(limitCount, 1) }
-    /// 「1回消費」した時刻のログ。期間内の件数が `limitCount` を超えたらその日は未達成扱い。
+    /// 失敗判定用の時刻ログ。期間内の件数が `effectiveLimit` に達したらその日は未達成扱い。
     var usageEvents: [Date] {
         get { usageEventsStore ?? [] }
         set { usageEventsStore = newValue }

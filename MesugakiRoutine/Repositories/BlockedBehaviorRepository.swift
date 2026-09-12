@@ -1,6 +1,22 @@
 import Foundation
 import SwiftData
 
+enum BlockedBehaviorFailureRecordResult: Equatable {
+    case recorded
+    case alreadyRecorded
+}
+
+enum BlockedBehaviorRepositoryError: LocalizedError {
+    case inactiveBehavior
+
+    var errorDescription: String? {
+        switch self {
+        case .inactiveBehavior:
+            return "この項目は現在挑戦中ではありません。"
+        }
+    }
+}
+
 /// 「やらないこと」リストの永続化を担当する。
 /// 悪習慣を1つずつ潰していく設計のため、同時に挑戦中(`isActive == true`)になれるのは1件のみ。
 /// 14日間の連続達成で「卒業」(`masteredAt`が入る)し、次の1件を追加できるようになる。
@@ -60,15 +76,33 @@ final class BlockedBehaviorRepository {
         }
     }
 
-    /// カードタップで「1回消費」する。
-    func consume(_ behavior: BlockedBehavior, now: Date = .now, calendar: Calendar = .current) {
-        behavior.usageEvents.append(now)
-        // 配列が無限に伸びないよう、直近3か月より古いイベントは捨てる(判定に不要)。
-        if let cutoff = calendar.date(byAdding: .month, value: -3, to: now) {
-            behavior.usageEvents.removeAll { $0 < cutoff }
+    /// ユーザーが敗北を確定した時、現在期間の上限に達するまでログを補って失敗を記録する。
+    /// すでに失敗済みなら何も変更しないため、連続タップでも重複しない。
+    @discardableResult
+    func recordFailure(
+        _ behavior: BlockedBehavior,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) throws -> BlockedBehaviorFailureRecordResult {
+        guard behavior.isActive, behavior.masteredAt == nil else {
+            throw BlockedBehaviorRepositoryError.inactiveBehavior
         }
-        behavior.updatedAt = now
-        save()
+
+        let used = behavior.usageInCurrentPeriod(now: now, calendar: calendar)
+        guard used < behavior.effectiveLimit else {
+            return .alreadyRecorded
+        }
+
+        let missingEventCount = behavior.effectiveLimit - used
+        try performMutation {
+            behavior.usageEvents.append(contentsOf: Array(repeating: now, count: missingEventCount))
+            // 配列が無限に伸びないよう、直近3か月より古いイベントは捨てる(判定に不要)。
+            if let cutoff = calendar.date(byAdding: .month, value: -3, to: now) {
+                behavior.usageEvents.removeAll { $0 < cutoff }
+            }
+            behavior.updatedAt = now
+        }
+        return .recorded
     }
 
     /// 前日までの未評価の日を順に自動判定し、連続日数・卒業を更新する。手動チェックインの置き換え。
@@ -142,5 +176,17 @@ final class BlockedBehaviorRepository {
 
     private func save() {
         try? context.save()
+    }
+
+    private func performMutation(_ mutation: () throws -> Void) throws {
+        do {
+            try context.transaction {
+                try mutation()
+                try context.save()
+            }
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 }

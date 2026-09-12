@@ -52,6 +52,7 @@ final class HomeViewModel {
     /// 約束が完了した直後に、完了演出へ渡す表示データが入る。閉じる時は `clearCompletion()`。
     private(set) var completionContext: RoutineCompletionContext?
     private(set) var routineOperationErrorMessage: String?
+    private(set) var blockedBehaviorOperationErrorMessage: String?
 
     private var dependencies: AppDependencies?
 
@@ -133,10 +134,19 @@ final class HomeViewModel {
         )
     }
 
-    func consumePromise(_ behavior: BlockedBehavior) {
-        guard let dependencies else { return }
-        dependencies.blockedBehaviorRepository.consume(behavior)
-        reload()
+    /// 最終確認後に現在期間の失敗を確定する。すでに失敗済みなら重複記録せず成功扱いにする。
+    @discardableResult
+    func recordPromiseFailure(_ behavior: BlockedBehavior) -> Bool {
+        guard let dependencies else { return false }
+        do {
+            try dependencies.blockedBehaviorRepository.recordFailure(behavior)
+            blockedBehaviorOperationErrorMessage = nil
+            reload()
+            return true
+        } catch {
+            blockedBehaviorOperationErrorMessage = error.localizedDescription
+            return false
+        }
     }
 
     var canAddBlockedBehavior: Bool {
@@ -214,6 +224,10 @@ final class HomeViewModel {
 
     func clearRoutineOperationError() {
         routineOperationErrorMessage = nil
+    }
+
+    func clearBlockedBehaviorOperationError() {
+        blockedBehaviorOperationErrorMessage = nil
     }
 
     /// 中立 App Intent「今日の約束を開く」の遷移先。今日ぶんで未完了の先頭、無ければ先頭。

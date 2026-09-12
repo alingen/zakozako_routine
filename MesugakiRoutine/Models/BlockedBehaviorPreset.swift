@@ -86,6 +86,11 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
             title: "夜ふかしをしない",
             iconName: "moon.stars"
         ),
+        BlockedBehaviorPreset(
+            id: "no-gaming",
+            title: "ゲームをしない",
+            iconName: "gamecontroller"
+        ),
     ]
 }
 
