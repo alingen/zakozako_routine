@@ -1,4 +1,5 @@
 import Foundation
+import FamilyControls
 
 /// 「やらないこと」の上限ルール。プリセット内で矛盾した値を作らないための値型。
 enum BlockedBehaviorLimitRule: Equatable {
@@ -32,20 +33,33 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
     let title: String
     let iconName: String
     let limitRule: BlockedBehaviorLimitRule
+    let trackingKind: BlockedBehaviorTrackingKind
+    let screenTimeLimitMinutes: Int
 
     init(
         id: String,
         title: String,
         iconName: String,
-        limitRule: BlockedBehaviorLimitRule = .quitCompletely
+        limitRule: BlockedBehaviorLimitRule = .quitCompletely,
+        trackingKind: BlockedBehaviorTrackingKind = .manual,
+        screenTimeLimitMinutes: Int = 20
     ) {
         self.id = id
         self.title = title
         self.iconName = iconName
         self.limitRule = limitRule
+        self.trackingKind = trackingKind
+        self.screenTimeLimitMinutes = min(max(screenTimeLimitMinutes, 1), 1_440)
     }
 
     static let all: [BlockedBehaviorPreset] = [
+        BlockedBehaviorPreset(
+            id: "no-smartphone",
+            title: "スマホを見ない",
+            iconName: "iphone",
+            trackingKind: .screenTime,
+            screenTimeLimitMinutes: 20
+        ),
         BlockedBehaviorPreset(
             id: "quit-smoking",
             title: "禁煙する",
@@ -101,9 +115,26 @@ struct BlockedBehaviorDraft: Equatable {
     var isQuitCompletely = true
     var limitPeriod: HabitPeriod = .day
     var limitCount = 1
+    var trackingKind: BlockedBehaviorTrackingKind = .manual
+    var screenTimeLimitMinutes = 20
+    var screenTimeSelection = FamilyActivitySelection()
 
     var canSave: Bool {
-        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        guard trackingKind == .screenTime else { return true }
+        return hasScreenTimeTargets && screenTimeSelectionData != nil
+    }
+
+    var screenTimeSelectionData: Data? {
+        try? JSONEncoder().encode(screenTimeSelection)
+    }
+
+    var screenTimeTargetCount: Int {
+        screenTimeSelection.applicationTokens.count
+            + screenTimeSelection.categoryTokens.count
+            + screenTimeSelection.webDomainTokens.count
     }
 
     var effectiveLimitPeriod: HabitPeriod {
@@ -114,9 +145,16 @@ struct BlockedBehaviorDraft: Equatable {
         isQuitCompletely ? 1 : max(limitCount, 1)
     }
 
+    private var hasScreenTimeTargets: Bool {
+        screenTimeTargetCount > 0
+    }
+
     mutating func apply(_ preset: BlockedBehaviorPreset) {
         title = preset.title
         iconName = preset.iconName
+        trackingKind = preset.trackingKind
+        screenTimeLimitMinutes = preset.screenTimeLimitMinutes
+        screenTimeSelection = FamilyActivitySelection()
 
         switch preset.limitRule {
         case .quitCompletely:

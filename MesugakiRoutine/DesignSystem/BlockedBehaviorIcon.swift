@@ -13,6 +13,7 @@ enum BlockedBehaviorIcon {
         "birthday.cake",
         "bubble.left.and.bubble.right",
         "hourglass",
+        "iphone",
         "phone.down",
         "dollarsign.circle",
         "moon.stars",

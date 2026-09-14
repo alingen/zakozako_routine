@@ -6,6 +6,7 @@ import SwiftData
 struct AppDependencies {
     let routineRepository: RoutineRepository
     let blockedBehaviorRepository: BlockedBehaviorRepository
+    let screenTimeMonitoringService: ScreenTimeMonitoringService
     let notificationScheduler: RoutineNotificationScheduler
     let storyStateRepository: StoryStateRepository
     let storyContentRepository: StoryContentRepository?
@@ -14,6 +15,7 @@ struct AppDependencies {
     init(context: ModelContext) {
         routineRepository = RoutineRepository(context: context)
         blockedBehaviorRepository = BlockedBehaviorRepository(context: context)
+        screenTimeMonitoringService = ScreenTimeMonitoringService()
         notificationScheduler = RoutineNotificationScheduler()
         storyStateRepository = StoryStateRepository(context: context)
 

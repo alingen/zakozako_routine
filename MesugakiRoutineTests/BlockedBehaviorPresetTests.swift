@@ -1,4 +1,5 @@
 import SwiftData
+import FamilyControls
 import UIKit
 import XCTest
 @testable import MesugakiRoutine
@@ -12,6 +13,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertEqual(
             BlockedBehaviorPreset.all.map(\.title),
             [
+                "スマホを見ない",
                 "禁煙する",
                 "断酒する",
                 "鼻をほじらない",
@@ -61,6 +63,125 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         }
     }
 
+    func testOnlySmartphonePresetUsesScreenTimeTracking() {
+        XCTAssertEqual(
+            BlockedBehaviorPreset.all.filter { $0.trackingKind == .screenTime }.map(\.id),
+            ["no-smartphone"]
+        )
+        XCTAssertTrue(
+            BlockedBehaviorPreset.all
+                .filter { $0.id != "no-smartphone" }
+                .allSatisfy { $0.trackingKind == .manual }
+        )
+    }
+
+    func testScreenTimePresetDefaultsToTwentyMinutesAndRequiresSelection() throws {
+        let preset = try XCTUnwrap(
+            BlockedBehaviorPreset.all.first { $0.id == "no-smartphone" }
+        )
+        var draft = BlockedBehaviorDraft()
+
+        XCTAssertEqual(BlockedBehaviorPreset.all.first?.id, preset.id)
+        XCTAssertEqual(preset.trackingKind, .screenTime)
+        XCTAssertEqual(preset.screenTimeLimitMinutes, 20)
+
+        draft.apply(preset)
+
+        XCTAssertEqual(draft.trackingKind, .screenTime)
+        XCTAssertEqual(draft.screenTimeLimitMinutes, 20)
+        XCTAssertFalse(draft.canSave)
+        XCTAssertNotNil(draft.screenTimeSelectionData)
+    }
+
+    func testScreenTimeMonitorUsesConfiguredLimitAndFourAMBoundary() {
+        let threshold = ScreenTimeMonitoringService.thresholdComponents(limitMinutes: 20)
+        let schedule = ScreenTimeMonitoringService.dailySchedule
+
+        XCTAssertEqual(threshold.minute, 20)
+        XCTAssertEqual(threshold.hour, 0)
+        XCTAssertEqual(
+            ScreenTimeMonitoringService.thresholdComponents(limitMinutes: 90).hour,
+            1
+        )
+        XCTAssertEqual(
+            ScreenTimeMonitoringService.thresholdComponents(limitMinutes: 90).minute,
+            30
+        )
+        XCTAssertEqual(schedule.intervalStart.hour, AppDay.startHour)
+        XCTAssertEqual(schedule.intervalStart.minute, 0)
+        XCTAssertEqual(schedule.intervalEnd.hour, AppDay.startHour - 1)
+        XCTAssertEqual(schedule.intervalEnd.minute, 59)
+        XCTAssertTrue(schedule.repeats)
+        XCTAssertNotNil(schedule.nextInterval)
+    }
+
+    func testScreenTimeMonitorEventNameKeepsBehaviorIdentity() {
+        let behaviorID = UUID()
+        let rawName = ScreenTimeMonitorShared.eventRawName(
+            for: behaviorID,
+            limitMinutes: 20
+        )
+        let activityRawName = ScreenTimeMonitorShared.activityRawName(for: behaviorID)
+
+        XCTAssertEqual(
+            ScreenTimeMonitorShared.behaviorID(fromEventRawName: rawName),
+            behaviorID
+        )
+        XCTAssertEqual(
+            ScreenTimeMonitorShared.limitMinutes(fromEventRawName: rawName),
+            20
+        )
+        XCTAssertEqual(
+            ScreenTimeMonitorShared.behaviorID(fromActivityRawName: activityRawName),
+            behaviorID
+        )
+        XCTAssertNil(ScreenTimeMonitorShared.behaviorID(fromEventRawName: "other-event"))
+        XCTAssertNil(ScreenTimeMonitorShared.behaviorID(fromActivityRawName: "other-activity"))
+    }
+
+    func testEmptyScreenTimeSelectionCanRoundTripThroughStoredData() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let selection = FamilyActivitySelection()
+        let selectionData = try JSONEncoder().encode(selection)
+        let decoded = try JSONDecoder().decode(FamilyActivitySelection.self, from: selectionData)
+        let behavior = BlockedBehavior(
+            title: "スマホを見ない",
+            trackingKind: .screenTime,
+            screenTimeLimitMinutes: 20,
+            screenTimeSelectionData: selectionData
+        )
+        let behaviorID = behavior.id
+
+        context.insert(behavior)
+        try context.save()
+
+        let verificationContext = ModelContext(container)
+        let descriptor = FetchDescriptor<BlockedBehavior>(
+            predicate: #Predicate { $0.id == behaviorID }
+        )
+        let persisted = try XCTUnwrap(try verificationContext.fetch(descriptor).first)
+
+        XCTAssertEqual(decoded, selection)
+        XCTAssertEqual(persisted.trackingKind, .screenTime)
+        XCTAssertEqual(persisted.screenTimeLimitMinutes, 20)
+        XCTAssertEqual(persisted.screenTimeSelectionData, selectionData)
+    }
+
+    func testBlockedBehaviorUsesManualCompatibleDefaultsAndClampsScreenTimeLimit() {
+        let behavior = BlockedBehavior(title: "禁煙する")
+
+        behavior.trackingKindRawValue = nil
+        behavior.screenTimeLimitMinutesValue = nil
+        XCTAssertEqual(behavior.trackingKind, .manual)
+        XCTAssertEqual(behavior.screenTimeLimitMinutes, 20)
+
+        behavior.screenTimeLimitMinutes = 0
+        XCTAssertEqual(behavior.screenTimeLimitMinutes, 1)
+        behavior.screenTimeLimitMinutes = 2_000
+        XCTAssertEqual(behavior.screenTimeLimitMinutes, 1_440)
+    }
+
     func testCustomResetClearsPreviouslySelectedPreset() {
         var draft = BlockedBehaviorDraft()
         draft.apply(BlockedBehaviorPreset.all[0])
@@ -71,7 +192,29 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertTrue(draft.isQuitCompletely)
         XCTAssertEqual(draft.limitPeriod, .day)
         XCTAssertEqual(draft.limitCount, 1)
+        XCTAssertEqual(draft.trackingKind, .manual)
+        XCTAssertEqual(draft.screenTimeLimitMinutes, 20)
+        XCTAssertEqual(draft.screenTimeSelection, FamilyActivitySelection())
         XCTAssertFalse(draft.canSave)
+    }
+
+    func testApplyingManualPresetClearsScreenTimeConfiguration() throws {
+        let screenTimePreset = try XCTUnwrap(
+            BlockedBehaviorPreset.all.first { $0.id == "no-smartphone" }
+        )
+        let manualPreset = try XCTUnwrap(
+            BlockedBehaviorPreset.all.first { $0.id == "quit-smoking" }
+        )
+        var draft = BlockedBehaviorDraft()
+
+        draft.apply(screenTimePreset)
+        draft.screenTimeLimitMinutes = 90
+        draft.apply(manualPreset)
+
+        XCTAssertEqual(draft.trackingKind, .manual)
+        XCTAssertEqual(draft.screenTimeLimitMinutes, 20)
+        XCTAssertEqual(draft.screenTimeSelection, FamilyActivitySelection())
+        XCTAssertTrue(draft.canSave)
     }
 
     func testPresetIsNotPersistedUntilSaveAndOnlyOneCanBeActive() throws {
@@ -79,7 +222,10 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         let context = container.mainContext
         let repository = BlockedBehaviorRepository(context: context)
         var draft = BlockedBehaviorDraft()
-        draft.apply(BlockedBehaviorPreset.all[0])
+        let preset = try XCTUnwrap(
+            BlockedBehaviorPreset.all.first { $0.id == "quit-smoking" }
+        )
+        draft.apply(preset)
 
         XCTAssertTrue(try context.fetch(FetchDescriptor<BlockedBehavior>()).isEmpty)
 
@@ -214,6 +360,178 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         let persisted = try XCTUnwrap(try verificationContext.fetch(descriptor).first)
         XCTAssertEqual(persisted.usageInCurrentPeriod(now: now), 3)
         XCTAssertTrue(persisted.exceededLimit(on: now))
+    }
+
+    func testScreenTimeProgressUsesOnlyVerifiedDaysAndLateFailureRecalculatesStreak() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let repository = BlockedBehaviorRepository(context: context)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        let firstDay = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 9, day: 1, hour: 4))
+        )
+        let thirdDay = try XCTUnwrap(calendar.date(byAdding: .day, value: 2, to: firstDay))
+        let behavior = BlockedBehavior(
+            title: "スマホを見ない",
+            trackingKind: .screenTime,
+            createdAt: firstDay
+        )
+        context.insert(behavior)
+        try context.save()
+
+        XCTAssertTrue(try repository.recordScreenTimeSignal(
+            ScreenTimeMonitorSignal(
+                behaviorID: behavior.id,
+                appDayStart: firstDay,
+                occurredAt: firstDay.addingTimeInterval(86_399),
+                kind: .intervalCompleted
+            ),
+            for: behavior,
+            calendar: calendar
+        ))
+        XCTAssertTrue(try repository.recordScreenTimeSignal(
+            ScreenTimeMonitorSignal(
+                behaviorID: behavior.id,
+                appDayStart: thirdDay,
+                occurredAt: thirdDay.addingTimeInterval(86_399),
+                kind: .intervalCompleted
+            ),
+            for: behavior,
+            calendar: calendar
+        ))
+
+        // 2日目は監視完了通知がないため、成功にも失敗にもせず加算しない。
+        XCTAssertEqual(behavior.currentStreakDays, 2)
+        XCTAssertEqual(behavior.screenTimeVerifiedDays.count, 2)
+
+        let delayedFailure = ScreenTimeMonitorSignal(
+            behaviorID: behavior.id,
+            appDayStart: firstDay,
+            occurredAt: thirdDay.addingTimeInterval(120),
+            kind: .thresholdExceeded
+        )
+        XCTAssertTrue(try repository.recordScreenTimeSignal(
+            delayedFailure,
+            for: behavior,
+            calendar: calendar
+        ))
+
+        // 1日目は監視完了済みでも失敗が優先され、その後の成功1日だけが残る。
+        XCTAssertEqual(behavior.currentStreakDays, 1)
+        XCTAssertTrue(behavior.exceededLimit(on: firstDay, calendar: calendar))
+        XCTAssertEqual(behavior.lastCheckInDate, thirdDay)
+        XCTAssertFalse(try repository.recordScreenTimeSignal(
+            delayedFailure,
+            for: behavior,
+            calendar: calendar
+        ))
+    }
+
+    func testLateScreenTimeFailureReversesPrematureMastery() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let repository = BlockedBehaviorRepository(context: context)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        let firstDay = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 4))
+        )
+        let behavior = BlockedBehavior(
+            title: "スマホを見ない",
+            trackingKind: .screenTime,
+            createdAt: firstDay
+        )
+        context.insert(behavior)
+        try context.save()
+
+        for offset in 0..<BlockedBehavior.masteryStreakDays {
+            let day = try XCTUnwrap(calendar.date(byAdding: .day, value: offset, to: firstDay))
+            _ = try repository.recordScreenTimeSignal(
+                ScreenTimeMonitorSignal(
+                    behaviorID: behavior.id,
+                    appDayStart: day,
+                    occurredAt: day.addingTimeInterval(86_399),
+                    kind: .intervalCompleted
+                ),
+                for: behavior,
+                calendar: calendar
+            )
+        }
+
+        XCTAssertNotNil(behavior.masteredAt)
+        XCTAssertFalse(behavior.isActive)
+        XCTAssertEqual(behavior.currentStreakDays, BlockedBehavior.masteryStreakDays)
+
+        XCTAssertTrue(try repository.recordScreenTimeSignal(
+            ScreenTimeMonitorSignal(
+                behaviorID: behavior.id,
+                appDayStart: firstDay,
+                occurredAt: firstDay.addingTimeInterval(60),
+                kind: .thresholdExceeded
+            ),
+            for: behavior,
+            calendar: calendar
+        ))
+
+        XCTAssertNil(behavior.masteredAt)
+        XCTAssertTrue(behavior.isActive)
+        XCTAssertEqual(behavior.currentStreakDays, BlockedBehavior.masteryStreakDays - 1)
+    }
+
+    func testAutoEvaluateNeverTreatsMissingScreenTimeSignalAsSuccess() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let repository = BlockedBehaviorRepository(context: context)
+        let now = Date()
+        let behavior = BlockedBehavior(
+            title: "スマホを見ない",
+            trackingKind: .screenTime,
+            createdAt: now.addingTimeInterval(-3 * 86_400)
+        )
+        context.insert(behavior)
+        try context.save()
+
+        XCTAssertEqual(repository.autoEvaluate(behavior, now: now), 0)
+        XCTAssertEqual(behavior.currentStreakDays, 0)
+        XCTAssertNil(behavior.lastCheckInDate)
+    }
+
+    func testScreenTimeCompletionCannotMarkCurrentDayAsSuccess() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let repository = BlockedBehaviorRepository(context: context)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Asia/Tokyo"))
+        let now = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 9, day: 15, hour: 12))
+        )
+        let behavior = BlockedBehavior(
+            title: "スマホを見ない",
+            trackingKind: .screenTime,
+            createdAt: now.addingTimeInterval(-86_400)
+        )
+        context.insert(behavior)
+        try context.save()
+        let signal = ScreenTimeMonitorSignal(
+            behaviorID: behavior.id,
+            appDayStart: AppDay.startOfDay(for: now, calendar: calendar),
+            occurredAt: now,
+            kind: .intervalCompleted
+        )
+
+        XCTAssertThrowsError(try repository.recordScreenTimeSignal(
+            signal,
+            for: behavior,
+            processedAt: now,
+            calendar: calendar
+        )) { error in
+            guard case .screenTimeSignalNotReady? = error as? BlockedBehaviorRepositoryError else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+        XCTAssertEqual(behavior.currentStreakDays, 0)
+        XCTAssertTrue(behavior.screenTimeVerifiedDays.isEmpty)
     }
 
     func testBlockedBehaviorTauntCopyMatchesProductText() {

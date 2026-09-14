@@ -27,6 +27,13 @@ targets:
         excludes:
           # 開発端末専用の秘密情報。生成したXcode projectにも絶対に含めない。
           - Resources/Secrets.local.json
+      - path: ScreenTimeShared
+    entitlements:
+      path: MesugakiRoutine/MesugakiRoutine.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups:
+          - group.com.zakozako.mesugakiroutine
     info:
       path: MesugakiRoutine/Resources/Info.plist
       properties:
@@ -48,6 +55,9 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: YZZRP6M55K
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - target: ScreenTimeMonitorExtension
+        embed: true
     scheme:
       testTargets:
         - MesugakiRoutineTests
@@ -63,6 +73,34 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: MesugakiRoutine
+
+  ScreenTimeMonitorExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ScreenTimeMonitorExtension
+      - path: ScreenTimeShared
+    info:
+      path: ScreenTimeMonitorExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Screen Time Monitor
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.deviceactivity.monitor-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ScreenTimeMonitorExtension
+    entitlements:
+      path: ScreenTimeMonitorExtension/ScreenTimeMonitorExtension.entitlements
+      properties:
+        com.apple.developer.family-controls: true
+        com.apple.security.application-groups:
+          - group.com.zakozako.mesugakiroutine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zakozako.mesugakiroutine.ScreenTimeMonitorExtension
+        PRODUCT_NAME: ScreenTimeMonitorExtension
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: YZZRP6M55K
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
 
 schemes:
   MesugakiRoutine:

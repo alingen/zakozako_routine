@@ -73,7 +73,7 @@ struct HomeView: View {
             Text(viewModel.routineOperationErrorMessage ?? "不明なエラーです")
         }
         .alert(
-            "失敗を記録できませんでした",
+            "操作を完了できませんでした",
             isPresented: Binding(
                 get: { viewModel.blockedBehaviorOperationErrorMessage != nil },
                 set: { if !$0 { viewModel.clearBlockedBehaviorOperationError() } }
@@ -269,9 +269,17 @@ struct HomeView: View {
     @ViewBuilder
     private func promiseCard(_ behavior: BlockedBehavior) -> some View {
         let usage = viewModel.promiseUsage(for: behavior)
+        let hasScreenTimeIssue = behavior.trackingKind == .screenTime
+            && viewModel.screenTimeMonitoringIssueMessage != nil
 
         Button {
-            presentBlockedBehaviorActions(for: behavior)
+            if hasScreenTimeIssue {
+                Task {
+                    await viewModel.repairScreenTimeMonitoring(behavior)
+                }
+            } else {
+                presentBlockedBehaviorActions(for: behavior)
+            }
         } label: {
             HStack(spacing: 12) {
                 ProgressCircle(
@@ -287,8 +295,19 @@ struct HomeView: View {
                         .font(.headline)
                         .foregroundStyle(AppColor.text)
 
-                    if usage.failed {
-                        Text("\(usage.periodLabel)は上限に達しました")
+                    if hasScreenTimeIssue {
+                        Text("スクリーンタイムを再設定してください")
+                            .font(.caption)
+                            .foregroundStyle(AppColor.error)
+                        Text("タップして許可を確認")
+                            .font(.caption2)
+                            .foregroundStyle(AppColor.muted)
+                    } else if usage.failed {
+                        Text(
+                            behavior.trackingKind == .screenTime
+                                ? "今日は時間上限を超えました"
+                                : "\(usage.periodLabel)は上限に達しました"
+                        )
                             .font(.caption)
                             .foregroundStyle(AppColor.error)
                     } else {
@@ -302,7 +321,11 @@ struct HomeView: View {
                                 .foregroundStyle(AppColor.muted)
                         }
 
-                        Text("\(usage.periodLabel) あと \(usage.remaining) 回")
+                        Text(
+                            behavior.trackingKind == .screenTime
+                                ? "今日は \(formattedScreenTimeLimit(behavior.screenTimeLimitMinutes)) まで"
+                                : "\(usage.periodLabel) あと \(usage.remaining) 回"
+                        )
                             .font(.caption2)
                             .foregroundStyle(AppColor.muted)
                     }
@@ -312,6 +335,14 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func formattedScreenTimeLimit(_ minutes: Int) -> String {
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        if hours == 0 { return "\(remainingMinutes)分" }
+        if remainingMinutes == 0 { return "\(hours)時間" }
+        return "\(hours)時間\(remainingMinutes)分"
     }
 
     private func presentBlockedBehaviorActions(for behavior: BlockedBehavior) {

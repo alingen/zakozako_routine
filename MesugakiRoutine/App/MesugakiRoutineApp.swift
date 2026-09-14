@@ -63,10 +63,14 @@ struct MesugakiRoutineApp: App {
         WindowGroup {
             RootTabView()
                 .environment(SiriLaunchCoordinator.shared)
+                .task {
+                    synchronizeScreenTimeBehavior()
+                }
         }
         .modelContainer(modelContainer)
         .onChange(of: scenePhase) {
             guard scenePhase == .active else { return }
+            synchronizeScreenTimeBehavior()
             rescheduleNotifications()
         }
     }
@@ -78,6 +82,25 @@ struct MesugakiRoutineApp: App {
         let routines = dependencies.routineRepository.fetchAll().filter { $0.isActive }
         Task {
             await dependencies.notificationScheduler.reschedule(routines: routines)
+        }
+    }
+
+    /// Device Activity拡張がアプリ外で検知した上限超過を取り込み、監視状態も復元する。
+    private func synchronizeScreenTimeBehavior() {
+        let dependencies = AppDependencies(context: modelContainer.mainContext)
+        dependencies.screenTimeMonitoringService.consumePendingSignals(
+            using: dependencies.blockedBehaviorRepository
+        )
+
+        guard let behavior = dependencies.blockedBehaviorRepository.fetchActive() else { return }
+        if behavior.trackingKind == .screenTime {
+            // Screen Time は拡張機能が監視完了を確認した日だけ達成として取り込む。
+            try? dependencies.screenTimeMonitoringService.ensureMonitoring(for: behavior)
+        } else {
+            dependencies.blockedBehaviorRepository.autoEvaluate(behavior)
+        }
+        if behavior.masteredAt != nil {
+            dependencies.screenTimeMonitoringService.stopMonitoring(for: behavior)
         }
     }
 }

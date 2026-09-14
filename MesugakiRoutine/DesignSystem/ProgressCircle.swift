@@ -13,12 +13,12 @@ struct ProgressCircle: View {
     var tint: Color = AppColor.primary
     /// 1.0 到達時にチェックマークを出すか。約束カードでは false(達成の意味にならないように)。
     var showsCheckmarkWhenComplete: Bool = true
-    /// 「失敗」状態。true のとき、進捗に関わらず薄い円 + ✕ を表示する(今日の約束の上限到達)。
+    /// 「失敗」状態。true のとき、進捗に関わらず薄い円 + 失敗アイコンを表示する。
     var failed: Bool = false
     /// 円の中に表示する SF Symbol。
     /// - 未完了: 枠の中にアイコンを `tint` 色で表示(背景は透明=白)。
     /// - 完了: 背景 `tint` / アイコン白 に反転。
-    /// - 失敗(`failed`): ✕ が優先。
+    /// - 失敗(`failed`): 失敗アイコンが優先。
     var centerSystemImage: String? = nil
 
     private var clamped: Double { min(max(progress, 0), 1) }

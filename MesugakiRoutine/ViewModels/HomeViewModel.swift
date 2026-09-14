@@ -13,7 +13,7 @@ struct PromiseUsage {
     let periodLabel: String
     /// チェックボックスの塗り具合 0.0〜1.0(残り / 上限)。満タンからスタートし、タップで減る。
     var fraction: Double { limit > 0 ? Double(remaining) / Double(limit) : 0 }
-    /// 上限に達した(残り0)= 失敗。チェックボックスは✕になる。
+    /// 上限に達した(残り0)= 失敗。
     var failed: Bool { used >= limit }
 }
 
@@ -53,6 +53,8 @@ final class HomeViewModel {
     private(set) var completionContext: RoutineCompletionContext?
     private(set) var routineOperationErrorMessage: String?
     private(set) var blockedBehaviorOperationErrorMessage: String?
+    /// Screen Time の権限取消・監視復元失敗を、カード内の再設定導線に表示する。
+    private(set) var screenTimeMonitoringIssueMessage: String?
 
     private var dependencies: AppDependencies?
 
@@ -65,6 +67,12 @@ final class HomeViewModel {
 
     func reload() {
         guard let dependencies else { return }
+        // Device Activity拡張の通知を先に取り込む。順序を逆にすると、昨日の超過を
+        // 「守れた日」としてautoEvaluateしてしまう。
+        dependencies.screenTimeMonitoringService.consumePendingSignals(
+            using: dependencies.blockedBehaviorRepository
+        )
+
         let allRoutines = dependencies.routineRepository.fetchAll()
         todayRoutines = Self.computeTodayRoutines(allRoutines)
 
@@ -77,8 +85,22 @@ final class HomeViewModel {
         routineProgressById = progressMap
         routineStreakById = streakMap
 
+        screenTimeMonitoringIssueMessage = nil
         if let behavior = dependencies.blockedBehaviorRepository.fetchActive() {
-            dependencies.blockedBehaviorRepository.autoEvaluate(behavior)
+            if behavior.trackingKind == .screenTime {
+                do {
+                    // Screen Time の達成日は拡張機能の監視完了通知だけで加算する。
+                    try dependencies.screenTimeMonitoringService.ensureMonitoring(for: behavior)
+                } catch {
+                    screenTimeMonitoringIssueMessage = error.localizedDescription
+                }
+            } else {
+                dependencies.blockedBehaviorRepository.autoEvaluate(behavior)
+            }
+
+            if behavior.masteredAt != nil {
+                dependencies.screenTimeMonitoringService.stopMonitoring(for: behavior)
+            }
         }
         currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
         masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
@@ -139,7 +161,21 @@ final class HomeViewModel {
     func recordPromiseFailure(_ behavior: BlockedBehavior) -> Bool {
         guard let dependencies else { return false }
         do {
-            try dependencies.blockedBehaviorRepository.recordFailure(behavior)
+            if behavior.trackingKind == .screenTime {
+                let now = Date.now
+                _ = try dependencies.blockedBehaviorRepository.recordScreenTimeSignal(
+                    ScreenTimeMonitorSignal(
+                        behaviorID: behavior.id,
+                        appDayStart: AppDay.startOfDay(for: now),
+                        occurredAt: now,
+                        kind: .thresholdExceeded
+                    ),
+                    for: behavior,
+                    processedAt: now
+                )
+            } else {
+                try dependencies.blockedBehaviorRepository.recordFailure(behavior)
+            }
             blockedBehaviorOperationErrorMessage = nil
             reload()
             return true
@@ -153,33 +189,75 @@ final class HomeViewModel {
         dependencies?.blockedBehaviorRepository.canAddNew() ?? false
     }
 
-    /// 「やらないことを決める」画面の下書きを保存する。保存できたときだけ true。
-    @discardableResult
-    func addBlockedBehavior(_ draft: BlockedBehaviorDraft) -> Bool {
-        guard let dependencies, canAddBlockedBehavior else { return false }
+    /// 「やらないことを決める」画面の下書きを保存する。成功時はnil、失敗時は理由を返す。
+    func addBlockedBehavior(_ draft: BlockedBehaviorDraft) -> String? {
+        guard let dependencies else {
+            return "保存先を準備できませんでした。もう一度お試しください。"
+        }
+        guard canAddBlockedBehavior else {
+            return "挑戦中の「やらないこと」は同時に1つまでです。"
+        }
         let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return false }
-        guard dependencies.blockedBehaviorRepository.create(
+        guard !title.isEmpty else { return "タイトルを入力してください。" }
+        guard let behavior = dependencies.blockedBehaviorRepository.create(
             title: title,
             iconName: draft.iconName,
             limitPeriod: draft.effectiveLimitPeriod,
-            limitCount: draft.effectiveLimitCount
-        ) != nil else { return false }
+            limitCount: draft.effectiveLimitCount,
+            trackingKind: draft.trackingKind,
+            screenTimeLimitMinutes: draft.trackingKind == .screenTime
+                ? draft.screenTimeLimitMinutes
+                : nil,
+            screenTimeSelectionData: draft.screenTimeSelectionData
+        ) else { return "保存できませんでした。もう一度お試しください。" }
+
+        if behavior.trackingKind == .screenTime {
+            do {
+                try dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
+            } catch {
+                _ = dependencies.blockedBehaviorRepository.delete(behavior)
+                return error.localizedDescription
+            }
+        }
+
         reload()
-        return true
+        return nil
+    }
+
+    /// カードの再設定導線からScreen Time権限を取り直し、監視を再開する。
+    func repairScreenTimeMonitoring(_ behavior: BlockedBehavior) async {
+        guard let dependencies, behavior.trackingKind == .screenTime else { return }
+        do {
+            try await dependencies.screenTimeMonitoringService.requestAuthorization()
+            try dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
+            screenTimeMonitoringIssueMessage = nil
+            blockedBehaviorOperationErrorMessage = nil
+            reload()
+        } catch {
+            screenTimeMonitoringIssueMessage = error.localizedDescription
+            blockedBehaviorOperationErrorMessage = error.localizedDescription
+        }
     }
 
     @discardableResult
     func deleteBlockedBehavior(_ behavior: BlockedBehavior) -> Bool {
         guard let dependencies else { return false }
-        guard dependencies.blockedBehaviorRepository.delete(behavior) else { return false }
+        dependencies.screenTimeMonitoringService.stopMonitoring(for: behavior)
+        guard dependencies.blockedBehaviorRepository.delete(behavior) else {
+            // 保存側だけ失敗した場合は、挑戦中の監視を可能な限り戻す。
+            try? dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
+            return false
+        }
+        dependencies.screenTimeMonitoringService.discardStoredSignals(for: behavior)
         reload()
         return true
     }
 
     func deleteMasteredBehavior(_ behavior: BlockedBehavior) {
         guard let dependencies else { return }
+        dependencies.screenTimeMonitoringService.stopMonitoring(for: behavior)
         if dependencies.blockedBehaviorRepository.delete(behavior) {
+            dependencies.screenTimeMonitoringService.discardStoredSignals(for: behavior)
             reload()
         }
     }
