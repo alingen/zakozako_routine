@@ -27,33 +27,36 @@ struct InteractionView: View {
                 AppColor.background
                     .ignoresSafeArea()
 
-                Image("rio_interaction_background")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(
-                        width: proxy.size.width,
-                        height: backgroundHeight,
-                        alignment: .top
-                    )
-                    .offset(y: -proxy.safeAreaInsets.top + 60 )
-                    .ignoresSafeArea(edges: .bottom)
-                    .accessibilityHidden(true)
-                    .scaleEffect(1.2)
-                    .allowsHitTesting(false)
+                ZStack(alignment: .top) {
+                    Image("rio_interaction_background")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(
+                            width: proxy.size.width,
+                            height: backgroundHeight,
+                            alignment: .top
+                        )
+                        .offset(y: -proxy.safeAreaInsets.top + 60 )
+                        .ignoresSafeArea(edges: .bottom)
+                        .scaleEffect(1.2)
 
-                Image("rio_interaction_home")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: proxy.size.width * 1.5)
-                    .scaleEffect(1.2, anchor: .top)
-                    .offset(y: 182 + artworkDrop)
-                    .frame(
-                        width: proxy.size.width,
-                        height: visualHeight,
-                        alignment: .top
-                    )
-                    .ignoresSafeArea(edges: .bottom)
-                    .accessibilityHidden(true)
+                    Image("rio_interaction_home")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: proxy.size.width * 1.5)
+                        .scaleEffect(1.2, anchor: .top)
+                        .offset(y: 128 + artworkDrop)
+                        .frame(
+                            width: proxy.size.width,
+                            height: visualHeight,
+                            alignment: .top
+                        )
+                        .ignoresSafeArea(edges: .bottom)
+                }
+                .frame(width: proxy.size.width, height: visualHeight, alignment: .top)
+                .modifier(InteractionArtworkBottomBlur())
+                .accessibilityHidden(true)
+                .allowsHitTesting(false)
 
                 LinearGradient(
                     colors: [
@@ -112,7 +115,6 @@ struct InteractionView: View {
                         freeTalkCard(height: cardHeight)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 20)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
 
