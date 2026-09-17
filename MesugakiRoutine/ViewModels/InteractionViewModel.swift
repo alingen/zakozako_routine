@@ -17,6 +17,7 @@ final class InteractionViewModel {
     private(set) var mainChapters: [StoryChapterPresentation] = []
     private(set) var subChapters: [StoryChapterPresentation] = []
     private(set) var memories: [StoryMemoryPresentation] = []
+    private(set) var storyProgress: InteractionStoryProgressPresentation = .empty
     private(set) var todayConversationTitle = "今日の会話"
     private(set) var todayConversationDetail = "日付ごとに入れ替わる、莉央との短い会話"
     private(set) var todayConversationIsAvailable = false
@@ -24,10 +25,6 @@ final class InteractionViewModel {
     private(set) var todayConversationHasResumePosition = false
     private(set) var loadError: String?
     private(set) var activeLaunch: StoryLaunchRequest?
-
-    var showsTodayConversationCard: Bool {
-        todayConversationIsAvailable && todayConversationIsUnread
-    }
 
     private var dependencies: AppDependencies?
     private var todayScenario: StoryScenario?
@@ -67,6 +64,7 @@ final class InteractionViewModel {
                 evaluations: refresh.events,
                 progressById: progressById
             )
+            storyProgress = .make(chapters: mainChapters, evaluations: refresh.events)
             memories = makeMemories(
                 catalog: content.cgCatalog,
                 unlocked: try dependencies.storyStateRepository.memoryUnlocks()
@@ -228,6 +226,7 @@ final class InteractionViewModel {
         mainChapters = []
         subChapters = []
         memories = []
+        storyProgress = .empty
         todayScenario = nil
         todayConversationIsAvailable = false
         todayConversationIsUnread = false

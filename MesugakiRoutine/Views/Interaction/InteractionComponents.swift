@@ -2,8 +2,53 @@ import SwiftUI
 
 struct InteractionCharacterSpeechBubble: View {
     let text: String
+    var speakerName: String? = nil
 
+    @ViewBuilder
     var body: some View {
+        if let speakerName {
+            labeledBubble(name: speakerName)
+        } else {
+            legacyBubble
+        }
+    }
+
+    private func labeledBubble(name: String) -> some View {
+        Text(text)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(AppColor.text)
+            .multilineTextAlignment(.leading)
+            .lineLimit(3)
+            .minimumScaleFactor(0.86)
+            .padding(.leading, 20)
+            .padding(.trailing, 30)
+            .padding(.top, 25)
+            .padding(.bottom, 18)
+            .frame(maxWidth: .infinity, minHeight: 102, alignment: .leading)
+            .background {
+                InteractionLabeledSpeechBubbleShape()
+                    .fill(AppColor.surface.opacity(0.91))
+                    .shadow(color: AppColor.text.opacity(0.14), radius: 16, y: 6)
+            }
+            .overlay {
+                InteractionLabeledSpeechBubbleShape()
+                    .stroke(.white.opacity(0.9), lineWidth: 1)
+            }
+            .overlay(alignment: .topLeading) {
+                Text(name)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 6)
+                    .background(AppColor.primary, in: Capsule())
+                    .padding(.leading, 20)
+                    .offset(y: -14)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(name)、\(text)")
+    }
+
+    private var legacyBubble: some View {
         Text(text)
             .font(.body.weight(.bold))
             .foregroundStyle(AppColor.text)
@@ -25,6 +70,21 @@ struct InteractionCharacterSpeechBubble: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("莉央、\(text)")
+    }
+}
+
+private struct InteractionLabeledSpeechBubbleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let body = CGRect(x: rect.minX, y: rect.minY, width: max(0, rect.width - 14), height: rect.height)
+        var path = Path(roundedRect: body, cornerRadius: 24)
+        path.move(to: CGPoint(x: body.maxX - 1, y: rect.minY + 23))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY + 12),
+            control: CGPoint(x: body.maxX + 5, y: rect.minY + 19)
+        )
+        path.addLine(to: CGPoint(x: body.maxX - 1, y: rect.minY + 47))
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -56,6 +116,7 @@ struct TodayConversationCard: View {
     let isUnread: Bool
     let hasResumePosition: Bool
     let isAvailable: Bool
+    var height: CGFloat = 130
     let action: () -> Void
 
     private var statusText: String {
@@ -66,53 +127,13 @@ struct TodayConversationCard: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(AppColor.primary, in: Circle())
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 7) {
-                        Text(title)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(AppColor.muted)
-
-                        if isUnread && isAvailable {
-                            Text("NEW")
-                                .font(.caption2.bold())
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background(AppColor.primary, in: Capsule())
-                        } else if hasResumePosition {
-                            Text("続きから")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(AppColor.secondary)
-                        }
-                    }
-
-                    Text(statusText)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppColor.text)
-                        .multilineTextAlignment(.leading)
-                }
-
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right")
-                    .font(.caption.bold())
-                    .foregroundStyle(AppColor.primary)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(.white.opacity(0.9))
-            }
-            .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 5)
+            InteractionHomeFeatureCard(
+                kind: .today,
+                title: title,
+                detail: statusText,
+                badge: hasResumePosition ? "続きから" : (isUnread ? "1" : nil),
+                height: height
+            )
         }
         .buttonStyle(.plain)
         .disabled(!isAvailable)
@@ -120,31 +141,205 @@ struct TodayConversationCard: View {
     }
 }
 
-struct InteractionHomeDestinationButton: View {
-    let title: String
-    let systemImage: String
+enum InteractionHomeCardKind {
+    case today, story, memories, freeTalk
+
+    var symbol: String {
+        switch self {
+        case .today: return "bubble.left.and.bubble.right"
+        case .story: return "book"
+        case .memories: return "photo.on.rectangle.angled"
+        case .freeTalk: return "bubble.left"
+        }
+    }
+
+    var tint: Color { self == .today ? AppColor.primary : AppColor.secondary }
+}
+
+/// 読了・未読の状態にかかわらず、交流の4つの入口を2列で配置する。
+struct InteractionHomeCardGrid<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
 
     var body: some View {
-        VStack(spacing: 7) {
-            Image(systemName: systemImage)
-                .font(.title2.bold())
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(AppColor.secondary, in: Circle())
-
-            Text(title)
-                .font(.caption2.bold())
-                .foregroundStyle(AppColor.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
+        LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
+            spacing: 12
+        ) {
+            content
         }
-        .frame(width: 88, height: 78)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityLabel("交流メニュー")
+    }
+}
+
+/// 立ち絵はカード内の固定枠で切り抜く。後からカード専用イラストに差し替えられる入口。
+struct InteractionHomeFeatureCard: View {
+    let kind: InteractionHomeCardKind
+    let title: String
+    let detail: String
+    var badge: String? = nil
+    var height: CGFloat = 130
+
+    private var isFreeTalk: Bool { kind == .freeTalk }
+    private var foreground: Color { isFreeTalk ? .white : AppColor.text }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 21, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                (isFreeTalk ? AppColor.text.opacity(0.82) : kind.tint.opacity(0.09))
+
+                if kind == .memories || kind == .today {
+                    portraitAccent(width: min(76, proxy.size.width * 0.4))
+                        .padding(.leading, 7)
+                        .opacity(kind == .memories ? 0.95 : 0.82)
+                } else {
+                    Image("rio_interaction_home")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: height, alignment: .top)
+                        .clipped()
+                        .opacity(isFreeTalk ? 0.26 : 0.36)
+
+                    LinearGradient(
+                        colors: isFreeTalk
+                            ? [.clear, AppColor.text.opacity(0.86)]
+                            : [AppColor.secondary.opacity(0.08), AppColor.surface.opacity(0.94)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Image(systemName: kind.symbol)
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(isFreeTalk ? .white.opacity(0.85) : kind.tint)
+
+                    Spacer(minLength: 0)
+
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(foreground)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+
+                    if isFreeTalk {
+                        Text("開発中")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.95))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .overlay(Capsule().stroke(.white.opacity(0.5)))
+                    } else {
+                        HStack(alignment: .bottom, spacing: 2) {
+                            Text(detail)
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(kind == .today ? AppColor.primary : AppColor.muted)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(kind.tint)
+                        }
+                    }
+                }
+                .padding(12)
+                .padding(.leading, kind == .today || kind == .memories ? min(66, proxy.size.width * 0.34) : 0)
+
+                if let badge {
+                    Text(badge)
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 7)
+                        .frame(minWidth: 23, minHeight: 23)
+                        .background(AppColor.primary, in: Capsule())
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(9)
+                }
+            }
+            .frame(width: proxy.size.width, height: height)
+            .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 21, style: .continuous)
+                    .stroke(.white.opacity(isFreeTalk ? 0.55 : 0.86), lineWidth: 1)
+            }
+            .shadow(color: AppColor.text.opacity(0.14), radius: 13, y: 5)
+        }
+        .frame(height: height)
+        .contentShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isFreeTalk ? "\(title)、開発中" : "\(title)、\(detail)")
+    }
+
+    private func portraitAccent(width: CGFloat) -> some View {
+        Image("rio_interaction_home")
+            .resizable()
+            .scaledToFill()
+            .scaleEffect(2.4, anchor: .top)
+            .frame(width: width, height: height - 22, alignment: .top)
+            .clipped()
+            .padding(4)
+            .padding(.bottom, kind == .memories ? 9 : 0)
+            .background(AppColor.surface.opacity(kind == .memories ? 0.86 : 0.25))
+            .clipShape(RoundedRectangle(cornerRadius: kind == .memories ? 5 : 14))
+            .rotationEffect(.degrees(kind == .memories ? -7 : 0))
+            .accessibilityHidden(true)
+    }
+}
+
+struct InteractionProgressMiniCard: View {
+    let progress: InteractionStoryProgressPresentation
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(progress.chapterTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 0)
+                Text("\(progress.completedCount) / \(progress.totalCount)")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .fixedSize()
+            }
+            .foregroundStyle(AppColor.text)
+
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(AppColor.secondary.opacity(0.14))
+                    Capsule()
+                        .fill(LinearGradient(
+                            colors: [AppColor.primarySoft, AppColor.primary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ))
+                        .frame(width: proxy.size.width * progress.progressFraction)
+                }
+            }
+            .frame(height: 6)
+            .clipShape(Capsule())
+            .accessibilityHidden(true)
+
+            Text(progress.nextStoryText)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(AppColor.muted)
+                .lineLimit(2)
+        }
+        .padding(12)
+        .frame(width: 188)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
                 .stroke(.white.opacity(0.9))
         }
-        .shadow(color: AppColor.text.opacity(0.16), radius: 10, y: 4)
-        .contentShape(Rectangle())
+        .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 5)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(progress.chapterTitle)、\(progress.completedCount)話読了、全\(progress.totalCount)話。\(progress.nextStoryText)")
     }
 }

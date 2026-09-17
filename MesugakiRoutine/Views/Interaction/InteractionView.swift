@@ -21,6 +21,7 @@ struct InteractionView: View {
             let visualHeight = proxy.size.height + proxy.safeAreaInsets.bottom
             let backgroundHeight = visualHeight + proxy.safeAreaInsets.top
             let artworkDrop = min(48, proxy.size.height * 0.055)
+            let cardHeight = min(136, max(112, proxy.size.height * 0.18))
 
             ZStack(alignment: .top) {
                 AppColor.background
@@ -38,6 +39,7 @@ struct InteractionView: View {
                     .ignoresSafeArea(edges: .bottom)
                     .accessibilityHidden(true)
                     .scaleEffect(1.2)
+                    .allowsHitTesting(false)
 
                 Image("rio_interaction_home")
                     .resizable()
@@ -80,71 +82,42 @@ struct InteractionView: View {
                 .accessibilityLabel("莉央")
                 .accessibilityHint("タップすると莉央が話します")
 
-                if let homeDialogue {
-                    InteractionCharacterSpeechBubble(text: homeDialogue)
-                        .frame(width: min(300, proxy.size.width - 72))
-                        .position(
-                            x: proxy.size.width * 0.44,
-                            y: proxy.size.height * 0.55 + artworkDrop
-                        )
-                        .id(homeDialogueIndex)
-                        .transition(
-                            .scale(scale: 0.92, anchor: .top)
-                                .combined(with: .opacity)
-                        )
-                        .allowsHitTesting(false)
-                }
-
-                VStack(spacing: 0) {
-                    if viewModel.showsTodayConversationCard {
-                        TodayConversationCard(
-                            title: viewModel.todayConversationTitle,
-                            isUnread: viewModel.todayConversationIsUnread,
-                            hasResumePosition: viewModel.todayConversationHasResumePosition,
-                            isAvailable: viewModel.todayConversationIsAvailable,
-                            action: { viewModel.openToday() }
-                        )
-                        .padding(.horizontal, 16)
-                        .padding(.top, 80)
-                    }
-
-                    Spacer(minLength: 0)
-
+                VStack(alignment: .leading, spacing: 0) {
                     HStack {
                         Spacer(minLength: 0)
-
-                        VStack(spacing: 12) {
-                            NavigationLink {
-                                StoryCatalogView(
-                                    mainChapters: viewModel.mainChapters,
-                                    subChapters: viewModel.subChapters,
-                                    onOpen: viewModel.openEvent
-                                )
-                            } label: {
-                                InteractionHomeDestinationButton(
-                                    title: "ストーリー",
-                                    systemImage: "book.pages.fill"
-                                )
-                            }
-
-                            NavigationLink {
-                                MemoryGalleryView(memories: viewModel.memories)
-                            } label: {
-                                InteractionHomeDestinationButton(
-                                    title: "コレクション",
-                                    systemImage: "photo.stack.fill"
-                                )
-                            }
-                        }
-                        .buttonStyle(.plain)
+                        InteractionProgressMiniCard(progress: viewModel.storyProgress)
                     }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, proxy.safeAreaInsets.bottom + 48)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 24)
+
+                    Spacer(minLength: 16)
+
+                    if let homeDialogue {
+                        InteractionCharacterSpeechBubble(text: homeDialogue, speakerName: "莉央")
+                            .frame(width: min(340, proxy.size.width - 48))
+                            .padding(.leading, 16)
+                            .padding(.bottom, 20)
+                            .id(homeDialogueIndex)
+                            .transition(
+                                .scale(scale: 0.94, anchor: .bottomLeading)
+                                    .combined(with: .opacity)
+                            )
+                            .allowsHitTesting(false)
+                    }
+
+                    InteractionHomeCardGrid {
+                        todayCard(height: cardHeight)
+                        storyCard(height: cardHeight)
+                        memoriesCard(height: cardHeight)
+                        freeTalkCard(height: cardHeight)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20)
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height)
 
                 if let loadError = viewModel.loadError {
                     VStack {
-                        Spacer()
                         Label(loadError, systemImage: "exclamationmark.triangle.fill")
                             .font(.caption)
                             .foregroundStyle(AppColor.warning)
@@ -152,6 +125,7 @@ struct InteractionView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 14))
                             .padding(16)
+                        Spacer()
                     }
                 }
             }
@@ -178,6 +152,61 @@ struct InteractionView: View {
                 viewModel.closePlayer()
             }
         }
+    }
+
+    private func todayCard(height: CGFloat) -> some View {
+        TodayConversationCard(
+            title: viewModel.todayConversationTitle,
+            isUnread: viewModel.todayConversationIsUnread,
+            hasResumePosition: viewModel.todayConversationHasResumePosition,
+            isAvailable: viewModel.todayConversationIsAvailable,
+            height: height,
+            action: { viewModel.openToday() }
+        )
+    }
+
+    private func storyCard(height: CGFloat) -> some View {
+        NavigationLink {
+            StoryCatalogView(
+                mainChapters: viewModel.mainChapters,
+                subChapters: viewModel.subChapters,
+                onOpen: viewModel.openEvent
+            )
+        } label: {
+            InteractionHomeFeatureCard(
+                kind: .story,
+                title: "ストーリー",
+                detail: "莉央との物語を読む",
+                height: height
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("メインストーリーとサブストーリーを開きます")
+    }
+
+    private func memoriesCard(height: CGFloat) -> some View {
+        NavigationLink {
+            MemoryGalleryView(memories: viewModel.memories)
+        } label: {
+            InteractionHomeFeatureCard(
+                kind: .memories,
+                title: "思い出",
+                detail: "あの時の莉央に会いに",
+                height: height
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("思い出のコレクションを開きます")
+    }
+
+    private func freeTalkCard(height: CGFloat) -> some View {
+        InteractionHomeFeatureCard(
+            kind: .freeTalk,
+            title: "ふりーとーく",
+            detail: "",
+            height: height
+        )
+        .allowsHitTesting(false)
     }
 
     private func showNextHomeDialogue() {
