@@ -137,7 +137,6 @@ struct TodayConversationCard: View {
         }
         .buttonStyle(.plain)
         .disabled(!isAvailable)
-        .opacity(isAvailable ? 1 : 0.68)
     }
 }
 

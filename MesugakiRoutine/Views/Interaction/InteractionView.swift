@@ -88,7 +88,7 @@ struct InteractionView: View {
                         InteractionProgressMiniCard(progress: viewModel.storyProgress)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 24)
+                    .padding(.top, proxy.size.height * 0.10)
 
                     Spacer(minLength: 16)
 
