@@ -1,5 +1,11 @@
 import { gridToRows } from '../src/fetch.js';
-import { CHOICE_COLUMNS, EVENT_COLUMNS, SCENARIO_COLUMNS } from '../src/schema.js';
+import {
+  CHOICE_COLUMNS,
+  DAILY_COLUMNS,
+  EVENT_COLUMNS,
+  INTERACTION_COLUMNS,
+  SCENARIO_COLUMNS,
+} from '../src/schema.js';
 import type { RawSheets } from '../src/types.js';
 
 type Values = Record<string, string | number | boolean | undefined>;
@@ -7,17 +13,28 @@ type Values = Record<string, string | number | boolean | undefined>;
 export function sheets(options: {
   scenarios?: Values[];
   choices?: Values[];
+  interactions?: Values[];
   events?: Values[];
   titleRows?: number;
 }): RawSheets {
+  const scenarioRows = options.scenarios ?? [];
+  const dailyRows = scenarioRows.filter((row) => (row.scenario_type ?? 'daily') === 'daily');
+  const eventScenarioRows = scenarioRows.filter(
+    (row) => (row.scenario_type ?? 'daily') !== 'daily',
+  );
   return {
+    daily: gridToRows(grid(DAILY_COLUMNS, dailyRows, options.titleRows ?? 0), 'scenario_id'),
     scenarios: gridToRows(
-      grid(SCENARIO_COLUMNS, options.scenarios ?? [], options.titleRows ?? 0),
+      grid(SCENARIO_COLUMNS, eventScenarioRows, options.titleRows ?? 0),
       'scenario_id',
     ),
     choices: gridToRows(
       grid(CHOICE_COLUMNS, options.choices ?? [], options.titleRows ?? 0),
       'choice_id',
+    ),
+    interactions: gridToRows(
+      grid(INTERACTION_COLUMNS, options.interactions ?? [], options.titleRows ?? 0),
+      'id',
     ),
     events: gridToRows(
       grid(EVENT_COLUMNS, options.events ?? [], options.titleRows ?? 0),
@@ -49,9 +66,20 @@ export function scenario(values: Values = {}): Values {
 
 export function choice(values: Values = {}): Values {
   return {
+    daily_id: 'daily_test',
     choice_id: 'test_choice',
     choice_order: 1,
     label: 'choose',
+    ...values,
+  };
+}
+
+export function interaction(values: Values = {}): Values {
+  return {
+    id: 'interaction_test',
+    text: 'test comment',
+    weight: 1,
+    active: true,
     ...values,
   };
 }

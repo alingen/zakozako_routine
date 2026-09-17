@@ -155,14 +155,15 @@ struct StoryPlayerView: View {
     private var playerContent: some View {
         if input.isCompleted {
             switch input.scenarioType {
-            case .smallEvent:
-                SmallEventCompletionView(
+            case .daily, .smallEvent:
+                ChatStoryCompletionView(
                     visibleNodes: input.visibleChatNodes,
+                    scenarioType: input.scenarioType,
                     onClose: onClose
                 )
             case .middleEvent, .largeEvent:
                 Color.black.ignoresSafeArea()
-            case .daily, .unknown:
+            case .unknown:
                 completionView
             }
         } else if let node = input.currentNode {
@@ -250,7 +251,8 @@ struct StoryPlayerView: View {
                         Label("ログ", systemImage: "list.bullet.rectangle")
                     }
                 }
-                if input.scenarioType != .smallEvent || !input.isCompleted {
+                if !input.isCompleted
+                    || !ChatStoryPresentationPolicy.usesChatCompletion(for: input.scenarioType) {
                     Button {
                         isShowingRestartConfirmation = true
                     } label: {

@@ -13,6 +13,8 @@ final class RoutineEditViewModel {
     var period: HabitPeriod = .day
     /// 期間あたりの目標回数。デフォルト1。
     var targetCount: Int = 1
+    /// タイマーで取り組む目標分数。nil のときは目標時間の項目を表示しない。
+    var targetDurationMinutes: Int?
     /// 開始予定時間。通知の起点。
     var scheduledStartTime: Date = Routine.date(fromMinutes: 8 * 60)
     var notifyAtScheduledTime: Bool = false
@@ -29,6 +31,7 @@ final class RoutineEditViewModel {
             iconName = routine.iconName
             period = routine.period
             targetCount = routine.targetCount
+            targetDurationMinutes = routine.targetDurationMinutes
             notifyAtScheduledTime = routine.scheduledStartMinute != nil
             if let minute = routine.scheduledStartMinute {
                 scheduledStartTime = Routine.date(fromMinutes: minute)
@@ -58,14 +61,21 @@ final class RoutineEditViewModel {
             title: preset.title,
             iconName: preset.iconName,
             period: preset.period,
-            targetCount: preset.targetCount
+            targetCount: preset.targetCount,
+            targetDurationMinutes: preset.targetDurationMinutes
         )
     }
 
     /// 自由入力用に、新規作成の下書きを初期状態へ戻す。
     func prepareCustomRoutine() {
         guard routine == nil else { return }
-        resetCreationDraft(title: "", iconName: nil, period: .day, targetCount: 1)
+        resetCreationDraft(
+            title: "",
+            iconName: nil,
+            period: .day,
+            targetCount: 1,
+            targetDurationMinutes: nil
+        )
     }
 
     func toggleWeekday(_ weekday: Weekday) {
@@ -101,7 +111,8 @@ final class RoutineEditViewModel {
                     period: period,
                     targetCount: count,
                     scheduledStartMinute: scheduledStartMinute,
-                    activeWeekdayValues: weekdayValues
+                    activeWeekdayValues: weekdayValues,
+                    targetDurationMinutes: targetDurationMinutes
                 )
             } else {
                 routine = try dependencies.routineRepository.create(
@@ -110,7 +121,8 @@ final class RoutineEditViewModel {
                     period: period,
                     targetCount: count,
                     scheduledStartMinute: scheduledStartMinute,
-                    activeWeekdayValues: weekdayValues
+                    activeWeekdayValues: weekdayValues,
+                    targetDurationMinutes: targetDurationMinutes
                 )
             }
             saveErrorMessage = nil
@@ -129,12 +141,14 @@ final class RoutineEditViewModel {
         title: String,
         iconName: String?,
         period: HabitPeriod,
-        targetCount: Int
+        targetCount: Int,
+        targetDurationMinutes: Int?
     ) {
         self.title = title
         self.iconName = iconName
         self.period = period
         self.targetCount = max(targetCount, 1)
+        self.targetDurationMinutes = targetDurationMinutes.map { max($0, 1) }
         scheduledStartTime = Routine.date(fromMinutes: 8 * 60)
         notifyAtScheduledTime = false
         selectedWeekdays = Set(Weekday.allWeekdayValues)

@@ -135,6 +135,24 @@ struct RoutineEditView: View {
                 .buttonStyle(.plain)
             }
 
+            if let targetDurationMinutes = viewModel.targetDurationMinutes {
+                Section("タイマー") {
+                    NavigationLink {
+                        RoutineTargetDurationPickerView(
+                            targetDurationMinutes: targetDurationMinutesBinding
+                        )
+                    } label: {
+                        HStack {
+                            Label("目標時間", systemImage: "timer")
+                                .foregroundStyle(AppColor.text)
+                            Spacer()
+                            Text(durationLabel(minutes: targetDurationMinutes))
+                                .foregroundStyle(AppColor.muted)
+                        }
+                    }
+                }
+            }
+
             Section {
                 Picker("ペース", selection: $viewModel.period) {
                     ForEach(HabitPeriod.allCases) { period in
@@ -146,7 +164,11 @@ struct RoutineEditView: View {
             } header: {
                 Text("回数")
             } footer: {
-                Text("この期間のあいだに、円を長押ししてこの回数をこなすと「達成」です。")
+                if viewModel.targetDurationMinutes == nil {
+                    Text("この期間のあいだに、円を長押ししてこの回数をこなすと「達成」です。")
+                } else {
+                    Text("この期間のあいだに、時計からタイマーを最後まで実行してこの回数をこなすと「達成」です。")
+                }
             }
 
             if viewModel.canSelectWeekdays {
@@ -227,6 +249,17 @@ struct RoutineEditView: View {
         .background(AppColor.background)
     }
 
+    private var targetDurationMinutesBinding: Binding<Int> {
+        Binding(
+            get: { viewModel.targetDurationMinutes ?? 10 },
+            set: { viewModel.targetDurationMinutes = max($0, 1) }
+        )
+    }
+
+    private func durationLabel(minutes: Int) -> String {
+        "\(minutes):00"
+    }
+
     private func showCustomDetails() {
         if draftSource != .custom {
             viewModel.prepareCustomRoutine()
@@ -248,6 +281,28 @@ struct RoutineEditView: View {
         withAnimation(.easeInOut(duration: 0.2)) {
             creationStep = .details
         }
+    }
+}
+
+private struct RoutineTargetDurationPickerView: View {
+    @Binding var targetDurationMinutes: Int
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("目標分数", selection: $targetDurationMinutes) {
+                    ForEach(1...180, id: \.self) { minutes in
+                        Text("\(minutes)分").tag(minutes)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .labelsHidden()
+            } footer: {
+                Text("タイマーで取り組む目標時間を、分単位で選んでください。")
+            }
+        }
+        .navigationTitle("目標時間")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

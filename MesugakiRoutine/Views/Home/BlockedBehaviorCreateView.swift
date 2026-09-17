@@ -1,8 +1,15 @@
 import FamilyControls
 import SwiftUI
+import UIKit
 
 /// プリセットまたはカスタム入力から、内容をすべて決めて保存する「やらないこと」の新規作成画面。
 struct BlockedBehaviorCreateView: View {
+    private struct ScreenTimeAuthorizationAlert: Identifiable {
+        let id = UUID()
+        let message: String
+        let offersSettingsAction: Bool
+    }
+
     private enum CreationStep {
         case presetSelection
         case details
@@ -14,7 +21,9 @@ struct BlockedBehaviorCreateView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
+    let onRequestScreenTimeAuthorization: () async throws -> Void
     let onSave: (BlockedBehaviorDraft) -> String?
 
     @State private var creationStep: CreationStep = .presetSelection
@@ -22,8 +31,10 @@ struct BlockedBehaviorCreateView: View {
     @State private var draft = BlockedBehaviorDraft()
     @State private var isPresentingIconPicker = false
     @State private var isPresentingScreenTimePicker = false
+    @State private var isRequestingScreenTimeAuthorization = false
+    @State private var screenTimeAuthorizationRequestID: UUID?
     @State private var saveErrorMessage: String?
-    @State private var screenTimeAuthorizationError: String?
+    @State private var screenTimeAuthorizationAlert: ScreenTimeAuthorizationAlert?
 
     var body: some View {
         Group {
@@ -87,15 +98,19 @@ struct BlockedBehaviorCreateView: View {
         .alert(
             "スクリーンタイムを利用できません",
             isPresented: Binding(
-                get: { screenTimeAuthorizationError != nil },
-                set: { if !$0 { screenTimeAuthorizationError = nil } }
-            )
-        ) {
-            Button("OK", role: .cancel) {
-                screenTimeAuthorizationError = nil
+                get: { screenTimeAuthorizationAlert != nil },
+                set: { if !$0 { screenTimeAuthorizationAlert = nil } }
+            ),
+            presenting: screenTimeAuthorizationAlert
+        ) { alert in
+            if alert.offersSettingsAction {
+                Button("設定アプリを開く") {
+                    openAppSettings()
+                }
             }
-        } message: {
-            Text(screenTimeAuthorizationError ?? "設定からスクリーンタイムの許可を確認してください。")
+            Button("閉じる", role: .cancel) {}
+        } message: { alert in
+            Text(alert.message)
         }
     }
 
@@ -148,13 +163,20 @@ struct BlockedBehaviorCreateView: View {
                                         ? AppColor.error
                                         : AppColor.muted
                                 )
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(AppColor.muted)
+                            if isRequestingScreenTimeAuthorization {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .tint(AppColor.primary)
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppColor.muted)
+                            }
                         }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(isRequestingScreenTimeAuthorization)
                 }
 
                 Section {
@@ -270,19 +292,56 @@ struct BlockedBehaviorCreateView: View {
     }
 
     private func requestScreenTimeAuthorization() {
+        guard !isRequestingScreenTimeAuthorization else { return }
+
+        let requestID = UUID()
+        screenTimeAuthorizationRequestID = requestID
+        isRequestingScreenTimeAuthorization = true
+
         Task { @MainActor in
+            defer {
+                if screenTimeAuthorizationRequestID == requestID {
+                    screenTimeAuthorizationRequestID = nil
+                    isRequestingScreenTimeAuthorization = false
+                }
+            }
+
             do {
-                try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+                try await onRequestScreenTimeAuthorization()
+                guard screenTimeAuthorizationRequestID == requestID,
+                      creationStep == .details,
+                      draft.trackingKind == .screenTime else { return }
                 isPresentingScreenTimePicker = true
+            } catch ScreenTimeMonitoringError.authorizationCanceled {
+                // システムの許可画面を閉じた場合は、エラーを重ねずそのまま再操作できるようにする。
+                return
+            } catch let error as ScreenTimeMonitoringError {
+                guard screenTimeAuthorizationRequestID == requestID else { return }
+                screenTimeAuthorizationAlert = ScreenTimeAuthorizationAlert(
+                    message: error.errorDescription ?? "設定からスクリーンタイムの許可を確認してください。",
+                    offersSettingsAction: error.offersSettingsAction
+                )
             } catch {
-                screenTimeAuthorizationError = error.localizedDescription
+                guard screenTimeAuthorizationRequestID == requestID else { return }
+                screenTimeAuthorizationAlert = ScreenTimeAuthorizationAlert(
+                    message: "スクリーンタイムの許可を確認できませんでした。\n\(error.localizedDescription)",
+                    offersSettingsAction: false
+                )
             }
         }
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 }
 
 #Preview {
     NavigationStack {
-        BlockedBehaviorCreateView { _ in nil }
+        BlockedBehaviorCreateView(
+            onRequestScreenTimeAuthorization: {},
+            onSave: { _ in nil }
+        )
     }
 }

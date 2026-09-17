@@ -115,6 +115,68 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertNotNil(schedule.nextInterval)
     }
 
+    func testScreenTimeAuthorizationConflictUsesActionableJapaneseMessage() {
+        let error = ScreenTimeMonitoringError.fromAuthorizationError(
+            FamilyControlsError.authorizationConflict
+        )
+
+        guard case .authorizationConflict = error else {
+            return XCTFail("Expected authorizationConflict, got \(error)")
+        }
+        XCTAssertTrue(error.offersSettingsAction)
+        XCTAssertTrue(error.localizedDescription.contains("ほかのスクリーンタイム管理アプリ"))
+        XCTAssertTrue(error.localizedDescription.contains("設定"))
+    }
+
+    func testCanceledScreenTimeAuthorizationDoesNotOfferSettings() {
+        let error = ScreenTimeMonitoringError.fromAuthorizationError(
+            FamilyControlsError.authorizationCanceled
+        )
+
+        guard case .authorizationCanceled = error else {
+            return XCTFail("Expected authorizationCanceled, got \(error)")
+        }
+        XCTAssertFalse(error.offersSettingsAction)
+    }
+
+    func testApprovedScreenTimeAuthorizationSkipsSystemRequest() async throws {
+        var requestCount = 0
+        let coordinator = ScreenTimeAuthorizationCoordinator(
+            statusProvider: { .approved },
+            requestOperation: { requestCount += 1 }
+        )
+
+        try await coordinator.requestAuthorizationIfNeeded()
+
+        XCTAssertEqual(requestCount, 0)
+    }
+
+    func testConcurrentScreenTimeAuthorizationSharesOneSystemRequest() async throws {
+        var status = AuthorizationStatus.notDetermined
+        var requestCount = 0
+        let coordinator = ScreenTimeAuthorizationCoordinator(
+            statusProvider: { status },
+            requestOperation: {
+                requestCount += 1
+                try await Task.sleep(for: .milliseconds(50))
+                status = .approved
+            }
+        )
+
+        let first = Task { @MainActor in
+            try await coordinator.requestAuthorizationIfNeeded()
+        }
+        await Task.yield()
+        let second = Task { @MainActor in
+            try await coordinator.requestAuthorizationIfNeeded()
+        }
+
+        try await first.value
+        try await second.value
+
+        XCTAssertEqual(requestCount, 1)
+    }
+
     func testScreenTimeMonitorEventNameKeepsBehaviorIdentity() {
         let behaviorID = UUID()
         let rawName = ScreenTimeMonitorShared.eventRawName(

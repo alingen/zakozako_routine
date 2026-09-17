@@ -3,8 +3,10 @@ import { dirname } from 'node:path';
 import type {
   NormalizedChoiceRow,
   NormalizedEventRow,
+  NormalizedInteractionRow,
   NormalizedScenarioRow,
   NormalizedSheets,
+  InteractionComment,
   StoryChoice,
   StoryChoiceGroup,
   StoryContentBundle,
@@ -21,8 +23,9 @@ export type GeneratedArtifacts = StoryContentBundle;
 export function generate(data: NormalizedSheets): StoryContentBundle {
   return {
     _generated: GENERATED_MARKER,
-    scenarios: generateScenarios(data.scenarios),
+    scenarios: generateScenarios([...data.daily, ...data.scenarios]),
     choiceGroups: generateChoiceGroups(data.choices),
+    interactions: generateInteractions(data.interactions),
     events: generateEvents(data.events),
   };
 }
@@ -34,6 +37,8 @@ function generateScenarios(rows: NormalizedScenarioRow[]): StoryScenario[] {
       return {
         scenarioId,
         scenarioType: ordered[0]!.scenarioType,
+        calendarDate: ordered.find((row) => row.calendarDate)?.calendarDate,
+        calendarMonthDay: ordered.find((row) => row.calendarMonthDay)?.calendarMonthDay,
         nodes: ordered.map(mapNode),
       };
     })
@@ -84,12 +89,23 @@ function mapChoice(row: NormalizedChoiceRow): StoryChoice {
     nextNodeId: row.nextNodeId,
     saveKey: row.saveKey,
     saveValue: row.saveValue,
-    requiredKey: row.requiredKey,
-    requiredOperator: row.requiredOperator,
-    requiredValue: row.requiredValue,
     enabled: row.enabled,
     notes: row.notes,
   };
+}
+
+function generateInteractions(rows: NormalizedInteractionRow[]): InteractionComment[] {
+  return [...rows]
+    .sort((left, right) => compareText(left.id, right.id))
+    .map((row) => ({
+      id: row.id,
+      text: row.text,
+      condition: row.condition,
+      timeCondition: row.timeCondition,
+      touchArea: row.touchArea,
+      weight: row.weight,
+      active: row.active,
+    }));
 }
 
 function generateEvents(rows: NormalizedEventRow[]): StoryEvent[] {

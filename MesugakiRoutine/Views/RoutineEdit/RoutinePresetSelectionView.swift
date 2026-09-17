@@ -24,6 +24,14 @@ struct RoutinePresetSelectionView: View {
         return presets.filter { $0.title.localizedStandardContains(query) }
     }
 
+    private var filteredRecommendedPresets: [RoutinePreset] {
+        filteredPresets.filter { $0.targetDurationMinutes == nil }
+    }
+
+    private var filteredTimerPresets: [RoutinePreset] {
+        filteredPresets.filter { $0.targetDurationMinutes != nil }
+    }
+
     var body: some View {
         List {
             Section {
@@ -44,8 +52,8 @@ struct RoutinePresetSelectionView: View {
             }
             .appCardRow()
 
-            Section("プリセットから選ぶ") {
-                if filteredPresets.isEmpty {
+            if filteredPresets.isEmpty {
+                Section("おすすめから選ぶ") {
                     VStack(spacing: 8) {
                         Image(systemName: "magnifyingglass")
                             .font(.title2)
@@ -57,19 +65,40 @@ struct RoutinePresetSelectionView: View {
                     .foregroundStyle(AppColor.muted)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
-                } else {
-                    ForEach(filteredPresets) { preset in
-                        selectionButton(
-                            title: preset.title,
-                            iconName: preset.iconName,
-                            accessibilityHint: "内容を入力済みにして確認画面を開きます"
-                        ) {
-                            onSelectPreset(preset)
+                }
+                .appCardRow()
+            } else {
+                if !filteredRecommendedPresets.isEmpty {
+                    Section("おすすめから選ぶ") {
+                        ForEach(filteredRecommendedPresets) { preset in
+                            selectionButton(
+                                title: preset.title,
+                                iconName: preset.iconName,
+                                accessibilityHint: "内容を入力済みにして確認画面を開きます"
+                            ) {
+                                onSelectPreset(preset)
+                            }
                         }
                     }
+                    .appCardRow()
+                }
+
+                if !filteredTimerPresets.isEmpty {
+                    Section("タイマーから選ぶ") {
+                        ForEach(filteredTimerPresets) { preset in
+                            selectionButton(
+                                title: preset.title,
+                                subtitle: "目標時間を設定",
+                                iconName: preset.iconName,
+                                accessibilityHint: "目標時間を設定して確認画面を開きます"
+                            ) {
+                                onSelectPreset(preset)
+                            }
+                        }
+                    }
+                    .appCardRow()
                 }
             }
-            .appCardRow()
         }
         .listStyle(.insetGrouped)
         .appScreenBackground()

@@ -1,17 +1,86 @@
 import Foundation
 
-/// 交流ホームで莉央をタップしたときに使う仮セリフ。
-/// 条件分岐を追加するときは、ここで表示候補を組み立ててViewへ渡す。
-enum InteractionHomeDialogue {
-    static let defaultLines = [
-        "がんばってね、ざこざこおにいさん♡",
-        "また負けちゃったんだ、ざ〜こ♡",
-        "今回は何日もつかな〜？",
-    ]
+/// CMSの短い交流コメントから、タッチ箇所・時間帯・プロフィール条件に合う1件を重み付き抽選する。
+enum InteractionCommentSelector {
+    static func select(
+        from comments: [InteractionComment],
+        touchArea: String,
+        now: Date = .now,
+        calendar: Calendar = .current,
+        profileValues: [String: String] = [:],
+        excluding excludedID: String? = nil,
+        randomUnit: () -> Double = { Double.random(in: 0..<1) }
+    ) -> InteractionComment? {
+        var candidates = comments.filter {
+            $0.active
+                && $0.weight > 0
+                && matchesTouchArea($0.touchArea, requested: touchArea)
+                && matchesTime($0.timeCondition, now: now, calendar: calendar)
+                && matchesCondition($0.condition, profileValues: profileValues)
+        }
+        if candidates.count > 1, let excludedID {
+            candidates.removeAll { $0.id == excludedID }
+        }
+        guard !candidates.isEmpty else { return nil }
 
-    static func nextIndex(after currentIndex: Int?, lineCount: Int = defaultLines.count) -> Int? {
-        guard lineCount > 0 else { return nil }
-        return ((currentIndex ?? -1) + 1) % lineCount
+        let totalWeight = candidates.reduce(0) { $0 + $1.weight }
+        let unit = min(max(randomUnit(), 0), 1.0.nextDown)
+        var target = Int(Double(totalWeight) * unit)
+        for comment in candidates {
+            if target < comment.weight { return comment }
+            target -= comment.weight
+        }
+        return candidates.last
+    }
+
+    private static func matchesTouchArea(_ value: String?, requested: String) -> Bool {
+        guard let value = normalized(value), value != "all" else { return true }
+        return value.caseInsensitiveCompare(requested) == .orderedSame
+    }
+
+    private static func matchesTime(
+        _ value: String?,
+        now: Date,
+        calendar: Calendar
+    ) -> Bool {
+        guard let value = normalized(value)?.lowercased(), value != "always" else { return true }
+        let hour = calendar.component(.hour, from: now)
+        switch value {
+        case "morning": return (4..<12).contains(hour)
+        case "daytime": return (12..<17).contains(hour)
+        case "evening": return (17..<22).contains(hour)
+        case "night": return hour >= 22 || hour < 4
+        default: return false
+        }
+    }
+
+    /// `condition` supports `always`, `profile:key` and
+    /// `profile:key=value` / `profile:key!=value`. Unknown expressions fail closed.
+    private static func matchesCondition(
+        _ value: String?,
+        profileValues: [String: String]
+    ) -> Bool {
+        guard let expression = normalized(value), expression.lowercased() != "always" else {
+            return true
+        }
+        guard expression.lowercased().hasPrefix("profile:") else { return false }
+        let body = String(expression.dropFirst("profile:".count))
+        if let range = body.range(of: "!=") {
+            let key = String(body[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+            let expected = String(body[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            return profileValues[key] != expected
+        }
+        if let range = body.range(of: "=") {
+            let key = String(body[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+            let expected = String(body[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            return profileValues[key] == expected
+        }
+        return profileValues[body.trimmingCharacters(in: .whitespaces)] != nil
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

@@ -580,6 +580,7 @@ private extension StoryPlayer {
                 profileValue: profileValue,
                 next: updated
             )
+            appendSelectedChatReplyIfNeeded(history, after: node)
         } else {
             try stateRepository.saveCheckpoint(
                 updated,
@@ -634,6 +635,11 @@ private extension StoryPlayer {
             let isReplayedCurrentNode = index == replayedCurrentIndex
             if !isReplayedCurrentNode || currentMode != .chat {
                 appendVisibleLogNodeIfNeeded(displayedNode)
+            }
+            if !isReplayedCurrentNode {
+                for selection in checkpoint.choiceHistory where selection.nodeId == nodeId {
+                    appendSelectedChatReplyIfNeeded(selection, after: displayedNode)
+                }
             }
             if index == replayedCurrentIndex { currentNode = displayedNode }
             if let diagnostic = dispatch.diagnostic { report(diagnostic) }
@@ -722,30 +728,7 @@ private extension StoryPlayer {
             report("choice group \(choiceId) が見つかりません")
             return []
         }
-
-        let profileValues = try stateRepository.profileValues()
-        let metrics = StoryProgressMetrics(
-            continuousDays: 0,
-            profileValues: profileValues
-        )
-        let evaluator = StoryConditionEvaluator()
-
-        return candidates.filter { choice in
-            guard let key = normalized(choice.requiredKey) else { return true }
-            let comparison = choice.requiredOperator
-                ?? (normalized(choice.requiredValue) == nil ? .exists : .equal)
-            let condition = StoryCondition(
-                conditionType: "profile",
-                conditionKey: key,
-                operator: comparison,
-                threshold: choice.requiredValue ?? ""
-            )
-            let evaluation = evaluator.evaluate(condition: condition, metrics: metrics)
-            if let diagnostic = evaluation.diagnostic {
-                report("選択肢「\(choice.label)」: \(diagnostic)")
-            }
-            return evaluation.satisfied
-        }
+        return candidates
     }
 
     func shouldPauseForUser(
@@ -937,12 +920,39 @@ private extension StoryPlayer {
         let isRenderableAction = node.uiVariant == .audioMessage
             || node.uiVariant == .recording
             || node.uiVariant == .imageMessage
+        // A choice row may contain Rio's question, but it is not a sent
+        // protagonist reply. The selected label is appended only after saving.
+        let isUnsentChoice = scenario.scenarioType == .daily
+            && (node.choiceId != nil || node.messageType == .choice)
+            && (node.isPlayerSpeaker || normalized(node.text) == nil)
         guard currentMode == .chat,
+              !isUnsentChoice,
               node.messageType != .action || isRenderableAction,
               !visibleChatNodes.contains(where: { $0.nodeId == node.nodeId }) else {
             return
         }
         visibleChatNodes.append(node)
+    }
+
+    func appendSelectedChatReplyIfNeeded(
+        _ selection: StoryChoiceHistoryEntry,
+        after node: StoryNode
+    ) {
+        guard scenario.scenarioType == .daily,
+              currentMode == .chat,
+              normalized(selection.label) != nil else { return }
+        // Presentation-only node: navigation and persistence keep using the
+        // source choice row and its existing durable choice history.
+        let reply = StoryNode(
+            nodeId: "story-choice-reply:\(selection.id)",
+            lineOrder: node.lineOrder,
+            speaker: "user",
+            messageType: .text,
+            text: selection.label,
+            screenMode: .chat,
+            uiVariant: .dialogue
+        )
+        appendVisibleChatNodeIfNeeded(reply)
     }
 
     func appendVisibleLogNodeIfNeeded(_ node: StoryNode) {

@@ -382,15 +382,73 @@ enum StoryConditionOperator: Hashable, Codable {
 struct StoryContentBundle: Codable, Hashable {
     let scenarios: [StoryScenario]
     let choiceGroups: [StoryChoiceGroup]
+    let interactions: [InteractionComment]
     let events: [StoryEvent]
+
+    init(
+        scenarios: [StoryScenario],
+        choiceGroups: [StoryChoiceGroup],
+        interactions: [InteractionComment] = [],
+        events: [StoryEvent]
+    ) {
+        self.scenarios = scenarios
+        self.choiceGroups = choiceGroups
+        self.interactions = interactions
+        self.events = events
+    }
+}
+
+/// A short, independently selectable line shown from an interaction gesture.
+struct InteractionComment: Codable, Hashable, Identifiable {
+    let id: String
+    let text: String
+    let condition: String?
+    let timeCondition: String?
+    let touchArea: String?
+    let weight: Int
+    let active: Bool
+
+    init(
+        id: String,
+        text: String,
+        condition: String? = nil,
+        timeCondition: String? = nil,
+        touchArea: String? = nil,
+        weight: Int = 1,
+        active: Bool = true
+    ) {
+        self.id = id
+        self.text = text
+        self.condition = condition
+        self.timeCondition = timeCondition
+        self.touchArea = touchArea
+        self.weight = weight
+        self.active = active
+    }
 }
 
 struct StoryScenario: Codable, Hashable, Identifiable {
     let scenarioId: String
     let scenarioType: StoryScenarioType
+    let calendarDate: String?
+    let calendarMonthDay: String?
     let nodes: [StoryNode]
 
     var id: String { scenarioId }
+
+    init(
+        scenarioId: String,
+        scenarioType: StoryScenarioType,
+        calendarDate: String? = nil,
+        calendarMonthDay: String? = nil,
+        nodes: [StoryNode]
+    ) {
+        self.scenarioId = scenarioId
+        self.scenarioType = scenarioType
+        self.calendarDate = calendarDate
+        self.calendarMonthDay = calendarMonthDay
+        self.nodes = nodes
+    }
 }
 
 struct StoryNode: Codable, Hashable, Identifiable {
@@ -418,6 +476,19 @@ struct StoryNode: Codable, Hashable, Identifiable {
     let notes: String?
 
     var id: String { nodeId }
+
+    var normalizedSpeakerKey: String {
+        speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    var isPlayerSpeaker: Bool {
+        ["user", "player", "protagonist"].contains(normalizedSpeakerKey)
+    }
+
+    var isRioSpeaker: Bool {
+        ["rio", "character"].contains(normalizedSpeakerKey)
+            || speakerName?.trimmingCharacters(in: .whitespacesAndNewlines) == "莉央"
+    }
 
     init(
         nodeId: String,
@@ -481,9 +552,6 @@ struct StoryChoice: Codable, Hashable, Identifiable {
     let nextNodeId: String?
     let saveKey: String?
     let saveValue: String?
-    let requiredKey: String?
-    let requiredOperator: StoryConditionOperator?
-    let requiredValue: String?
     let notes: String?
 
     /// Stable inside its choice group. Callers that combine groups should also
@@ -496,9 +564,6 @@ struct StoryChoice: Codable, Hashable, Identifiable {
         nextNodeId: String? = nil,
         saveKey: String? = nil,
         saveValue: String? = nil,
-        requiredKey: String? = nil,
-        requiredOperator: StoryConditionOperator? = nil,
-        requiredValue: String? = nil,
         notes: String? = nil
     ) {
         self.choiceOrder = choiceOrder
@@ -506,9 +571,6 @@ struct StoryChoice: Codable, Hashable, Identifiable {
         self.nextNodeId = nextNodeId
         self.saveKey = saveKey
         self.saveValue = saveValue
-        self.requiredKey = requiredKey
-        self.requiredOperator = requiredOperator
-        self.requiredValue = requiredValue
         self.notes = notes
     }
 }

@@ -48,7 +48,7 @@ struct ChatStoryRenderer: View {
         shouldAutomaticallyPresentNode && !waitsForTerminalAdvance
     }
     private var isWaitingToSendPlayerMessage: Bool {
-        canAdvance && node.isPlayerSpeaker && node.messageType == .text
+        ChatStoryPresentationPolicy.isUnsentPlayerMessage(node: node, canAdvance: canAdvance)
     }
     private var isWaitingForRioMessage: Bool {
         shouldAutomaticallyPresentNode
@@ -77,13 +77,11 @@ struct ChatStoryRenderer: View {
     }
 
     private var manualAdvanceLabel: String {
-        guard node.isPlayerSpeaker else { return "次へ" }
-        if usesEventChatFlow,
-           let replyText = node.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !replyText.isEmpty {
-            return replyText
-        }
-        return isInitialEventPlayerMessage ? "送信する" : "返信する"
+        ChatStoryPresentationPolicy.manualAdvanceLabel(
+            node: node,
+            scenarioType: scenarioType,
+            isInitialEventPlayerMessage: isInitialEventPlayerMessage
+        )
     }
 
     private var manualAdvanceSymbol: String {
@@ -108,12 +106,14 @@ struct ChatStoryRenderer: View {
 
     private var renderedNodes: [StoryNode] {
         let sentNodes = visibleNodes.filter {
-            (!isWaitingToSendPlayerMessage
+            !ChatStoryPresentationPolicy.isChoicePlaceholder(node: $0, scenarioType: scenarioType)
+                && ((!isWaitingToSendPlayerMessage
                 && !isWaitingForRioMessage
                 && !isWaitingForSystemMessage)
-                || $0.nodeId != node.nodeId
+                || $0.nodeId != node.nodeId)
         }
-        guard !isWaitingToSendPlayerMessage,
+        guard !ChatStoryPresentationPolicy.isChoicePlaceholder(node: node, scenarioType: scenarioType),
+              !isWaitingToSendPlayerMessage,
               !isWaitingForRioMessage,
               !isWaitingForSystemMessage,
               !sentNodes.contains(where: { $0.nodeId == node.nodeId }) else {
@@ -272,8 +272,8 @@ struct ChatStoryRenderer: View {
 
     @ViewBuilder
     private var actionArea: some View {
-        if usesEventChatFlow {
-            fixedEventActionArea
+        if ChatStoryPresentationPolicy.usesFixedActionArea(for: scenarioType) {
+            fixedChatActionArea
         } else if !choices.isEmpty {
             Divider()
             StoryChoicePanel(choices: choices, onSelect: onSelectChoice)
@@ -284,7 +284,7 @@ struct ChatStoryRenderer: View {
         }
     }
 
-    private var fixedEventActionArea: some View {
+    private var fixedChatActionArea: some View {
         VStack(spacing: 0) {
             Divider()
 
@@ -307,7 +307,8 @@ struct ChatStoryRenderer: View {
             .padding(.vertical, 12)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 81)
+        .frame(height: usesEventChatFlow ? 81 : nil)
+        .frame(minHeight: 81)
         .safeAreaPadding(.bottom, 8)
         .background(AppColor.background)
     }
@@ -384,6 +385,51 @@ struct ChatStoryRenderer: View {
     }
 }
 
+enum ChatStoryPresentationPolicy {
+    static func usesChatCompletion(for scenarioType: StoryScenarioType) -> Bool {
+        scenarioType == .daily || scenarioType == .smallEvent
+    }
+
+    static func usesFixedActionArea(for scenarioType: StoryScenarioType) -> Bool {
+        switch scenarioType {
+        case .daily, .smallEvent, .middleEvent, .largeEvent:
+            return true
+        case .unknown:
+            return false
+        }
+    }
+
+    static func isUnsentPlayerMessage(node: StoryNode, canAdvance: Bool) -> Bool {
+        canAdvance && node.isPlayerSpeaker && node.messageType == .text
+    }
+
+    /// 選択肢の行は送信前の入力欄。発言として残すのは選択後に生成される返信のみ。
+    /// キャラクターの問いかけが含まれる行は通常の会話として残す。
+    static func isChoicePlaceholder(node: StoryNode, scenarioType: StoryScenarioType) -> Bool {
+        scenarioType == .daily
+            && (node.choiceId != nil || node.messageType == .choice)
+            && (node.isPlayerSpeaker || node.storyDisplayText.isEmpty)
+    }
+
+    static func manualAdvanceLabel(
+        node: StoryNode,
+        scenarioType: StoryScenarioType,
+        isInitialEventPlayerMessage: Bool = false
+    ) -> String {
+        guard node.isPlayerSpeaker else { return "次へ" }
+        switch scenarioType {
+        case .smallEvent, .middleEvent, .largeEvent:
+            if let replyText = node.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !replyText.isEmpty {
+                return replyText
+            }
+            return isInitialEventPlayerMessage ? "送信する" : "返信する"
+        case .daily, .unknown:
+            return "返信する"
+        }
+    }
+}
+
 enum EventChatSystemPresentationPolicy {
     static func usesADVTextWindow(
         node: StoryNode,
@@ -440,8 +486,9 @@ private struct RioTypingIndicator: View {
     }
 }
 
-struct SmallEventCompletionView: View {
+struct ChatStoryCompletionView: View {
     let visibleNodes: [StoryNode]
+    var scenarioType: StoryScenarioType = .smallEvent
     let onClose: () -> Void
 
     private let bottomAnchorID = "story-chat-completion-bottom"
@@ -454,17 +501,22 @@ struct SmallEventCompletionView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(visibleNodes) { messageNode in
+                            ForEach(visibleNodes.filter {
+                                !ChatStoryPresentationPolicy.isChoicePlaceholder(
+                                    node: $0,
+                                    scenarioType: scenarioType
+                                )
+                            }) { messageNode in
                                 StoryChatBubble(
                                     node: messageNode,
-                                    scenarioType: .smallEvent,
+                                    scenarioType: scenarioType,
                                     portraitAssetID: messageNode.portrait,
                                     cgAssetID: messageNode.cg
                                 )
                                 .id(messageNode.nodeId)
                             }
 
-                            SmallEventSystemMessageView(text: "end")
+                            ChatSystemMessageView(text: "end")
 
                             Color.clear
                                 .frame(height: 16)
@@ -502,7 +554,7 @@ struct SmallEventCompletionView: View {
                     .background(AppColor.primary, in: Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityHint("小イベントを閉じます")
+            .accessibilityHint("会話を閉じます")
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
         }
@@ -531,13 +583,13 @@ private struct StoryChatBubble: View {
         speakerKey == "system"
     }
 
-    private var isSmallEventSystemMessage: Bool {
-        scenarioType == .smallEvent && isSystem
+    private var isChatSystemMessage: Bool {
+        ChatStoryPresentationPolicy.usesChatCompletion(for: scenarioType) && isSystem
     }
 
     var body: some View {
-        if isSmallEventSystemMessage {
-            smallEventSystemMessage
+        if isChatSystemMessage {
+            chatSystemMessage
         } else if isSystem {
             HStack {
                 Spacer(minLength: 28)
@@ -558,8 +610,8 @@ private struct StoryChatBubble: View {
         }
     }
 
-    private var smallEventSystemMessage: some View {
-        SmallEventSystemMessageView(text: node.text ?? "")
+    private var chatSystemMessage: some View {
+        ChatSystemMessageView(text: node.text ?? "")
     }
 
     @ViewBuilder
@@ -649,7 +701,7 @@ private struct StoryChatBubble: View {
     }
 }
 
-private struct SmallEventSystemMessageView: View {
+private struct ChatSystemMessageView: View {
     let text: String
 
     var body: some View {
@@ -680,20 +732,5 @@ private struct SmallEventSystemMessageView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 1)
             .accessibilityHidden(true)
-    }
-}
-
-private extension StoryNode {
-    var normalizedSpeakerKey: String {
-        speaker.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    }
-
-    var isPlayerSpeaker: Bool {
-        ["user", "player", "protagonist"].contains(normalizedSpeakerKey)
-    }
-
-    var isRioSpeaker: Bool {
-        ["rio", "character"].contains(normalizedSpeakerKey)
-            || speakerName?.trimmingCharacters(in: .whitespacesAndNewlines) == "莉央"
     }
 }

@@ -185,7 +185,9 @@ function printSummary(
     `Source: ${snapshot.source} (sheet ${snapshot.sheetId}, fetched ${snapshot.fetchedAt})`,
   );
   console.log(
-    `Rows: scenarios=${raw.scenarios.length}, choices=${raw.choices.length}, events=${raw.events.length}`,
+    `Rows: daily=${raw.daily.length}, choices=${raw.choices.length}, ` +
+      `interactions=${raw.interactions.length}, senarios=${raw.scenarios.length}, ` +
+      `events=${raw.events.length}`,
   );
 
   if (result.artifact) {
@@ -199,7 +201,7 @@ function printSummary(
     console.log(
       `Bundle: scenarios=${result.artifact.scenarios.length} (daily=${dailyCount}), ` +
         `nodes=${nodeCount}, choiceGroups=${result.artifact.choiceGroups.length}, ` +
-        `events=${result.artifact.events.length}`,
+        `interactions=${result.artifact.interactions.length}, events=${result.artifact.events.length}`,
     );
   }
 

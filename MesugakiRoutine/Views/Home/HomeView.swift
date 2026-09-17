@@ -4,8 +4,14 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(SiriLaunchCoordinator.self) private var siriLaunchCoordinator
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = HomeViewModel()
     @State private var editingRoutine: Routine?
+    @State private var activeTimer: ActiveRoutineTimer?
+    @State private var presentedTimer: ActiveRoutineTimer?
+    @State private var pendingTimerCompletion: PendingTimerCompletion?
+    @State private var timerDialogID: UUID?
+    @State private var backgroundTimerCompletionFeedbackTrigger = 0
     @State private var isPresentingNewRoutine = false
     @State private var isEditingRoutines = false
     @State private var isPresentingNewBlockedBehavior = false
@@ -19,6 +25,14 @@ struct HomeView: View {
 
     init(appDialog: Binding<AppDialogRequest?> = .constant(nil)) {
         _appDialog = appDialog
+    }
+
+    private var hiddenTimerWatcherID: UUID? {
+        guard let activeTimer,
+              scenePhase == .active,
+              presentedTimer == nil,
+              activeTimer.session.phase == .running else { return nil }
+        return activeTimer.id
     }
 
     var body: some View {
@@ -41,10 +55,35 @@ struct HomeView: View {
         }
         .sheet(isPresented: $isPresentingNewBlockedBehavior, onDismiss: { viewModel.reload() }) {
             NavigationStack {
-                BlockedBehaviorCreateView { draft in
-                    viewModel.addBlockedBehavior(draft)
-                }
+                BlockedBehaviorCreateView(
+                    onRequestScreenTimeAuthorization: {
+                        try await viewModel.requestScreenTimeAuthorization()
+                    },
+                    onSave: { draft in
+                        viewModel.addBlockedBehavior(draft)
+                    }
+                )
             }
+        }
+        .sheet(
+            item: $presentedTimer,
+            onDismiss: recordPendingTimerCompletion
+        ) { timer in
+            RoutineTimerView(
+                routineTitle: timer.routineTitle,
+                routineIconName: timer.routineIconName,
+                targetMinutes: timer.targetMinutes,
+                session: timer.session,
+                onClose: { presentedTimer = nil },
+                onStop: { stopTimer(timer) },
+                onComplete: { completedAt in
+                    completeTimer(timer, at: completedAt)
+                }
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(28)
+            .presentationBackground(AppColor.background)
         }
         .fullScreenCover(
             item: Binding(
@@ -66,8 +105,22 @@ struct HomeView: View {
                 set: { if !$0 { viewModel.clearRoutineOperationError() } }
             )
         ) {
-            Button("OK") {
-                viewModel.clearRoutineOperationError()
+            if pendingTimerCompletion != nil {
+                Button("再試行") {
+                    viewModel.clearRoutineOperationError()
+                    Task { @MainActor in
+                        await Task.yield()
+                        recordPendingTimerCompletion()
+                    }
+                }
+                Button("閉じる", role: .cancel) {
+                    pendingTimerCompletion = nil
+                    viewModel.clearRoutineOperationError()
+                }
+            } else {
+                Button("OK") {
+                    viewModel.clearRoutineOperationError()
+                }
             }
         } message: {
             Text(viewModel.routineOperationErrorMessage ?? "不明なエラーです")
@@ -91,7 +144,37 @@ struct HomeView: View {
         .onAppear {
             viewModel.reload()
             siriLaunchCoordinator.pendingOpenTodayRoutines = false
+            refreshActiveTimer(at: .now)
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active, presentedTimer == nil {
+                viewModel.reload()
+                refreshActiveTimer(at: .now)
+            }
+        }
+        .task(id: hiddenTimerWatcherID) {
+            guard let timer = activeTimer,
+                  presentedTimer == nil,
+                  timer.session.phase == .running else { return }
+
+            while !Task.isCancelled,
+                  activeTimer?.id == timer.id,
+                  presentedTimer == nil,
+                  timer.session.phase == .running {
+                if let completedAt = timer.session.refresh(now: .now)
+                    ?? timer.session.completedAt {
+                    completeTimer(timer, at: completedAt)
+                    return
+                }
+
+                do {
+                    try await Task.sleep(for: .milliseconds(250))
+                } catch {
+                    return
+                }
+            }
+        }
+        .sensoryFeedback(.success, trigger: backgroundTimerCompletionFeedbackTrigger)
     }
 
     // MARK: - 1. 今日の約束(2列グリッド)
@@ -143,11 +226,14 @@ struct HomeView: View {
         .appCardRow()
     }
 
-    /// 約束1件の大きな円セル。通常時は円のホールドで1回進む / 編集時はタップで編集画面へ。
+    /// 約束1件の大きな円セル。通常はホールド、タイマー対象はタップで開始、編集中はタップで編集する。
     @ViewBuilder
     private func routineGridCell(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
         let streak = viewModel.currentRoutineStreak(for: routine)
+        let activeTimerForRoutine = activeTimer.flatMap {
+            $0.routine.id == routine.id ? $0 : nil
+        }
 
         VStack(spacing: 8) {
             RoutineProgressButton(
@@ -155,9 +241,12 @@ struct HomeView: View {
                 iconName: routine.iconName,
                 isEditing: isEditingRoutines,
                 isCompleted: progress.isCompletedToday,
+                timerTargetDurationMinutes: routine.targetDurationMinutes,
+                isTimerActive: activeTimerForRoutine != nil,
                 accessibilityLabel: routine.title,
                 onAdvance: { viewModel.advanceRoutine(routine) },
-                onEdit: { editingRoutine = routine }
+                onStartTimer: { openTimer(for: routine) },
+                onEdit: { requestRoutineEdit(routine) }
             )
 
             VStack(spacing: 2) {
@@ -167,7 +256,11 @@ struct HomeView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
 
-                if progress.showsCountBreakdown {
+                if let activeTimerForRoutine {
+                    Text(timerStatusText(for: activeTimerForRoutine.session))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(AppColor.primary)
+                } else if progress.showsCountBreakdown {
                     Text("\(progress.done) / \(progress.target)回")
                         .font(.caption2)
                         .foregroundStyle(AppColor.muted)
@@ -399,6 +492,200 @@ struct HomeView: View {
         }
         .appCardRow()
     }
+
+    private func recordPendingTimerCompletion() {
+        guard let pendingTimerCompletion else { return }
+        if viewModel.advanceRoutine(
+            pendingTimerCompletion.routine,
+            now: pendingTimerCompletion.completedAt
+        ) {
+            self.pendingTimerCompletion = nil
+        }
+    }
+
+    private func openTimer(for routine: Routine) {
+        if let activeTimer {
+            if let completedAt = activeTimer.session.refresh(now: .now)
+                ?? activeTimer.session.completedAt {
+                completeTimer(activeTimer, at: completedAt)
+                return
+            }
+
+            if activeTimer.routine.id == routine.id {
+                presentedTimer = activeTimer
+            } else {
+                presentTimerReplacementConfirmation(
+                    runningTimer: activeTimer,
+                    newRoutine: routine
+                )
+            }
+            return
+        }
+
+        startTimer(for: routine)
+    }
+
+    private func startTimer(for routine: Routine) {
+        let timer = ActiveRoutineTimer(routine: routine)
+        activeTimer = timer
+        presentedTimer = timer
+    }
+
+    private func requestRoutineEdit(_ routine: Routine) {
+        guard let runningTimer = activeTimer,
+              runningTimer.routine.id == routine.id else {
+            editingRoutine = routine
+            return
+        }
+
+        if let completedAt = runningTimer.session.refresh(now: .now)
+            ?? runningTimer.session.completedAt {
+            completeTimer(runningTimer, at: completedAt)
+            return
+        }
+
+        let request = AppDialogRequest(
+            title: "タイマーを停止しますか？",
+            message: "「\(runningTimer.routineTitle)」を編集するには、動作中のタイマーを停止してください。",
+            actions: [
+                AppDialogAction("戻る") {
+                    timerDialogID = nil
+                    return .dismiss
+                },
+                AppDialogAction("停止して編集", style: .destructive) {
+                    timerDialogID = nil
+                    guard activeTimer?.id == runningTimer.id else { return .dismiss }
+                    if let completedAt = runningTimer.session.refresh(now: .now)
+                        ?? runningTimer.session.completedAt {
+                        completeTimer(runningTimer, at: completedAt)
+                        return .dismiss
+                    }
+                    stopTimer(runningTimer)
+                    editingRoutine = routine
+                    return .dismiss
+                },
+            ]
+        )
+        timerDialogID = request.id
+        appDialog = request
+    }
+
+    private func presentTimerReplacementConfirmation(
+        runningTimer: ActiveRoutineTimer,
+        newRoutine: Routine
+    ) {
+        let request = AppDialogRequest(
+            title: "別のタイマーが動作中です",
+            message: "「\(runningTimer.routineTitle)」を停止して「\(newRoutine.title)」を開始しますか？",
+            actions: [
+                AppDialogAction("今のタイマーを見る") {
+                    timerDialogID = nil
+                    guard activeTimer?.id == runningTimer.id else { return .dismiss }
+                    if let completedAt = runningTimer.session.refresh(now: .now)
+                        ?? runningTimer.session.completedAt {
+                        completeTimer(runningTimer, at: completedAt)
+                        return .dismiss
+                    }
+                    presentedTimer = runningTimer
+                    return .dismiss
+                },
+                AppDialogAction("切り替える", style: .destructive) {
+                    timerDialogID = nil
+                    guard activeTimer?.id == runningTimer.id else { return .dismiss }
+                    if let completedAt = runningTimer.session.refresh(now: .now)
+                        ?? runningTimer.session.completedAt {
+                        completeTimer(runningTimer, at: completedAt)
+                        return .dismiss
+                    }
+                    stopTimer(runningTimer)
+                    startTimer(for: newRoutine)
+                    return .dismiss
+                },
+            ]
+        )
+        timerDialogID = request.id
+        appDialog = request
+    }
+
+    private func refreshActiveTimer(at date: Date) {
+        guard let activeTimer else { return }
+        if let completedAt = activeTimer.session.refresh(now: date)
+            ?? activeTimer.session.completedAt {
+            completeTimer(activeTimer, at: completedAt)
+        }
+    }
+
+    private func completeTimer(_ timer: ActiveRoutineTimer, at completedAt: Date) {
+        guard activeTimer?.id == timer.id else { return }
+        activeTimer = nil
+        if let timerDialogID, appDialog?.id == timerDialogID {
+            appDialog = nil
+        }
+        timerDialogID = nil
+
+        if presentedTimer?.id == timer.id {
+            pendingTimerCompletion = PendingTimerCompletion(
+                routine: timer.routine,
+                completedAt: completedAt
+            )
+            presentedTimer = nil
+        } else {
+            backgroundTimerCompletionFeedbackTrigger += 1
+            pendingTimerCompletion = PendingTimerCompletion(
+                routine: timer.routine,
+                completedAt: completedAt
+            )
+            recordPendingTimerCompletion()
+        }
+    }
+
+    private func stopTimer(_ timer: ActiveRoutineTimer) {
+        guard activeTimer?.id == timer.id else { return }
+        timer.session.stop()
+        activeTimer = nil
+        if presentedTimer?.id == timer.id {
+            presentedTimer = nil
+        }
+    }
+
+    private func timerStatusText(for session: RoutineTimerSession) -> String {
+        switch session.phase {
+        case .running:
+            "残り \(session.formattedRemainingDuration)"
+        case .paused:
+            "一時停止 \(session.formattedRemainingDuration)"
+        case .completed:
+            "目標達成"
+        case .stopped:
+            "停止中"
+        }
+    }
+}
+
+private final class ActiveRoutineTimer: Identifiable {
+    let id = UUID()
+    let routine: Routine
+    let routineTitle: String
+    let routineIconName: String?
+    let targetMinutes: Int
+    let session: RoutineTimerSession
+
+    @MainActor
+    init(routine: Routine, now: Date = .now) {
+        self.routine = routine
+        routineTitle = routine.title
+        routineIconName = routine.iconName
+        targetMinutes = max(routine.targetDurationMinutes ?? 1, 1)
+        session = RoutineTimerSession(
+            targetMinutes: targetMinutes,
+            now: now
+        )
+    }
+}
+
+private struct PendingTimerCompletion {
+    let routine: Routine
+    let completedAt: Date
 }
 
 enum BlockedBehaviorTauntKind {
@@ -431,8 +718,11 @@ private struct RoutineProgressButton: View {
     let iconName: String?
     let isEditing: Bool
     let isCompleted: Bool
+    let timerTargetDurationMinutes: Int?
+    let isTimerActive: Bool
     let accessibilityLabel: String
     let onAdvance: () -> Void
+    let onStartTimer: () -> Void
     let onEdit: () -> Void
 
     @State private var confirmationProgress = 0.0
@@ -451,6 +741,16 @@ private struct RoutineProgressButton: View {
                 content
                     .accessibilityValue("達成済み")
                     .accessibilityHint("次の集計期間まで記録できません")
+            } else if let timerTargetDurationMinutes {
+                Button(action: onStartTimer) {
+                    content
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(
+                    isTimerActive
+                        ? "タップして動作中のタイマーを表示"
+                        : "タップして\(timerTargetDurationMinutes)分のタイマーを開始"
+                )
             } else {
                 content
                     .onLongPressGesture(
@@ -469,7 +769,12 @@ private struct RoutineProgressButton: View {
                     .accessibilityAction(named: "1回分を記録", onAdvance)
             }
         }
-        .accessibilityLabel(accessibilityLabel)
+        .accessibilityLabel(
+            timerTargetDurationMinutes == nil || isEditing
+                ? accessibilityLabel
+                : "\(accessibilityLabel)のタイマー"
+        )
+        .accessibilityValue(progressAccessibilityValue)
         .sensoryFeedback(.success, trigger: confirmationFeedbackTrigger)
         .onChange(of: isEditing) {
             resetConfirmation()
@@ -488,17 +793,30 @@ private struct RoutineProgressButton: View {
                 confirmationProgress: confirmationProgress,
                 showsConfirmationCheckmark: isHoldConfirmed
             )
-            if isEditing {
-                Image(systemName: "ellipsis")
+            if isEditing || (timerTargetDurationMinutes != nil && !isCompleted) {
+                Image(systemName: isEditing ? "ellipsis" : "clock.fill")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(AppColor.text)
-                    .frame(width: 30, height: 30)
-                    .background(AppColor.surface, in: Circle())
+                    .foregroundStyle(
+                        isEditing
+                            ? AppColor.text
+                            : (isTimerActive ? Color.white : AppColor.primary)
+                    )
+                    .frame(width: 36, height: 36)
+                    .background(
+                        isTimerActive && !isEditing ? AppColor.primary : AppColor.surface,
+                        in: Circle()
+                    )
                     .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
                     .offset(x: 4, y: 4)
             }
         }
         .contentShape(Circle())
+    }
+
+    private var progressAccessibilityValue: String {
+        if isCompleted { return "達成済み" }
+        if isTimerActive { return "動作中" }
+        return ""
     }
 
     private func updateHoldingState(_ isHolding: Bool) {

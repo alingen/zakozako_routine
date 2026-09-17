@@ -56,13 +56,13 @@ App Store向けの表示名は「小悪魔コーチ」です。`MesugakiRoutine`
 
 `StoryStateRepository` は選択履歴・プロフィール値・checkpoint、または完了・既読・CG解放・phase更新を同じ `ModelContext` 上でまとめて保存します。「最初から読む」は再生checkpointだけを初期化し、既読状態と解放済みの思い出は保持します。
 
-ユーザー名、呼び方、通知設定、今日の会話の初回割当日は `AppSettingsStore` を介して `UserDefaults` に保存します。バックエンド同期は実装していません。
+ユーザー名、呼び方、通知設定は `AppSettingsStore` を介して `UserDefaults` に保存します。バックエンド同期は実装していません。
 
 ## ストーリーアーキテクチャ
 
 ### Content
 
-`StoryContentBundle` は `scenarios`、`choiceGroups`、`events` の3配列を持つ読み取り専用データです。`StoryContentRepository` がアプリbundle内の `Resources/GeneratedScenarios/story_content.generated.json` を読み込み、scenario／choice／eventの検索、daily scenarioの整列、CGカタログの生成を担います。
+Google Sheetsは編集用途ごとに `daily`、`choices`、`interactions`、`senarios`、`events` の5シートへ分けています。`senarios` は小・中・大イベントの本文を共通管理し、`scenario_type` で区別します。生成時には編集構造をアプリ向けへ統合し、`StoryContentBundle` の `scenarios`、`choiceGroups`、`interactions`、`events` の4配列へ変換します。`StoryContentRepository` がアプリbundle内の `Resources/GeneratedScenarios/story_content.generated.json` を読み込み、scenario／choice／interaction／eventの検索、daily scenarioの整列、CGカタログの生成を担います。
 
 `StoryScenarioGraph` はscenario内だけで遷移を解決します。次ノードの優先順位は次の通りです。
 
@@ -97,7 +97,8 @@ Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれ�
 
 交流トップには現在のキャラクター、今日の会話、ストーリー、思い出を表示します。
 
-- 今日の会話: 初回表示日をanchorに、`scenarioId` 順のdaily scenarioをアプリ日ごとに1話選択します。未読時だけ交流トップに表示し、読了後は非表示になります。未読でも翌日は次へ進み、末尾まで進むと先頭へ戻ります。playback keyは `daily:yyyy-MM-dd` です。Debugビルドでは設定から当日分を未読へ戻せます。
+- 今日の会話: daily scenarioの `calendar_date`（`YYYY-MM-DD`）を優先し、一致がなければ `calendar_month_day`（`MM-DD`）でアプリ日ごとに1話選択します。継続日数や初回利用日には依存しません。未読時だけ交流トップに表示し、読了後は非表示になります。playback keyは `daily:yyyy-MM-dd` です。Debugビルドでは設定から当日分を未読へ戻せます。
+- 交流コメント: `interactions` のうちタッチ箇所、時間帯、プロフィール条件に合う有効行から `weight` に応じて抽選します。同じコメントが連続しないよう、候補が複数ある場合は直前のIDを除外します。
 - ストーリー一覧: `storyCategory` の `main`／`sub` だけで分類し、chapterと `episodeOrder` 順に表示します。未解放話も隠さず、lock、NEW、既読、条件の達成状況を表示します。
 - 思い出: CGカタログ全体を並べ、未解放項目は伏せて表示します。ストーリー完了時に解放されたCGだけを全画面表示できます。
 

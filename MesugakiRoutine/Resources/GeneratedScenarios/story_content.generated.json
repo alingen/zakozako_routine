@@ -900,6 +900,116 @@
       ]
     },
     {
+      "scenarioId": "daily_q003",
+      "scenarioType": "daily",
+      "calendarMonthDay": "09-16",
+      "nodes": [
+        {
+          "lineOrder": 1,
+          "nodeId": "daily_q003_001",
+          "speaker": "character",
+          "messageType": "choice",
+          "text": "おにいさんって一人で映画行ける？",
+          "choiceId": "choice_solo_movie",
+          "speakerName": "莉央",
+          "enabled": true,
+          "notes": "title: 一人映画／ユーザー提供原稿",
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 2,
+          "nodeId": "daily_q003_can_001",
+          "speaker": "character",
+          "messageType": "text",
+          "text": "へえ、一人で行けるんだ",
+          "nextNodeId": "daily_q003_can_002",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 3,
+          "nodeId": "daily_q003_can_002",
+          "speaker": "character",
+          "messageType": "text",
+          "text": "ポップコーンも一人で食べるの？",
+          "nextNodeId": "daily_q003_can_003",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 4,
+          "nodeId": "daily_q003_can_003",
+          "speaker": "user",
+          "messageType": "text",
+          "text": "普通に食べるけど",
+          "nextNodeId": "daily_q003_can_004",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 5,
+          "nodeId": "daily_q003_can_004",
+          "speaker": "character",
+          "messageType": "text",
+          "text": "両手で抱えて？",
+          "nextNodeId": "daily_q003_can_005",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 6,
+          "nodeId": "daily_q003_can_005",
+          "speaker": "user",
+          "messageType": "text",
+          "text": "なんで寂しい絵にしようとするの？",
+          "nextNodeId": "daily_q003_end",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 7,
+          "nodeId": "daily_q003_cannot_001",
+          "speaker": "character",
+          "messageType": "text",
+          "text": "じゃあ今まで映画みたことない？",
+          "nextNodeId": "daily_q003_cannot_002",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 8,
+          "nodeId": "daily_q003_cannot_002",
+          "speaker": "user",
+          "messageType": "text",
+          "text": "なんで友だちいないと思われてるんだっけ？",
+          "nextNodeId": "daily_q003_end",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat"
+        },
+        {
+          "lineOrder": 9,
+          "nodeId": "daily_q003_end",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "notes": "分岐共通の無表示終端",
+          "screenMode": "chat",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 0
+          }
+        }
+      ]
+    },
+    {
       "scenarioId": "large_001",
       "scenarioType": "large_event",
       "nodes": [
@@ -14236,6 +14346,27 @@
       ]
     },
     {
+      "choiceId": "choice_solo_movie",
+      "choices": [
+        {
+          "choiceOrder": 1,
+          "label": "行ける",
+          "nextNodeId": "daily_q003_can_001",
+          "saveKey": "soloMovie",
+          "saveValue": "can",
+          "enabled": true
+        },
+        {
+          "choiceOrder": 2,
+          "label": "ちょっと無理",
+          "nextNodeId": "daily_q003_cannot_001",
+          "saveKey": "soloMovie",
+          "saveValue": "cannot",
+          "enabled": true
+        }
+      ]
+    },
+    {
       "choiceId": "choice_yoshiyoshi",
       "choices": [
         {
@@ -14258,16 +14389,333 @@
         {
           "choiceOrder": 1,
           "label": "大丈夫！",
-          "nextNodeId": "daily_001_10",
+          "nextNodeId": "daily_001_07",
           "enabled": true
         },
         {
           "choiceOrder": 2,
           "label": "自信ないかも",
-          "nextNodeId": "daily_001_09",
+          "nextNodeId": "daily_001_06",
           "enabled": true
         }
       ]
+    }
+  ],
+  "interactions": [
+    {
+      "id": "touch_default_001",
+      "text": "がんばってね、ざこざこおにいさん♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_002",
+      "text": "また負けちゃったんだ、ざ〜こ♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_003",
+      "text": "今回は何日もつかな〜？",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_004",
+      "text": "まさか誰とも喋らない日があったりする？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_005",
+      "text": "予定一個あるだけで、一日予定ある判定してそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_006",
+      "text": "2日予定あるだけで『今週忙しい』は盛りすぎでしょw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_007",
+      "text": "おにいさんって、予定ないのに忙しいって言いそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_008",
+      "text": "コンビニ行っただけで外出した気になってない？",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_009",
+      "text": "休日に予定なくても別に気にしてなさそうなのが一番キモいw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_010",
+      "text": "二度寝してから『あと5分だけだったのに』って言うのやめな〜w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_011",
+      "text": "履歴書の趣味欄って何書いてる？あっ書くことないかw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_012",
+      "text": "髪型変えても誰にも気づかれないのかわいそ〜w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_013",
+      "text": "黒、白、グレーだけで着回すのそろそろやめたらw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_014",
+      "text": "スマホケース、透明のやつ黄ばんでるから変えたらw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_015",
+      "text": "SNSにラーメンの画像ばっかり載せるのやめなよw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_016",
+      "text": "写真フォルダ、ゲームのスクショばっかりで恥ずかしくないの？",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_017",
+      "text": "送料無料まであと500円だからって30分悩んでるのダサくない？",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_018",
+      "text": "星4.3と星4.2の違いで本気で悩めるの才能だよw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_019",
+      "text": "店員さんに声小さいから聞き返されてんのウケる〜w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_020",
+      "text": "袋いりますか？で毎回0.5秒考えるの何？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_021",
+      "text": "『メール確認』とかTODOに入れて数稼いでそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_022",
+      "text": "そんなにケーブル持って何に使うの？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_023",
+      "text": "そんなに紙袋ためてどうせ使わないんでしょw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_024",
+      "text": "予定ないのに一回カレンダー確認するの何？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_025",
+      "text": "『その日はたぶん大丈夫』って言うけど普通に何もないのバレバレ〜w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_026",
+      "text": "カメラOFFだと姿勢終わってるのバレバレ〜w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_027",
+      "text": "負けた試合だけ回線気にしてそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_028",
+      "text": "一回積みゲー終わってから新作チェックしたら？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_029",
+      "text": "休むの下手なくせに頑張るのも下手なの大変だねw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_030",
+      "text": "夜中に意識高い動画見て翌朝普通に寝坊するのダサすぎw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_031",
+      "text": "褒められ慣れてなさすぎてキモ〜w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_032",
+      "text": "女の子に一回優しくされたら三年くらい覚えてそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_033",
+      "text": "恋愛の話になったら急に飲み物触り始めるよね？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_034",
+      "text": "最近の流行知らないからって興味ないフリするのだっさぁ♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_035",
+      "text": "絵文字使うか使わないか気にしてる時点で歳だよ♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_036",
+      "text": "文章の最後に『笑』付けるかどうかで一生悩んでるのウケるw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_037",
+      "text": "『普通にいい人』って言われて効きすぎ〜w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_038",
+      "text": "別にダサくないよ？ただ、かっこよくもないだけ♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_039",
+      "text": "おにいさん存在感薄いのに反応だけは大きいよねw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_040",
+      "text": "おにいさんのWikipedia、『人物』の欄2行で終わりそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_041",
+      "text": "おにいさんの人生、映画化しても予告編作れなそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_042",
+      "text": "モブなのに自我強くてかわいいね♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_043",
+      "text": "なんかこう…全部ちょっとずつ惜しいよね",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_044",
+      "text": "休日何してるんですか？が一番困る質問そう",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "touch_default_045",
+      "text": "人生に季節感なさそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
     }
   ],
   "events": [

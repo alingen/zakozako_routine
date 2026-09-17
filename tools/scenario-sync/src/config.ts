@@ -22,6 +22,8 @@ export const SNAPSHOT_PATH = resolve(TOOL_ROOT, 'fixtures/sheets-snapshot.json')
 export interface SyncConfig {
   sheetId: string;
   tabs: {
+    daily: string;
+    interactions: string;
     scenarios: string;
     choices: string;
     events: string;
@@ -66,8 +68,10 @@ export function loadConfig(): SyncConfig {
   return {
     sheetId: process.env.SCENARIO_SHEET_ID?.trim() || DEFAULT_SHEET_ID,
     tabs: {
-      scenarios: process.env.SCENARIO_TAB_SCENARIOS?.trim() || 'scenarios',
+      daily: process.env.SCENARIO_TAB_DAILY?.trim() || 'daily',
       choices: process.env.SCENARIO_TAB_CHOICES?.trim() || 'choices',
+      interactions: process.env.SCENARIO_TAB_INTERACTIONS?.trim() || 'interactions',
+      scenarios: process.env.SCENARIO_TAB_SCENARIOS?.trim() || 'senarios',
       events: process.env.SCENARIO_TAB_EVENTS?.trim() || 'events',
     },
     credentials,

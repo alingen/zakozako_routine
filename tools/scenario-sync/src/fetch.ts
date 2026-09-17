@@ -5,7 +5,9 @@ import type { SyncConfig } from './config.js';
 import { SNAPSHOT_PATH } from './config.js';
 
 function headerRowIndex(grid: string[][], firstColumnName: string): number {
-  const index = grid.findIndex((row) => row.some((cell) => cell.trim() === firstColumnName));
+  const index = grid.findIndex((row) =>
+    row.some((cell) => String(cell ?? '').trim() === firstColumnName),
+  );
   return index >= 0 ? index : 0;
 }
 
@@ -14,16 +16,16 @@ export function gridToRows(grid: string[][], firstColumnName: string): RawRow[] 
   if (grid.length === 0) return [];
 
   const headerIndex = headerRowIndex(grid, firstColumnName);
-  const header = (grid[headerIndex] ?? []).map((cell) => cell.trim());
+  const header = (grid[headerIndex] ?? []).map((cell) => String(cell ?? '').trim());
   const rows: RawRow[] = [];
 
   for (let index = headerIndex + 1; index < grid.length; index += 1) {
     const cells = grid[index] ?? [];
-    if (cells.every((cell) => cell.trim() === '')) continue;
+    if (cells.every((cell) => String(cell ?? '').trim() === '')) continue;
 
     const row: RawRow = { __row: index + 1 };
     header.forEach((column, columnIndex) => {
-      if (column) row[column] = cells[columnIndex] ?? '';
+      if (column) row[column] = String(cells[columnIndex] ?? '');
     });
     rows.push(row);
   }
@@ -32,8 +34,10 @@ export function gridToRows(grid: string[][], firstColumnName: string): RawRow[] 
 
 export function snapshotToRawSheets(snapshot: SheetSnapshot): RawSheets {
   return {
-    scenarios: gridToRows(snapshot.tabs.scenarios, 'scenario_id'),
+    daily: gridToRows(snapshot.tabs.daily, 'scenario_id'),
     choices: gridToRows(snapshot.tabs.choices, 'choice_id'),
+    interactions: gridToRows(snapshot.tabs.interactions, 'id'),
+    scenarios: gridToRows(snapshot.tabs.senarios, 'scenario_id'),
     events: gridToRows(snapshot.tabs.events, 'event_id'),
   };
 }
@@ -43,7 +47,14 @@ export function loadSnapshot(path = SNAPSHOT_PATH): SheetSnapshot {
     throw new Error(`Snapshot not found: ${path}. Fetch live or pass a valid snapshot path.`);
   }
   const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<SheetSnapshot>;
-  if (!parsed.sheetId || !parsed.tabs?.scenarios || !parsed.tabs.choices || !parsed.tabs.events) {
+  if (
+    !parsed.sheetId ||
+    !parsed.tabs?.daily ||
+    !parsed.tabs.choices ||
+    !parsed.tabs.interactions ||
+    !parsed.tabs.senarios ||
+    !parsed.tabs.events
+  ) {
     throw new Error(`Invalid scenario snapshot: ${path}`);
   }
   return {
@@ -76,7 +87,13 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
   const sheets = google.sheets({ version: 'v4', auth: (await auth.getClient()) as never });
   const response = await sheets.spreadsheets.values.batchGet({
     spreadsheetId: config.sheetId,
-    ranges: [config.tabs.scenarios, config.tabs.choices, config.tabs.events],
+    ranges: [
+      config.tabs.daily,
+      config.tabs.choices,
+      config.tabs.interactions,
+      config.tabs.scenarios,
+      config.tabs.events,
+    ],
     majorDimension: 'ROWS',
   });
   const ranges = response.data.valueRanges ?? [];
@@ -87,7 +104,13 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
     fetchedAt: new Date().toISOString(),
     sheetId: config.sheetId,
     source: 'api',
-    tabs: { scenarios: grid(0), choices: grid(1), events: grid(2) },
+    tabs: {
+      daily: grid(0),
+      choices: grid(1),
+      interactions: grid(2),
+      senarios: grid(3),
+      events: grid(4),
+    },
   };
 }
 
@@ -122,8 +145,10 @@ async function fetchViaPublicXlsx(config: SyncConfig): Promise<SheetSnapshot> {
     sheetId: config.sheetId,
     source: 'public-xlsx',
     tabs: {
-      scenarios: readTab(config.tabs.scenarios),
+      daily: readTab(config.tabs.daily),
       choices: readTab(config.tabs.choices),
+      interactions: readTab(config.tabs.interactions),
+      senarios: readTab(config.tabs.scenarios),
       events: readTab(config.tabs.events),
     },
   };

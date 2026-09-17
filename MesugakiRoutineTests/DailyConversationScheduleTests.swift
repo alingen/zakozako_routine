@@ -9,49 +9,77 @@ final class DailyConversationScheduleTests: XCTestCase {
         return calendar
     }
 
-    func testConversationAdvancesAtAppDayBoundary() throws {
-        let anchor = try date(2026, 9, 1, 4, 0)
+    func testSelectsExactCalendarDateAtAppDayBoundary() throws {
+        let septemberFirst = scenario(id: "exact_0901", calendarDate: "2026-09-01")
+        let septemberSecond = scenario(id: "exact_0902", calendarDate: "2026-09-02")
+        let scenarios = [septemberFirst, septemberSecond]
 
         XCTAssertEqual(
-            DailyConversationSchedule.scenarioIndex(
+            DailyConversationSchedule.scenario(
                 on: try date(2026, 9, 2, 3, 59),
-                anchorDate: anchor,
-                scenarioCount: 14,
+                from: scenarios,
                 calendar: calendar
-            ),
-            0
+            )?.scenarioId,
+            "exact_0901"
         )
         XCTAssertEqual(
-            DailyConversationSchedule.scenarioIndex(
+            DailyConversationSchedule.scenario(
                 on: try date(2026, 9, 2, 4, 0),
-                anchorDate: anchor,
-                scenarioCount: 14,
+                from: scenarios,
                 calendar: calendar
-            ),
-            1
+            )?.scenarioId,
+            "exact_0902"
         )
     }
 
-    func testConversationWrapsAfterAvailableScenarios() throws {
-        let anchor = try date(2026, 9, 1, 4, 0)
+    func testSelectsRecurringMonthDayEveryYear() throws {
+        let recurring = scenario(id: "christmas", calendarMonthDay: "12-24")
+
         XCTAssertEqual(
-            DailyConversationSchedule.scenarioIndex(
-                on: try date(2026, 9, 15, 4, 0),
-                anchorDate: anchor,
-                scenarioCount: 14,
+            DailyConversationSchedule.scenario(
+                on: try date(2028, 12, 24, 12, 0),
+                from: [recurring],
                 calendar: calendar
-            ),
-            0
+            )?.scenarioId,
+            "christmas"
         )
     }
 
-    func testEmptyCatalogHasNoSelection() throws {
+    func testExactCalendarDateOverridesRecurringMonthDay() throws {
+        let recurring = scenario(id: "recurring", calendarMonthDay: "09-02")
+        let exact = scenario(id: "exact", calendarDate: "2026-09-02")
+
+        XCTAssertEqual(
+            DailyConversationSchedule.scenario(
+                on: try date(2026, 9, 2, 12, 0),
+                from: [recurring, exact],
+                calendar: calendar
+            )?.scenarioId,
+            "exact"
+        )
+    }
+
+    func testUnscheduledConversationIsNotSelected() throws {
         XCTAssertNil(
-            DailyConversationSchedule.scenarioIndex(
-                anchorDate: try date(2026, 9, 1, 4, 0),
-                scenarioCount: 0,
+            DailyConversationSchedule.scenario(
+                on: try date(2026, 9, 2, 12, 0),
+                from: [scenario(id: "unscheduled")],
                 calendar: calendar
             )
+        )
+    }
+
+    private func scenario(
+        id: String,
+        calendarDate: String? = nil,
+        calendarMonthDay: String? = nil
+    ) -> StoryScenario {
+        StoryScenario(
+            scenarioId: id,
+            scenarioType: .daily,
+            calendarDate: calendarDate,
+            calendarMonthDay: calendarMonthDay,
+            nodes: []
         )
     }
 
@@ -229,5 +257,71 @@ final class InteractionHomeCardRenderingTests: XCTestCase {
                 XCTAssertEqual(image.size.height, 130 * 2 + 12, accuracy: 0.5)
             }
         }
+    }
+}
+
+final class InteractionCommentSelectorTests: XCTestCase {
+    func testSelectsOnlyMatchingTouchTimeAndProfileConditions() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 9 * 60 * 60)!
+        let morning = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 8))
+        )
+        let comments = [
+            InteractionComment(
+                id: "eligible",
+                text: "eligible",
+                condition: "profile:preferredTime=朝型",
+                timeCondition: "morning",
+                touchArea: "character"
+            ),
+            InteractionComment(
+                id: "wrong_time",
+                text: "night",
+                timeCondition: "night",
+                touchArea: "character"
+            ),
+            InteractionComment(
+                id: "wrong_area",
+                text: "head",
+                touchArea: "head"
+            ),
+        ]
+
+        let selected = InteractionCommentSelector.select(
+            from: comments,
+            touchArea: "character",
+            now: morning,
+            calendar: calendar,
+            profileValues: ["preferredTime": "朝型"],
+            randomUnit: { 0 }
+        )
+
+        XCTAssertEqual(selected?.id, "eligible")
+    }
+
+    func testUsesWeightAndAvoidsImmediateRepeatWhenPossible() {
+        let comments = [
+            InteractionComment(id: "light", text: "light", weight: 1),
+            InteractionComment(id: "heavy", text: "heavy", weight: 3),
+        ]
+
+        XCTAssertEqual(
+            InteractionCommentSelector.select(
+                from: comments,
+                touchArea: "character",
+                randomUnit: { 0.9 }
+            )?.id,
+            "heavy"
+        )
+        XCTAssertEqual(
+            InteractionCommentSelector.select(
+                from: comments,
+                touchArea: "character",
+                excluding: "heavy",
+                randomUnit: { 0.9 }
+            )?.id,
+            "light"
+        )
     }
 }

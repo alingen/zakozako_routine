@@ -28,11 +28,13 @@ final class RoutineRepository {
         period: HabitPeriod = .day,
         targetCount: Int = 1,
         scheduledStartMinute: Int? = nil,
-        activeWeekdayValues: [Int] = Weekday.allWeekdayValues
+        activeWeekdayValues: [Int] = Weekday.allWeekdayValues,
+        targetDurationMinutes: Int? = nil
     ) throws -> Routine {
         let routine = Routine(
             title: title,
             scheduledStartMinute: scheduledStartMinute,
+            targetDurationMinutes: targetDurationMinutes,
             activeWeekdayValues: activeWeekdayValues,
             iconName: iconName,
             period: period,
@@ -53,6 +55,7 @@ final class RoutineRepository {
         targetCount: Int,
         scheduledStartMinute: Int?,
         activeWeekdayValues: [Int],
+        targetDurationMinutes: Int? = nil,
         now: Date = .now
     ) throws {
         let periodChanged = routine.period != period
@@ -81,6 +84,7 @@ final class RoutineRepository {
             routine.targetCount = targetCount
             routine.scheduledStartMinute = scheduledStartMinute
             routine.activeWeekdayValues = activeWeekdayValues
+            routine.targetDurationMinutes = targetDurationMinutes.map { max($0, 1) }
             routine.updatedAt = now
         }
     }

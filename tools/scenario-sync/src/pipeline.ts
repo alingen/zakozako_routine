@@ -25,18 +25,21 @@ export function runPipeline(raw: RawSheets, outputPath = OUTPUT_PATH): PipelineR
   // A transient fetch/header failure must never look like a legitimate CMS
   // deletion and overwrite the bundled catalog with an empty artifact.
   const identityColumn = {
+    daily: 'scenario_id',
+    interactions: 'id',
     scenarios: 'scenario_id',
     choices: 'choice_id',
     events: 'event_id',
   } as const;
-  for (const tab of ['scenarios', 'choices', 'events'] as const) {
+  for (const tab of ['daily', 'choices', 'interactions', 'scenarios', 'events'] as const) {
+    const sheetName = tab === 'scenarios' ? 'senarios' : tab;
     if (raw[tab].length === 0) {
       issues.error('empty_source_tab', `${tab} has no source rows; refusing to generate`, {
-        at: { sheet: tab, row: 1, column: identityColumn[tab] },
+        at: { sheet: sheetName, row: 1, column: identityColumn[tab] },
       });
     } else if (normalized.data[tab].length === 0) {
       issues.error('no_enabled_rows', `${tab} has no valid enabled rows; refusing to generate`, {
-        at: { sheet: tab, row: 1, column: 'enabled' },
+        at: { sheet: sheetName, row: 1, column: tab === 'interactions' ? 'active' : 'enabled' },
       });
     }
   }

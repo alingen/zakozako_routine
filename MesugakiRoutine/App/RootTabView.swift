@@ -201,40 +201,49 @@ struct RootTabView: View {
     private func blockedBehaviorTauntOverlay(_ request: BlockedBehaviorTauntRequest) -> some View {
         GeometryReader { proxy in
             let artworkWidth = min(
-                430,
-                min(proxy.size.width * 1.04, proxy.size.height * 0.50)
+                280,
+                min(proxy.size.width * 0.54, proxy.size.height * 0.33)
             )
             let bubbleWidth = min(312, proxy.size.width - 40)
-            let bubbleBottomPadding = max(
-                proxy.safeAreaInsets.bottom + 96,
-                proxy.size.height * 0.26
-            )
 
-            ZStack(alignment: .bottom) {
+            ZStack {
                 Color.clear
                     .contentShape(Rectangle())
 
-                Image("rio_blocked_behavior_taunt")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: artworkWidth)
-                    .offset(x: max(12, proxy.size.width * 0.04))
-                    .padding(.bottom, bubbleBottomPadding + 42)
-                    .accessibilityHidden(true)
+                VStack(spacing: 12) {
+                    blockedBehaviorPortrait(width: artworkWidth)
+                        .accessibilityHidden(true)
 
-                InteractionCharacterSpeechBubble(text: request.text)
-                    .frame(width: bubbleWidth)
-                    .padding(.bottom, bubbleBottomPadding)
-                    .allowsHitTesting(false)
+                    InteractionCharacterSpeechBubble(text: request.text)
+                        .frame(width: bubbleWidth)
+                        .allowsHitTesting(false)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("莉央、\(request.text)")
         .accessibilityHint("タップして閉じる")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(.escape, dismissBlockedBehaviorTaunt)
+    }
+
+    private func blockedBehaviorPortrait(width: CGFloat) -> some View {
+        let cornerRadius = min(24, width * 0.12)
+
+        return Image("rio_blocked_behavior_taunt")
+            .resizable()
+            .scaledToFill()
+            .frame(width: width, height: width, alignment: .top)
+            .clipped()
+            .background(AppColor.surface)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(AppColor.primary.opacity(0.55), lineWidth: 2)
+            }
+            .shadow(color: AppColor.text.opacity(0.20), radius: 12, y: 6)
     }
 
     private func dismissBlockedBehaviorTaunt() {

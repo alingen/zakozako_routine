@@ -232,6 +232,65 @@ final class StoryScenarioGraphTests: XCTestCase {
         )
     }
 
+    func testDailyConversationSharesChatCompletionAndReservedActionArea() {
+        XCTAssertTrue(ChatStoryPresentationPolicy.usesChatCompletion(for: .daily))
+        XCTAssertTrue(ChatStoryPresentationPolicy.usesChatCompletion(for: .smallEvent))
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesChatCompletion(for: .middleEvent))
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesChatCompletion(for: .largeEvent))
+        XCTAssertTrue(ChatStoryPresentationPolicy.usesFixedActionArea(for: .daily))
+        XCTAssertTrue(ChatStoryPresentationPolicy.usesFixedActionArea(for: .smallEvent))
+    }
+
+    func testDailyReplyButtonDoesNotRevealTheUpcomingPlayerLine() {
+        let reply = StoryNode(
+            nodeId: "reply",
+            lineOrder: 1,
+            speaker: "user",
+            messageType: .text,
+            text: "なんで寂しい絵にしようとするの？"
+        )
+        XCTAssertEqual(
+            ChatStoryPresentationPolicy.manualAdvanceLabel(node: reply, scenarioType: .daily),
+            "返信する"
+        )
+        XCTAssertTrue(ChatStoryPresentationPolicy.isUnsentPlayerMessage(node: reply, canAdvance: true))
+        XCTAssertFalse(ChatStoryPresentationPolicy.isUnsentPlayerMessage(node: reply, canAdvance: false))
+        XCTAssertEqual(
+            ChatStoryPresentationPolicy.manualAdvanceLabel(node: reply, scenarioType: .smallEvent),
+            reply.text
+        )
+    }
+
+    func testDailyChoiceKeepsRiosQuestionButHidesUnsentPlayerPlaceholder() {
+        let question = StoryNode(
+            nodeId: "question",
+            lineOrder: 1,
+            speaker: "character",
+            messageType: .choice,
+            text: "明日も来れるよね？",
+            choiceId: "replies"
+        )
+        let placeholder = StoryNode(
+            nodeId: "placeholder",
+            lineOrder: 2,
+            speaker: "user",
+            messageType: .choice,
+            text: "未送信の返信",
+            choiceId: "replies"
+        )
+        let selectedReply = StoryNode(
+            nodeId: "selected_reply",
+            lineOrder: 2,
+            speaker: "user",
+            messageType: .text,
+            text: "明日も来るよ"
+        )
+        XCTAssertFalse(ChatStoryPresentationPolicy.isChoicePlaceholder(node: question, scenarioType: .daily))
+        XCTAssertTrue(ChatStoryPresentationPolicy.isChoicePlaceholder(node: placeholder, scenarioType: .daily))
+        XCTAssertFalse(ChatStoryPresentationPolicy.isChoicePlaceholder(node: selectedReply, scenarioType: .daily))
+        XCTAssertFalse(ChatStoryPresentationPolicy.isChoicePlaceholder(node: placeholder, scenarioType: .smallEvent))
+    }
+
     func testLogIsAvailableOnlyForMiddleAndLargeEvents() {
         XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .daily))
         XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .smallEvent))

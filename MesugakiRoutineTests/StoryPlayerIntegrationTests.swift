@@ -213,40 +213,40 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         )
     }
 
-    func testRealDailyDanglingChoiceRecoversAndAnotherChoicePersistsValue() async throws {
+    func testRealDailyChoiceTargetsExistingBranchAndAnotherChoicePersistsValue() async throws {
         let contentRepository = try makeGeneratedContentRepository()
         let stateRepository = try makeStateRepository()
 
-        let danglingScenario = try XCTUnwrap(contentRepository.scenario(id: "daily_001"))
-        let danglingPlayer = makePlayer(
-            scenario: danglingScenario,
+        let branchingScenario = try XCTUnwrap(contentRepository.scenario(id: "daily_001"))
+        let branchingPlayer = makePlayer(
+            scenario: branchingScenario,
             playbackKey: "integration:daily:001",
             contentRepository: contentRepository,
             stateRepository: stateRepository
         )
-        await danglingPlayer.start()
+        await branchingPlayer.start()
         try await advanceUntilChoice(
             "first_day_can_do",
-            player: danglingPlayer,
-            safetyLimit: danglingScenario.nodes.count * 2
+            player: branchingPlayer,
+            safetyLimit: branchingScenario.nodes.count * 2
         )
-        let danglingChoice = try XCTUnwrap(danglingPlayer.availableChoices.first)
-        XCTAssertEqual(danglingChoice.nextNodeId, "daily_001_10")
+        let branchingChoice = try XCTUnwrap(branchingPlayer.availableChoices.first)
+        XCTAssertEqual(branchingChoice.nextNodeId, "daily_001_07")
 
-        await danglingPlayer.selectChoice(danglingChoice)
+        await branchingPlayer.selectChoice(branchingChoice)
 
-        XCTAssertEqual(danglingPlayer.currentNode?.nodeId, "daily_001_06")
-        XCTAssertTrue(danglingPlayer.recoverableError?.contains("daily_001_10") == true)
+        XCTAssertEqual(branchingPlayer.currentNode?.nodeId, "daily_001_07")
+        XCTAssertNil(branchingPlayer.recoverableError)
         try await driveStartedPlayerToCompletion(
-            danglingPlayer,
-            safetyLimit: danglingScenario.nodes.count * 2
+            branchingPlayer,
+            safetyLimit: branchingScenario.nodes.count * 2
         )
-        let danglingCheckpoint = try XCTUnwrap(
+        let branchingCheckpoint = try XCTUnwrap(
             stateRepository.checkpoint(for: "integration:daily:001")
         )
-        XCTAssertTrue(danglingCheckpoint.isCompleted)
-        XCTAssertTrue(danglingCheckpoint.visitedNodeIds.contains("daily_001_06"))
-        XCTAssertFalse(danglingCheckpoint.visitedNodeIds.contains("daily_001_07"))
+        XCTAssertTrue(branchingCheckpoint.isCompleted)
+        XCTAssertFalse(branchingCheckpoint.visitedNodeIds.contains("daily_001_06"))
+        XCTAssertTrue(branchingCheckpoint.visitedNodeIds.contains("daily_001_07"))
 
         let savingScenario = try XCTUnwrap(contentRepository.scenario(id: "daily_002"))
         let savingPlayer = makePlayer(
@@ -390,7 +390,115 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         )
     }
 
-    func testMissingAndFullyFilteredChoiceGroupsContinueByLineOrder() async throws {
+    func testDailySelectedRepliesAppearInOrderAndSurviveResumeAndCompletion() async throws {
+        let contentRepository = try makeGeneratedContentRepository()
+        let stateRepository = try makeStateRepository()
+        let scenario = try XCTUnwrap(contentRepository.scenario(id: "daily_002"))
+        let playbackKey = "integration:daily:reply-history"
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await player.start()
+        try await advanceUntilChoice("choice_siblings", player: player, safetyLimit: 20)
+        XCTAssertFalse(player.visibleChatNodes.contains(where: \.isPlayerSpeaker))
+
+        let firstChoice = try XCTUnwrap(player.availableChoices.last)
+        await player.selectChoice(firstChoice)
+        let firstReply = try XCTUnwrap(player.visibleChatNodes.first(where: \.isPlayerSpeaker))
+        XCTAssertEqual(firstReply.messageType, .text)
+        XCTAssertEqual(firstReply.text, firstChoice.label)
+        XCTAssertEqual(
+            Array(player.visibleChatNodes.suffix(3)).map(\.nodeId),
+            ["daily_002_03", firstReply.nodeId, try XCTUnwrap(player.currentNode?.nodeId)]
+        )
+        let beforeResume = player.visibleChatNodes
+        player.close()
+
+        let resumed = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await resumed.start()
+        XCTAssertEqual(resumed.visibleChatNodes, beforeResume)
+        XCTAssertEqual(resumed.visibleChatNodes.filter { $0.nodeId == firstReply.nodeId }.count, 1)
+        try await advanceUntilChoice("choice_yoshiyoshi", player: resumed, safetyLimit: 20)
+        let secondChoice = try XCTUnwrap(resumed.availableChoices.first)
+        await resumed.selectChoice(secondChoice)
+        XCTAssertEqual(
+            resumed.visibleChatNodes.filter(\.isPlayerSpeaker).compactMap(\.text),
+            [firstChoice.label, secondChoice.label]
+        )
+        try await driveStartedPlayerToCompletion(resumed, safetyLimit: 20)
+        XCTAssertFalse(resumed.isModalPresented)
+        let completedHistory = resumed.visibleChatNodes
+        let checkpoint = try XCTUnwrap(stateRepository.checkpoint(for: playbackKey))
+        XCTAssertEqual(checkpoint.choiceHistory.map(\.label), [firstChoice.label, secondChoice.label])
+        XCTAssertTrue(checkpoint.visitedNodeIds.allSatisfy { nodeId in
+            scenario.nodes.contains { $0.nodeId == nodeId }
+        }, "Presentation-only replies must not become navigation nodes")
+
+        let reopened = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await reopened.start()
+        XCTAssertTrue(reopened.isCompleted)
+        XCTAssertEqual(reopened.visibleChatNodes, completedHistory)
+        await reopened.restart()
+        XCTAssertFalse(reopened.isCompleted)
+        XCTAssertFalse(reopened.visibleChatNodes.contains(where: \.isPlayerSpeaker))
+        XCTAssertTrue(try XCTUnwrap(stateRepository.checkpoint(for: playbackKey)).choiceHistory.isEmpty)
+    }
+
+    func testDailyTerminalChoiceDisplaysOnlyTheSelectedReply() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "daily_terminal_choice",
+            scenarioType: .daily,
+            nodes: [StoryNode(
+                nodeId: "choose_reply",
+                lineOrder: 1,
+                speaker: "user",
+                messageType: .choice,
+                text: "未送信の返信",
+                choiceId: "terminal_replies"
+            )]
+        )
+        let choices = [
+            StoryChoice(choiceOrder: 1, label: "がんばるよ"),
+            StoryChoice(choiceOrder: 2, label: "明日も来るね"),
+        ]
+        let contentRepository = try StoryContentRepository(content: StoryContentBundle(
+            scenarios: [scenario],
+            choiceGroups: [StoryChoiceGroup(choiceId: "terminal_replies", choices: choices)],
+            events: []
+        ))
+        let stateRepository = try makeStateRepository()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:daily:terminal-reply",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await player.start()
+        XCTAssertTrue(player.visibleChatNodes.isEmpty)
+        await player.selectChoice(choices[1])
+        XCTAssertTrue(player.isCompleted)
+        XCTAssertFalse(player.isModalPresented)
+        XCTAssertEqual(player.visibleChatNodes.compactMap(\.text), [choices[1].label])
+        XCTAssertTrue(player.visibleChatNodes.allSatisfy(\.isPlayerSpeaker))
+        await player.start()
+        XCTAssertTrue(player.isCompleted)
+        XCTAssertEqual(player.visibleChatNodes.compactMap(\.text), [choices[1].label])
+    }
+
+    func testMissingChoiceGroupContinuesByLineOrder() async throws {
         let missingScenario = StoryScenario(
             scenarioId: "missing_choice_group",
             scenarioType: .daily,
@@ -411,66 +519,28 @@ final class StoryPlayerIntegrationTests: XCTestCase {
                 ),
             ]
         )
-        let filteredScenario = StoryScenario(
-            scenarioId: "filtered_choice_group",
-            scenarioType: .daily,
-            nodes: [
-                StoryNode(
-                    nodeId: "filtered_choice",
-                    lineOrder: 1,
-                    speaker: "user",
-                    messageType: .choice,
-                    choiceId: "guarded"
-                ),
-                StoryNode(
-                    nodeId: "filtered_fallback",
-                    lineOrder: 2,
-                    speaker: "character",
-                    messageType: .text,
-                    text: "fallback"
-                ),
-            ]
-        )
-        let guardedGroup = StoryChoiceGroup(
-            choiceId: "guarded",
-            choices: [
-                StoryChoice(
-                    choiceOrder: 1,
-                    label: "locked",
-                    requiredKey: "missing_profile_flag",
-                    requiredOperator: .equal,
-                    requiredValue: "yes"
-                )
-            ]
-        )
         let contentRepository = try StoryContentRepository(
             content: StoryContentBundle(
-                scenarios: [missingScenario, filteredScenario],
-                choiceGroups: [guardedGroup],
+                scenarios: [missingScenario],
+                choiceGroups: [],
                 events: []
             )
         )
         let stateRepository = try makeStateRepository()
+        let player = makePlayer(
+            scenario: missingScenario,
+            playbackKey: "integration:\(missingScenario.scenarioId)",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
 
-        for (scenario, expectedNodeID) in [
-            (missingScenario, "missing_fallback"),
-            (filteredScenario, "filtered_fallback"),
-        ] {
-            let player = makePlayer(
-                scenario: scenario,
-                playbackKey: "integration:\(scenario.scenarioId)",
-                contentRepository: contentRepository,
-                stateRepository: stateRepository
-            )
+        await player.start()
 
-            await player.start()
-
-            XCTAssertEqual(player.currentNode?.nodeId, expectedNodeID)
-            XCTAssertTrue(player.availableChoices.isEmpty)
-            XCTAssertNotNil(player.recoverableError)
-            await player.advance()
-            XCTAssertTrue(player.isCompleted)
-        }
+        XCTAssertEqual(player.currentNode?.nodeId, "missing_fallback")
+        XCTAssertTrue(player.availableChoices.isEmpty)
+        XCTAssertNotNil(player.recoverableError)
+        await player.advance()
+        XCTAssertTrue(player.isCompleted)
     }
 
     func testPlayerIdentifiesTheLastVisibleNodeAsTerminal() async throws {

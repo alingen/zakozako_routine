@@ -50,7 +50,14 @@ struct MesugakiRoutineApp: App {
             StoryProfileValue.self,
             StoryMemoryUnlock.self,
         ])
-        let configuration = ModelConfiguration(schema: schema)
+        // Xcode Canvas also initializes the app entry point before replacing its
+        // scene with the selected preview. Keep that bootstrap store ephemeral so
+        // previews never depend on a stale or unavailable on-disk SwiftData store.
+        let isRunningForPreviews = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: isRunningForPreviews
+        )
         do {
             modelContainer = try ModelContainer(for: schema, configurations: [configuration])
         } catch {

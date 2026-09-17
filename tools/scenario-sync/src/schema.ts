@@ -1,4 +1,33 @@
-/** Exact column vocabulary of the three current CMS tabs. */
+/** Exact column vocabulary of the five CMS tabs. */
+export const DAILY_COLUMNS = [
+  'scenario_id',
+  'calendar_date',
+  'calendar_month_day',
+  'line_order',
+  'node_id',
+  'speaker',
+  'message_type',
+  'text',
+  'choice_id',
+  'next_node_id',
+  'save_key',
+  'save_value',
+  'asset_id',
+  'min_phase',
+  'max_phase',
+  'speaker_name',
+  'typing_duration_ms',
+  'background',
+  'portrait',
+  'cg',
+  'enabled',
+  'notes',
+  'screen_mode',
+  'ui_variant',
+  'command',
+  'command_args',
+] as const;
+
 export const SCENARIO_COLUMNS = [
   'scenario_id',
   'scenario_type',
@@ -28,17 +57,25 @@ export const SCENARIO_COLUMNS = [
 ] as const;
 
 export const CHOICE_COLUMNS = [
+  'daily_id',
   'choice_id',
   'choice_order',
   'label',
   'next_node_id',
   'save_key',
   'save_value',
-  'required_key',
-  'required_operator',
-  'required_value',
   'enabled',
   'notes',
+] as const;
+
+export const INTERACTION_COLUMNS = [
+  'id',
+  'text',
+  'condition',
+  'time_condition',
+  'touch_area',
+  'weight',
+  'active',
 ] as const;
 
 export const EVENT_COLUMNS = [
@@ -62,6 +99,16 @@ export const EVENT_COLUMNS = [
   'story_category',
 ] as const;
 
+export const REQUIRED_DAILY_COLUMNS = [
+  'scenario_id',
+  'line_order',
+  'node_id',
+  'speaker',
+  'message_type',
+  'text',
+  'enabled',
+] as const;
+
 export const REQUIRED_SCENARIO_COLUMNS = [
   'scenario_id',
   'scenario_type',
@@ -73,7 +120,15 @@ export const REQUIRED_SCENARIO_COLUMNS = [
   'enabled',
 ] as const;
 
-export const REQUIRED_CHOICE_COLUMNS = ['choice_id', 'choice_order', 'label', 'enabled'] as const;
+export const REQUIRED_CHOICE_COLUMNS = [
+  'daily_id',
+  'choice_id',
+  'choice_order',
+  'label',
+  'enabled',
+] as const;
+
+export const REQUIRED_INTERACTION_COLUMNS = ['id', 'text', 'weight', 'active'] as const;
 
 export const REQUIRED_EVENT_COLUMNS = [
   'event_id',
@@ -90,12 +145,7 @@ export const REQUIRED_EVENT_COLUMNS = [
 
 // These sets are diagnostics only. Normalization never rejects a non-empty
 // value merely because it is not listed here.
-export const KNOWN_SCENARIO_TYPES = new Set([
-  'daily',
-  'small_event',
-  'middle_event',
-  'large_event',
-]);
+export const KNOWN_SCENARIO_TYPES = new Set(['small_event', 'middle_event', 'large_event']);
 export const KNOWN_EVENT_TYPES = new Set(['small_event', 'middle_event', 'large_event']);
 export const KNOWN_MESSAGE_TYPES = new Set(['text', 'choice', 'image', 'action']);
 export const KNOWN_SCREEN_MODES = new Set(['adv', 'chat', 'call']);
@@ -133,6 +183,7 @@ export const KNOWN_COMMANDS = new Set([
 ]);
 export const KNOWN_OPERATORS = new Set(['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'exists']);
 export const KNOWN_STORY_CATEGORIES = new Set(['main', 'sub']);
+export const KNOWN_TIME_CONDITIONS = new Set(['always', 'morning', 'daytime', 'evening', 'night']);
 
 export function isBlank(value: unknown): boolean {
   return value === undefined || value === null || String(value).trim() === '';

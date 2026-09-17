@@ -45,6 +45,7 @@ final class StoryContentRepository {
 
     let events: [StoryEvent]
     let dailyScenarios: [StoryScenario]
+    let interactions: [InteractionComment]
     let cgCatalog: [StoryCGCatalogEntry]
 
     convenience init(
@@ -99,6 +100,11 @@ final class StoryContentRepository {
             .filter { $0.scenarioType == .daily }
             .sorted {
                 $0.scenarioId.localizedStandardCompare($1.scenarioId) == .orderedAscending
+            }
+        interactions = content.interactions
+            .filter { $0.active && $0.weight > 0 }
+            .sorted {
+                $0.id.localizedStandardCompare($1.id) == .orderedAscending
             }
         cgCatalog = Self.makeCGCatalog(content: content, sortedEvents: events)
     }

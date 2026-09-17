@@ -20,6 +20,9 @@ final class Routine {
     /// 開始予定時刻(0時からの分数、0〜1439)。未設定ならnil。通知の起点に使う。
     var scheduledStartMinute: Int?
 
+    /// タイマーで取り組む目標分数。通常の約束では nil。
+    var targetDurationMinutes: Int?
+
     /// 対象曜日(Weekdayのraw value)。**期間が「1日」のときだけ意味を持つ。**
     var activeWeekdayValues: [Int] = Weekday.allWeekdayValues
 
@@ -58,6 +61,7 @@ final class Routine {
         createdAt: Date = .now,
         updatedAt: Date = .now,
         scheduledStartMinute: Int? = nil,
+        targetDurationMinutes: Int? = nil,
         activeWeekdayValues: [Int] = Weekday.allWeekdayValues,
         iconName: String? = nil,
         period: HabitPeriod = .day,
@@ -70,6 +74,7 @@ final class Routine {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.scheduledStartMinute = scheduledStartMinute
+        self.targetDurationMinutes = targetDurationMinutes.map { max($0, 1) }
         self.activeWeekdayValues = activeWeekdayValues
         self.iconName = iconName
         self.periodRawValue = period.rawValue

@@ -8,14 +8,17 @@ import {
   KNOWN_SCENARIO_TYPES,
   KNOWN_SCREEN_MODES,
   KNOWN_STORY_CATEGORIES,
+  KNOWN_TIME_CONDITIONS,
   KNOWN_UI_VARIANTS,
 } from './schema.js';
 import type {
   NormalizedChoiceRow,
   NormalizedEventRow,
+  NormalizedInteractionRow,
   NormalizedScenarioRow,
   NormalizedSheets,
 } from './types.js';
+import { allScenarioRows } from './types.js';
 
 export interface ValidateResult {
   issues: IssueBag;
@@ -24,15 +27,157 @@ export interface ValidateResult {
 /** Structural and forward-compatibility checks over normalized CMS rows. */
 export function validate(data: NormalizedSheets): ValidateResult {
   const issues = new IssueBag();
-  const scenarios = groupScenarios(data.scenarios);
+  const scenarioRows = allScenarioRows(data);
+  const scenarios = groupScenarios(scenarioRows);
   const choices = groupChoices(data.choices);
 
-  validateScenarioRows(data.scenarios, scenarios, choices, issues);
-  validateChoiceRows(data.choices, scenarios, choices, issues);
+  validateScenarioRows(scenarioRows, scenarios, choices, issues);
+  validateDailySchedule(data.daily, issues);
+  validateChoiceRows(data.choices, data.daily, choices, issues);
+  validateInteractions(data.interactions, issues);
   validateEventRows(data.events, scenarios, issues);
   checkReachability(data, issues);
 
   return { issues };
+}
+
+function validateDailySchedule(rows: NormalizedScenarioRow[], issues: IssueBag): void {
+  const exactDates = new Map<string, string>();
+  const recurringDates = new Map<string, string>();
+
+  for (const [scenarioId, scenarioRows] of groupScenarios(rows)) {
+    const calendarDates = distinctMetadata(scenarioRows, (row) => row.calendarDate);
+    const calendarMonthDays = distinctMetadata(scenarioRows, (row) => row.calendarMonthDay);
+    const firstRow = [...scenarioRows].sort((left, right) => left.lineOrder - right.lineOrder)[0]!;
+
+    if (calendarDates.length > 1) {
+      issues.error('daily_calendar_date_mismatch', `calendar_date differs within ${scenarioId}`, {
+        at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
+        value: calendarDates.join(', '),
+        fix: 'Use one calendar_date on the scenario head row',
+      });
+    }
+    if (calendarMonthDays.length > 1) {
+      issues.error(
+        'daily_calendar_month_day_mismatch',
+        `calendar_month_day differs within ${scenarioId}`,
+        {
+          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_month_day' },
+          value: calendarMonthDays.join(', '),
+          fix: 'Use one calendar_month_day on the scenario head row',
+        },
+      );
+    }
+
+    const calendarDate = calendarDates[0];
+    const calendarMonthDay = calendarMonthDays[0];
+    if (calendarDate && calendarMonthDay) {
+      issues.error(
+        'daily_schedule_conflict',
+        `${scenarioId} cannot use calendar_date and calendar_month_day together`,
+        {
+          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
+          value: `${calendarDate} / ${calendarMonthDay}`,
+          fix: 'Keep only one date field',
+        },
+      );
+      continue;
+    }
+
+    if (!calendarDate && !calendarMonthDay) {
+      issues.warning(
+        'unscheduled_daily',
+        `${scenarioId} has no calendar date and will not appear in the app`,
+        {
+          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
+          fix: 'Set calendar_date (YYYY-MM-DD) or calendar_month_day (MM-DD)',
+        },
+      );
+      continue;
+    }
+
+    if (calendarDate) {
+      if (!isValidCalendarDate(calendarDate)) {
+        issues.error('invalid_calendar_date', 'calendar_date must be a real YYYY-MM-DD date', {
+          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
+          value: calendarDate,
+        });
+      } else {
+        reportDuplicateSchedule(
+          exactDates,
+          calendarDate,
+          scenarioId,
+          firstRow,
+          'calendar_date',
+          issues,
+        );
+      }
+    }
+
+    if (calendarMonthDay) {
+      if (!isValidCalendarMonthDay(calendarMonthDay)) {
+        issues.error('invalid_calendar_month_day', 'calendar_month_day must be a real MM-DD date', {
+          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_month_day' },
+          value: calendarMonthDay,
+        });
+      } else {
+        reportDuplicateSchedule(
+          recurringDates,
+          calendarMonthDay,
+          scenarioId,
+          firstRow,
+          'calendar_month_day',
+          issues,
+        );
+      }
+    }
+  }
+}
+
+function distinctMetadata(
+  rows: NormalizedScenarioRow[],
+  select: (row: NormalizedScenarioRow) => string | undefined,
+): string[] {
+  return [...new Set(rows.map(select).filter((value): value is string => value !== undefined))];
+}
+
+function reportDuplicateSchedule(
+  seen: Map<string, string>,
+  key: string,
+  scenarioId: string,
+  row: NormalizedScenarioRow,
+  column: 'calendar_date' | 'calendar_month_day',
+  issues: IssueBag,
+): void {
+  const previous = seen.get(key);
+  if (previous && previous !== scenarioId) {
+    issues.error('duplicate_daily_schedule', `${column} ${key} is assigned more than once`, {
+      at: { sheet: 'daily', row: row.__row, column },
+      value: key,
+      fix: `Also used by ${previous}`,
+    });
+  } else {
+    seen.set(key, scenarioId);
+  }
+}
+
+function isValidCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  return isValidDateParts(Number(match[1]), Number(match[2]), Number(match[3]));
+}
+
+function isValidCalendarMonthDay(value: string): boolean {
+  const match = /^(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  return isValidDateParts(2000, Number(match[1]), Number(match[2]));
+}
+
+function isValidDateParts(year: number, month: number, day: number): boolean {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
 }
 
 function validateScenarioRows(
@@ -44,6 +189,7 @@ function validateScenarioRows(
   const nodeIds = new Map<string, NormalizedScenarioRow>();
 
   for (const row of rows) {
+    const sheet = row.sourceSheet;
     const scopedNodeId = `${row.scenarioId}\u0000${row.nodeId}`;
     const duplicateNode = nodeIds.get(scopedNodeId);
     if (duplicateNode) {
@@ -51,9 +197,9 @@ function validateScenarioRows(
         'duplicate_node_id',
         `node_id ${row.nodeId} must be unique within ${row.scenarioId}`,
         {
-          at: { sheet: 'scenarios', row: row.__row, column: 'node_id' },
+          at: { sheet, row: row.__row, column: 'node_id' },
           value: row.nodeId,
-          fix: `Also used by scenarios row ${duplicateNode.__row}`,
+          fix: `Also used by ${duplicateNode.sourceSheet} row ${duplicateNode.__row}`,
         },
       );
     } else {
@@ -62,7 +208,7 @@ function validateScenarioRows(
 
     if (row.lineOrder <= 0) {
       issues.error('invalid_line_order', 'line_order must be greater than zero', {
-        at: { sheet: 'scenarios', row: row.__row, column: 'line_order' },
+        at: { sheet, row: row.__row, column: 'line_order' },
         value: String(row.lineOrder),
       });
     }
@@ -74,7 +220,7 @@ function validateScenarioRows(
           'dangling_node_next',
           `next_node_id ${row.nextNodeId} does not exist in scenario ${row.scenarioId}`,
           {
-            at: { sheet: 'scenarios', row: row.__row, column: 'next_node_id' },
+            at: { sheet, row: row.__row, column: 'next_node_id' },
             value: row.nextNodeId,
           },
         );
@@ -84,29 +230,40 @@ function validateScenarioRows(
     if (row.messageType === 'choice') {
       if (!row.choiceId) {
         issues.error('missing_choice_id', 'message_type=choice requires choice_id', {
-          at: { sheet: 'scenarios', row: row.__row, column: 'choice_id' },
+          at: { sheet, row: row.__row, column: 'choice_id' },
         });
       } else if (!choices.has(row.choiceId)) {
         issues.error('dangling_choice_id', `choice_id ${row.choiceId} does not exist`, {
-          at: { sheet: 'scenarios', row: row.__row, column: 'choice_id' },
+          at: { sheet, row: row.__row, column: 'choice_id' },
           value: row.choiceId,
         });
+      } else if (
+        !(choices.get(row.choiceId) ?? []).every((choice) => choice.dailyId === row.scenarioId)
+      ) {
+        issues.error(
+          'choice_reference_mismatch',
+          `choice_id ${row.choiceId} belongs to another daily`,
+          {
+            at: { sheet, row: row.__row, column: 'choice_id' },
+            value: row.choiceId,
+          },
+        );
       }
     } else if (row.choiceId) {
       issues.warning('unexpected_choice_id', 'choice_id is set on a non-choice node', {
-        at: { sheet: 'scenarios', row: row.__row, column: 'choice_id' },
+        at: { sheet, row: row.__row, column: 'choice_id' },
         value: row.choiceId,
       });
     }
 
     if (row.messageType === 'image' && !row.assetId) {
       issues.error('image_without_asset', 'message_type=image requires asset_id', {
-        at: { sheet: 'scenarios', row: row.__row, column: 'asset_id' },
+        at: { sheet, row: row.__row, column: 'asset_id' },
       });
     }
     if (row.minPhase !== undefined && row.maxPhase !== undefined && row.minPhase > row.maxPhase) {
       issues.error('phase_range_inverted', 'min_phase must not exceed max_phase', {
-        at: { sheet: 'scenarios', row: row.__row, column: 'min_phase' },
+        at: { sheet, row: row.__row, column: 'min_phase' },
         value: `${row.minPhase} > ${row.maxPhase}`,
       });
     }
@@ -115,25 +272,45 @@ function validateScenarioRows(
       (row.typingDurationMs < 0 || row.typingDurationMs > 30_000)
     ) {
       issues.error('invalid_typing_duration', 'typing_duration_ms must be between 0 and 30000', {
-        at: { sheet: 'scenarios', row: row.__row, column: 'typing_duration_ms' },
+        at: { sheet, row: row.__row, column: 'typing_duration_ms' },
         value: String(row.typingDurationMs),
       });
     }
 
-    warnUnknown(issues, KNOWN_SCENARIO_TYPES, row.scenarioType, 'scenario_type', row.__row);
-    warnUnknown(issues, KNOWN_MESSAGE_TYPES, row.messageType, 'message_type', row.__row);
-    warnUnknown(issues, KNOWN_SCREEN_MODES, row.screenMode, 'screen_mode', row.__row);
-    warnUnknown(issues, KNOWN_UI_VARIANTS, row.uiVariant, 'ui_variant', row.__row);
-    warnUnknown(issues, KNOWN_COMMANDS, row.command, 'command', row.__row);
+    if (sheet === 'senarios') {
+      warnUnknown(
+        issues,
+        KNOWN_SCENARIO_TYPES,
+        row.scenarioType,
+        'scenario_type',
+        row.__row,
+        sheet,
+      );
+    }
+    warnUnknown(issues, KNOWN_MESSAGE_TYPES, row.messageType, 'message_type', row.__row, sheet);
+    warnUnknown(issues, KNOWN_SCREEN_MODES, row.screenMode, 'screen_mode', row.__row, sheet);
+    warnUnknown(issues, KNOWN_UI_VARIANTS, row.uiVariant, 'ui_variant', row.__row, sheet);
+    warnUnknown(issues, KNOWN_COMMANDS, row.command, 'command', row.__row, sheet);
   }
 
-  for (const [scenarioId, scenarioRows] of scenarios) {
-    const head = scenarioRows[0]!;
+  for (const [scenarioId, groupedRows] of scenarios) {
+    const head = groupedRows[0]!;
     const lineOrders = new Map<number, NormalizedScenarioRow>();
-    for (const row of scenarioRows) {
+    for (const row of groupedRows) {
+      if (row.sourceSheet !== head.sourceSheet) {
+        issues.error(
+          'duplicate_scenario_id',
+          `scenario_id ${scenarioId} exists in both content tabs`,
+          {
+            at: { sheet: row.sourceSheet, row: row.__row, column: 'scenario_id' },
+            value: scenarioId,
+            fix: `Also used by ${head.sourceSheet} row ${head.__row}`,
+          },
+        );
+      }
       if (row.scenarioType !== head.scenarioType) {
         issues.error('inconsistent_scenario_type', `scenario_type differs within ${scenarioId}`, {
-          at: { sheet: 'scenarios', row: row.__row, column: 'scenario_type' },
+          at: { sheet: row.sourceSheet, row: row.__row, column: 'scenario_type' },
           value: row.scenarioType,
           fix: `Row ${head.__row} uses ${head.scenarioType}`,
         });
@@ -141,9 +318,9 @@ function validateScenarioRows(
       const duplicate = lineOrders.get(row.lineOrder);
       if (duplicate) {
         issues.error('duplicate_line_order', `line_order must be unique within ${scenarioId}`, {
-          at: { sheet: 'scenarios', row: row.__row, column: 'line_order' },
+          at: { sheet: row.sourceSheet, row: row.__row, column: 'line_order' },
           value: String(row.lineOrder),
-          fix: `Also used by scenarios row ${duplicate.__row}`,
+          fix: `Also used by ${duplicate.sourceSheet} row ${duplicate.__row}`,
         });
       } else {
         lineOrders.set(row.lineOrder, row);
@@ -154,27 +331,40 @@ function validateScenarioRows(
 
 function validateChoiceRows(
   rows: NormalizedChoiceRow[],
-  scenarios: Map<string, NormalizedScenarioRow[]>,
+  dailyRows: NormalizedScenarioRow[],
   groups: Map<string, NormalizedChoiceRow[]>,
   issues: IssueBag,
 ): void {
+  const daily = groupScenarios(dailyRows);
   const referencedBy = new Map<string, Set<string>>();
-  for (const [scenarioId, scenarioRows] of scenarios) {
+  for (const [dailyId, scenarioRows] of daily) {
     for (const row of scenarioRows) {
       if (row.messageType !== 'choice' || !row.choiceId) continue;
       const references = referencedBy.get(row.choiceId) ?? new Set<string>();
-      references.add(scenarioId);
+      references.add(dailyId);
       referencedBy.set(row.choiceId, references);
     }
   }
 
-  const globalNodeIds = new Set(
-    [...scenarios.values()].flatMap((scenarioRows) => scenarioRows.map((row) => row.nodeId)),
-  );
-
   for (const [choiceId, choices] of groups) {
     const seenOrders = new Map<number, NormalizedChoiceRow>();
+    const expectedDailyId = choices[0]!.dailyId;
     for (const row of choices) {
+      if (row.dailyId !== expectedDailyId) {
+        issues.error('choice_daily_mismatch', `daily_id differs within ${choiceId}`, {
+          at: { sheet: 'choices', row: row.__row, column: 'daily_id' },
+          value: row.dailyId,
+          fix: `Row ${choices[0]!.__row} uses ${expectedDailyId}`,
+        });
+      }
+      const scenario = daily.get(row.dailyId);
+      if (!scenario) {
+        issues.error('dangling_daily_id', `daily_id ${row.dailyId} does not exist`, {
+          at: { sheet: 'choices', row: row.__row, column: 'daily_id' },
+          value: row.dailyId,
+        });
+      }
+
       const duplicate = seenOrders.get(row.choiceOrder);
       if (duplicate) {
         issues.error('duplicate_choice_order', `choice_order must be unique within ${choiceId}`, {
@@ -192,58 +382,68 @@ function validateChoiceRows(
         });
       }
 
-      warnUnknown(
-        issues,
-        KNOWN_OPERATORS,
-        row.requiredOperator,
-        'required_operator',
-        row.__row,
-        'choices',
-      );
-
-      if (!row.nextNodeId) continue;
-      if (!globalNodeIds.has(row.nextNodeId)) {
-        const detail = {
-          at: { sheet: 'choices', row: row.__row, column: 'next_node_id' },
-          value: row.nextNodeId,
-        } as const;
+      if (row.nextNodeId && !scenario?.some((node) => node.nodeId === row.nextNodeId)) {
         issues.warning(
           'dangling_choice_next',
           `Choice ${choiceId} points to missing node ${row.nextNodeId}; the player will recover by line order`,
-          detail,
+          {
+            at: { sheet: 'choices', row: row.__row, column: 'next_node_id' },
+            value: row.nextNodeId,
+          },
         );
-        continue;
-      }
-
-      for (const scenarioId of referencedBy.get(choiceId) ?? []) {
-        const existsInScenario = (scenarios.get(scenarioId) ?? []).some(
-          (node) => node.nodeId === row.nextNodeId,
-        );
-        if (!existsInScenario) {
-          issues.error(
-            'cross_scenario_choice_next',
-            `Choice target ${row.nextNodeId} is outside referencing scenario ${scenarioId}`,
-            {
-              at: { sheet: 'choices', row: row.__row, column: 'next_node_id' },
-              value: row.nextNodeId,
-            },
-          );
-        }
       }
     }
 
-    if (!referencedBy.has(choiceId)) {
-      issues.warning('unused_choice_group', `choice_id ${choiceId} is not used by any scenario`, {
+    const references = referencedBy.get(choiceId);
+    if (!references) {
+      issues.warning('unused_choice_group', `choice_id ${choiceId} is not used by any daily`, {
         at: { sheet: 'choices', row: choices[0]!.__row, column: 'choice_id' },
         value: choiceId,
       });
+    } else if (references.size !== 1 || !references.has(expectedDailyId)) {
+      issues.error(
+        'choice_reference_mismatch',
+        `choice_id ${choiceId} is not owned by daily_id ${expectedDailyId}`,
+        {
+          at: { sheet: 'choices', row: choices[0]!.__row, column: 'daily_id' },
+          value: expectedDailyId,
+        },
+      );
     }
   }
 
-  // Keep the parameter semantically tied to normalized rows and catch an
-  // accidental grouping omission during future refactors.
   if (rows.length > 0 && groups.size === 0) {
     issues.error('missing_choice_groups', 'Enabled choice rows could not be grouped');
+  }
+}
+
+function validateInteractions(rows: NormalizedInteractionRow[], issues: IssueBag): void {
+  const ids = new Map<string, number>();
+  for (const row of rows) {
+    const duplicateRow = ids.get(row.id);
+    if (duplicateRow !== undefined) {
+      issues.error('duplicate_interaction_id', `id ${row.id} must be unique`, {
+        at: { sheet: 'interactions', row: row.__row, column: 'id' },
+        value: row.id,
+        fix: `Also used by interactions row ${duplicateRow}`,
+      });
+    } else {
+      ids.set(row.id, row.__row);
+    }
+    if (row.weight <= 0) {
+      issues.error('invalid_interaction_weight', 'weight must be greater than zero', {
+        at: { sheet: 'interactions', row: row.__row, column: 'weight' },
+        value: String(row.weight),
+      });
+    }
+    warnUnknown(
+      issues,
+      KNOWN_TIME_CONDITIONS,
+      row.timeCondition,
+      'time_condition',
+      row.__row,
+      'interactions',
+    );
   }
 }
 
@@ -274,10 +474,10 @@ function validateEventRows(
   for (const [eventId, eventRows] of groups) {
     const head = eventRows[0]!;
     const entryRows = scenarios.get(head.entryScenarioId);
-    if (!entryRows) {
+    if (!entryRows || entryRows[0]!.sourceSheet !== 'senarios') {
       issues.error(
         'dangling_entry_scenario',
-        `entry_scenario_id ${head.entryScenarioId} does not exist`,
+        `entry_scenario_id ${head.entryScenarioId} does not exist in senarios`,
         {
           at: { sheet: 'events', row: head.__row, column: 'entry_scenario_id' },
           value: head.entryScenarioId,
@@ -363,7 +563,7 @@ function warnUnknown(
   value: string | undefined,
   column: string,
   row: number,
-  sheet = 'scenarios',
+  sheet: string,
 ): void {
   if (!value || known.has(value)) return;
   issues.warning('unknown_value', `Unknown ${column} is preserved in generated content`, {

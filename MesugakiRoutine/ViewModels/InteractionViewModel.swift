@@ -23,6 +23,7 @@ final class InteractionViewModel {
     private(set) var todayConversationIsAvailable = false
     private(set) var todayConversationIsUnread = false
     private(set) var todayConversationHasResumePosition = false
+    private(set) var interactionComment: InteractionComment?
     private(set) var loadError: String?
     private(set) var activeLaunch: StoryLaunchRequest?
 
@@ -32,9 +33,6 @@ final class InteractionViewModel {
     func configure(context: ModelContext, now: Date = .now, calendar: Calendar = .current) {
         if dependencies == nil {
             dependencies = AppDependencies(context: context)
-        }
-        if AppSettingsStore.dailyConversationAnchorDate == nil {
-            AppSettingsStore.dailyConversationAnchorDate = AppDay.startOfDay(for: now, calendar: calendar)
         }
         reload(now: now, calendar: calendar)
     }
@@ -99,6 +97,26 @@ final class InteractionViewModel {
         )
     }
 
+    func selectInteractionComment(
+        touchArea: String,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) {
+        guard let dependencies, let content = dependencies.storyContentRepository else {
+            interactionComment = nil
+            return
+        }
+        let profileValues = (try? dependencies.storyStateRepository.profileValues()) ?? [:]
+        interactionComment = InteractionCommentSelector.select(
+            from: content.interactions,
+            touchArea: touchArea,
+            now: now,
+            calendar: calendar,
+            profileValues: profileValues,
+            excluding: interactionComment?.id
+        )
+    }
+
     func openEvent(id: String) {
         guard let dependencies,
               let content = dependencies.storyContentRepository,
@@ -128,14 +146,11 @@ final class InteractionViewModel {
         now: Date,
         calendar: Calendar
     ) {
-        guard let anchor = AppSettingsStore.dailyConversationAnchorDate,
-              let index = DailyConversationSchedule.scenarioIndex(
+        guard let scenario = DailyConversationSchedule.scenario(
                 on: now,
-                anchorDate: anchor,
-                scenarioCount: content.dailyScenarios.count,
+                from: content.dailyScenarios,
                 calendar: calendar
-              ),
-              content.dailyScenarios.indices.contains(index) else {
+              ) else {
             todayScenario = nil
             todayConversationIsAvailable = false
             todayConversationIsUnread = false
@@ -143,7 +158,6 @@ final class InteractionViewModel {
             return
         }
 
-        let scenario = content.dailyScenarios[index]
         let key = DailyConversationSchedule.playbackKey(on: now, calendar: calendar)
         todayScenario = scenario
         todayConversationIsAvailable = true
@@ -227,6 +241,7 @@ final class InteractionViewModel {
         subChapters = []
         memories = []
         storyProgress = .empty
+        interactionComment = nil
         todayScenario = nil
         todayConversationIsAvailable = false
         todayConversationIsUnread = false

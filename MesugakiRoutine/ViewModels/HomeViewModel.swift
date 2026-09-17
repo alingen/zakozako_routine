@@ -189,6 +189,15 @@ final class HomeViewModel {
         dependencies?.blockedBehaviorRepository.canAddNew() ?? false
     }
 
+    func requestScreenTimeAuthorization() async throws {
+        guard let dependencies else {
+            throw ScreenTimeMonitoringError.authorizationFailed(
+                "準備が完了していません。画面を開き直してもう一度お試しください。"
+            )
+        }
+        try await dependencies.screenTimeMonitoringService.requestAuthorizationIfNeeded()
+    }
+
     /// 「やらないことを決める」画面の下書きを保存する。成功時はnil、失敗時は理由を返す。
     func addBlockedBehavior(_ draft: BlockedBehaviorDraft) -> String? {
         guard let dependencies else {
@@ -228,11 +237,13 @@ final class HomeViewModel {
     func repairScreenTimeMonitoring(_ behavior: BlockedBehavior) async {
         guard let dependencies, behavior.trackingKind == .screenTime else { return }
         do {
-            try await dependencies.screenTimeMonitoringService.requestAuthorization()
+            try await dependencies.screenTimeMonitoringService.requestAuthorizationIfNeeded()
             try dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
             screenTimeMonitoringIssueMessage = nil
             blockedBehaviorOperationErrorMessage = nil
             reload()
+        } catch ScreenTimeMonitoringError.authorizationCanceled {
+            blockedBehaviorOperationErrorMessage = nil
         } catch {
             screenTimeMonitoringIssueMessage = error.localizedDescription
             blockedBehaviorOperationErrorMessage = error.localizedDescription
@@ -276,24 +287,27 @@ final class HomeViewModel {
     }
 
     /// 約束のホールド操作が成立した時: 1回進める。目標に達したら完了演出を出す。
-    func advanceRoutine(_ routine: Routine) {
+    @discardableResult
+    func advanceRoutine(_ routine: Routine, now: Date = .now) -> Bool {
         // 達成済みの期間には追加ログを積まない。日/週/月の次の期間に入ると再び記録できる。
-        guard let dependencies, !routine.isComplete() else { return }
+        guard let dependencies else { return false }
+        guard !routine.isComplete(now: now) else { return true }
         do {
-            try dependencies.routineRepository.recordProgress(routine)
+            try dependencies.routineRepository.recordProgress(routine, now: now)
             routineOperationErrorMessage = nil
         } catch {
             routineOperationErrorMessage = error.localizedDescription
-            return
+            return false
         }
         reload()
-        if routine.isComplete() {
+        if routine.isComplete(now: now) {
             completionContext = RoutineCompletionContext(
                 routineTitle: routine.title,
-                currentStreak: RoutineStreak.currentStreak(routine: routine),
+                currentStreak: RoutineStreak.currentStreak(routine: routine, now: now),
                 streakUnitLabel: routine.period.streakUnitLabel
             )
         }
+        return true
     }
 
     func clearCompletion() {

@@ -1,7 +1,7 @@
 # scenario-sync
 
-Google Sheets のストーリーCMSを検証し、アプリ用JSONへ一方向に変換するツールです。
-Google Sheets が唯一の正本（SSOT）です。
+Google SheetsのコンテンツCMSを検証し、アプリ用JSONへ一方向に変換するツールです。
+Google Sheetsが唯一の正本（SSOT）です。
 
 `MesugakiRoutine/Resources/GeneratedScenarios/story_content.generated.json` は自動生成物です。
 直接編集せず、必ずシートを更新してからこのツールで再生成してください。
@@ -21,9 +21,11 @@ npm install
 | 環境変数 | 用途 |
 | --- | --- |
 | `SCENARIO_SHEET_ID` | 対象Google Sheets ID。未設定時はコード内の既定ID |
-| `SCENARIO_TAB_SCENARIOS` | scenariosタブ名。既定値 `scenarios` |
-| `SCENARIO_TAB_CHOICES` | choicesタブ名。既定値 `choices` |
-| `SCENARIO_TAB_EVENTS` | eventsタブ名。既定値 `events` |
+| `SCENARIO_TAB_DAILY` | 日常会話タブ名。既定値 `daily` |
+| `SCENARIO_TAB_CHOICES` | 日常会話の選択肢タブ名。既定値 `choices` |
+| `SCENARIO_TAB_INTERACTIONS` | 交流コメントタブ名。既定値 `interactions` |
+| `SCENARIO_TAB_SCENARIOS` | イベントシナリオタブ名。既定値 `senarios` |
+| `SCENARIO_TAB_EVENTS` | イベント定義タブ名。既定値 `events` |
 | `GOOGLE_APPLICATION_CREDENTIALS` | サービスアカウントJSONへのパス |
 | `SCENARIO_GOOGLE_SA_JSON` | サービスアカウントJSON本体。パス指定より優先 |
 
@@ -61,47 +63,75 @@ npm --prefix tools/scenario-sync run typecheck
 ライブ取得に失敗してもsnapshotへ暗黙fallbackしません。オフライン確認は必ず `--snapshot [path]`
 を明示してください。`--write` はライブ正本にのみ許可されます。
 
-終了コードは成功が `0`、検証エラー・`--check` の差分が `1`、引数・取得など実行エラーが `2` です。
-
 ## データフロー
 
 ```text
 Google Sheets (read only)
-  ├─ scenarios: 1 row = 1 node
-  ├─ choices:   1 row = 1 choice option
-  └─ events:    1 row = 1 AND condition
+  ├─ daily:        1 row = 1 daily conversation node
+  ├─ choices:      1 row = 1 daily choice option
+  ├─ interactions: 1 row = 1 short interaction comment
+  ├─ senarios:     1 row = 1 event scenario node
+  └─ events:       1 row = 1 event AND condition
        ↓ header detection / normalization / validation
 StoryContentBundle
        ↓ same-directory temporary file + rename
 story_content.generated.json
 ```
 
-シート上部にタイトルや説明行があっても、`scenario_id` / `choice_id` / `event_id` を含む行を
-実ヘッダーとして自動検出します。`enabled` は空欄を `TRUE` と解釈し、`FALSE` の行は除外します。
+シート上部にタイトルや説明行があっても、各シートのID列を含む行を実ヘッダーとして自動検出します。
+`enabled`／`active` は空欄を `TRUE` と解釈し、`FALSE` の行は生成対象から除外します。
 
-### scenarios（25列）
+### daily（26列）
+
+`scenario_id`, `calendar_date`, `calendar_month_day`, `line_order`, `node_id`, `speaker`,
+`message_type`, `text`, `choice_id`,
+`next_node_id`, `save_key`, `save_value`, `asset_id`, `min_phase`, `max_phase`, `speaker_name`,
+`typing_duration_ms`, `background`, `portrait`, `cg`, `enabled`, `notes`, `screen_mode`,
+`ui_variant`, `command`, `command_args`
+
+- 日常会話だけを置き、生成時に `scenario_type=daily` を付与します。
+- `calendar_date` は一度だけ表示する日を `YYYY-MM-DD` で指定します。
+- `calendar_month_day` は毎年同じ日に表示する会話を `MM-DD` で指定します。
+- 2つの日付列は併用せず、scenarioの先頭行だけに入力します。同じ日付の重複はエラーです。
+- アプリは `calendar_date` の完全一致を優先し、なければ `calendar_month_day` を使います。
+- どちらも空欄のscenarioは警告になり、アプリの「今日の会話」には表示されません。
+- 日付判定は継続日数や初回利用日に依存せず、アプリ日の境界（朝4時）で切り替わります。
+- `node_id` と `line_order` は同一 `scenario_id` 内で一意にします。
+- 遷移優先順位は `choice.next_node_id` → nodeの `next_node_id` → `line_order` の次行です。
+- `typing_duration_ms` は0〜30000の整数で、空欄時はアプリ既定の600msです。
+
+### choices（9列）
+
+`daily_id`, `choice_id`, `choice_order`, `label`, `next_node_id`, `save_key`, `save_value`,
+`enabled`, `notes`
+
+- `daily_id` は `daily.scenario_id` を参照します。
+- 同じ `choice_id` の行を1つのchoice groupへまとめます。
+- 1つの日常会話に複数の選択箇所を置けるよう、`daily_id` と `choice_id` を分けています。
+- 旧 `required_key`／`required_operator`／`required_value` は廃止しました。
+
+### interactions（7列）
+
+`id`, `text`, `condition`, `time_condition`, `touch_area`, `weight`, `active`
+
+- `id` は一意、`weight` は1以上です。
+- `time_condition` は空欄／`always`、`morning`（4〜11時）、`daytime`（12〜16時）、
+  `evening`（17〜21時）、`night`（22〜3時）を利用できます。
+- `touch_area` は空欄／`all`、`character`、`head`、`body` を利用できます。
+- `condition` は空欄／`always`、`profile:key`、`profile:key=value`、
+  `profile:key!=value` を利用できます。未知の条件はアプリ側で非該当になります。
+- アプリは条件に合う候補を `weight` で重み付き抽選し、候補が複数なら直前のIDを除外します。
+
+### senarios（25列）
 
 `scenario_id`, `scenario_type`, `line_order`, `node_id`, `speaker`, `message_type`, `text`,
 `choice_id`, `next_node_id`, `save_key`, `save_value`, `asset_id`, `min_phase`, `max_phase`,
 `speaker_name`, `typing_duration_ms`, `background`, `portrait`, `cg`, `enabled`, `notes`,
 `screen_mode`, `ui_variant`, `command`, `command_args`
 
-- `node_id` と `line_order` は同一 `scenario_id` 内で一意にします。
-- 遷移優先順位は `choice.next_node_id` → nodeの `next_node_id` → `line_order` の次行です。
-- `speaker`, `message_type`, `screen_mode`, `ui_variant`, `command` の原値を保持します。
-- `command_args` はJSON objectです。配列・scalarは破棄せず診断しますが、検証エラーになります。
-- nested object/array/scalarを含む任意のJSON値を保持します。
-- `scenario_type` は現在 `daily`, `small_event`, `middle_event`, `large_event` を利用しています。
-- `typing_duration_ms` は莉央の各セリフで「入力中…」を表示する時間です。空欄時はアプリ既定の
-  600msを使い、個別指定する場合は0〜30000の整数を入力します。
-
-### choices（11列）
-
-`choice_id`, `choice_order`, `label`, `next_node_id`, `save_key`, `save_value`, `required_key`,
-`required_operator`, `required_value`, `enabled`, `notes`
-
-同じ `choice_id` の行を1つのchoice groupへまとめます。遷移先はそのgroupを参照する各scenario内で
-検証されます。未使用groupはwarningです。
+- 小・中・大イベントの本文を同じシートで管理します。
+- `scenario_type` は `small_event`、`middle_event`、`large_event` のいずれかです。
+- その他のnode／演出列の意味は `daily` と共通です。
 
 ### events（18列）
 
@@ -109,40 +139,42 @@ story_content.generated.json
 `condition_type`, `condition_key`, `operator`, `threshold`, `background`, `advances_to_phase`,
 `enabled`, `notes`, `chapter_id`, `episode_order`, `story_category`
 
-同じ `event_id` の複数行は条件のAND配列になります。条件以外のmetadataは全行で一致させます。
-`entry_scenario_id` は存在するscenarioを参照し、`event_type` とその `scenario_type` を一致させます。
+- `event_type` は `small_event`、`middle_event`、`large_event` のいずれかです。
+- 同じ `event_id` の複数行は条件のAND配列になります。条件以外のmetadataは全行で一致させます。
+- `entry_scenario_id` は `senarios.scenario_id` を参照し、`event_type` と参照先の
+  `scenario_type` を一致させます。
 
 ## 検証と前方互換性
 
-必須値、型、pair列、重複、scenario内遷移、choice/event参照、event metadata、到達可能性、
-終了不能cycleを検証します。未知の `screen_mode`, `ui_variant`, `command`, `story_category`,
-`operator` は破棄やクラッシュをせず、原値を生成物へ保持したうえでwarningを出します。
+必須値、型、pair列、重複、シート間参照、scenario内遷移、event metadata、到達可能性、
+終了不能cycleを検証します。未知の表示値やcommandは破棄やクラッシュをせず、原値を生成物へ
+保持したうえでwarningを出します。未知の交流コメント条件・時間帯は誤表示を避けるためアプリで
+非該当として扱います。
 
 choiceの `next_node_id` が参照切れの場合はwarningとし、Playerと同じくそのchoice node直後の
-`line_order` へ復旧できる前提で到達性も診断します。この方針はIDに依存せず全scenarioへ共通です。
-現行シートでは、未登録の `ui_variant` / `command` を保持する15件と、`daily_001` /
-`first_day_can_do` の参照切れおよび影響を受ける3ノードの到達性に関する5件を合わせ、
-20 warningsです。node自身の `next_node_id` 参照切れ、scenario外へのchoice参照、その他の必須値・型・
-重複・終了不能cycleはerrorで生成を止めます。
+`line_order` へ復旧できる前提で到達性も診断します。node自身の `next_node_id` 参照切れ、
+シートをまたぐ不正参照、その他の必須値・型・重複・終了不能cycleはerrorで生成を止めます。
 
-また、取得失敗や誤ったheader検出を全削除と誤認しないよう、scenarios／choices／eventsのいずれかが
-空、または有効な正規化行が0件なら生成物を書き換えずerrorで停止します。
+また、取得失敗や誤ったheader検出を全削除と誤認しないよう、5シートのいずれかが空、または
+有効な正規化行が0件なら生成物を書き換えずerrorで停止します。
 
 ## 生成物
 
-生成JSONは次の単一bundleです。
+生成JSONは編集用5シートを、そのまま複製せずアプリ向けの単一bundleへ統合します。
 
 ```json
 {
   "_generated": "AUTO-GENERATED ...",
   "scenarios": [{ "scenarioId": "...", "scenarioType": "...", "nodes": [] }],
   "choiceGroups": [{ "choiceId": "...", "choices": [] }],
-  "events": [{ "eventId": "...", "conditions": [] }]
+  "interactions": [{ "id": "...", "text": "...", "weight": 1, "active": true }],
+  "events": [{ "eventId": "...", "eventType": "...", "conditions": [] }]
 }
 ```
 
-scenario、node、choice、event、conditionは安定した規則でソートされ、入力行順に依存しません。
-`--check` はこの決定的出力とコミット済み生成物を比較します。
+dailyとsenariosは `scenarios` へ統合されます。scenario、node、choice、interaction、event、conditionは
+安定した規則でソートされ、入力行順に依存しません。`--check` はこの決定的出力とコミット済み生成物を
+比較します。
 
 ## Snapshot運用
 

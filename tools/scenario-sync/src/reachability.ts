@@ -1,10 +1,11 @@
 import type { NormalizedChoiceRow, NormalizedScenarioRow, NormalizedSheets } from './types.js';
+import { allScenarioRows } from './types.js';
 import { IssueBag } from './issues.js';
 
 /** Validate graph reachability and detect components that can never terminate. */
 export function checkReachability(data: NormalizedSheets, bag: IssueBag): void {
   const choicesById = groupChoices(data.choices);
-  const scenarios = groupScenarios(data.scenarios);
+  const scenarios = groupScenarios(allScenarioRows(data));
 
   for (const [scenarioId, rows] of scenarios) {
     const ordered = [...rows].sort(
@@ -50,7 +51,7 @@ export function checkReachability(data: NormalizedSheets, bag: IssueBag): void {
     for (const node of ordered) {
       if (reachable.has(node.nodeId)) continue;
       const details = {
-        at: { sheet: 'scenarios', row: node.__row, column: 'node_id' },
+        at: { sheet: node.sourceSheet, row: node.__row, column: 'node_id' },
         value: scenarioId,
       } as const;
       if (reachableWithFallback.has(node.nodeId) || uncertainBranchNodes.has(node.nodeId)) {
@@ -95,7 +96,7 @@ export function checkReachability(data: NormalizedSheets, bag: IssueBag): void {
     for (const node of ordered) {
       if (reachableWithFallback.has(node.nodeId) && !canTerminate.has(node.nodeId)) {
         bag.error('infinite_loop', `Node ${node.nodeId} cannot reach a scenario ending`, {
-          at: { sheet: 'scenarios', row: node.__row, column: 'next_node_id' },
+          at: { sheet: node.sourceSheet, row: node.__row, column: 'next_node_id' },
           value: scenarioId,
         });
       }

@@ -60,12 +60,19 @@ describe('current Google Sheets fixture', () => {
   const bundle = generate(normalized.data);
 
   it('captures all current rows and detects the headers below the title area', () => {
+    expect(raw.daily.length).toBeGreaterThan(0);
     expect(raw.scenarios.length).toBeGreaterThan(0);
     expect(raw.choices.length).toBeGreaterThan(0);
+    expect(raw.interactions.length).toBeGreaterThan(0);
     expect(raw.events.length).toBeGreaterThan(0);
+    expect(raw.daily[0]?.__row).toBeGreaterThan(1);
     expect(raw.scenarios[0]?.__row).toBeGreaterThan(1);
     expect(raw.choices[0]?.__row).toBeGreaterThan(1);
+    expect(raw.interactions[0]?.__row).toBeGreaterThan(1);
     expect(raw.events[0]?.__row).toBeGreaterThan(1);
+    expect(Object.keys(raw.daily[0] ?? {})).toEqual(
+      expect.arrayContaining(['calendar_date', 'calendar_month_day']),
+    );
     expect(normalized.issues.errors).toEqual([]);
   });
 
@@ -84,6 +91,17 @@ describe('current Google Sheets fixture', () => {
     for (const event of chapterOne) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);
     }
+  });
+
+  it('publishes the three migrated touch comments independently from scenarios', () => {
+    expect(bundle.interactions.map((comment) => comment.text)).toEqual(
+      expect.arrayContaining([
+        'がんばってね、ざこざこおにいさん♡',
+        'また負けちゃったんだ、ざ〜こ♡',
+        '今回は何日もつかな〜？',
+      ]),
+    );
+    expect(bundle.interactions.every((comment) => comment.touchArea === 'character')).toBe(true);
   });
 
   it('does not publish memo title cards in middle or large events', () => {
@@ -188,8 +206,10 @@ describe('current Google Sheets fixture', () => {
 
   it('is deterministic and matches the committed generated artifact', () => {
     const reversed = {
+      daily: [...normalized.data.daily].reverse(),
       scenarios: [...normalized.data.scenarios].reverse(),
       choices: [...normalized.data.choices].reverse(),
+      interactions: [...normalized.data.interactions].reverse(),
       events: [...normalized.data.events].reverse(),
     };
     const content = serialize(bundle);

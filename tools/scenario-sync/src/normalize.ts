@@ -2,6 +2,7 @@ import type {
   JsonValue,
   NormalizedChoiceRow,
   NormalizedEventRow,
+  NormalizedInteractionRow,
   NormalizedScenarioRow,
   NormalizedSheets,
   RawRow,
@@ -10,9 +11,13 @@ import type {
 import { IssueBag } from './issues.js';
 import {
   CHOICE_COLUMNS,
+  DAILY_COLUMNS,
   EVENT_COLUMNS,
+  INTERACTION_COLUMNS,
   REQUIRED_CHOICE_COLUMNS,
+  REQUIRED_DAILY_COLUMNS,
   REQUIRED_EVENT_COLUMNS,
+  REQUIRED_INTERACTION_COLUMNS,
   REQUIRED_SCENARIO_COLUMNS,
   SCENARIO_COLUMNS,
   isBlank,
@@ -110,21 +115,25 @@ function validatePair(
   });
 }
 
-function parseCommandArgs(bag: IssueBag, row: RawRow): JsonValue | undefined {
+function parseCommandArgs(
+  bag: IssueBag,
+  sheet: 'daily' | 'senarios',
+  row: RawRow,
+): JsonValue | undefined {
   const raw = trimmed(row, 'command_args');
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw) as JsonValue;
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
       bag.error('command_args_not_object', 'command_args must be a JSON object at the top level', {
-        at: { sheet: 'scenarios', row: row.__row, column: 'command_args' },
+        at: { sheet, row: row.__row, column: 'command_args' },
         value: raw,
       });
     }
     return parsed;
   } catch (error) {
     bag.error('invalid_command_args', 'command_args is not valid JSON', {
-      at: { sheet: 'scenarios', row: row.__row, column: 'command_args' },
+      at: { sheet, row: row.__row, column: 'command_args' },
       value: raw,
       fix: error instanceof Error ? error.message : undefined,
     });
@@ -157,9 +166,19 @@ function checkColumns(
   }
 }
 
-function normalizeScenarios(bag: IssueBag, rows: RawRow[]): NormalizedScenarioRow[] {
-  const sheet = 'scenarios';
-  checkColumns(bag, sheet, rows, SCENARIO_COLUMNS, REQUIRED_SCENARIO_COLUMNS);
+function normalizeScenarioRows(
+  bag: IssueBag,
+  rows: RawRow[],
+  sheet: 'daily' | 'senarios',
+): NormalizedScenarioRow[] {
+  const isDaily = sheet === 'daily';
+  checkColumns(
+    bag,
+    sheet,
+    rows,
+    isDaily ? DAILY_COLUMNS : SCENARIO_COLUMNS,
+    isDaily ? REQUIRED_DAILY_COLUMNS : REQUIRED_SCENARIO_COLUMNS,
+  );
   const normalized: NormalizedScenarioRow[] = [];
 
   for (const row of rows) {
@@ -167,7 +186,7 @@ function normalizeScenarios(bag: IssueBag, rows: RawRow[]): NormalizedScenarioRo
     if (!enabled) continue;
 
     const scenarioId = requiredString(bag, sheet, row, 'scenario_id');
-    const scenarioType = requiredString(bag, sheet, row, 'scenario_type');
+    const scenarioType = isDaily ? 'daily' : requiredString(bag, sheet, row, 'scenario_type');
     const lineOrder = integer(bag, sheet, row, 'line_order', true);
     const nodeId = requiredString(bag, sheet, row, 'node_id');
     const speaker = requiredString(bag, sheet, row, 'speaker');
@@ -177,7 +196,7 @@ function normalizeScenarios(bag: IssueBag, rows: RawRow[]): NormalizedScenarioRo
     const minPhase = integer(bag, sheet, row, 'min_phase', false);
     const maxPhase = integer(bag, sheet, row, 'max_phase', false);
     const typingDurationMs = integer(bag, sheet, row, 'typing_duration_ms', false);
-    const commandArgs = parseCommandArgs(bag, row);
+    const commandArgs = parseCommandArgs(bag, sheet, row);
 
     if (
       !scenarioId ||
@@ -192,8 +211,11 @@ function normalizeScenarios(bag: IssueBag, rows: RawRow[]): NormalizedScenarioRo
 
     normalized.push({
       __row: row.__row,
+      sourceSheet: sheet,
       scenarioId,
       scenarioType,
+      calendarDate: isDaily ? optionalString(row, 'calendar_date') : undefined,
+      calendarMonthDay: isDaily ? optionalString(row, 'calendar_month_day') : undefined,
       lineOrder,
       nodeId,
       speaker,
@@ -231,42 +253,51 @@ function normalizeChoices(bag: IssueBag, rows: RawRow[]): NormalizedChoiceRow[] 
     const enabled = booleanValue(bag, sheet, row, 'enabled', true);
     if (!enabled) continue;
 
+    const dailyId = requiredString(bag, sheet, row, 'daily_id');
     const choiceId = requiredString(bag, sheet, row, 'choice_id');
     const choiceOrder = integer(bag, sheet, row, 'choice_order', true);
     const label = requiredString(bag, sheet, row, 'label');
     validatePair(bag, sheet, row, 'save_key', 'save_value');
 
-    const requiredKey = optionalString(row, 'required_key');
-    const requiredOperator = optionalString(row, 'required_operator');
-    const requiredValue = optionalString(row, 'required_value');
-    if (!requiredKey && (requiredOperator || requiredValue)) {
-      bag.error('incomplete_requirement', 'required_key is needed for a choice requirement', {
-        at: { sheet, row: row.__row, column: 'required_key' },
-      });
-    } else if (requiredKey && !requiredOperator) {
-      bag.error('incomplete_requirement', 'required_operator is needed for a choice requirement', {
-        at: { sheet, row: row.__row, column: 'required_operator' },
-      });
-    } else if (requiredKey && requiredOperator !== 'exists' && !requiredValue) {
-      bag.error('incomplete_requirement', 'required_value is needed unless operator is exists', {
-        at: { sheet, row: row.__row, column: 'required_value' },
-      });
-    }
-
-    if (!choiceId || choiceOrder === undefined || !label) continue;
+    if (!dailyId || !choiceId || choiceOrder === undefined || !label) continue;
     normalized.push({
       __row: row.__row,
+      dailyId,
       choiceId,
       choiceOrder,
       label,
       nextNodeId: optionalString(row, 'next_node_id'),
       saveKey: optionalString(row, 'save_key'),
       saveValue: optionalString(row, 'save_value'),
-      requiredKey,
-      requiredOperator,
-      requiredValue,
       enabled: true,
       notes: optionalString(row, 'notes'),
+    });
+  }
+  return normalized;
+}
+
+function normalizeInteractions(bag: IssueBag, rows: RawRow[]): NormalizedInteractionRow[] {
+  const sheet = 'interactions';
+  checkColumns(bag, sheet, rows, INTERACTION_COLUMNS, REQUIRED_INTERACTION_COLUMNS);
+  const normalized: NormalizedInteractionRow[] = [];
+
+  for (const row of rows) {
+    const active = booleanValue(bag, sheet, row, 'active', true);
+    if (!active) continue;
+    const id = requiredString(bag, sheet, row, 'id');
+    const text = requiredString(bag, sheet, row, 'text');
+    const weight = integer(bag, sheet, row, 'weight', true);
+    if (!id || !text || weight === undefined) continue;
+
+    normalized.push({
+      __row: row.__row,
+      id,
+      text,
+      condition: optionalString(row, 'condition'),
+      timeCondition: optionalString(row, 'time_condition'),
+      touchArea: optionalString(row, 'touch_area'),
+      weight,
+      active: true,
     });
   }
   return normalized;
@@ -338,8 +369,10 @@ export function normalize(raw: RawSheets): NormalizeResult {
   const issues = new IssueBag();
   return {
     data: {
-      scenarios: normalizeScenarios(issues, raw.scenarios),
+      daily: normalizeScenarioRows(issues, raw.daily, 'daily'),
       choices: normalizeChoices(issues, raw.choices),
+      interactions: normalizeInteractions(issues, raw.interactions),
+      scenarios: normalizeScenarioRows(issues, raw.scenarios, 'senarios'),
       events: normalizeEvents(issues, raw.events),
     },
     issues,

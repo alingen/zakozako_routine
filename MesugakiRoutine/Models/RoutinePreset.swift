@@ -8,23 +8,27 @@ struct RoutinePreset: Identifiable {
     let iconName: String
     let period: HabitPeriod
     let targetCount: Int
+    /// タイマーで取り組む目標分数。nil のプリセットは通常の約束として扱う。
+    let targetDurationMinutes: Int?
 
     init(
         id: String,
         title: String,
         iconName: String,
         period: HabitPeriod = .day,
-        targetCount: Int = 1
+        targetCount: Int = 1,
+        targetDurationMinutes: Int? = nil
     ) {
         self.id = id
         self.title = title
         self.iconName = iconName
         self.period = period
         self.targetCount = max(targetCount, 1)
+        self.targetDurationMinutes = targetDurationMinutes.map { max($0, 1) }
     }
 
     /// よく始められる約束。タイトルとアイコンは選択後の確認画面で変更できる。
-    static let all: [RoutinePreset] = [
+    static let recommended: [RoutinePreset] = [
         RoutinePreset(
             id: "healthy-meal",
             title: "健康的な食事をとる",
@@ -86,4 +90,34 @@ struct RoutinePreset: Identifiable {
             iconName: "bed.double"
         ),
     ]
+
+    /// 後からタイマーを開始するための約束。現時点では目標分数までを保存する。
+    static let timer: [RoutinePreset] = [
+        RoutinePreset(
+            id: "timer-read-book",
+            title: "本を読む",
+            iconName: "book",
+            targetDurationMinutes: 10
+        ),
+        RoutinePreset(
+            id: "timer-tidy-up",
+            title: "整頓をする",
+            iconName: "sparkles",
+            targetDurationMinutes: 10
+        ),
+        RoutinePreset(
+            id: "timer-exercise",
+            title: "運動する",
+            iconName: "figure.run",
+            targetDurationMinutes: 10
+        ),
+        RoutinePreset(
+            id: "timer-meditate",
+            title: "瞑想をする",
+            iconName: "figure.mind.and.body",
+            targetDurationMinutes: 10
+        ),
+    ]
+
+    static let all: [RoutinePreset] = recommended + timer
 }

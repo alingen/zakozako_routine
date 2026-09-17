@@ -6,14 +6,9 @@ struct InteractionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = InteractionViewModel()
-    @State private var homeDialogueIndex: Int?
 
     private var homeDialogue: String? {
-        guard let homeDialogueIndex,
-              InteractionHomeDialogue.defaultLines.indices.contains(homeDialogueIndex) else {
-            return nil
-        }
-        return InteractionHomeDialogue.defaultLines[homeDialogueIndex]
+        viewModel.interactionComment?.text
     }
 
     var body: some View {
@@ -100,7 +95,7 @@ struct InteractionView: View {
                             .frame(width: min(340, proxy.size.width - 48))
                             .padding(.leading, 16)
                             .padding(.bottom, 20)
-                            .id(homeDialogueIndex)
+                            .id(viewModel.interactionComment?.id)
                             .transition(
                                 .scale(scale: 0.94, anchor: .bottomLeading)
                                     .combined(with: .opacity)
@@ -212,11 +207,8 @@ struct InteractionView: View {
     }
 
     private func showNextHomeDialogue() {
-        guard let nextIndex = InteractionHomeDialogue.nextIndex(after: homeDialogueIndex) else {
-            return
-        }
         withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-            homeDialogueIndex = nextIndex
+            viewModel.selectInteractionComment(touchArea: "character")
         }
     }
 }

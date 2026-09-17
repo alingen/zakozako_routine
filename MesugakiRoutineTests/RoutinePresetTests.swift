@@ -16,6 +16,17 @@ final class RoutinePresetTests: XCTestCase {
             XCTAssertFalse(preset.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             XCTAssertGreaterThanOrEqual(preset.targetCount, 1)
         }
+
+        XCTAssertTrue(RoutinePreset.recommended.allSatisfy { $0.targetDurationMinutes == nil })
+        XCTAssertTrue(RoutinePreset.timer.allSatisfy { ($0.targetDurationMinutes ?? 0) > 0 })
+    }
+
+    func testTimerCatalogContainsRequestedInitialPresets() {
+        XCTAssertEqual(
+            RoutinePreset.timer.map(\.title),
+            ["本を読む", "整頓をする", "運動する", "瞑想をする"]
+        )
+        XCTAssertTrue(RoutinePreset.timer.allSatisfy { $0.targetDurationMinutes == 10 })
     }
 
     func testApplyingPresetFillsNewRoutineDraftAndRestoresSafeDefaults() {
@@ -37,13 +48,14 @@ final class RoutinePresetTests: XCTestCase {
         XCTAssertEqual(viewModel.iconName, preset.iconName)
         XCTAssertEqual(viewModel.period, .week)
         XCTAssertEqual(viewModel.targetCount, 3)
+        XCTAssertNil(viewModel.targetDurationMinutes)
         XCTAssertFalse(viewModel.notifyAtScheduledTime)
         XCTAssertEqual(viewModel.selectedWeekdays, Set(Weekday.allWeekdayValues))
     }
 
     func testCustomSelectionClearsValuesFromPreviouslySelectedPreset() {
         let viewModel = RoutineEditViewModel(routine: nil)
-        viewModel.applyPreset(RoutinePreset.all[0])
+        viewModel.applyPreset(RoutinePreset.timer[0])
         viewModel.period = .month
         viewModel.targetCount = 8
         viewModel.notifyAtScheduledTime = true
@@ -54,8 +66,22 @@ final class RoutinePresetTests: XCTestCase {
         XCTAssertNil(viewModel.iconName)
         XCTAssertEqual(viewModel.period, .day)
         XCTAssertEqual(viewModel.targetCount, 1)
+        XCTAssertNil(viewModel.targetDurationMinutes)
         XCTAssertFalse(viewModel.notifyAtScheduledTime)
         XCTAssertEqual(viewModel.selectedWeekdays, Set(Weekday.allWeekdayValues))
+    }
+
+    func testApplyingTimerPresetSetsTargetDurationAndRecommendedClearsIt() {
+        let viewModel = RoutineEditViewModel(routine: nil)
+
+        viewModel.applyPreset(RoutinePreset.timer[0])
+
+        XCTAssertEqual(viewModel.title, "本を読む")
+        XCTAssertEqual(viewModel.targetDurationMinutes, 10)
+
+        viewModel.applyPreset(RoutinePreset.recommended[0])
+
+        XCTAssertNil(viewModel.targetDurationMinutes)
     }
 
     func testApplyingPresetDoesNotOverwriteExistingRoutine() {
@@ -88,6 +114,83 @@ final class RoutinePresetTests: XCTestCase {
         XCTAssertTrue(viewModel.save())
         savedRoutines = try context.fetch(FetchDescriptor<Routine>())
         XCTAssertEqual(savedRoutines.count, 1)
+    }
+
+    func testTimerTargetDurationIsPersistedAndRestoredForEditing() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let viewModel = RoutineEditViewModel(routine: nil)
+        viewModel.configure(context: context)
+        viewModel.applyPreset(RoutinePreset.timer[0])
+        viewModel.targetDurationMinutes = 25
+
+        XCTAssertTrue(viewModel.save())
+
+        let verificationContext = ModelContext(container)
+        let savedRoutine = try XCTUnwrap(
+            try verificationContext.fetch(FetchDescriptor<Routine>()).first
+        )
+        XCTAssertEqual(savedRoutine.targetDurationMinutes, 25)
+
+        let editViewModel = RoutineEditViewModel(routine: savedRoutine)
+        XCTAssertEqual(editViewModel.targetDurationMinutes, 25)
+    }
+
+    func testTimerSessionUsesDeadlineAndCompletesOnlyOnce() {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let session = RoutineTimerSession(targetMinutes: 1, now: start)
+
+        XCTAssertEqual(session.displayedRemainingSeconds, 60)
+        XCTAssertEqual(session.remainingFraction, 1, accuracy: 0.0001)
+        XCTAssertNil(session.refresh(now: start.addingTimeInterval(3)))
+        XCTAssertEqual(session.displayedRemainingSeconds, 57)
+        XCTAssertEqual(session.remainingFraction, 0.95, accuracy: 0.0001)
+
+        let expectedCompletion = start.addingTimeInterval(60)
+        XCTAssertEqual(session.refresh(now: start.addingTimeInterval(90)), expectedCompletion)
+        XCTAssertEqual(session.phase, .completed)
+        XCTAssertEqual(session.displayedRemainingSeconds, 0)
+        XCTAssertNil(session.refresh(now: start.addingTimeInterval(120)))
+    }
+
+    func testTimerSessionPauseExcludesPausedTime() {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let session = RoutineTimerSession(targetMinutes: 1, now: start)
+
+        XCTAssertNil(session.pause(now: start.addingTimeInterval(20)))
+        XCTAssertEqual(session.phase, .paused)
+        XCTAssertEqual(session.displayedRemainingSeconds, 40)
+        XCTAssertNil(session.refresh(now: start.addingTimeInterval(200)))
+        XCTAssertEqual(session.displayedRemainingSeconds, 40)
+
+        session.resume(now: start.addingTimeInterval(200))
+        XCTAssertEqual(session.phase, .running)
+        XCTAssertNil(session.refresh(now: start.addingTimeInterval(225)))
+        XCTAssertEqual(session.displayedRemainingSeconds, 15)
+        XCTAssertEqual(
+            session.refresh(now: start.addingTimeInterval(240)),
+            start.addingTimeInterval(240)
+        )
+    }
+
+    func testTimerSessionStopPreventsLaterCompletion() {
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let session = RoutineTimerSession(targetMinutes: 1, now: start)
+
+        XCTAssertNil(session.refresh(now: start.addingTimeInterval(20)))
+        session.stop()
+
+        XCTAssertEqual(session.phase, .stopped)
+        XCTAssertEqual(session.displayedRemainingSeconds, 40)
+        XCTAssertNil(session.refresh(now: start.addingTimeInterval(120)))
+        XCTAssertNil(session.completedAt)
+    }
+
+    func testTimerDurationFormattingAlwaysShowsHoursMinutesAndSeconds() {
+        XCTAssertEqual(RoutineTimerSession.formattedDuration(seconds: 0), "00:00:00")
+        XCTAssertEqual(RoutineTimerSession.formattedDuration(seconds: 57), "00:00:57")
+        XCTAssertEqual(RoutineTimerSession.formattedDuration(seconds: 600), "00:10:00")
+        XCTAssertEqual(RoutineTimerSession.formattedDuration(seconds: 3_661), "01:01:01")
     }
 
     private func makeContainer() throws -> ModelContainer {

@@ -4,7 +4,7 @@ import { generate, serialize } from '../src/generate.js';
 import { normalize } from '../src/normalize.js';
 import { runPipeline } from '../src/pipeline.js';
 import { validate } from '../src/validate.js';
-import { choice, event, scenario, sheets } from './helpers.js';
+import { choice, event, interaction, scenario, sheets } from './helpers.js';
 
 function process(raw: ReturnType<typeof sheets>) {
   const normalized = normalize(raw);
@@ -21,9 +21,9 @@ describe('source normalization', () => {
     const raw = sheets({ titleRows: 2, scenarios: [scenario()] });
     const result = process(raw);
 
-    expect(raw.scenarios[0]?.__row).toBe(4);
+    expect(raw.daily[0]?.__row).toBe(4);
     expect(result.errors).toEqual([]);
-    expect(result.data.scenarios[0]?.enabled).toBe(true);
+    expect(result.data.daily[0]?.enabled).toBe(true);
   });
 
   it('keeps nested command_args and open string values while warning on unknown UI values', () => {
@@ -64,6 +64,71 @@ describe('source normalization', () => {
     expect(node.typingDurationMs).toBe(650);
   });
 
+  it('publishes exact and recurring calendar metadata at scenario level', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({ calendar_date: '2026-09-13' }),
+          scenario({
+            scenario_id: 'daily_recurring',
+            node_id: 'recurring_01',
+            calendar_month_day: '12-24',
+          }),
+        ],
+      }),
+    );
+    const generated = generate(result.data).scenarios;
+
+    expect(result.errors).toEqual([]);
+    expect(generated.find((item) => item.scenarioId === 'daily_test')).toMatchObject({
+      calendarDate: '2026-09-13',
+    });
+    expect(generated.find((item) => item.scenarioId === 'daily_recurring')).toMatchObject({
+      calendarMonthDay: '12-24',
+    });
+    expect(generated.flatMap((item) => item.nodes).every((node) => !('calendarDate' in node))).toBe(
+      true,
+    );
+  });
+
+  it('rejects invalid, conflicting, and duplicate daily calendar metadata', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_id: 'daily_invalid',
+            node_id: 'invalid_01',
+            calendar_date: '2026-02-30',
+          }),
+          scenario({
+            scenario_id: 'daily_conflict',
+            node_id: 'conflict_01',
+            calendar_date: '2026-09-13',
+            calendar_month_day: '09-13',
+          }),
+          scenario({
+            scenario_id: 'daily_duplicate_a',
+            node_id: 'duplicate_a_01',
+            calendar_month_day: '12-24',
+          }),
+          scenario({
+            scenario_id: 'daily_duplicate_b',
+            node_id: 'duplicate_b_01',
+            calendar_month_day: '12-24',
+          }),
+        ],
+      }),
+    );
+
+    expect(result.errors.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining([
+        'invalid_calendar_date',
+        'daily_schedule_conflict',
+        'duplicate_daily_schedule',
+      ]),
+    );
+  });
+
   it('rejects a typing duration outside the supported range', () => {
     const result = process(sheets({ scenarios: [scenario({ typing_duration_ms: 30_001 })] }));
 
@@ -78,7 +143,36 @@ describe('source normalization', () => {
     expect(normalized.issues.errors.map((issue) => issue.code)).toContain(
       'command_args_not_object',
     );
-    expect(normalized.data.scenarios[0]?.commandArgs).toEqual([1, { future: true }]);
+    expect(normalized.data.daily[0]?.commandArgs).toEqual([1, { future: true }]);
+  });
+
+  it('normalizes active weighted interaction comments', () => {
+    const result = process(
+      sheets({
+        interactions: [
+          interaction({
+            id: 'tap_morning',
+            condition: 'always',
+            time_condition: 'morning',
+            touch_area: 'character',
+            weight: 3,
+          }),
+        ],
+      }),
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(generate(result.data).interactions).toEqual([
+      {
+        id: 'tap_morning',
+        text: 'test comment',
+        condition: 'always',
+        timeCondition: 'morning',
+        touchArea: 'character',
+        weight: 3,
+        active: true,
+      },
+    ]);
   });
 });
 
@@ -349,15 +443,19 @@ describe('destructive sync guards', () => {
     expect(result.artifact).toBeNull();
     expect(result.plans).toEqual([]);
     expect(result.issues.errors.filter((issue) => issue.code === 'empty_source_tab')).toHaveLength(
-      3,
+      5,
     );
   });
 
   it('refuses to generate when every row in a source tab is disabled', () => {
     const result = runPipeline(
       sheets({
-        scenarios: [scenario({ enabled: false })],
+        scenarios: [
+          scenario({ enabled: false }),
+          scenario({ scenario_id: 'small_test', scenario_type: 'small_event', enabled: false }),
+        ],
         choices: [choice({ enabled: false })],
+        interactions: [interaction({ active: false })],
         events: [event({ enabled: false })],
       }),
     );
@@ -365,7 +463,7 @@ describe('destructive sync guards', () => {
     expect(result.artifact).toBeNull();
     expect(result.plans).toEqual([]);
     expect(result.issues.errors.filter((issue) => issue.code === 'no_enabled_rows')).toHaveLength(
-      3,
+      5,
     );
   });
 });
@@ -381,8 +479,10 @@ describe('deterministic generation and CLI contracts', () => {
       }),
     ).data;
     const reversed = {
+      daily: [...normalized.daily].reverse(),
       scenarios: [...normalized.scenarios].reverse(),
       choices: [...normalized.choices].reverse(),
+      interactions: [...normalized.interactions].reverse(),
       events: [...normalized.events].reverse(),
     };
 

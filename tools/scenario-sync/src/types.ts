@@ -1,4 +1,4 @@
-/** A JSON value parsed from scenarios.command_args without losing nested data. */
+/** A JSON value parsed from scenario command_args without losing nested data. */
 export type JsonValue =
   string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
@@ -11,9 +11,13 @@ export interface RawRow {
   [column: string]: RawCell | number;
 }
 
+/** Editing-oriented five-tab CMS, normalized into one app-facing bundle later. */
 export interface RawSheets {
-  scenarios: RawRow[];
+  daily: RawRow[];
   choices: RawRow[];
+  interactions: RawRow[];
+  /** Event scenario lines from the intentionally named `senarios` tab. */
+  scenarios: RawRow[];
   events: RawRow[];
 }
 
@@ -22,8 +26,10 @@ export interface SheetSnapshot {
   sheetId: string;
   source: 'api' | 'public-xlsx' | 'snapshot';
   tabs: {
-    scenarios: string[][];
+    daily: string[][];
     choices: string[][];
+    interactions: string[][];
+    senarios: string[][];
     events: string[][];
   };
 }
@@ -36,8 +42,11 @@ export interface SheetSnapshot {
 
 export interface NormalizedScenarioRow {
   __row: number;
+  sourceSheet: 'daily' | 'senarios';
   scenarioId: string;
   scenarioType: string;
+  calendarDate?: string;
+  calendarMonthDay?: string;
   lineOrder: number;
   nodeId: string;
   speaker: string;
@@ -65,17 +74,26 @@ export interface NormalizedScenarioRow {
 
 export interface NormalizedChoiceRow {
   __row: number;
+  dailyId: string;
   choiceId: string;
   choiceOrder: number;
   label: string;
   nextNodeId?: string;
   saveKey?: string;
   saveValue?: string;
-  requiredKey?: string;
-  requiredOperator?: string;
-  requiredValue?: string;
   enabled: boolean;
   notes?: string;
+}
+
+export interface NormalizedInteractionRow {
+  __row: number;
+  id: string;
+  text: string;
+  condition?: string;
+  timeCondition?: string;
+  touchArea?: string;
+  weight: number;
+  active: boolean;
 }
 
 export interface NormalizedEventRow {
@@ -101,29 +119,51 @@ export interface NormalizedEventRow {
 }
 
 export interface NormalizedSheets {
-  scenarios: NormalizedScenarioRow[];
+  daily: NormalizedScenarioRow[];
   choices: NormalizedChoiceRow[];
+  interactions: NormalizedInteractionRow[];
+  scenarios: NormalizedScenarioRow[];
   events: NormalizedEventRow[];
 }
 
+export function allScenarioRows(data: NormalizedSheets): NormalizedScenarioRow[] {
+  return [...data.daily, ...data.scenarios];
+}
+
 // ---------------------------------------------------------------------------
-// App-facing generated JSON. This mirrors the three CMS tabs without flattening
-// choices into nodes or event conditions into hard-coded Swift properties.
+// App-facing generated JSON. The five editing tabs are deliberately compiled
+// into the structures the app consumes: scenarios, choice groups, interaction
+// comments and events.
 // ---------------------------------------------------------------------------
 
-export type StoryNode = Omit<NormalizedScenarioRow, '__row' | 'scenarioId' | 'scenarioType'>;
+export type StoryNode = Omit<
+  NormalizedScenarioRow,
+  '__row' | 'sourceSheet' | 'scenarioId' | 'scenarioType' | 'calendarDate' | 'calendarMonthDay'
+>;
 
 export interface StoryScenario {
   scenarioId: string;
   scenarioType: string;
+  calendarDate?: string;
+  calendarMonthDay?: string;
   nodes: StoryNode[];
 }
 
-export type StoryChoice = Omit<NormalizedChoiceRow, '__row' | 'choiceId'>;
+export type StoryChoice = Omit<NormalizedChoiceRow, '__row' | 'dailyId' | 'choiceId'>;
 
 export interface StoryChoiceGroup {
   choiceId: string;
   choices: StoryChoice[];
+}
+
+export interface InteractionComment {
+  id: string;
+  text: string;
+  condition?: string;
+  timeCondition?: string;
+  touchArea?: string;
+  weight: number;
+  active: boolean;
 }
 
 export interface StoryEventCondition {
@@ -160,5 +200,6 @@ export interface StoryContentBundle {
   _generated: string;
   scenarios: StoryScenario[];
   choiceGroups: StoryChoiceGroup[];
+  interactions: InteractionComment[];
   events: StoryEvent[];
 }
