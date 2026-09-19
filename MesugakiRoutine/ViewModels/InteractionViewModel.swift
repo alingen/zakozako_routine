@@ -29,6 +29,7 @@ final class InteractionViewModel {
 
     private var dependencies: AppDependencies?
     private var todayScenario: StoryScenario?
+    private var todayPlaybackKey: String?
 
     func configure(context: ModelContext, now: Date = .now, calendar: Calendar = .current) {
         if dependencies == nil {
@@ -80,7 +81,12 @@ final class InteractionViewModel {
     }
 
     func openToday(now: Date = .now, calendar: Calendar = .current) {
-        if let dependencies, let content = dependencies.storyContentRepository {
+        // 「あとで読む」でTodayカードへ載せた初回会話は、通常の日付別会話ではない。
+        // タップ直前の再設定で消さず、そのまま専用キーで再生する。
+        let isDeferredOnboardingConversation = todayPlaybackKey?.hasPrefix("daily:onboarding:") == true
+        if !isDeferredOnboardingConversation,
+           let dependencies,
+           let content = dependencies.storyContentRepository {
             configureToday(
                 content: content,
                 state: dependencies.storyStateRepository,
@@ -91,10 +97,151 @@ final class InteractionViewModel {
         guard let scenario = todayScenario else { return }
         activeLaunch = StoryLaunchRequest(
             title: todayConversationTitle,
-            playbackKey: DailyConversationSchedule.playbackKey(on: now, calendar: calendar),
+            playbackKey: todayPlaybackKey
+                ?? DailyConversationSchedule.playbackKey(on: now, calendar: calendar),
             scenario: scenario,
             event: nil
         )
+    }
+
+    /// 「あとで読む」または途中で閉じた初回会話を、通常の今日の会話カードへ載せる。
+    /// 初回に確定した識別子を使うため、日付が変わっても別の会話へ入れ替わらない。
+    func offerDeferredOnboardingConversationIfNeeded(
+        identity: OnboardingConversationIdentity,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) {
+        guard let dependencies,
+              let content = dependencies.storyContentRepository,
+              let launch = Self.onboardingConversationLaunch(
+                identity: identity,
+                title: todayConversationTitle,
+                dailyScenarios: content.dailyScenarios,
+                checkpointForPlaybackKey: {
+                    try? dependencies.storyStateRepository.checkpoint(for: $0)
+                }
+              ) else { return }
+
+        todayScenario = launch.scenario
+        todayPlaybackKey = launch.playbackKey
+        todayConversationIsAvailable = true
+        let checkpoint = try? dependencies.storyStateRepository.checkpoint(for: launch.playbackKey)
+        todayConversationIsUnread = checkpoint?.isCompleted != true
+        todayConversationHasResumePosition = checkpoint?.currentNodeId != nil
+            && checkpoint?.isCompleted == false
+    }
+
+    /// Opens the conversation requested explicitly by the onboarding flow.
+    /// A calendar-scheduled conversation keeps the same priority and playback
+    /// key as the normal Today card. Only when no conversation is scheduled do
+    /// we fall back to an unread, unscheduled daily scenario with a stable key.
+    @discardableResult
+    func openOnboardingConversation(
+        identity: OnboardingConversationIdentity,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard let dependencies,
+              let content = dependencies.storyContentRepository,
+              let launch = Self.onboardingConversationLaunch(
+                identity: identity,
+                title: todayConversationTitle,
+                dailyScenarios: content.dailyScenarios,
+                checkpointForPlaybackKey: {
+                    try? dependencies.storyStateRepository.checkpoint(for: $0)
+                }
+              ) else {
+            return false
+        }
+
+        activeLaunch = launch
+        return true
+    }
+
+    func isPlaybackCompleted(_ playbackKey: String) -> Bool {
+        guard let dependencies else { return false }
+        return (try? dependencies.storyStateRepository.checkpoint(for: playbackKey))?.isCompleted == true
+    }
+
+    static func onboardingConversationIdentity(for launch: StoryLaunchRequest) -> OnboardingConversationIdentity {
+        OnboardingConversationIdentity(
+            scenarioID: launch.scenario.scenarioId,
+            playbackKey: launch.playbackKey
+        )
+    }
+
+    static func onboardingConversationLaunch(
+        identity: OnboardingConversationIdentity,
+        title: String = "今日の会話",
+        dailyScenarios: [StoryScenario],
+        checkpointForPlaybackKey: (String) -> StoryPlaybackCheckpoint?
+    ) -> StoryLaunchRequest? {
+        guard checkpointForPlaybackKey(identity.playbackKey)?.isCompleted != true,
+              let scenario = dailyScenarios.first(where: {
+                  $0.scenarioType == .daily && $0.scenarioId == identity.scenarioID
+              }) else {
+            return nil
+        }
+
+        return StoryLaunchRequest(
+            title: title,
+            playbackKey: identity.playbackKey,
+            scenario: scenario,
+            event: nil
+        )
+    }
+
+    static func onboardingConversationLaunch(
+        title: String = "今日の会話",
+        now: Date = .now,
+        calendar: Calendar = .current,
+        dailyScenarios: [StoryScenario],
+        checkpointForPlaybackKey: (String) -> StoryPlaybackCheckpoint?
+    ) -> StoryLaunchRequest? {
+        if let scheduled = DailyConversationSchedule.scenario(
+            on: now,
+            from: dailyScenarios,
+            calendar: calendar
+        ) {
+            return StoryLaunchRequest(
+                title: title,
+                playbackKey: DailyConversationSchedule.playbackKey(
+                    on: now,
+                    calendar: calendar
+                ),
+                scenario: scheduled,
+                event: nil
+            )
+        }
+
+        let unscheduled = dailyScenarios.filter { scenario in
+            guard scenario.scenarioType == .daily else { return false }
+            return !hasText(scenario.calendarDate) && !hasText(scenario.calendarMonthDay)
+        }
+        guard let scenario = unscheduled.first(where: { $0.scenarioId == "daily_001" })
+                ?? unscheduled.first else {
+            return nil
+        }
+
+        let playbackKey = onboardingPlaybackKey(for: scenario)
+        guard checkpointForPlaybackKey(playbackKey)?.isCompleted != true else {
+            return nil
+        }
+        return StoryLaunchRequest(
+            title: title,
+            playbackKey: playbackKey,
+            scenario: scenario,
+            event: nil
+        )
+    }
+
+    private static func onboardingPlaybackKey(for scenario: StoryScenario) -> String {
+        "daily:onboarding:\(scenario.scenarioId)"
+    }
+
+    private static func hasText(_ value: String?) -> Bool {
+        guard let value else { return false }
+        return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func selectInteractionComment(
@@ -152,6 +299,7 @@ final class InteractionViewModel {
                 calendar: calendar
               ) else {
             todayScenario = nil
+            todayPlaybackKey = nil
             todayConversationIsAvailable = false
             todayConversationIsUnread = false
             todayConversationHasResumePosition = false
@@ -160,6 +308,7 @@ final class InteractionViewModel {
 
         let key = DailyConversationSchedule.playbackKey(on: now, calendar: calendar)
         todayScenario = scenario
+        todayPlaybackKey = key
         todayConversationIsAvailable = true
         let checkpoint = try? state.checkpoint(for: key)
         todayConversationIsUnread = checkpoint?.isCompleted != true
@@ -243,6 +392,7 @@ final class InteractionViewModel {
         storyProgress = .empty
         interactionComment = nil
         todayScenario = nil
+        todayPlaybackKey = nil
         todayConversationIsAvailable = false
         todayConversationIsUnread = false
         todayConversationHasResumePosition = false

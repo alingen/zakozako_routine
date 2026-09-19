@@ -1,28 +1,11 @@
-import Foundation
 import SwiftData
 
-/// 初回起動時に、操作例になるシンプルなルーティンを投入する。
+/// アプリの初期データ投入をまとめる入口。
 @MainActor
 enum DataSeeder {
     static func seedIfNeeded(context: ModelContext) {
-        seedRoutinesIfNeeded(context: context)
+        // 最初の約束はオンボーディングでユーザー自身が作る。
+        // サンプル Routine は投入せず、空の状態を保つ。
         try? context.save()
     }
-
-    /// 新規ユーザー向けに、シンプルなルーティンを数件だけ投入する。
-    /// 開始予定時刻なし、対象は毎日。
-    private static func seedRoutinesIfNeeded(context: ModelContext) {
-        let descriptor = FetchDescriptor<Routine>()
-        let existing = (try? context.fetch(descriptor)) ?? []
-        guard existing.isEmpty else { return }
-
-        let samples: [(title: String, icon: String)] = [
-            ("10分勉強する", "book"),
-            ("散歩する", "figure.walk"),
-        ]
-        for sample in samples {
-            context.insert(Routine(title: sample.title, iconName: sample.icon))
-        }
-    }
-
 }

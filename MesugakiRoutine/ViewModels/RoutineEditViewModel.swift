@@ -7,6 +7,8 @@ import Observation
 final class RoutineEditViewModel {
     private(set) var routine: Routine?
     var title: String = ""
+    /// 約束を実行するきっかけ。「寝る前」など。空なら未設定として保存する。
+    var cueText: String = ""
     /// 円の中に表示するアイコン(SF Symbol 名)。未選択なら nil。
     var iconName: String?
     /// 集計期間(1日 / 1週間のうち / 1ヶ月のうち)。
@@ -28,6 +30,7 @@ final class RoutineEditViewModel {
         self.routine = routine
         if let routine {
             title = routine.title
+            cueText = routine.cueText ?? ""
             iconName = routine.iconName
             period = routine.period
             targetCount = routine.targetCount
@@ -59,6 +62,7 @@ final class RoutineEditViewModel {
         guard routine == nil else { return }
         resetCreationDraft(
             title: preset.title,
+            cueText: "",
             iconName: preset.iconName,
             period: preset.period,
             targetCount: preset.targetCount,
@@ -71,6 +75,7 @@ final class RoutineEditViewModel {
         guard routine == nil else { return }
         resetCreationDraft(
             title: "",
+            cueText: "",
             iconName: nil,
             period: .day,
             targetCount: 1,
@@ -106,6 +111,7 @@ final class RoutineEditViewModel {
                 try dependencies.routineRepository.update(
                     routine,
                     title: title,
+                    cueText: cueText,
                     isActive: routine.isActive,
                     iconName: iconName,
                     period: period,
@@ -117,6 +123,7 @@ final class RoutineEditViewModel {
             } else {
                 routine = try dependencies.routineRepository.create(
                     title: title,
+                    cueText: cueText,
                     iconName: iconName,
                     period: period,
                     targetCount: count,
@@ -139,12 +146,14 @@ final class RoutineEditViewModel {
 
     private func resetCreationDraft(
         title: String,
+        cueText: String,
         iconName: String?,
         period: HabitPeriod,
         targetCount: Int,
         targetDurationMinutes: Int?
     ) {
         self.title = title
+        self.cueText = cueText
         self.iconName = iconName
         self.period = period
         self.targetCount = max(targetCount, 1)
@@ -159,8 +168,10 @@ final class RoutineEditViewModel {
     @discardableResult
     func deleteRoutine() -> Bool {
         guard let dependencies, let routine else { return false }
+        let routineID = routine.id
         do {
             try dependencies.routineRepository.delete(routine)
+            dependencies.notificationScheduler.cancelNotification(for: routineID)
             saveErrorMessage = nil
             self.routine = nil
             return true

@@ -423,6 +423,7 @@ final class RoutineRepositoryHistoryTests: XCTestCase {
         try repository.update(
             routine,
             title: routine.title,
+            cueText: routine.cueText,
             isActive: true,
             iconName: routine.iconName,
             period: .day,
@@ -514,6 +515,7 @@ final class RoutineRepositoryHistoryTests: XCTestCase {
         try repository.update(
             routine,
             title: routine.title,
+            cueText: routine.cueText,
             isActive: true,
             iconName: routine.iconName,
             period: .day,
@@ -566,6 +568,7 @@ final class RoutineRepositoryHistoryTests: XCTestCase {
         try repository.update(
             routine,
             title: routine.title,
+            cueText: routine.cueText,
             isActive: true,
             iconName: nil,
             period: .day,
@@ -581,6 +584,7 @@ final class RoutineRepositoryHistoryTests: XCTestCase {
         try repository.update(
             routine,
             title: routine.title,
+            cueText: routine.cueText,
             isActive: true,
             iconName: nil,
             period: .day,
@@ -643,6 +647,7 @@ final class RoutineRepositoryHistoryTests: XCTestCase {
             try repository.update(
                 routine,
                 title: routine.title,
+                cueText: routine.cueText,
                 isActive: true,
                 iconName: nil,
                 period: .day,

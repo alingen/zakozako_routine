@@ -29,6 +29,26 @@ final class RoutinePresetTests: XCTestCase {
         XCTAssertTrue(RoutinePreset.timer.allSatisfy { $0.targetDurationMinutes == 10 })
     }
 
+    func testOnboardingCatalogIsSeparateAndContainsRequestedPresets() {
+        XCTAssertEqual(
+            RoutinePreset.onboarding.map(\.title),
+            ["本を読む", "勉強する", "運動する", "水を飲む", "片づける"]
+        )
+        XCTAssertEqual(
+            Set(RoutinePreset.onboarding.map(\.id)).count,
+            RoutinePreset.onboarding.count
+        )
+        XCTAssertTrue(
+            RoutinePreset.onboarding.allSatisfy {
+                RoutineIcon.all.contains($0.iconName) && $0.targetDurationMinutes == nil
+            }
+        )
+        XCTAssertTrue(
+            Set(RoutinePreset.onboarding.map(\.id))
+                .isDisjoint(with: Set(RoutinePreset.all.map(\.id)))
+        )
+    }
+
     func testApplyingPresetFillsNewRoutineDraftAndRestoresSafeDefaults() {
         let preset = RoutinePreset(
             id: "test",
@@ -39,12 +59,14 @@ final class RoutinePresetTests: XCTestCase {
         )
         let viewModel = RoutineEditViewModel(routine: nil)
         viewModel.title = "変更前"
+        viewModel.cueText = "寝る前"
         viewModel.notifyAtScheduledTime = true
         viewModel.selectedWeekdays = [Weekday.monday.rawValue]
 
         viewModel.applyPreset(preset)
 
         XCTAssertEqual(viewModel.title, preset.title)
+        XCTAssertEqual(viewModel.cueText, "")
         XCTAssertEqual(viewModel.iconName, preset.iconName)
         XCTAssertEqual(viewModel.period, .week)
         XCTAssertEqual(viewModel.targetCount, 3)
@@ -58,11 +80,13 @@ final class RoutinePresetTests: XCTestCase {
         viewModel.applyPreset(RoutinePreset.timer[0])
         viewModel.period = .month
         viewModel.targetCount = 8
+        viewModel.cueText = "朝ごはんの後"
         viewModel.notifyAtScheduledTime = true
 
         viewModel.prepareCustomRoutine()
 
         XCTAssertEqual(viewModel.title, "")
+        XCTAssertEqual(viewModel.cueText, "")
         XCTAssertNil(viewModel.iconName)
         XCTAssertEqual(viewModel.period, .day)
         XCTAssertEqual(viewModel.targetCount, 1)
@@ -85,13 +109,54 @@ final class RoutinePresetTests: XCTestCase {
     }
 
     func testApplyingPresetDoesNotOverwriteExistingRoutine() {
-        let routine = Routine(title: "既存の約束", iconName: "star")
+        let routine = Routine(title: "既存の約束", cueText: "寝る前", iconName: "star")
         let viewModel = RoutineEditViewModel(routine: routine)
 
         viewModel.applyPreset(RoutinePreset.all[0])
 
         XCTAssertEqual(viewModel.title, "既存の約束")
+        XCTAssertEqual(viewModel.cueText, "寝る前")
         XCTAssertEqual(viewModel.iconName, "star")
+    }
+
+    func testCueTextIsNormalizedPersistedRestoredAndCleared() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let createViewModel = RoutineEditViewModel(routine: nil)
+        createViewModel.configure(context: context)
+        createViewModel.title = "本を1ページ読む"
+        createViewModel.cueText = "  寝る前\n"
+
+        XCTAssertTrue(createViewModel.save())
+
+        var verificationContext = ModelContext(container)
+        var savedRoutine = try XCTUnwrap(
+            try verificationContext.fetch(FetchDescriptor<Routine>()).first
+        )
+        XCTAssertEqual(savedRoutine.cueText, "寝る前")
+
+        let editViewModel = RoutineEditViewModel(routine: savedRoutine)
+        XCTAssertEqual(editViewModel.cueText, "寝る前")
+        editViewModel.configure(context: verificationContext)
+        editViewModel.cueText = "  \n"
+
+        XCTAssertTrue(editViewModel.save())
+
+        verificationContext = ModelContext(container)
+        savedRoutine = try XCTUnwrap(
+            try verificationContext.fetch(FetchDescriptor<Routine>()).first
+        )
+        XCTAssertNil(savedRoutine.cueText)
+    }
+
+    func testDataSeederLeavesFreshRoutineStoreEmpty() throws {
+        let container = try makeContainer()
+
+        DataSeeder.seedIfNeeded(context: container.mainContext)
+
+        XCTAssertTrue(
+            try container.mainContext.fetch(FetchDescriptor<Routine>()).isEmpty
+        )
     }
 
     func testPresetIsNotPersistedUntilSaveAndRepeatedSaveDoesNotDuplicateIt() throws {

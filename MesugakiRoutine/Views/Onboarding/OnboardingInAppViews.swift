@@ -1,0 +1,235 @@
+import SwiftUI
+
+struct OnboardingStoryUnlockView: View {
+    let didCompleteFirstPromise: Bool
+    let hasUnlockedStory: Bool
+    let onContinue: () -> Void
+
+    @State private var isVisible = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(isVisible ? 0.48 : 0)
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                ZStack {
+                    Circle()
+                        .fill(AppColor.accent.opacity(0.23))
+                        .frame(width: 104, height: 104)
+                        .scaleEffect(isVisible ? 1 : 0.55)
+
+                    Image(systemName: hasUnlockedStory ? "book.pages.fill" : "sparkles")
+                        .font(.system(size: 42, weight: .semibold))
+                        .foregroundStyle(hasUnlockedStory ? AppColor.primary : AppColor.secondary)
+                        .symbolEffect(.bounce, value: isVisible)
+                }
+
+                Text(title)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.center)
+
+                Text(message)
+                    .font(.body)
+                    .foregroundStyle(AppColor.muted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("明日の約束を確認する", action: onContinue)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(AppColor.primary, in: Capsule())
+                    .buttonStyle(.plain)
+            }
+            .padding(24)
+            .frame(maxWidth: 390)
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 26))
+            .padding(.horizontal, 28)
+            .scaleEffect(isVisible ? 1 : 0.94)
+            .opacity(isVisible ? 1 : 0)
+        }
+        .accessibilityAddTraits(.isModal)
+        .onAppear {
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
+                isVisible = true
+            }
+        }
+    }
+
+    private var title: String {
+        if hasUnlockedStory { return "新しいストーリーが解禁されました" }
+        return didCompleteFirstPromise ? "物語が動きはじめました" : "莉央との物語はここから"
+    }
+
+    private var message: String {
+        if hasUnlockedStory {
+            return "達成した記録は、そのまま莉央との物語につながっていきます。"
+        }
+        if didCompleteFirstPromise {
+            return "約束を続けると、新しい会話やストーリーが少しずつ解禁されます。"
+        }
+        return "今日はまだ達成にしていません。あとで約束を実行すると、物語の進行にも反映されます。"
+    }
+}
+
+struct OnboardingTomorrowView: View {
+    let cueText: String
+    let routineTitle: String
+    let iconName: String?
+    let initialReminderTime: Date
+    let isSaving: Bool
+    let onEnableNotification: (Date) -> Void
+    let onSkipNotification: () -> Void
+
+    @State private var reminderTime: Date
+
+    init(
+        cueText: String,
+        routineTitle: String,
+        iconName: String?,
+        initialReminderTime: Date,
+        isSaving: Bool,
+        onEnableNotification: @escaping (Date) -> Void,
+        onSkipNotification: @escaping () -> Void
+    ) {
+        self.cueText = cueText
+        self.routineTitle = routineTitle
+        self.iconName = iconName
+        self.initialReminderTime = initialReminderTime
+        self.isSaving = isSaving
+        self.onEnableNotification = onEnableNotification
+        self.onSkipNotification = onSkipNotification
+        _reminderTime = State(initialValue: initialReminderTime)
+    }
+
+    var body: some View {
+        ZStack {
+            AppColor.background.ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    Text("明日の約束")
+                        .font(.largeTitle.weight(.bold))
+                        .foregroundStyle(AppColor.text)
+
+                    promiseCard
+
+                    rioMessage
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("この約束を思い出せるように、お知らせしますか？")
+                            .font(.headline)
+                            .foregroundStyle(AppColor.text)
+
+                        DatePicker(
+                            "約束を始める時刻",
+                            selection: $reminderTime,
+                            displayedComponents: .hourAndMinute
+                        )
+                        .datePickerStyle(.compact)
+
+                        Text("この時刻から\(AppSettingsStore.notificationDelayMinutes)分後、まだ達成していなければ莉央がお知らせします。")
+                            .font(.caption)
+                            .foregroundStyle(AppColor.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(18)
+                    .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(AppColor.border, lineWidth: 1)
+                    }
+
+                    VStack(spacing: 12) {
+                        Button {
+                            onEnableNotification(reminderTime)
+                        } label: {
+                            HStack {
+                                if isSaving { ProgressView().tint(.white) }
+                                Text("通知を設定する")
+                            }
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppColor.primary)
+                        .disabled(isSaving)
+
+                        Button("今はしない", action: onSkipNotification)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppColor.primary)
+                            .buttonStyle(.plain)
+                            .disabled(isSaving)
+                    }
+                }
+                .frame(maxWidth: 560)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .preferredColorScheme(.light)
+    }
+
+    private var promiseCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(cueLeadText, systemImage: "clock")
+                .font(.headline)
+                .foregroundStyle(AppColor.muted)
+
+            HStack(spacing: 14) {
+                Image(systemName: iconName ?? "checklist")
+                    .font(.system(size: 27, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 60, height: 60)
+                    .background(AppColor.primary, in: Circle())
+
+                Text(routineTitle)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(AppColor.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(AppColor.primary.opacity(0.25), lineWidth: 1)
+        }
+    }
+
+    private var rioMessage: some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            Image("rio_blocked_behavior_taunt")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 100, height: 100, alignment: .top)
+                .clipped()
+                .background(AppColor.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .accessibilityHidden(true)
+
+            Text("さすがに2日くらいはできるよね〜？w")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppColor.text)
+                .padding(15)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppColor.primarySoft, in: RoundedRectangle(cornerRadius: 18))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("莉央、さすがに2日くらいはできるよね〜？w")
+    }
+
+    private var cueLeadText: String {
+        let cue = cueText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cue.hasSuffix("に") || cue.hasSuffix("すぐ") || cue.hasSuffix("たら") {
+            return cue
+        }
+        return "\(cue)に"
+    }
+}

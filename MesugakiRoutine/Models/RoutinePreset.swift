@@ -119,5 +119,36 @@ struct RoutinePreset: Identifiable {
         ),
     ]
 
+    /// 初回オンボーディングで、最初の約束として提示する候補。
+    /// 達成条件は次の画面で決めるため、ここではタイマー時間を設定しない。
+    /// 通常の追加画面に同じ候補を重複表示しないよう `all` には含めない。
+    static let onboarding: [RoutinePreset] = [
+        RoutinePreset(
+            id: "onboarding-read-book",
+            title: "本を読む",
+            iconName: "book"
+        ),
+        RoutinePreset(
+            id: "onboarding-study",
+            title: "勉強する",
+            iconName: "graduationcap"
+        ),
+        RoutinePreset(
+            id: "onboarding-exercise",
+            title: "運動する",
+            iconName: "figure.run"
+        ),
+        RoutinePreset(
+            id: "onboarding-drink-water",
+            title: "水を飲む",
+            iconName: "drop"
+        ),
+        RoutinePreset(
+            id: "onboarding-tidy-up",
+            title: "片づける",
+            iconName: "sparkles"
+        ),
+    ]
+
     static let all: [RoutinePreset] = recommended + timer
 }

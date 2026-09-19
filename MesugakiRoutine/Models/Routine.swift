@@ -10,6 +10,9 @@ import SwiftData
 final class Routine {
     @Attribute(.unique) var id: UUID
     var title: String
+    /// 「寝る前」「朝ごはんの後」など、この約束を始めるきっかけ。
+    /// 通知時刻とは分けて保持し、未設定の既存データでは nil。
+    var cueText: String?
     var isActive: Bool
     var createdAt: Date
     var updatedAt: Date
@@ -62,6 +65,7 @@ final class Routine {
     init(
         id: UUID = UUID(),
         title: String,
+        cueText: String? = nil,
         isActive: Bool = true,
         createdAt: Date = .now,
         updatedAt: Date = .now,
@@ -75,6 +79,7 @@ final class Routine {
     ) {
         self.id = id
         self.title = title
+        self.cueText = cueText
         self.isActive = isActive
         self.createdAt = createdAt
         self.updatedAt = updatedAt

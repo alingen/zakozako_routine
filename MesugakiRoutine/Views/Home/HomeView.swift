@@ -21,9 +21,20 @@ struct HomeView: View {
     @State private var nextDefeatedTauntIndex = 0
 
     @Binding private var appDialog: AppDialogRequest?
+    private let onboardingRoutineID: UUID?
+    private let onOnboardingRoutineCompleted: () -> Void
+    private let onOnboardingDeferred: () -> Void
 
-    init(appDialog: Binding<AppDialogRequest?> = .constant(nil)) {
+    init(
+        appDialog: Binding<AppDialogRequest?> = .constant(nil),
+        onboardingRoutineID: UUID? = nil,
+        onOnboardingRoutineCompleted: @escaping () -> Void = {},
+        onOnboardingDeferred: @escaping () -> Void = {}
+    ) {
         _appDialog = appDialog
+        self.onboardingRoutineID = onboardingRoutineID
+        self.onOnboardingRoutineCompleted = onOnboardingRoutineCompleted
+        self.onOnboardingDeferred = onOnboardingDeferred
     }
 
     private var hiddenTimerWatcherID: UUID? {
@@ -217,6 +228,12 @@ struct HomeView: View {
             ForEach(viewModel.todayRoutines) { routine in
                 routineListRow(routine)
                     .routineListRowStyle()
+
+                if routine.id == onboardingRoutineID {
+                    onboardingReportGuide
+                        .routineListRowStyle()
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
 
             if isEditingRoutines {
@@ -233,18 +250,20 @@ struct HomeView: View {
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(AppColor.muted)
-                Button {
-                    isEditingRoutines.toggle()
-                } label: {
-                    Image(systemName: isEditingRoutines ? "checkmark" : "square.and.pencil")
-                        .font(.title3.weight(.semibold))
-                        // グリフごとの高さ差でヘッダーがガタつかないよう、表示枠を固定する。
-                        .frame(width: 28, height: 28)
-                        .contentShape(Rectangle())
+                if onboardingRoutineID == nil {
+                    Button {
+                        isEditingRoutines.toggle()
+                    } label: {
+                        Image(systemName: isEditingRoutines ? "checkmark" : "square.and.pencil")
+                            .font(.title3.weight(.semibold))
+                            // グリフごとの高さ差でヘッダーがガタつかないよう、表示枠を固定する。
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(AppColor.primary)
+                    .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
                 }
-                .buttonStyle(.borderless)
-                .foregroundStyle(AppColor.primary)
-                .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
             }
         }
         .animation(.easeInOut(duration: 0.22), value: isEditingRoutines)
@@ -262,6 +281,7 @@ struct HomeView: View {
         RoutineTaskRow(
             title: routine.title,
             iconName: routine.iconName,
+            cueText: routine.cueText,
             streakText: streak >= 1
                 ? "\(streak)\(routine.period.streakUnitLabel)連続！"
                 : "今日から",
@@ -274,12 +294,46 @@ struct HomeView: View {
             isTimerActive: activeTimerForRoutine != nil,
             isCompleted: progress.isCompletedToday,
             isEditing: isEditingRoutines,
+            isHighlighted: routine.id == onboardingRoutineID,
+            allowsEditing: routine.id != onboardingRoutineID,
             onEdit: { requestRoutineEdit(routine) },
             onStartTimer: { openTimer(for: routine) },
             onSetCompletion: { completed in
-                updateRoutineCompletion(routine, completed: completed)
+                let didUpdate = updateRoutineCompletion(routine, completed: completed)
+                if didUpdate, completed, routine.id == onboardingRoutineID {
+                    onOnboardingRoutineCompleted()
+                }
+                return didUpdate
             }
         )
+    }
+
+    private var onboardingReportGuide: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("実行したら、右の丸をタップして報告", systemImage: "hand.tap.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppColor.text)
+
+            Text("今すぐできなくても大丈夫。約束はこの画面に残ります。")
+                .font(.caption)
+                .foregroundStyle(AppColor.muted)
+
+            Button("あとでやる") {
+                onOnboardingDeferred()
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppColor.primary)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .buttonStyle(.plain)
+            .accessibilityHint("達成を記録せずにチュートリアルを進めます")
+        }
+        .padding(16)
+        .background(AppColor.primarySoft.opacity(0.72), in: RoundedRectangle(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(AppColor.primary.opacity(0.35), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - 2. やらないこと

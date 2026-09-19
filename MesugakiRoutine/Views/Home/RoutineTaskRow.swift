@@ -7,6 +7,7 @@ struct RoutineTaskRow: View {
 
     let title: String
     let iconName: String?
+    let cueText: String?
     let streakText: String
     let hasStreak: Bool
     let progressText: String?
@@ -15,6 +16,8 @@ struct RoutineTaskRow: View {
     let isTimerActive: Bool
     let isCompleted: Bool
     let isEditing: Bool
+    let isHighlighted: Bool
+    let allowsEditing: Bool
     let onEdit: () -> Void
     let onStartTimer: () -> Void
     let onSetCompletion: (Bool) -> Bool
@@ -33,9 +36,16 @@ struct RoutineTaskRow: View {
         .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+                .stroke(
+                    isHighlighted ? AppColor.primary : AppColor.border.opacity(0.72),
+                    lineWidth: isHighlighted ? 2.5 : 1
+                )
         }
-        .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
+        .shadow(
+            color: isHighlighted ? AppColor.primary.opacity(0.16) : AppColor.text.opacity(0.035),
+            radius: isHighlighted ? 12 : 7,
+            y: isHighlighted ? 4 : 3
+        )
         .animation(.easeInOut(duration: 0.2), value: isCompleted)
         .accessibilityElement(children: .contain)
     }
@@ -61,13 +71,21 @@ struct RoutineTaskRow: View {
         }
     }
 
+    @ViewBuilder
     private var taskDetails: some View {
-        Button(action: onEdit) {
+        if allowsEditing {
+            Button(action: onEdit) {
+                taskSummary(showsEditChevron: isEditing)
+            }
+            .buttonStyle(RoutineRowPressStyle())
+            .accessibilityLabel(taskAccessibilityLabel)
+            .accessibilityHint("タップして内容を編集")
+        } else {
             taskSummary(showsEditChevron: isEditing)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(taskAccessibilityLabel)
+                .accessibilityHint("右側の丸をタップして達成を報告")
         }
-        .buttonStyle(RoutineRowPressStyle())
-        .accessibilityLabel(taskAccessibilityLabel)
-        .accessibilityHint("タップして内容を編集")
     }
 
     private func taskSummary(showsEditChevron: Bool) -> some View {
@@ -88,6 +106,13 @@ struct RoutineTaskRow: View {
                     .multilineTextAlignment(.leading)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if let cueText, !cueText.isEmpty {
+                    Label(cueText, systemImage: "clock")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.muted)
+                        .lineLimit(1)
+                }
 
                 HStack(spacing: 4) {
                     Text(streakText)
@@ -123,7 +148,7 @@ struct RoutineTaskRow: View {
     }
 
     private var taskAccessibilityLabel: String {
-        [title, streakText, progressText]
+        [title, cueText, streakText, progressText]
             .compactMap { $0 }
             .joined(separator: "、")
     }
@@ -552,6 +577,7 @@ extension View {
         RoutineTaskRow(
             title: "10分勉強する",
             iconName: "book.closed.fill",
+            cueText: "朝ごはんの後",
             streakText: "6日連続！",
             hasStreak: true,
             progressText: nil,
@@ -560,6 +586,8 @@ extension View {
             isTimerActive: false,
             isCompleted: false,
             isEditing: false,
+            isHighlighted: false,
+            allowsEditing: true,
             onEdit: {},
             onStartTimer: {},
             onSetCompletion: { _ in true }
@@ -567,6 +595,7 @@ extension View {
         RoutineTaskRow(
             title: "散歩する",
             iconName: "figure.walk",
+            cueText: nil,
             streakText: "5日連続！",
             hasStreak: true,
             progressText: nil,
@@ -575,6 +604,8 @@ extension View {
             isTimerActive: false,
             isCompleted: true,
             isEditing: false,
+            isHighlighted: false,
+            allowsEditing: true,
             onEdit: {},
             onStartTimer: {},
             onSetCompletion: { _ in true }

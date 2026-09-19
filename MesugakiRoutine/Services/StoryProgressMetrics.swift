@@ -46,6 +46,17 @@ struct StoryProgressMetricsProvider: StoryProgressMetricsProviding {
             now: date,
             calendar: calendar
         )
+        let actualCumulativeAchievementDays = Set(
+            routines
+                .flatMap {
+                    RoutineYearStatisticsCalculator.completionDates(
+                        for: $0,
+                        now: date,
+                        calendar: calendar
+                    )
+                }
+                .map { AppDay.startOfDay(for: $0, calendar: calendar) }
+        ).count
         let completedEventIds = Set(
             try storyStateRepository.eventProgresses()
                 .filter(\.isCompleted)
@@ -56,7 +67,7 @@ struct StoryProgressMetricsProvider: StoryProgressMetricsProviding {
                 .flatMap(Int.init) ?? actualContinuousDays,
             cumulativeAchievementDays:
                 profileValues[StoryStateRepository.debugCumulativeAchievementDaysKey]
-                .flatMap(Int.init) ?? 0,
+                .flatMap(Int.init) ?? actualCumulativeAchievementDays,
             trust: profileValues[StoryStateRepository.trustKey].flatMap(Int.init) ?? 0,
             profileValues: profileValues,
             completedEventIds: completedEventIds

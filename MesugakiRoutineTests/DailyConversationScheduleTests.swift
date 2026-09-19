@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import SwiftData
 @testable import MesugakiRoutine
 
 final class DailyConversationScheduleTests: XCTestCase {
@@ -67,6 +68,270 @@ final class DailyConversationScheduleTests: XCTestCase {
                 calendar: calendar
             )
         )
+    }
+
+    private func scenario(
+        id: String,
+        calendarDate: String? = nil,
+        calendarMonthDay: String? = nil
+    ) -> StoryScenario {
+        StoryScenario(
+            scenarioId: id,
+            scenarioType: .daily,
+            calendarDate: calendarDate,
+            calendarMonthDay: calendarMonthDay,
+            nodes: []
+        )
+    }
+
+    private func date(
+        _ year: Int,
+        _ month: Int,
+        _ day: Int,
+        _ hour: Int,
+        _ minute: Int
+    ) throws -> Date {
+        try XCTUnwrap(
+            calendar.date(
+                from: DateComponents(
+                    year: year,
+                    month: month,
+                    day: day,
+                    hour: hour,
+                    minute: minute
+                )
+            )
+        )
+    }
+}
+
+@MainActor
+final class InteractionViewModelOnboardingConversationTests: XCTestCase {
+    private var container: ModelContainer?
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 9 * 60 * 60)!
+        return calendar
+    }
+
+    func testScheduledConversationHasPriorityAndKeepsNormalDailyPlaybackKey() throws {
+        let now = try date(2026, 9, 20, 12, 0)
+        let launch = InteractionViewModel.onboardingConversationLaunch(
+            now: now,
+            calendar: calendar,
+            dailyScenarios: [
+                scenario(id: "daily_001"),
+                scenario(id: "scheduled", calendarDate: "2026-09-20"),
+            ],
+            checkpointForPlaybackKey: { _ in
+                XCTFail("Scheduled conversations must not consult the onboarding checkpoint")
+                return nil
+            }
+        )
+
+        XCTAssertEqual(launch?.scenario.scenarioId, "scheduled")
+        XCTAssertEqual(launch?.playbackKey, "daily:2026-09-20")
+    }
+
+    func testUnscheduledDaily001UsesStableDedicatedKeyAcrossDates() throws {
+        let scenarios = [scenario(id: "daily_002"), scenario(id: "daily_001")]
+        let first = InteractionViewModel.onboardingConversationLaunch(
+            now: try date(2026, 9, 20, 12, 0),
+            calendar: calendar,
+            dailyScenarios: scenarios,
+            checkpointForPlaybackKey: { _ in nil }
+        )
+        let nextDay = InteractionViewModel.onboardingConversationLaunch(
+            now: try date(2026, 9, 21, 12, 0),
+            calendar: calendar,
+            dailyScenarios: scenarios,
+            checkpointForPlaybackKey: { _ in nil }
+        )
+
+        XCTAssertEqual(first?.scenario.scenarioId, "daily_001")
+        XCTAssertEqual(first?.playbackKey, "daily:onboarding:daily_001")
+        XCTAssertEqual(nextDay?.playbackKey, first?.playbackKey)
+    }
+
+    func testMissingDaily001UsesFirstUnscheduledDailyScenario() throws {
+        let launch = InteractionViewModel.onboardingConversationLaunch(
+            now: try date(2026, 9, 20, 12, 0),
+            calendar: calendar,
+            dailyScenarios: [
+                scenario(id: "another-date", calendarDate: "2026-10-01"),
+                scenario(id: "daily_010"),
+                scenario(id: "daily_011"),
+            ],
+            checkpointForPlaybackKey: { _ in nil }
+        )
+
+        XCTAssertEqual(launch?.scenario.scenarioId, "daily_010")
+        XCTAssertEqual(launch?.playbackKey, "daily:onboarding:daily_010")
+    }
+
+    func testCompletedOnboardingConversationIsNotOpenedAgain() throws {
+        let playbackKey = "daily:onboarding:daily_001"
+        let completed = StoryPlaybackCheckpoint(
+            playbackKey: playbackKey,
+            scenarioId: "daily_001",
+            isCompleted: true,
+            updatedAt: try date(2026, 9, 19, 12, 0)
+        )
+
+        let launch = InteractionViewModel.onboardingConversationLaunch(
+            now: try date(2026, 9, 20, 12, 0),
+            calendar: calendar,
+            dailyScenarios: [scenario(id: "daily_001")],
+            checkpointForPlaybackKey: { key in
+                key == playbackKey ? completed : nil
+            }
+        )
+
+        XCTAssertNil(launch)
+    }
+
+    func testIncompleteOnboardingConversationCanResume() throws {
+        let playbackKey = "daily:onboarding:daily_001"
+        let incomplete = StoryPlaybackCheckpoint(
+            playbackKey: playbackKey,
+            scenarioId: "daily_001",
+            currentNodeId: "daily_001_02",
+            visitedNodeIds: ["daily_001_01"],
+            isCompleted: false,
+            updatedAt: try date(2026, 9, 19, 12, 0)
+        )
+
+        let launch = InteractionViewModel.onboardingConversationLaunch(
+            now: try date(2026, 9, 20, 12, 0),
+            calendar: calendar,
+            dailyScenarios: [scenario(id: "daily_001")],
+            checkpointForPlaybackKey: { key in
+                key == playbackKey ? incomplete : nil
+            }
+        )
+
+        XCTAssertEqual(launch?.scenario.scenarioId, "daily_001")
+        XCTAssertEqual(launch?.playbackKey, playbackKey)
+    }
+
+    func testPersistedIdentityKeepsOriginalScheduledConversationAcrossDates() throws {
+        let original = scenario(id: "original", calendarDate: "2026-09-20")
+        let nextDay = scenario(id: "next-day", calendarDate: "2026-09-21")
+        let initialLaunch = try XCTUnwrap(
+            InteractionViewModel.onboardingConversationLaunch(
+                now: try date(2026, 9, 20, 12, 0),
+                calendar: calendar,
+                dailyScenarios: [original, nextDay],
+                checkpointForPlaybackKey: { _ in nil }
+            )
+        )
+        let identity = InteractionViewModel.onboardingConversationIdentity(for: initialLaunch)
+
+        let resumed = InteractionViewModel.onboardingConversationLaunch(
+            identity: identity,
+            dailyScenarios: [original, nextDay],
+            checkpointForPlaybackKey: { _ in nil }
+        )
+
+        XCTAssertEqual(resumed?.scenario.scenarioId, "original")
+        XCTAssertEqual(resumed?.playbackKey, "daily:2026-09-20")
+    }
+
+    func testPersistedIdentityIsNotOfferedAfterConversationCompletes() throws {
+        let identity = OnboardingConversationIdentity(
+            scenarioID: "daily_001",
+            playbackKey: "daily:onboarding:daily_001"
+        )
+        let completed = StoryPlaybackCheckpoint(
+            playbackKey: identity.playbackKey,
+            scenarioId: identity.scenarioID,
+            isCompleted: true,
+            updatedAt: try date(2026, 9, 20, 12, 0)
+        )
+
+        let resumed = InteractionViewModel.onboardingConversationLaunch(
+            identity: identity,
+            dailyScenarios: [scenario(id: "daily_001")],
+            checkpointForPlaybackKey: { _ in completed }
+        )
+
+        XCTAssertNil(resumed)
+    }
+
+    func testDeferredConversationCanBeOpenedFromTheNormalTodayCard() throws {
+        let schema = Schema([
+            Routine.self,
+            StoryEventProgress.self,
+            StoryPlaybackProgress.self,
+            StoryProfileValue.self,
+            StoryMemoryUnlock.self,
+        ])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        self.container = container
+        let now = try date(2099, 10, 2, 12, 0)
+        let viewModel = InteractionViewModel()
+
+        viewModel.configure(context: container.mainContext, now: now, calendar: calendar)
+        XCTAssertFalse(viewModel.todayConversationIsAvailable)
+
+        let identity = OnboardingConversationIdentity(
+            scenarioID: "daily_001",
+            playbackKey: "daily:onboarding:daily_001"
+        )
+        viewModel.offerDeferredOnboardingConversationIfNeeded(
+            identity: identity,
+            now: now,
+            calendar: calendar
+        )
+        XCTAssertTrue(viewModel.todayConversationIsAvailable)
+
+        XCTAssertTrue(
+            viewModel.openOnboardingConversation(
+                identity: identity,
+                now: now,
+                calendar: calendar
+            )
+        )
+        XCTAssertEqual(viewModel.activeLaunch?.scenario.scenarioId, "daily_001")
+        XCTAssertEqual(viewModel.activeLaunch?.playbackKey, "daily:onboarding:daily_001")
+    }
+
+    func testDateSpecificIdentityOpensOriginalPlaybackKeyFromNextDayCard() throws {
+        let schema = Schema([
+            Routine.self,
+            StoryEventProgress.self,
+            StoryPlaybackProgress.self,
+            StoryProfileValue.self,
+            StoryMemoryUnlock.self,
+        ])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        self.container = container
+        let nextDay = try date(2026, 9, 21, 12, 0)
+        let identity = OnboardingConversationIdentity(
+            scenarioID: "daily_001",
+            playbackKey: "daily:2026-09-20"
+        )
+        let viewModel = InteractionViewModel()
+
+        viewModel.configure(context: container.mainContext, now: nextDay, calendar: calendar)
+        viewModel.offerDeferredOnboardingConversationIfNeeded(
+            identity: identity,
+            now: nextDay,
+            calendar: calendar
+        )
+
+        XCTAssertTrue(
+            viewModel.openOnboardingConversation(
+                identity: identity,
+                now: nextDay,
+                calendar: calendar
+            )
+        )
+        XCTAssertEqual(viewModel.activeLaunch?.scenario.scenarioId, "daily_001")
+        XCTAssertEqual(viewModel.activeLaunch?.playbackKey, "daily:2026-09-20")
     }
 
     private func scenario(

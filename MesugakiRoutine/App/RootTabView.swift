@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 enum AppDialogActionStyle: Equatable {
     case standard
@@ -40,24 +41,100 @@ struct BlockedBehaviorTauntRequest: Identifiable {
     let text: String
 }
 
+private enum RootTab: Hashable {
+    case home
+    case log
+    case interaction
+    case settings
+}
+
 /// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var appDialog: AppDialogRequest?
     @State private var blockedBehaviorTaunt: BlockedBehaviorTauntRequest?
+    @State private var onboardingState = OnboardingStateStore()
+    @State private var selectedTab: RootTab = .home
+    @State private var openTodayConversationRequest = false
+    @State private var isOnboardingConversationPlaying = false
+    @State private var isOnboardingConversationDialog = false
+    @State private var onboardingHasUnlockedStory = false
+    @State private var onboardingAlertTitle = "オンボーディングを完了できませんでした"
+    @State private var onboardingErrorMessage: String?
+    @State private var isSavingNotification = false
 
     private var isPresentingOverlay: Bool {
-        appDialog != nil || blockedBehaviorTaunt != nil
+        appDialog != nil
+            || blockedBehaviorTaunt != nil
+            || onboardingState.phase == .storyUnlockPresentation
     }
 
     var body: some View {
+        ZStack {
+            if onboardingState.shouldPresentDedicatedSetup {
+                OnboardingSetupView(
+                    stateStore: onboardingState,
+                    onConfirmPromise: saveFirstPromise
+                )
+                .transition(.opacity)
+            } else {
+                appShell
+
+                if onboardingState.phase == .storyUnlockPresentation {
+                    OnboardingStoryUnlockView(
+                        didCompleteFirstPromise: onboardingState.firstReportOutcome == .completed,
+                        hasUnlockedStory: onboardingHasUnlockedStory,
+                        onContinue: onboardingState.completeStoryUnlockPresentation
+                    )
+                    .zIndex(10)
+                }
+
+                if onboardingState.phase == .tomorrowPromise {
+                    tomorrowPromiseView
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(20)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: isPresentingOverlay)
+        .animation(.easeInOut(duration: 0.18), value: appDialog?.id)
+        .animation(.easeOut(duration: 0.28), value: blockedBehaviorTaunt?.id)
+        .animation(.easeInOut(duration: 0.24), value: onboardingState.phase)
+        .task {
+            resumeOnboardingIfNeeded()
+        }
+        .alert(
+            onboardingAlertTitle,
+            isPresented: Binding(
+                get: { onboardingErrorMessage != nil },
+                set: { if !$0 { dismissOnboardingAlert() } }
+            )
+        ) {
+            Button("OK", action: dismissOnboardingAlert)
+        } message: {
+            Text(onboardingErrorMessage ?? "時間をおいて、もう一度お試しください。")
+        }
+        // 配色はライト前提の単一値パレットのため、ダーク時に破綻しないよう固定する。
+        .preferredColorScheme(.light)
+    }
+
+    private var appShell: some View {
         ZStack(alignment: .bottom) {
-            TabView {
+            TabView(selection: $selectedTab) {
                 NavigationStack {
-                    HomeView(appDialog: $appDialog)
+                    HomeView(
+                        appDialog: $appDialog,
+                        onboardingRoutineID: onboardingState.phase == .firstReport
+                            ? onboardingState.createdRoutineID
+                            : nil,
+                        onOnboardingRoutineCompleted: completeFirstReport,
+                        onOnboardingDeferred: deferFirstReport
+                    )
                 }
                 .tabItem {
                     Label("ホーム", systemImage: "house")
                 }
+                .tag(RootTab.home)
 
                 NavigationStack {
                     RoutineLogView()
@@ -65,13 +142,20 @@ struct RootTabView: View {
                 .tabItem {
                     Label("記録", systemImage: "list.bullet.clipboard")
                 }
+                .tag(RootTab.log)
 
                 NavigationStack {
-                    InteractionView()
+                    InteractionView(
+                        openTodayConversationRequest: $openTodayConversationRequest,
+                        onboardingConversationIdentity: onboardingState.conversationIdentity,
+                        onOnboardingConversationPlaybackEnded: finishOnboardingConversation,
+                        onOnboardingConversationUnavailable: finishUnavailableOnboardingConversation
+                    )
                 }
                 .tabItem {
                     Label("交流", systemImage: "sparkles")
                 }
+                .tag(RootTab.interaction)
 
                 NavigationStack {
                     SettingsView()
@@ -79,12 +163,14 @@ struct RootTabView: View {
                 .tabItem {
                     Label("設定", systemImage: "gearshape")
                 }
+                .tag(RootTab.settings)
             }
             .tint(AppColor.primary)
             .allowsHitTesting(!isPresentingOverlay)
             .accessibilityHidden(isPresentingOverlay)
 
-            if isPresentingOverlay {
+            if isPresentingOverlay,
+               onboardingState.phase != .storyUnlockPresentation {
                 Color.black.opacity(0.48)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
@@ -116,11 +202,388 @@ struct RootTabView: View {
                 .zIndex(3)
             }
         }
-        .animation(.easeInOut(duration: 0.18), value: isPresentingOverlay)
-        .animation(.easeInOut(duration: 0.18), value: appDialog?.id)
-        .animation(.easeOut(duration: 0.28), value: blockedBehaviorTaunt?.id)
-        // 配色はライト前提の単一値パレットのため、ダーク時に破綻しないよう固定する。
-        .preferredColorScheme(.light)
+    }
+
+    private var tomorrowPromiseView: some View {
+        OnboardingTomorrowView(
+            cueText: onboardingState.draft.trimmedCueText,
+            routineTitle: onboardingState.draft.trimmedRoutineTitle,
+            iconName: onboardingState.draft.habitIconName,
+            initialReminderTime: initialReminderTime,
+            isSaving: isSavingNotification,
+            onEnableNotification: enableOnboardingNotification,
+            onSkipNotification: skipOnboardingNotification
+        )
+    }
+
+    private var initialReminderTime: Date {
+        let minute = onboardingState.draft.reminderMinuteOfDay
+            ?? suggestedStartMinute(for: onboardingState.draft.selectedCueID)
+        return Routine.date(fromMinutes: minute)
+    }
+
+    private func saveFirstPromise() {
+        guard onboardingState.phase == .dedicatedSetup,
+              onboardingState.setupStep == .confirmation,
+              onboardingState.canContinue(from: .confirmation) else { return }
+
+        let draft = onboardingState.draft
+        let dependencies = AppDependencies(context: modelContext)
+
+        do {
+            // 保存直後にアプリが中断された場合も、同じ内容の約束を重複作成しない。
+            let existing = dependencies.routineRepository.fetchAll().first {
+                $0.title == draft.trimmedRoutineTitle
+                    && $0.cueText == draft.trimmedCueText
+                    && $0.iconName == draft.habitIconName
+                    && $0.isActive
+                    && $0.period == .day
+                    && $0.targetCount == 1
+                    && $0.scheduledStartMinute == nil
+                    && $0.targetDurationMinutes == nil
+                    && Set($0.activeWeekdayValues.isEmpty
+                           ? Weekday.allWeekdayValues
+                           : $0.activeWeekdayValues) == Set(Weekday.allWeekdayValues)
+                    && $0.progressEvents.isEmpty
+            }
+            let routine = try existing ?? dependencies.routineRepository.create(
+                title: draft.trimmedRoutineTitle,
+                cueText: draft.trimmedCueText,
+                iconName: draft.habitIconName,
+                period: .day,
+                targetCount: 1,
+                scheduledStartMinute: nil,
+                activeWeekdayValues: Weekday.allWeekdayValues,
+                targetDurationMinutes: nil
+            )
+
+            AppSettingsStore.userName = draft.trimmedUserName
+            AppSettingsStore.userHonorific = draft.userHonorific
+            selectedTab = .home
+            onboardingState.beginInAppTutorial(createdRoutineID: routine.id)
+        } catch {
+            presentOnboardingError("最初の約束を保存できませんでした。\n\(error.localizedDescription)")
+        }
+    }
+
+    private func completeFirstReport() {
+        guard onboardingState.phase == .firstReport else { return }
+        onboardingState.completeFirstReport(with: .completed)
+        blockedBehaviorTaunt = BlockedBehaviorTauntRequest(text: "ざこなのに頑張ったね♡")
+    }
+
+    private func deferFirstReport() {
+        guard onboardingState.phase == .firstReport else { return }
+        onboardingState.completeFirstReport(with: .deferred)
+        presentConversationPromptIfNeeded()
+    }
+
+    private func presentConversationPromptIfNeeded() {
+        guard onboardingState.phase == .conversationPrompt,
+              !isOnboardingConversationPlaying,
+              appDialog == nil,
+              blockedBehaviorTaunt == nil else { return }
+
+        isOnboardingConversationDialog = true
+        appDialog = AppDialogRequest(
+            title: "今日の会話をはじめる？",
+            message: "莉央との最初の会話を楽しめます。あとから交流画面で読むこともできます。",
+            actions: [
+                AppDialogAction("あとで読む") {
+                    isOnboardingConversationDialog = false
+                    prepareOnboardingConversationIdentityIfNeeded()
+                    onboardingState.completeConversationPrompt(with: .later)
+                    prepareStoryUnlockPresentation()
+                    return .dismiss
+                },
+                AppDialogAction("はじめる") {
+                    isOnboardingConversationDialog = false
+                    prepareOnboardingConversationIdentityIfNeeded()
+                    isOnboardingConversationPlaying = true
+                    selectedTab = .interaction
+                    openTodayConversationRequest = true
+                    return .dismiss
+                },
+            ]
+        )
+    }
+
+    private func finishOnboardingConversation(didComplete: Bool) {
+        if didComplete {
+            onboardingState.clearConversationIdentity()
+        }
+
+        guard isOnboardingConversationPlaying,
+              onboardingState.phase == .conversationPrompt else { return }
+        isOnboardingConversationPlaying = false
+        onboardingState.completeConversationPrompt(with: .started)
+        prepareStoryUnlockPresentation()
+    }
+
+    private func finishUnavailableOnboardingConversation() {
+        guard isOnboardingConversationPlaying else { return }
+        finishOnboardingConversation(didComplete: false)
+    }
+
+    @discardableResult
+    private func prepareOnboardingConversationIdentityIfNeeded(
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> OnboardingConversationIdentity? {
+        if let identity = onboardingState.conversationIdentity {
+            return identity
+        }
+
+        let dependencies = AppDependencies(context: modelContext)
+        guard let content = dependencies.storyContentRepository,
+              let launch = InteractionViewModel.onboardingConversationLaunch(
+                now: now,
+                calendar: calendar,
+                dailyScenarios: content.dailyScenarios,
+                checkpointForPlaybackKey: {
+                    try? dependencies.storyStateRepository.checkpoint(for: $0)
+                }
+              ) else {
+            return nil
+        }
+
+        let identity = InteractionViewModel.onboardingConversationIdentity(for: launch)
+        onboardingState.recordConversationIdentity(identity)
+        return identity
+    }
+
+    private func prepareStoryUnlockPresentation() {
+        guard onboardingState.phase == .storyUnlockPresentation else { return }
+
+        let dependencies = AppDependencies(context: modelContext)
+        do {
+            let refresh = try dependencies.storyUnlockService?.refreshUnlocks()
+            let firstCompletionAt = onboardingState.firstReportOutcome == .completed
+                ? onboardingRoutine()?.progressEvents.min()
+                : nil
+            let unlockedDuringOnboarding = try dependencies.storyStateRepository
+                .eventProgresses()
+                .contains { progress in
+                    guard let unlockedAt = progress.unlockedAt,
+                          let firstCompletionAt else { return false }
+                    return unlockedAt >= firstCompletionAt
+                }
+            onboardingHasUnlockedStory = refresh?.newlyUnlockedEventIds.isEmpty == false
+                || unlockedDuringOnboarding
+        } catch {
+            // 演出の表示は続けるが、未確認の状態を「解禁」とは表示しない。
+            onboardingHasUnlockedStory = false
+        }
+    }
+
+    private func enableOnboardingNotification(at time: Date) {
+        guard onboardingState.phase == .tomorrowPromise,
+              !isSavingNotification else { return }
+        guard let routine = onboardingRoutine() else {
+            presentOnboardingError("最初の約束が見つかりませんでした。")
+            return
+        }
+
+        let minute = Routine.minutes(from: time)
+        let calendar = Calendar.current
+        let startOfTomorrow = calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: calendar.startOfDay(for: .now)
+        ) ?? .now
+
+        // 権限ダイアログ中にアプリが終了しても、次回起動時に予約を戻せるよう先に保存する。
+        onboardingState.beginNotificationSetup(
+            routineID: routine.id,
+            reminderMinuteOfDay: minute,
+            notBefore: startOfTomorrow,
+            originalScheduledStartMinute: routine.scheduledStartMinute,
+            originalNotificationsEnabled: AppSettingsStore.notificationsEnabled
+        )
+
+        isSavingNotification = true
+        Task { @MainActor in
+            defer { isSavingNotification = false }
+            let dependencies = AppDependencies(context: modelContext)
+            await dependencies.notificationScheduler.requestAuthorizationIfNeeded()
+            guard await dependencies.notificationScheduler.isAuthorized else {
+                await finishWithoutOnboardingNotification(
+                    message: "通知が許可されなかったため、通知なしで開始しました。通知は設定画面からいつでも有効にできます。"
+                )
+                return
+            }
+
+            do {
+                try dependencies.routineRepository.update(
+                    routine,
+                    title: routine.title,
+                    cueText: routine.cueText,
+                    isActive: routine.isActive,
+                    iconName: routine.iconName,
+                    period: routine.period,
+                    targetCount: routine.targetCount,
+                    scheduledStartMinute: minute,
+                    activeWeekdayValues: routine.activeWeekdayValues,
+                    targetDurationMinutes: routine.targetDurationMinutes
+                )
+                AppSettingsStore.notificationsEnabled = true
+                await dependencies.notificationScheduler.reschedule(
+                    routines: [routine],
+                    calendar: calendar,
+                    notBefore: startOfTomorrow
+                )
+                onboardingState.completeOnboarding(
+                    notificationChoice: .enabled,
+                    reminderMinuteOfDay: minute
+                )
+            } catch {
+                presentOnboardingError("通知設定を保存できませんでした。\n\(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func skipOnboardingNotification() {
+        guard onboardingState.phase == .tomorrowPromise,
+              !isSavingNotification else { return }
+        isSavingNotification = true
+        Task { @MainActor in
+            defer { isSavingNotification = false }
+            await finishWithoutOnboardingNotification()
+        }
+    }
+
+    /// 中断された通知設定を変更前へ戻し、オンボーディング由来の予約を消す。
+    private func finishWithoutOnboardingNotification(message: String? = nil) async {
+        let dependencies = AppDependencies(context: modelContext)
+
+        if let pending = onboardingState.pendingNotificationSetup {
+            dependencies.notificationScheduler.cancelNotification(for: pending.routineID)
+
+            if let routine = dependencies.routineRepository.fetchAll().first(where: {
+                $0.id == pending.routineID
+            }) {
+                do {
+                    try dependencies.routineRepository.update(
+                        routine,
+                        title: routine.title,
+                        cueText: routine.cueText,
+                        isActive: routine.isActive,
+                        iconName: routine.iconName,
+                        period: routine.period,
+                        targetCount: routine.targetCount,
+                        scheduledStartMinute: pending.originalScheduledStartMinute,
+                        activeWeekdayValues: routine.activeWeekdayValues,
+                        targetDurationMinutes: routine.targetDurationMinutes
+                    )
+                } catch {
+                    presentOnboardingError("通知設定を元に戻せませんでした。\n\(error.localizedDescription)")
+                    return
+                }
+            }
+
+            AppSettingsStore.notificationsEnabled = pending.originalNotificationsEnabled
+            onboardingState.abandonNotificationSetup()
+
+            // もともと通知が有効だった場合は、変更前のRoutine状態で予約を作り直す。
+            if pending.originalNotificationsEnabled {
+                let routines = dependencies.routineRepository.fetchAll().filter { $0.isActive }
+                await dependencies.notificationScheduler.reschedule(routines: routines)
+            }
+        }
+
+        onboardingState.completeOnboarding(notificationChoice: .notNow)
+        if let message {
+            onboardingAlertTitle = "通知は設定されませんでした"
+            onboardingErrorMessage = message
+        }
+    }
+
+    private func presentOnboardingError(_ message: String) {
+        onboardingAlertTitle = "オンボーディングを完了できませんでした"
+        onboardingErrorMessage = message
+    }
+
+    private func dismissOnboardingAlert() {
+        onboardingErrorMessage = nil
+        onboardingAlertTitle = "オンボーディングを完了できませんでした"
+    }
+
+    private func onboardingRoutine() -> Routine? {
+        guard let id = onboardingState.createdRoutineID else { return nil }
+        return AppDependencies(context: modelContext)
+            .routineRepository
+            .fetchAll()
+            .first { $0.id == id }
+    }
+
+    private func resumeOnboardingIfNeeded() {
+        migrateExistingInstallationIfNeeded()
+        clearCompletedOnboardingConversationIdentityIfNeeded()
+        guard !onboardingState.isCompleted else { return }
+
+        if onboardingState.phase != .dedicatedSetup,
+           onboardingRoutine() == nil {
+            onboardingState.goToSetupStep(.confirmation)
+            return
+        }
+
+        switch onboardingState.phase {
+        case .dedicatedSetup:
+            break
+        case .firstReport:
+            selectedTab = .home
+            if let routine = onboardingRoutine(), routine.isComplete() {
+                onboardingState.reconcileFirstReportIfNeeded(isRoutineComplete: true)
+                blockedBehaviorTaunt = BlockedBehaviorTauntRequest(
+                    text: "ざこなのに頑張ったね♡"
+                )
+            }
+        case .conversationPrompt:
+            presentConversationPromptIfNeeded()
+        case .storyUnlockPresentation:
+            prepareStoryUnlockPresentation()
+        case .tomorrowPromise, .completed:
+            break
+        }
+    }
+
+    /// オンボーディング導入前からデータがある端末は、既存ユーザーとして通常画面を維持する。
+    private func migrateExistingInstallationIfNeeded() {
+        guard onboardingState.startedWithoutSavedState else { return }
+
+        let dependencies = AppDependencies(context: modelContext)
+        let hasStoryState = (try? dependencies.storyStateRepository.eventProgresses().isEmpty) == false
+        let hasExistingUserData = !dependencies.routineRepository.fetchAll().isEmpty
+            || !dependencies.blockedBehaviorRepository.fetchAll().isEmpty
+            || hasStoryState
+            || !AppSettingsStore.userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        onboardingState.completeForExistingInstallationIfNeeded(
+            hasExistingUserData: hasExistingUserData
+        )
+    }
+
+    private func clearCompletedOnboardingConversationIdentityIfNeeded() {
+        guard let identity = onboardingState.conversationIdentity else { return }
+        let checkpoint = try? AppDependencies(context: modelContext)
+            .storyStateRepository
+            .checkpoint(for: identity.playbackKey)
+        if checkpoint?.isCompleted == true {
+            onboardingState.clearConversationIdentity()
+        }
+    }
+
+    private func suggestedStartMinute(for cueID: String?) -> Int {
+        switch cueID {
+        case "after-waking": return 7 * 60
+        case "after-breakfast": return 8 * 60
+        case "after-lunch": return 12 * 60 + 30
+        case "after-arriving-home": return 19 * 60
+        case "after-bath": return 21 * 60 + 30
+        case "after-brushing": return 22 * 60
+        case "before-sleep": return 22 * 60 + 30
+        default: return 20 * 60
+        }
     }
 
     private func appDialogCard(_ request: AppDialogRequest) -> some View {
@@ -161,7 +624,9 @@ struct RootTabView: View {
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityAction(.escape) {
-                appDialog = nil
+                if !isOnboardingConversationDialog {
+                    appDialog = nil
+                }
             }
         }
     }
@@ -248,9 +713,16 @@ struct RootTabView: View {
 
     private func dismissBlockedBehaviorTaunt() {
         blockedBehaviorTaunt = nil
+        if onboardingState.phase == .conversationPrompt {
+            Task { @MainActor in
+                await Task.yield()
+                presentConversationPromptIfNeeded()
+            }
+        }
     }
 
     private func dismissPresentedOverlay() {
+        if isOnboardingConversationDialog { return }
         if blockedBehaviorTaunt != nil {
             dismissBlockedBehaviorTaunt()
         } else {

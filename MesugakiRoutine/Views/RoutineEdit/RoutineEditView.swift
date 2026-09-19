@@ -111,6 +111,14 @@ struct RoutineEditView: View {
                 TextField("タイトル", text: $viewModel.title)
             }
 
+            Section {
+                TextField("例: 寝る前", text: $viewModel.cueText)
+            } header: {
+                Text("実行するタイミング")
+            } footer: {
+                Text("いつもの行動の後など、約束を始めるきっかけを設定できます。")
+            }
+
             Section("アイコン") {
                 Button {
                     isPresentingIconPicker = true

@@ -6,6 +6,24 @@ struct InteractionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = InteractionViewModel()
+    @State private var onboardingPlaybackKeyInPlayer: String?
+
+    @Binding private var openTodayConversationRequest: Bool
+    private let onboardingConversationIdentity: OnboardingConversationIdentity?
+    private let onOnboardingConversationPlaybackEnded: (Bool) -> Void
+    private let onOnboardingConversationUnavailable: () -> Void
+
+    init(
+        openTodayConversationRequest: Binding<Bool> = .constant(false),
+        onboardingConversationIdentity: OnboardingConversationIdentity? = nil,
+        onOnboardingConversationPlaybackEnded: @escaping (Bool) -> Void = { _ in },
+        onOnboardingConversationUnavailable: @escaping () -> Void = {}
+    ) {
+        _openTodayConversationRequest = openTodayConversationRequest
+        self.onboardingConversationIdentity = onboardingConversationIdentity
+        self.onOnboardingConversationPlaybackEnded = onOnboardingConversationPlaybackEnded
+        self.onOnboardingConversationUnavailable = onOnboardingConversationUnavailable
+    }
 
     private var homeDialogue: String? {
         viewModel.interactionComment?.text
@@ -130,19 +148,43 @@ struct InteractionView: View {
         .toolbar(.hidden, for: .navigationBar)
         .task {
             viewModel.configure(context: modelContext)
+            offerDeferredConversationIfNeeded()
+            openRequestedTodayConversationIfNeeded()
         }
         .onAppear {
             viewModel.reload()
+            offerDeferredConversationIfNeeded()
+        }
+        .onChange(of: onboardingConversationIdentity) { _, _ in
+            viewModel.reload()
+            offerDeferredConversationIfNeeded()
+        }
+        .onChange(of: openTodayConversationRequest) { _, requested in
+            if requested { openRequestedTodayConversationIfNeeded() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { viewModel.reload() }
+            if phase == .active {
+                viewModel.reload()
+                offerDeferredConversationIfNeeded()
+            }
         }
         .fullScreenCover(
             item: Binding(
                 get: { viewModel.activeLaunch },
                 set: { if $0 == nil { viewModel.closePlayer() } }
             ),
-            onDismiss: { viewModel.reload() }
+            onDismiss: {
+                let playbackKey = onboardingPlaybackKeyInPlayer
+                let didComplete = playbackKey.map(viewModel.isPlaybackCompleted) ?? false
+                onboardingPlaybackKeyInPlayer = nil
+                viewModel.reload()
+                if !didComplete, let identity = onboardingConversationIdentity {
+                    viewModel.offerDeferredOnboardingConversationIfNeeded(identity: identity)
+                }
+                if playbackKey != nil {
+                    onOnboardingConversationPlaybackEnded(didComplete)
+                }
+            }
         ) { launch in
             StoryPlaybackContainerView(launch: launch) {
                 viewModel.closePlayer()
@@ -157,7 +199,14 @@ struct InteractionView: View {
             hasResumePosition: viewModel.todayConversationHasResumePosition,
             isAvailable: viewModel.todayConversationIsAvailable,
             height: height,
-            action: { viewModel.openToday() }
+            action: {
+                if let identity = onboardingConversationIdentity,
+                   viewModel.openOnboardingConversation(identity: identity) {
+                    onboardingPlaybackKeyInPlayer = identity.playbackKey
+                } else {
+                    viewModel.openToday()
+                }
+            }
         )
     }
 
@@ -209,6 +258,28 @@ struct InteractionView: View {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
             viewModel.selectInteractionComment(touchArea: "character")
         }
+    }
+
+    private func openRequestedTodayConversationIfNeeded() {
+        guard openTodayConversationRequest else { return }
+        openTodayConversationRequest = false
+        viewModel.configure(context: modelContext)
+        guard let identity = onboardingConversationIdentity else {
+            onOnboardingConversationUnavailable()
+            return
+        }
+        let didOpen = viewModel.openOnboardingConversation(identity: identity)
+
+        if didOpen {
+            onboardingPlaybackKeyInPlayer = identity.playbackKey
+        } else {
+            onOnboardingConversationUnavailable()
+        }
+    }
+
+    private func offerDeferredConversationIfNeeded() {
+        guard let identity = onboardingConversationIdentity else { return }
+        viewModel.offerDeferredOnboardingConversationIfNeeded(identity: identity)
     }
 }
 

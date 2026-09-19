@@ -24,6 +24,7 @@ final class RoutineRepository {
     @discardableResult
     func create(
         title: String,
+        cueText: String? = nil,
         iconName: String? = nil,
         period: HabitPeriod = .day,
         targetCount: Int = 1,
@@ -33,6 +34,7 @@ final class RoutineRepository {
     ) throws -> Routine {
         let routine = Routine(
             title: title,
+            cueText: normalizedCueText(cueText),
             scheduledStartMinute: scheduledStartMinute,
             targetDurationMinutes: targetDurationMinutes,
             activeWeekdayValues: activeWeekdayValues,
@@ -49,6 +51,7 @@ final class RoutineRepository {
     func update(
         _ routine: Routine,
         title: String,
+        cueText: String?,
         isActive: Bool,
         iconName: String?,
         period: HabitPeriod,
@@ -80,6 +83,7 @@ final class RoutineRepository {
             }
 
             routine.title = title
+            routine.cueText = normalizedCueText(cueText)
             routine.isActive = isActive
             routine.iconName = iconName
             routine.period = period
@@ -211,5 +215,10 @@ final class RoutineRepository {
 
     private func normalizedWeekdays(_ values: [Int]) -> Set<Int> {
         values.isEmpty ? Set(Weekday.allWeekdayValues) : Set(values)
+    }
+
+    private func normalizedCueText(_ cueText: String?) -> String? {
+        let trimmed = cueText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
