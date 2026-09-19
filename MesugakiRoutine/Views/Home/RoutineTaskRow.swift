@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Home の「今日の約束」1件を表示する、拡張可能な横長カード。
-/// 編集・タイマー・完了は、それぞれ独立したタップ領域として扱う。
+/// 通常時のカード本体は将来の TODO 導線用に空け、編集モード・タイマー・完了だけを
+/// それぞれ独立したタップ領域として扱う。
 struct RoutineTaskRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -43,7 +44,7 @@ struct RoutineTaskRow: View {
 
     private var regularLayout: some View {
         HStack(spacing: 12) {
-            editButton
+            taskDetails
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             trailingControls
@@ -52,7 +53,7 @@ struct RoutineTaskRow: View {
 
     private var accessibilityLayout: some View {
         VStack(alignment: .leading, spacing: 12) {
-            editButton
+            taskDetails
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 10) {
@@ -62,65 +63,78 @@ struct RoutineTaskRow: View {
         }
     }
 
-    private var editButton: some View {
-        Button(action: onEdit) {
-            HStack(spacing: 12) {
-                Image(systemName: iconName ?? "checklist")
-                    .font(.system(size: 23, weight: .semibold))
-                    .foregroundStyle(isCompleted ? Color.white : AppColor.primary)
-                    .frame(width: 52, height: 52)
-                    .background(
-                        isCompleted ? AppColor.primary : AppColor.primarySoft,
-                        in: Circle()
-                    )
+    @ViewBuilder
+    private var taskDetails: some View {
+        if isEditing {
+            Button(action: onEdit) {
+                taskSummary(showsEditChevron: true)
+            }
+            .buttonStyle(RoutineRowPressStyle())
+            .accessibilityLabel(taskAccessibilityLabel)
+            .accessibilityHint("タップして内容を編集")
+        } else {
+            taskSummary(showsEditChevron: false)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(taskAccessibilityLabel)
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundStyle(AppColor.text)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                        .fixedSize(horizontal: false, vertical: true)
+    private func taskSummary(showsEditChevron: Bool) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: iconName ?? "checklist")
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundStyle(isCompleted ? Color.white : AppColor.primary)
+                .frame(width: 52, height: 52)
+                .background(
+                    isCompleted ? AppColor.primary : AppColor.primarySoft,
+                    in: Circle()
+                )
 
-                    HStack(spacing: 4) {
-                        Text(streakText)
-                            .foregroundStyle(hasStreak ? AppColor.success : AppColor.muted)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                        if let progressText {
-                            Text("・ \(progressText)")
-                                .foregroundStyle(AppColor.muted)
-                        }
-                    }
-                    .font(.caption)
+                HStack(spacing: 4) {
+                    Text(streakText)
+                        .foregroundStyle(hasStreak ? AppColor.success : AppColor.muted)
 
-                    if let timerStatusText {
-                        Text(timerStatusText)
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(AppColor.primary)
-                            .lineLimit(1)
+                    if let progressText {
+                        Text("・ \(progressText)")
+                            .foregroundStyle(AppColor.muted)
                     }
                 }
+                .font(.caption)
 
-                Spacer(minLength: 0)
-
-                if isEditing {
-                    Image(systemName: "chevron.right")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(AppColor.muted)
-                        .frame(width: 28, height: 50)
-                        .accessibilityHidden(true)
+                if let timerStatusText {
+                    Text(timerStatusText)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(AppColor.primary)
+                        .lineLimit(1)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-            .contentShape(Rectangle())
+
+            Spacer(minLength: 0)
+
+            if showsEditChevron {
+                Image(systemName: "chevron.right")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppColor.muted)
+                    .frame(width: 28, height: 50)
+                    .accessibilityHidden(true)
+            }
         }
-        .buttonStyle(RoutineRowPressStyle())
-        .accessibilityLabel(
-            [title, streakText, progressText]
-                .compactMap { $0 }
-                .joined(separator: "、")
-        )
-        .accessibilityHint("タップして内容を編集")
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var taskAccessibilityLabel: String {
+        [title, streakText, progressText]
+            .compactMap { $0 }
+            .joined(separator: "、")
     }
 
     @ViewBuilder
@@ -163,6 +177,140 @@ struct RoutineTaskRow: View {
                 )
             }
         }
+    }
+}
+
+/// 「やらないこと」を「今日の約束」と同じカード骨格で表示する。
+/// カード全体のタップで既存の危機／失敗メニュー（または権限再設定）を開く。
+struct BlockedBehaviorTaskRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let title: String
+    let iconName: String?
+    let statusText: String
+    let statusColor: Color
+    let detailText: String?
+    let remainingFraction: Double
+    let isFailed: Bool
+    let needsRepair: Bool
+    let action: () -> Void
+
+    private var clampedRemainingFraction: CGFloat {
+        CGFloat(min(max(remainingFraction, 0), 1))
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    accessibilityLayout
+                } else {
+                    regularLayout
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+            }
+            .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(RoutineRowPressStyle())
+        .accessibilityLabel([title, statusText, detailText].compactMap { $0 }.joined(separator: "、"))
+        .accessibilityHint(needsRepair ? "タップして許可を確認" : "タップして選択肢を表示")
+    }
+
+    private var regularLayout: some View {
+        HStack(spacing: 12) {
+            summary
+                .frame(maxWidth: .infinity, alignment: .leading)
+            stateButton
+        }
+    }
+
+    private var accessibilityLayout: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            summary
+            HStack {
+                Spacer(minLength: 0)
+                stateButton
+            }
+        }
+    }
+
+    private var summary: some View {
+        HStack(spacing: 12) {
+            Image(systemName: iconName ?? "hand.raised")
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundStyle(isFailed || needsRepair ? AppColor.error : AppColor.primary)
+                .frame(width: 52, height: 52)
+                .background(
+                    (isFailed || needsRepair ? AppColor.error.opacity(0.12) : AppColor.primarySoft),
+                    in: Circle()
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(statusText)
+                    .font(.caption)
+                    .foregroundStyle(statusColor)
+
+                if let detailText {
+                    Text(detailText)
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.muted)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+    }
+
+    private var stateButton: some View {
+        ZStack {
+            Circle()
+                .fill(isFailed ? AppColor.error : AppColor.surface)
+
+            Circle()
+                .stroke(
+                    isFailed || needsRepair ? AppColor.error : AppColor.border,
+                    lineWidth: isFailed ? 0 : 2.5
+                )
+
+            if !isFailed && !needsRepair && clampedRemainingFraction > 0 {
+                Circle()
+                    .trim(from: 0, to: clampedRemainingFraction)
+                    .stroke(
+                        AppColor.primary,
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+            }
+
+            Image(systemName: stateIconName)
+                .font(.system(size: 19, weight: .bold))
+                .foregroundStyle(isFailed ? Color.white : (needsRepair ? AppColor.error : AppColor.primary))
+        }
+        .frame(width: 50, height: 50)
+        .accessibilityHidden(true)
+    }
+
+    private var stateIconName: String {
+        if isFailed { return "exclamationmark" }
+        if needsRepair { return "arrow.clockwise" }
+        return "ellipsis"
     }
 }
 
@@ -331,6 +479,43 @@ struct AddRoutineTaskRow: View {
         }
         .buttonStyle(RoutineRowPressStyle())
         .accessibilityHint("新しい約束を作成")
+    }
+}
+
+struct AddBlockedBehaviorTaskRow: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "hand.raised")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(AppColor.primary)
+                    .frame(width: 52, height: 52)
+                    .background(AppColor.primarySoft, in: Circle())
+
+                Text("やらないことを決める")
+                    .font(.headline)
+                    .foregroundStyle(AppColor.primary)
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppColor.muted)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 76)
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(RoutineRowPressStyle())
+        .accessibilityHint("新しいやらないことを設定")
     }
 }
 

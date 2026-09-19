@@ -232,7 +232,7 @@ struct HomeView: View {
         .animation(.easeInOut(duration: 0.22), value: isEditingRoutines)
     }
 
-    /// 約束1件。カード本体は編集、時計はタイマー、右端の丸は達成状態の変更に分離する。
+    /// 約束1件。通常時は時計と右端の丸だけを操作でき、編集モード中のみカード本体から編集する。
     @ViewBuilder
     private func routineListRow(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
@@ -274,7 +274,7 @@ struct HomeView: View {
         Section("やらないこと") {
             if let behavior = viewModel.currentBehavior {
                 promiseCard(behavior)
-                    .padding(.vertical, 4)
+                    .routineListRowStyle()
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
                             appDialog = AppDialogRequest(
@@ -297,11 +297,10 @@ struct HomeView: View {
                         }
                     }
             } else {
-                Button {
+                AddBlockedBehaviorTaskRow {
                     isPresentingNewBlockedBehavior = true
-                } label: {
-                    Label("やらないことを決める", systemImage: "hand.raised")
                 }
+                .routineListRowStyle()
             }
 
             if !viewModel.masteredBehaviors.isEmpty {
@@ -317,9 +316,9 @@ struct HomeView: View {
                         }
                     }
                 }
+                .appCardRow()
             }
         }
-        .appCardRow()
     }
 
     /// 「やらないこと」カード。タップすると危機／失敗の選択肢を表示する。
@@ -329,7 +328,28 @@ struct HomeView: View {
         let hasScreenTimeIssue = behavior.trackingKind == .screenTime
             && viewModel.screenTimeMonitoringIssueMessage != nil
 
-        Button {
+        BlockedBehaviorTaskRow(
+            title: behavior.title,
+            iconName: behavior.iconName,
+            statusText: promiseStatusText(
+                behavior: behavior,
+                usage: usage,
+                hasScreenTimeIssue: hasScreenTimeIssue
+            ),
+            statusColor: promiseStatusColor(
+                behavior: behavior,
+                usage: usage,
+                hasScreenTimeIssue: hasScreenTimeIssue
+            ),
+            detailText: promiseDetailText(
+                behavior: behavior,
+                usage: usage,
+                hasScreenTimeIssue: hasScreenTimeIssue
+            ),
+            remainingFraction: usage.fraction,
+            isFailed: usage.failed,
+            needsRepair: hasScreenTimeIssue
+        ) {
             if hasScreenTimeIssue {
                 Task {
                     await viewModel.repairScreenTimeMonitoring(behavior)
@@ -337,61 +357,43 @@ struct HomeView: View {
             } else {
                 presentBlockedBehaviorActions(for: behavior)
             }
-        } label: {
-            HStack(spacing: 12) {
-                ProgressCircle(
-                    progress: usage.fraction,
-                    size: 34,
-                    tint: AppColor.primary,
-                    showsCheckmarkWhenComplete: false,
-                    failed: usage.failed,
-                    centerSystemImage: behavior.iconName
-                )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(behavior.title)
-                        .font(.headline)
-                        .foregroundStyle(AppColor.text)
-
-                    if hasScreenTimeIssue {
-                        Text("スクリーンタイムを再設定してください")
-                            .font(.caption)
-                            .foregroundStyle(AppColor.error)
-                        Text("タップして許可を確認")
-                            .font(.caption2)
-                            .foregroundStyle(AppColor.muted)
-                    } else if usage.failed {
-                        Text(
-                            behavior.trackingKind == .screenTime
-                                ? "今日は時間上限を超えました"
-                                : "\(usage.periodLabel)は上限に達しました"
-                        )
-                            .font(.caption)
-                            .foregroundStyle(AppColor.error)
-                    } else {
-                        if behavior.currentStreakDays >= 1 {
-                            Text("\(behavior.currentStreakDays)日達成！")
-                                .font(.caption)
-                                .foregroundStyle(AppColor.success)
-                        } else {
-                            Text("今日から")
-                                .font(.caption)
-                                .foregroundStyle(AppColor.muted)
-                        }
-
-                        Text(
-                            behavior.trackingKind == .screenTime
-                                ? "今日は \(formattedScreenTimeLimit(behavior.screenTimeLimitMinutes)) まで"
-                                : "\(usage.periodLabel) あと \(usage.remaining) 回"
-                        )
-                            .font(.caption2)
-                            .foregroundStyle(AppColor.muted)
-                    }
-                }
-                Spacer(minLength: 8)
-            }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+    }
+
+    private func promiseStatusText(
+        behavior: BlockedBehavior,
+        usage: PromiseUsage,
+        hasScreenTimeIssue: Bool
+    ) -> String {
+        if hasScreenTimeIssue { return "スクリーンタイムを再設定してください" }
+        if usage.failed { return "失敗" }
+        if behavior.currentStreakDays >= 1 { return "\(behavior.currentStreakDays)日達成！" }
+        return "今日から"
+    }
+
+    private func promiseStatusColor(
+        behavior: BlockedBehavior,
+        usage: PromiseUsage,
+        hasScreenTimeIssue: Bool
+    ) -> Color {
+        if hasScreenTimeIssue || usage.failed { return AppColor.error }
+        return behavior.currentStreakDays >= 1 ? AppColor.success : AppColor.muted
+    }
+
+    private func promiseDetailText(
+        behavior: BlockedBehavior,
+        usage: PromiseUsage,
+        hasScreenTimeIssue: Bool
+    ) -> String? {
+        if hasScreenTimeIssue { return "タップして許可を確認" }
+        if usage.failed {
+            return behavior.trackingKind == .screenTime
+                ? "今日は時間上限を超えました"
+                : "\(usage.periodLabel)は上限に達しました"
+        }
+        return behavior.trackingKind == .screenTime
+            ? "今日は \(formattedScreenTimeLimit(behavior.screenTimeLimitMinutes)) まで"
+            : "\(usage.periodLabel) あと \(usage.remaining) 回"
     }
 
     private func formattedScreenTimeLimit(_ minutes: Int) -> String {
