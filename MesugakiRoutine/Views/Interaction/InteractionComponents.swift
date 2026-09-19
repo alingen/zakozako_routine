@@ -1,29 +1,5 @@
 import SwiftUI
 
-/// 下40%だけをぼかす。境界は60〜75%の位置で滑らかに切り替える。
-struct InteractionArtworkBottomBlur: ViewModifier {
-    var radius: CGFloat = 3
-
-    func body(content: Content) -> some View {
-        content.overlay {
-            content
-                .blur(radius: radius)
-                .mask(LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .clear, location: 0.6),
-                        .init(color: .white, location: 0.75),
-                        .init(color: .white, location: 1),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
-    }
-}
-
 struct InteractionCharacterSpeechBubble: View {
     let text: String
     var speakerName: String? = nil
@@ -234,7 +210,6 @@ struct InteractionHomeFeatureCard: View {
                         .scaledToFill()
                         .frame(width: proxy.size.width, height: height, alignment: .top)
                         .clipped()
-                        .modifier(InteractionArtworkBottomBlur(radius: 1.5))
                         .opacity(isFreeTalk ? 0.26 : 0.36)
 
                     LinearGradient(
@@ -315,7 +290,6 @@ struct InteractionHomeFeatureCard: View {
             .scaleEffect(2.4, anchor: .top)
             .frame(width: width, height: height - 22, alignment: .top)
             .clipped()
-            .modifier(InteractionArtworkBottomBlur(radius: 1.5))
             .padding(4)
             .padding(.bottom, kind == .memories ? 9 : 0)
             .background(AppColor.surface.opacity(kind == .memories ? 0.86 : 0.25))

@@ -49,7 +49,6 @@ struct InteractionView: View {
                         .ignoresSafeArea(edges: .bottom)
                 }
                 .frame(width: proxy.size.width, height: visualHeight, alignment: .top)
-                .modifier(InteractionArtworkBottomBlur())
                 .accessibilityHidden(true)
                 .allowsHitTesting(false)
 

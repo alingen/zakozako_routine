@@ -106,53 +106,6 @@ final class DailyConversationScheduleTests: XCTestCase {
 
 @MainActor
 final class InteractionHomeCardRenderingTests: XCTestCase {
-    func testLowerArtworkBlurKeepsUpperSixtyPercentSharpAndOpaque() throws {
-        let pattern = Canvas { context, size in
-            for x in stride(from: CGFloat.zero, to: size.width, by: 8) {
-                context.fill(
-                    Path(CGRect(x: x, y: 0, width: 4, height: size.height)), with: .color(.black)
-                )
-            }
-        }
-        .background(.white)
-        .frame(width: 180, height: 100)
-        let sharp = try XCTUnwrap(ImageRenderer(content: pattern).uiImage)
-        let blurred = try XCTUnwrap(ImageRenderer(
-            content: pattern.modifier(InteractionArtworkBottomBlur())
-        ).uiImage)
-        XCTAssertEqual(sharp.size, blurred.size)
-        let upperSharp = try artworkPixel(sharp, x: 22, y: 20)
-        let upperBlurred = try artworkPixel(blurred, x: 22, y: 20)
-        for channel in 0..<4 {
-            XCTAssertEqual(Int(upperSharp[channel]), Int(upperBlurred[channel]), accuracy: 2)
-        }
-        let lowerSharp = try artworkPixel(sharp, x: 22, y: 85)
-        let lowerBlurred = try artworkPixel(blurred, x: 22, y: 85)
-        XCTAssertGreaterThan(abs(Int(lowerSharp[0]) - Int(lowerBlurred[0])), 20)
-        for y in [20, 65, 85] {
-            XCTAssertGreaterThanOrEqual(Int(try artworkPixel(blurred, x: 22, y: y)[3]), 250)
-        }
-        let attachment = XCTAttachment(image: blurred)
-        attachment.name = "Lower 40 percent artwork blur"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
-
-    private func artworkPixel(_ image: UIImage, x: Int, y: Int) throws -> [UInt8] {
-        let cgImage = try XCTUnwrap(image.cgImage)
-        let sample = try XCTUnwrap(cgImage.cropping(to: CGRect(x: x, y: y, width: 1, height: 1)))
-        var rgba = [UInt8](repeating: 0, count: 4)
-        try rgba.withUnsafeMutableBytes { bytes in
-            let context = try XCTUnwrap(CGContext(
-                data: bytes.baseAddress, width: 1, height: 1, bitsPerComponent: 8,
-                bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(),
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-            ))
-            context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
-        }
-        return rgba
-    }
-
     func testTodayCardDoesNotFadeWhenConversationIsUnavailable() throws {
         var samples: [[UInt8]] = []
         for isAvailable in [true, false] {
