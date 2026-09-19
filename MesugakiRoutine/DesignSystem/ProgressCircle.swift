@@ -68,6 +68,79 @@ struct ProgressCircle: View {
     }
 }
 
+/// 12時位置から時計回りに、円の内側を扇形で満たす進捗表示。
+///
+/// 背景と達成部分の両方に同じアイコンを重ね、達成部分だけ白いアイコンで
+/// マスクすることで、円グラフの境界に合わせてアイコンの色も切り替える。
+struct RoutineProgressPie: View {
+    let progress: Double
+    var size: CGFloat = 30
+    var tint: Color = AppColor.primary
+    var centerSystemImage: String? = nil
+
+    private var clamped: Double { min(max(progress, 0), 1) }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(AppColor.primarySoft)
+
+            ProgressPieSlice(progress: clamped)
+                .fill(tint)
+
+            if let centerSystemImage {
+                Image(systemName: centerSystemImage)
+                    .font(.system(size: size * 0.42, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: size, height: size)
+
+                Image(systemName: centerSystemImage)
+                    .font(.system(size: size * 0.42, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: size, height: size)
+                    .mask {
+                        ProgressPieSlice(progress: clamped)
+                            .fill(.black)
+                    }
+            }
+        }
+        .frame(width: size, height: size)
+        .animation(.easeInOut(duration: 0.25), value: clamped)
+        .accessibilityValue("\(Int((clamped * 100).rounded()))パーセント")
+    }
+}
+
+/// `RoutineProgressPie` の進捗面。0なら空、1なら真円になる。
+struct ProgressPieSlice: Shape {
+    var progress: Double
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let clamped = min(max(progress, 0), 1)
+        guard clamped > 0 else { return Path() }
+        guard clamped < 1 else { return Path(ellipseIn: rect) }
+
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        var path = Path()
+        path.move(to: center)
+        path.addLine(to: CGPoint(x: center.x, y: center.y - radius))
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: .degrees(-90),
+            endAngle: .degrees(-90 + 360 * clamped),
+            clockwise: false
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
 #Preview {
     VStack(spacing: 20) {
         HStack(spacing: 20) {
@@ -76,6 +149,12 @@ struct ProgressCircle: View {
             ProgressCircle(progress: 0.5)
             ProgressCircle(progress: 0.75)
             ProgressCircle(progress: 1)
+        }
+        HStack(spacing: 20) {
+            RoutineProgressPie(progress: 0, size: 52, centerSystemImage: "book.closed.fill")
+            RoutineProgressPie(progress: 1.0 / 3.0, size: 52, centerSystemImage: "book.closed.fill")
+            RoutineProgressPie(progress: 2.0 / 3.0, size: 52, centerSystemImage: "book.closed.fill")
+            RoutineProgressPie(progress: 1, size: 52, centerSystemImage: "book.closed.fill")
         }
     }
     .padding()

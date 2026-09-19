@@ -4,8 +4,8 @@ import SwiftData
 /// ユーザーの「約束」(やること)。
 ///
 /// 「1日 / 1週間のうち / 1ヶ月のうち に 〇回」のかたちで目標回数を持つ。
-/// タイマー完了では1回ずつ、Home の完了ボタンでは現在期間が達成になる不足回数ぶんを
-/// `progressEvents` に記録する。期間内の回数が目標に達したら「達成」。
+/// タイマー完了と Home の丸ボタンは、どちらも実行1回ぶんを `progressEvents` に記録する。
+/// 期間内の回数が目標に達したら「達成」。
 @Model
 final class Routine {
     @Attribute(.unique) var id: UUID

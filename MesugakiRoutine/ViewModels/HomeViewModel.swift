@@ -11,7 +11,7 @@ struct PromiseUsage {
     var remaining: Int { max(limit - used, 0) }
     /// 「今日 / 今週 / 今月」
     let periodLabel: String
-    /// チェックボックスの塗り具合 0.0〜1.0(残り / 上限)。満タンからスタートし、タップで減る。
+    /// 左アイコンの塗り具合 0.0〜1.0(残り / 上限)。満タンからスタートし、失敗記録で減る。
     var fraction: Double { limit > 0 ? Double(remaining) / Double(limit) : 0 }
     /// 上限に達した(残り0)= 失敗。
     var failed: Bool { used >= limit }
@@ -375,7 +375,8 @@ final class HomeViewModel {
         return true
     }
 
-    /// Home のチェック操作で、現在期間の達成状態を直接切り替える。
+    /// 現在期間の達成状態を明示的に切り替える。
+    /// Home の通常タップは `advanceRoutine` で1回ずつ記録し、これは主に完了後の報告取り消しに使う。
     @discardableResult
     func setRoutineCompletion(
         _ routine: Routine,

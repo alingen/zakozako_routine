@@ -84,6 +84,48 @@ final class RoutineCompletionRepositoryTests: XCTestCase {
         XCTAssertFalse(routine.isComplete(now: now, calendar: calendar))
     }
 
+    func testRepeatedProgressReportsFillMultiTargetOneSliceAtATimeAndUndoOneSlice() throws {
+        let container = try makeContainer()
+        let repository = RoutineRepository(context: container.mainContext)
+        let createdAt = try date(2026, 9, 19, 4)
+        let first = try date(2026, 9, 19, 8)
+        let second = try date(2026, 9, 19, 9)
+        let third = try date(2026, 9, 19, 10)
+        let routine = try insertRoutine(
+            Routine(
+                title: "水を飲む",
+                createdAt: createdAt,
+                targetCount: 3
+            ),
+            into: container.mainContext
+        )
+
+        try repository.recordProgress(routine, now: first)
+        XCTAssertEqual(routine.todayProgress(now: first, calendar: calendar).done, 1)
+        XCTAssertEqual(routine.todayProgress(now: first, calendar: calendar).fraction, 1.0 / 3.0, accuracy: 0.000_001)
+        XCTAssertFalse(routine.isComplete(now: first, calendar: calendar))
+
+        try repository.recordProgress(routine, now: second)
+        XCTAssertEqual(routine.todayProgress(now: second, calendar: calendar).done, 2)
+        XCTAssertEqual(routine.todayProgress(now: second, calendar: calendar).fraction, 2.0 / 3.0, accuracy: 0.000_001)
+        XCTAssertFalse(routine.isComplete(now: second, calendar: calendar))
+
+        try repository.recordProgress(routine, now: third)
+        XCTAssertEqual(routine.todayProgress(now: third, calendar: calendar).done, 3)
+        XCTAssertEqual(routine.todayProgress(now: third, calendar: calendar).fraction, 1, accuracy: 0.000_001)
+        XCTAssertTrue(routine.isComplete(now: third, calendar: calendar))
+
+        try repository.setCompletion(
+            routine,
+            completed: false,
+            now: third,
+            calendar: calendar
+        )
+        XCTAssertEqual(routine.todayProgress(now: third, calendar: calendar).done, 2)
+        XCTAssertEqual(routine.todayProgress(now: third, calendar: calendar).fraction, 2.0 / 3.0, accuracy: 0.000_001)
+        XCTAssertFalse(routine.isComplete(now: third, calendar: calendar))
+    }
+
     func testUndoRemovesOnlyNewestCurrentPeriodEventsAndPreservesPriorPeriods() throws {
         let container = try makeContainer()
         let repository = RoutineRepository(context: container.mainContext)

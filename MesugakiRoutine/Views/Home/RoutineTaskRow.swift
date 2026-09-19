@@ -11,6 +11,9 @@ struct RoutineTaskRow: View {
     let streakText: String
     let hasStreak: Bool
     let progressText: String?
+    let progressFraction: Double
+    let progressCount: Int
+    let progressTarget: Int
     let timerStatusText: String?
     let timerTargetDurationMinutes: Int?
     let isTimerActive: Bool
@@ -20,7 +23,8 @@ struct RoutineTaskRow: View {
     let allowsEditing: Bool
     let onEdit: () -> Void
     let onStartTimer: () -> Void
-    let onSetCompletion: (Bool) -> Bool
+    let onAdvance: () -> Bool
+    let onUndoCompletion: () -> Bool
 
     var body: some View {
         Group {
@@ -90,14 +94,12 @@ struct RoutineTaskRow: View {
 
     private func taskSummary(showsEditChevron: Bool) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: iconName ?? "checklist")
-                .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(isCompleted ? Color.white : AppColor.primary)
-                .frame(width: 52, height: 52)
-                .background(
-                    isCompleted ? AppColor.primary : AppColor.primarySoft,
-                    in: Circle()
-                )
+            RoutineProgressPie(
+                progress: progressFraction,
+                size: 52,
+                tint: AppColor.primary,
+                centerSystemImage: iconName ?? "checklist"
+            )
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -188,7 +190,10 @@ struct RoutineTaskRow: View {
                 RoutineCompletionButton(
                     title: title,
                     isCompleted: isCompleted,
-                    onSetCompletion: onSetCompletion
+                    progressCount: progressCount,
+                    progressTarget: progressTarget,
+                    onAdvance: onAdvance,
+                    onUndoCompletion: onUndoCompletion
                 )
             }
         }
@@ -205,6 +210,8 @@ struct BlockedBehaviorTaskRow: View {
     let statusText: String
     let statusColor: Color
     let detailText: String?
+    /// 現在の期間に残っている回数の割合。1から始まり、失敗を記録するたびに減る。
+    let progressFraction: Double
     let isFailed: Bool
     let needsRepair: Bool
     let onEdit: () -> Void
@@ -265,14 +272,7 @@ struct BlockedBehaviorTaskRow: View {
 
     private var summary: some View {
         HStack(spacing: 12) {
-            Image(systemName: iconName ?? "hand.raised")
-                .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(summaryIconColor)
-                .frame(width: 52, height: 52)
-                .background(
-                    summaryIconBackgroundColor,
-                    in: Circle()
-                )
+            summaryIcon
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -297,6 +297,24 @@ struct BlockedBehaviorTaskRow: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var summaryIcon: some View {
+        if needsRepair {
+            Image(systemName: iconName ?? "hand.raised")
+                .font(.system(size: 23, weight: .semibold))
+                .foregroundStyle(AppColor.error)
+                .frame(width: 52, height: 52)
+                .background(AppColor.error.opacity(0.12), in: Circle())
+        } else {
+            RoutineProgressPie(
+                progress: progressFraction,
+                size: 52,
+                tint: AppColor.primary,
+                centerSystemImage: iconName ?? "hand.raised"
+            )
+        }
     }
 
     private var stateButton: some View {
@@ -329,16 +347,6 @@ struct BlockedBehaviorTaskRow: View {
         return "ellipsis"
     }
 
-    private var summaryIconColor: Color {
-        if isKeepingPromise { return .white }
-        return needsRepair ? AppColor.error : AppColor.primary
-    }
-
-    private var summaryIconBackgroundColor: Color {
-        if isKeepingPromise { return AppColor.primary }
-        return needsRepair ? AppColor.error.opacity(0.12) : AppColor.primarySoft
-    }
-
     private var actionAccessibilityLabel: String {
         if needsRepair { return "\(title)のスクリーンタイムを再設定" }
         if isFailed { return "\(title)は失敗" }
@@ -352,7 +360,10 @@ private struct RoutineCompletionButton: View {
 
     let title: String
     let isCompleted: Bool
-    let onSetCompletion: (Bool) -> Bool
+    let progressCount: Int
+    let progressTarget: Int
+    let onAdvance: () -> Bool
+    let onUndoCompletion: () -> Bool
 
     @State private var fillProgress: CGFloat = 0
     @State private var showsCheckmark = false
@@ -367,6 +378,10 @@ private struct RoutineCompletionButton: View {
 
     private var displaysCheckmark: Bool {
         isCompleted || showsCheckmark
+    }
+
+    private var completesWithNextTap: Bool {
+        progressCount + 1 >= max(progressTarget, 1)
     }
 
     var body: some View {
@@ -402,9 +417,13 @@ private struct RoutineCompletionButton: View {
         }
         .buttonStyle(RoutineCompletionPressStyle())
         .disabled(isAnimating)
-        .accessibilityLabel("\(title)を\(isCompleted ? "未完了に戻す" : "完了にする")")
-        .accessibilityValue(isCompleted ? "達成済み" : "未達成")
-        .accessibilityHint("タップして達成状態を変更")
+        .accessibilityLabel(isCompleted ? "\(title)を未完了に戻す" : "\(title)を1回報告")
+        .accessibilityValue(
+            isCompleted
+                ? "達成済み"
+                : "\(min(max(progressCount, 0), max(progressTarget, 1))) / \(max(progressTarget, 1))回"
+        )
+        .accessibilityHint(isCompleted ? "タップして最後の報告を取り消す" : "タップして実行回数を1回増やす")
         .sensoryFeedback(.success, trigger: successFeedbackTrigger)
         .sensoryFeedback(.selection, trigger: undoFeedbackTrigger)
         .onAppear {
@@ -418,13 +437,16 @@ private struct RoutineCompletionButton: View {
                 fillProgress = newValue ? 1 : 0
             }
         }
+        .onDisappear {
+            completionTask?.cancel()
+        }
     }
 
     private func toggleCompletion() {
         completionTask?.cancel()
 
         if isCompleted {
-            guard onSetCompletion(false) else { return }
+            guard onUndoCompletion() else { return }
             showsCheckmark = false
             withAnimation(.easeOut(duration: reduceMotion ? 0.1 : 0.2)) {
                 fillProgress = 0
@@ -438,8 +460,8 @@ private struct RoutineCompletionButton: View {
         fillProgress = 0
         showsCheckmark = false
 
-        let fillDuration = reduceMotion ? 0.12 : 0.32
-        let fillDurationMilliseconds = reduceMotion ? 120 : 320
+        let fillDuration = reduceMotion ? 0.08 : 0.22
+        let fillDurationMilliseconds = reduceMotion ? 80 : 220
         withAnimation(.easeOut(duration: fillDuration)) {
             fillProgress = 1
         }
@@ -452,11 +474,24 @@ private struct RoutineCompletionButton: View {
             }
             guard !Task.isCancelled else { return }
 
-            if onSetCompletion(true) {
+            if onAdvance() {
                 withAnimation(.spring(response: 0.16, dampingFraction: 0.72)) {
                     showsCheckmark = true
                 }
                 successFeedbackTrigger += 1
+
+                if !completesWithNextTap {
+                    do {
+                        try await Task.sleep(for: .milliseconds(reduceMotion ? 140 : 240))
+                    } catch {
+                        return
+                    }
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.easeOut(duration: reduceMotion ? 0.08 : 0.16)) {
+                        showsCheckmark = false
+                        fillProgress = 0
+                    }
+                }
             } else {
                 withAnimation(.easeOut(duration: 0.16)) {
                     fillProgress = 0
@@ -581,6 +616,9 @@ extension View {
             streakText: "6日連続！",
             hasStreak: true,
             progressText: nil,
+            progressFraction: 1.0 / 3.0,
+            progressCount: 1,
+            progressTarget: 3,
             timerStatusText: nil,
             timerTargetDurationMinutes: 10,
             isTimerActive: false,
@@ -590,7 +628,8 @@ extension View {
             allowsEditing: true,
             onEdit: {},
             onStartTimer: {},
-            onSetCompletion: { _ in true }
+            onAdvance: { true },
+            onUndoCompletion: { true }
         )
         RoutineTaskRow(
             title: "散歩する",
@@ -599,6 +638,9 @@ extension View {
             streakText: "5日連続！",
             hasStreak: true,
             progressText: nil,
+            progressFraction: 1,
+            progressCount: 1,
+            progressTarget: 1,
             timerStatusText: nil,
             timerTargetDurationMinutes: nil,
             isTimerActive: false,
@@ -608,7 +650,8 @@ extension View {
             allowsEditing: true,
             onEdit: {},
             onStartTimer: {},
-            onSetCompletion: { _ in true }
+            onAdvance: { true },
+            onUndoCompletion: { true }
         )
     }
     .padding()

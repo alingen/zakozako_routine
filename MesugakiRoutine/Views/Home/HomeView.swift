@@ -289,6 +289,9 @@ struct HomeView: View {
             progressText: progress.showsCountBreakdown
                 ? "\(progress.done) / \(progress.target)回"
                 : nil,
+            progressFraction: progress.fraction,
+            progressCount: progress.done,
+            progressTarget: progress.target,
             timerStatusText: activeTimerForRoutine.map { timerStatusText(for: $0.session) },
             timerTargetDurationMinutes: routine.targetDurationMinutes,
             isTimerActive: activeTimerForRoutine != nil,
@@ -298,12 +301,16 @@ struct HomeView: View {
             allowsEditing: routine.id != onboardingRoutineID,
             onEdit: { requestRoutineEdit(routine) },
             onStartTimer: { openTimer(for: routine) },
-            onSetCompletion: { completed in
-                let didUpdate = updateRoutineCompletion(routine, completed: completed)
-                if didUpdate, completed, routine.id == onboardingRoutineID {
+            onAdvance: {
+                let completesTarget = progress.done + 1 >= progress.target
+                let didUpdate = updateRoutineCompletion(routine, completed: true)
+                if didUpdate, completesTarget, routine.id == onboardingRoutineID {
                     onOnboardingRoutineCompleted()
                 }
                 return didUpdate
+            },
+            onUndoCompletion: {
+                updateRoutineCompletion(routine, completed: false)
             }
         )
     }
@@ -394,6 +401,7 @@ struct HomeView: View {
                 usage: usage,
                 hasScreenTimeIssue: hasScreenTimeIssue
             ),
+            progressFraction: usage.fraction,
             isFailed: usage.failed,
             needsRepair: hasScreenTimeIssue,
             onEdit: {
@@ -531,7 +539,9 @@ struct HomeView: View {
     }
 
     private func updateRoutineCompletion(_ routine: Routine, completed: Bool) -> Bool {
-        let didUpdate = viewModel.setRoutineCompletion(routine, completed: completed)
+        let didUpdate = completed
+            ? viewModel.advanceRoutine(routine)
+            : viewModel.setRoutineCompletion(routine, completed: false)
         if didUpdate,
            completed,
            let timer = activeTimer,
