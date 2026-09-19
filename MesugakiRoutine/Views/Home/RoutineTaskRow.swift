@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Home の「今日の約束」1件を表示する、拡張可能な横長カード。
-/// 通常時のカード本体は将来の TODO 導線用に空け、編集モード・タイマー・完了だけを
-/// それぞれ独立したタップ領域として扱う。
+/// 編集・タイマー・完了は、それぞれ独立したタップ領域として扱う。
 struct RoutineTaskRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -63,20 +62,13 @@ struct RoutineTaskRow: View {
         }
     }
 
-    @ViewBuilder
     private var taskDetails: some View {
-        if isEditing {
-            Button(action: onEdit) {
-                taskSummary(showsEditChevron: true)
-            }
-            .buttonStyle(RoutineRowPressStyle())
-            .accessibilityLabel(taskAccessibilityLabel)
-            .accessibilityHint("タップして内容を編集")
-        } else {
-            taskSummary(showsEditChevron: false)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(taskAccessibilityLabel)
+        Button(action: onEdit) {
+            taskSummary(showsEditChevron: isEditing)
         }
+        .buttonStyle(RoutineRowPressStyle())
+        .accessibilityLabel(taskAccessibilityLabel)
+        .accessibilityHint("タップして内容を編集")
     }
 
     private func taskSummary(showsEditChevron: Bool) -> some View {

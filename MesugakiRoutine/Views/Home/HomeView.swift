@@ -232,7 +232,7 @@ struct HomeView: View {
         .animation(.easeInOut(duration: 0.22), value: isEditingRoutines)
     }
 
-    /// 約束1件。通常時は時計と右端の丸だけを操作でき、編集モード中のみカード本体から編集する。
+    /// 約束1件。カード本体は編集、時計はタイマー、右端の丸は達成状態の変更に分離する。
     @ViewBuilder
     private func routineListRow(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
