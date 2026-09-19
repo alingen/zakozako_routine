@@ -9,7 +9,7 @@ enum BlockedBehaviorTrackingKind: String, Codable {
 /// ユーザーが「やらないと決めた行動」。同時に挑戦中(`isActive`)にできるのは1件のみ。
 ///
 /// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、ユーザーが敗北を確定すると
-/// `usageEvents` が上限まで記録される。期間内の消費が上限未満なら、その日は「達成」として
+/// `usageEvents` に1回分が記録される。期間内の消費が上限未満なら、その日は「達成」として
 /// 連続日数に加算される。判定は `BlockedBehaviorRepository.autoEvaluate` が日付変更時に自動で行う。
 @Model
 final class BlockedBehavior {

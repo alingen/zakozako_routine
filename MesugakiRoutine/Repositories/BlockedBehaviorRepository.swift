@@ -128,8 +128,8 @@ final class BlockedBehaviorRepository {
         }
     }
 
-    /// ユーザーが敗北を確定した時、現在期間の上限に達するまでログを補って失敗を記録する。
-    /// すでに失敗済みなら何も変更しないため、連続タップでも重複しない。
+    /// ユーザーが「負けました」を確定した時、その1回だけを消費ログとして記録する。
+    /// 現在期間の上限に達した後は何も変更しない。
     @discardableResult
     func recordFailure(
         _ behavior: BlockedBehavior,
@@ -145,9 +145,8 @@ final class BlockedBehaviorRepository {
             return .alreadyRecorded
         }
 
-        let missingEventCount = behavior.effectiveLimit - used
         try performMutation {
-            behavior.usageEvents.append(contentsOf: Array(repeating: now, count: missingEventCount))
+            behavior.usageEvents.append(now)
             // 配列が無限に伸びないよう、直近3か月より古いイベントは捨てる(判定に不要)。
             if let cutoff = calendar.date(byAdding: .month, value: -3, to: now) {
                 behavior.usageEvents.removeAll { $0 < cutoff }

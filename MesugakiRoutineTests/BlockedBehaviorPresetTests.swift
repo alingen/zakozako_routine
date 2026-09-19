@@ -377,23 +377,52 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertTrue(try context.fetch(FetchDescriptor<BlockedBehavior>()).isEmpty)
     }
 
-    func testRecordFailureReachesConfiguredLimitImmediately() throws {
+    func testRecordFailureConsumesOneCountAndFailsOnlyAtConfiguredLimit() throws {
         let container = try makeContainer()
         let repository = BlockedBehaviorRepository(context: container.mainContext)
-        let behavior = try XCTUnwrap(repository.create(title: "コーヒーを飲まない", limitCount: 3))
+        let behavior = try XCTUnwrap(repository.create(title: "コーヒーを飲まない", limitCount: 10))
         let now = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 12))
         )
 
-        let result = try repository.recordFailure(behavior, now: now)
+        XCTAssertEqual(try repository.recordFailure(behavior, now: now), .recorded)
+        XCTAssertEqual(behavior.usageInCurrentPeriod(now: now), 1)
+        XCTAssertFalse(behavior.exceededLimit(on: now))
 
-        XCTAssertEqual(result, .recorded)
-        XCTAssertEqual(behavior.usageInCurrentPeriod(now: now), 3)
-        XCTAssertTrue(behavior.exceededLimit(on: now))
-        XCTAssertEqual(behavior.updatedAt, now)
+        for offset in 1..<9 {
+            XCTAssertEqual(
+                try repository.recordFailure(
+                    behavior,
+                    now: now.addingTimeInterval(TimeInterval(offset))
+                ),
+                .recorded
+            )
+        }
+        let ninthFailureTime = now.addingTimeInterval(8)
+        XCTAssertEqual(behavior.usageInCurrentPeriod(now: ninthFailureTime), 9)
+        XCTAssertFalse(behavior.exceededLimit(on: ninthFailureTime))
+
+        let tenthFailureTime = now.addingTimeInterval(9)
+        XCTAssertEqual(
+            try repository.recordFailure(behavior, now: tenthFailureTime),
+            .recorded
+        )
+
+        XCTAssertEqual(behavior.usageInCurrentPeriod(now: tenthFailureTime), 10)
+        XCTAssertTrue(behavior.exceededLimit(on: tenthFailureTime))
+        XCTAssertEqual(behavior.updatedAt, tenthFailureTime)
+
+        XCTAssertEqual(
+            try repository.recordFailure(
+                behavior,
+                now: tenthFailureTime.addingTimeInterval(1)
+            ),
+            .alreadyRecorded
+        )
+        XCTAssertEqual(behavior.usageEvents.count, 10)
     }
 
-    func testRecordFailureAddsOnlyMissingEventsAndDoesNotDuplicate() throws {
+    func testRecordFailureAddsOneEventAndStopsAtLimit() throws {
         let container = try makeContainer()
         let context = container.mainContext
         let repository = BlockedBehaviorRepository(context: context)
@@ -405,12 +434,17 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(try repository.recordFailure(behavior, now: now), .recorded)
-        XCTAssertEqual(behavior.usageInCurrentPeriod(now: now), 3)
+        XCTAssertEqual(behavior.usageInCurrentPeriod(now: now), 2)
+        XCTAssertEqual(behavior.usageEvents.count, 2)
+
+        let limitTime = now.addingTimeInterval(60)
+        XCTAssertEqual(try repository.recordFailure(behavior, now: limitTime), .recorded)
+        XCTAssertEqual(behavior.usageInCurrentPeriod(now: limitTime), 3)
         XCTAssertEqual(behavior.usageEvents.count, 3)
 
         let recordedUpdatedAt = behavior.updatedAt
         XCTAssertEqual(
-            try repository.recordFailure(behavior, now: now.addingTimeInterval(60)),
+            try repository.recordFailure(behavior, now: now.addingTimeInterval(120)),
             .alreadyRecorded
         )
         XCTAssertEqual(behavior.usageEvents.count, 3)
@@ -478,8 +512,8 @@ final class BlockedBehaviorPresetTests: XCTestCase {
             predicate: #Predicate { $0.id == behaviorID }
         )
         let persisted = try XCTUnwrap(try verificationContext.fetch(descriptor).first)
-        XCTAssertEqual(persisted.usageInCurrentPeriod(now: now), 3)
-        XCTAssertTrue(persisted.exceededLimit(on: now))
+        XCTAssertEqual(persisted.usageInCurrentPeriod(now: now), 1)
+        XCTAssertFalse(persisted.exceededLimit(on: now))
     }
 
     func testScreenTimeProgressUsesOnlyVerifiedDaysAndLateFailureRecalculatesStreak() throws {

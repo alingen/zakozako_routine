@@ -154,7 +154,7 @@ final class HomeViewModel {
         )
     }
 
-    /// 最終確認後に現在期間の失敗を確定する。すでに失敗済みなら重複記録せず成功扱いにする。
+    /// 最終確認後に「負けました」1回分を記録する。上限到達後は重複記録しない。
     @discardableResult
     func recordPromiseFailure(_ behavior: BlockedBehavior) -> Bool {
         guard let dependencies else { return false }
