@@ -351,7 +351,6 @@ struct HomeView: View {
                 usage: usage,
                 hasScreenTimeIssue: hasScreenTimeIssue
             ),
-            remainingFraction: usage.fraction,
             isFailed: usage.failed,
             needsRepair: hasScreenTimeIssue,
             onEdit: {

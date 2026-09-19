@@ -182,14 +182,14 @@ struct BlockedBehaviorTaskRow: View {
     let statusText: String
     let statusColor: Color
     let detailText: String?
-    let remainingFraction: Double
     let isFailed: Bool
     let needsRepair: Bool
     let onEdit: () -> Void
     let onAction: () -> Void
 
-    private var clampedRemainingFraction: CGFloat {
-        CGFloat(min(max(remainingFraction, 0), 1))
+    /// 「やらないこと」は、失敗していない状態を達成済みとして扱う。
+    private var isKeepingPromise: Bool {
+        !isFailed && !needsRepair
     }
 
     var body: some View {
@@ -244,10 +244,10 @@ struct BlockedBehaviorTaskRow: View {
         HStack(spacing: 12) {
             Image(systemName: iconName ?? "hand.raised")
                 .font(.system(size: 23, weight: .semibold))
-                .foregroundStyle(isFailed || needsRepair ? AppColor.error : AppColor.primary)
+                .foregroundStyle(summaryIconColor)
                 .frame(width: 52, height: 52)
                 .background(
-                    (isFailed || needsRepair ? AppColor.error.opacity(0.12) : AppColor.primarySoft),
+                    summaryIconBackgroundColor,
                     in: Circle()
                 )
 
@@ -280,27 +280,17 @@ struct BlockedBehaviorTaskRow: View {
         Button(action: onAction) {
             ZStack {
                 Circle()
-                    .fill(isFailed ? AppColor.error : AppColor.surface)
+                    .fill(isKeepingPromise ? AppColor.primary : AppColor.surface)
 
                 Circle()
                     .stroke(
-                        isFailed || needsRepair ? AppColor.error : AppColor.border,
-                        lineWidth: isFailed ? 0 : 2.5
+                        needsRepair ? AppColor.error : AppColor.primary,
+                        lineWidth: isFailed || isKeepingPromise ? 0 : 2.5
                     )
 
-                if !isFailed && !needsRepair && clampedRemainingFraction > 0 {
-                    Circle()
-                        .trim(from: 0, to: clampedRemainingFraction)
-                        .stroke(
-                            AppColor.primary,
-                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                }
-
                 Image(systemName: stateIconName)
-                    .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(isFailed ? Color.white : (needsRepair ? AppColor.error : AppColor.primary))
+                    .font(.system(size: isFailed ? 32 : 19, weight: .bold))
+                    .foregroundStyle(isKeepingPromise ? Color.white : (needsRepair ? AppColor.error : AppColor.primary))
             }
             .frame(width: 50, height: 50)
             .contentShape(Circle())
@@ -311,9 +301,19 @@ struct BlockedBehaviorTaskRow: View {
     }
 
     private var stateIconName: String {
-        if isFailed { return "stop.fill" }
+        if isFailed { return "nosign" }
         if needsRepair { return "arrow.clockwise" }
         return "ellipsis"
+    }
+
+    private var summaryIconColor: Color {
+        if isKeepingPromise { return .white }
+        return needsRepair ? AppColor.error : AppColor.primary
+    }
+
+    private var summaryIconBackgroundColor: Color {
+        if isKeepingPromise { return AppColor.primary }
+        return needsRepair ? AppColor.error.opacity(0.12) : AppColor.primarySoft
     }
 
     private var actionAccessibilityLabel: String {
