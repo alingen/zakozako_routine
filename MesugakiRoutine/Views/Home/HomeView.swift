@@ -212,26 +212,17 @@ struct HomeView: View {
                 Text("今日の約束はありません")
                     .font(.subheadline)
                     .foregroundStyle(AppColor.muted)
-                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .background(
-                        AppColor.surface,
-                        in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
-                    }
-                    .routineListRowStyle()
+                    .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                    .homeFeedListRow()
             }
 
             ForEach(viewModel.todayRoutines) { routine in
                 routineListRow(routine)
-                    .routineListRowStyle()
+                    .homeFeedListRow()
 
                 if routine.id == onboardingRoutineID {
                     onboardingReportGuide
-                        .routineListRowStyle()
+                        .homeFeedListRow()
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
@@ -240,7 +231,7 @@ struct HomeView: View {
                 AddRoutineTaskRow {
                     isPresentingNewRoutine = true
                 }
-                .routineListRowStyle()
+                .homeFeedListRow()
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         } header: {
@@ -350,12 +341,12 @@ struct HomeView: View {
         Section("やらないこと") {
             if let behavior = viewModel.currentBehavior {
                 promiseCard(behavior)
-                    .routineListRowStyle()
+                    .homeFeedListRow()
             } else {
                 AddBlockedBehaviorTaskRow {
                     isPresentingNewBlockedBehavior = true
                 }
-                .routineListRowStyle()
+                .homeFeedListRow()
             }
 
             if !viewModel.masteredBehaviors.isEmpty {

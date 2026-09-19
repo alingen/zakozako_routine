@@ -21,7 +21,6 @@ final class OnboardingStateStoreTests: XCTestCase {
         withDefaults { defaults in
             let first = OnboardingStateStore(defaults: defaults)
             first.draft.userName = "かずし"
-            first.draft.userHonorific = .ojisan
             first.draft.selectedHabitID = "onboarding-read"
             first.draft.habitTitle = "本を読む"
             first.draft.habitIconName = "book"
@@ -33,7 +32,6 @@ final class OnboardingStateStoreTests: XCTestCase {
             let restored = OnboardingStateStore(defaults: defaults)
             XCTAssertEqual(restored.setupStep, .goalSetting)
             XCTAssertEqual(restored.draft.userName, "かずし")
-            XCTAssertEqual(restored.draft.userHonorific, .ojisan)
             XCTAssertEqual(restored.draft.selectedHabitID, "onboarding-read")
             XCTAssertEqual(restored.draft.habitTitle, "本を読む")
             XCTAssertEqual(restored.draft.habitIconName, "book")

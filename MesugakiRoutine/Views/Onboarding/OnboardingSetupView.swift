@@ -106,7 +106,7 @@ struct OnboardingSetupView: View {
             rioMessage("もしかして習慣化アプリ入れただけで満足してないよね〜？w")
 
             systemExplanation(
-                "毎日の小さな約束を達成して、莉央との会話や物語を楽しむアプリです。\n\nまずはあなたの名前と呼び方をおしえてください"
+                "毎日の小さな約束を達成して、莉央との会話や物語を楽しむアプリです。\n\nまずはあなたの名前をおしえてください"
             )
 
             VStack(alignment: .leading, spacing: 10) {
@@ -125,28 +125,13 @@ struct OnboardingSetupView: View {
                     .onboardingTextField()
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("莉央からの呼ばれ方")
-                    .font(.subheadline.weight(.semibold))
-
-                choiceFlow {
-                    ForEach(onboardingHonorifics) { honorific in
-                        OnboardingChoiceChip(
-                            title: honorific.displayName,
-                            isSelected: stateStore.draft.userHonorific == honorific
-                        ) {
-                            stateStore.draft.userHonorific = honorific
-                        }
-                    }
-                }
-            }
         }
     }
 
     private var habitSelectionPage: some View {
         VStack(alignment: .leading, spacing: 22) {
             onboardingTitle("まずは何を続けてみますか？")
-            rioMessage("まずは1つでいいよ\n\(stateStore.draft.userHonorific.displayName)のよわよわメンタルじゃ何個も続かないでしょ〜w")
+            rioMessage("まずは1つでいいよ\nおにいさんのよわよわメンタルじゃ何個も続かないでしょ〜w")
 
             LazyVGrid(
                 columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
@@ -362,10 +347,6 @@ struct OnboardingSetupView: View {
         case .confirmation: return "この約束ではじめる"
         default: return "次へ"
         }
-    }
-
-    private var onboardingHonorifics: [UserHonorific] {
-        [.oniisan, .ojisan, .oneesan]
     }
 
     private var goalOptions: [OnboardingGoalOption] {

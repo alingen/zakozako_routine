@@ -1,28 +1,8 @@
 import Foundation
 
-/// ユーザーの「よびかた」。みんなのざこ速報の表示に使う(将来キャラの呼びかけにも)。
-enum UserHonorific: String, CaseIterable, Identifiable {
-    case oniisan
-    case oneesan
-    case ojisan
-    case obasan
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .oniisan: return "おにいさん"
-        case .oneesan: return "おねえさん"
-        case .ojisan: return "おじさん"
-        case .obasan: return "おばさん"
-        }
-    }
-}
-
 /// アプリ全体の簡易設定。UserDefaultsに保存する。
 enum AppSettingsStore {
     private static let userNameKey = "user_name"
-    private static let userHonorificKey = "user_honorific"
     private static let notificationsEnabledKey = "notifications_enabled"
     private static let notificationDelayMinutesKey = "notification_delay_minutes"
 
@@ -32,19 +12,11 @@ enum AppSettingsStore {
         set { UserDefaults.standard.set(newValue, forKey: userNameKey) }
     }
 
-    /// よびかた(おにいさん / おねえさん / おじさん / おばさん)。
-    static var userHonorific: UserHonorific {
-        get {
-            UserDefaults.standard.string(forKey: userHonorificKey)
-                .flatMap(UserHonorific.init(rawValue:)) ?? .oniisan
-        }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: userHonorificKey) }
-    }
-
-    /// 表示用の呼び名。ユーザーネーム + よびかた(例: 「だいすけおにいさん」。名前未設定なら「おにいさん」)。
+    /// 表示用の呼び名。呼称は常に「おにいさん」とする。
+    /// 例: 「だいすけおにいさん」。名前未設定なら「おにいさん」。
     static var userDisplayName: String {
         let name = userName.trimmingCharacters(in: .whitespaces)
-        return name.isEmpty ? userHonorific.displayName : name + userHonorific.displayName
+        return name.isEmpty ? "おにいさん" : name + "おにいさん"
     }
 
     /// サボり通知を有効にするか。全ルーティン共通の設定。

@@ -258,7 +258,6 @@ struct RootTabView: View {
             )
 
             AppSettingsStore.userName = draft.trimmedUserName
-            AppSettingsStore.userHonorific = draft.userHonorific
             selectedTab = .home
             onboardingState.beginInAppTutorial(createdRoutineID: routine.id)
         } catch {

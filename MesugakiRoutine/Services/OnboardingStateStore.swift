@@ -57,7 +57,6 @@ struct OnboardingNotificationSetup: Codable, Equatable, Sendable {
 /// 5画面で入力する内容。Routine を作成するまでは UserDefaults にだけ保持する。
 struct OnboardingDraft: Codable, Equatable, Sendable {
     var userName: String
-    var userHonorificRawValue: String
 
     /// プリセットまたは `custom` を識別する、UI側で安定したID。
     var selectedHabitID: String?
@@ -82,7 +81,6 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
 
     init(
         userName: String = "",
-        userHonorific: UserHonorific = .oniisan,
         selectedHabitID: String? = nil,
         habitTitle: String = "",
         habitIconName: String? = nil,
@@ -94,7 +92,6 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
         reminderMinuteOfDay: Int? = nil
     ) {
         self.userName = userName
-        self.userHonorificRawValue = userHonorific.rawValue
         self.selectedHabitID = selectedHabitID
         self.habitTitle = habitTitle
         self.habitIconName = habitIconName
@@ -104,11 +101,6 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
         self.selectedCueID = selectedCueID
         self.cueText = cueText
         self.reminderMinuteOfDay = reminderMinuteOfDay.map(Self.normalizedMinuteOfDay)
-    }
-
-    var userHonorific: UserHonorific {
-        get { UserHonorific(rawValue: userHonorificRawValue) ?? .oniisan }
-        set { userHonorificRawValue = newValue.rawValue }
     }
 
     var trimmedUserName: String {
