@@ -10,6 +10,24 @@ enum OnboardingSetupStep: Int, Codable, CaseIterable, Sendable {
     case confirmation
 }
 
+/// 1枚目の名前入力から、莉央との出会いを段階的に表示する現在位置。
+enum OnboardingIntroductionStage: String, Codable, Sendable {
+    case nameEntry
+    case firstMessage
+    case secondMessage
+    case characterExplanation
+}
+
+/// 2枚目で習慣を選んだ後、莉央の説明を段階的に表示する現在位置。
+enum OnboardingHabitSelectionStage: String, Codable, Sendable {
+    case awaitingSelection
+    // 直前の実装で保存された `rioMessage` も、最初のセリフとしてそのまま復元する。
+    case firstMessage = "rioMessage"
+    case secondMessage
+    case systemExplanation
+    case completed
+}
+
 /// 専用画面終了後を含む、オンボーディング全体の現在位置。
 enum OnboardingPhase: String, Codable, Sendable {
     case dedicatedSetup
@@ -152,6 +170,12 @@ final class OnboardingStateStore {
     private(set) var setupStep: OnboardingSetupStep {
         didSet { persistIfNeeded() }
     }
+    private(set) var introductionStage: OnboardingIntroductionStage {
+        didSet { persistIfNeeded() }
+    }
+    private(set) var habitSelectionStage: OnboardingHabitSelectionStage {
+        didSet { persistIfNeeded() }
+    }
     private(set) var phase: OnboardingPhase {
         didSet { persistIfNeeded() }
     }
@@ -207,6 +231,9 @@ final class OnboardingStateStore {
         startedWithoutSavedState = restoredSnapshot == nil
         let snapshot = restoredSnapshot ?? .initial
         setupStep = snapshot.setupStep
+        introductionStage = snapshot.introductionStage ?? .nameEntry
+        habitSelectionStage = snapshot.habitSelectionStage
+            ?? Self.restoredHabitSelectionStage(from: snapshot)
         phase = snapshot.phase
         draft = snapshot.draft
         createdRoutineID = snapshot.createdRoutineID
@@ -252,16 +279,78 @@ final class OnboardingStateStore {
         performBatchUpdate {
             phase = .dedicatedSetup
             setupStep = step
+            if step == .introduction {
+                introductionStage = .nameEntry
+                habitSelectionStage = .awaitingSelection
+            } else if step == .habitSelection {
+                habitSelectionStage = draft.selectedHabitID == nil ? .awaitingSelection : .completed
+            }
         }
     }
 
-    /// 次の専用画面へ進む。最終確認画面ではfalseを返す。
+    /// 2枚目で項目を選んだ直後に、莉央の説明を開始する。
+    func beginHabitSelectionIntroductionIfNeeded() {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == .habitSelection,
+              habitSelectionStage == .awaitingSelection,
+              draft.selectedHabitID != nil else { return }
+        habitSelectionStage = .firstMessage
+    }
+
+    /// 1・2枚目では説明を1段階ずつ進め、それ以降は次の専用画面へ進む。
+    /// 最終確認画面ではfalseを返す。
     @discardableResult
     func advanceSetup() -> Bool {
         guard !isCompleted,
-              phase == .dedicatedSetup,
-              canContinue(),
-              let index = OnboardingSetupStep.allCases.firstIndex(of: setupStep),
+              phase == .dedicatedSetup else {
+            return false
+        }
+
+        if setupStep == .introduction {
+            guard canContinue() else { return false }
+            switch introductionStage {
+            case .nameEntry:
+                introductionStage = .firstMessage
+            case .firstMessage:
+                introductionStage = .secondMessage
+            case .secondMessage:
+                introductionStage = .characterExplanation
+            case .characterExplanation:
+                performBatchUpdate {
+                    habitSelectionStage = .awaitingSelection
+                    setupStep = .habitSelection
+                }
+            }
+            return true
+        }
+
+        if setupStep == .habitSelection {
+            switch habitSelectionStage {
+            case .awaitingSelection:
+                guard draft.selectedHabitID != nil else { return false }
+                habitSelectionStage = .firstMessage
+            case .firstMessage:
+                habitSelectionStage = .secondMessage
+            case .secondMessage:
+                habitSelectionStage = .systemExplanation
+            case .systemExplanation:
+                performBatchUpdate {
+                    habitSelectionStage = .completed
+                    if draft.hasHabitSelection {
+                        setupStep = .goalSetting
+                    }
+                }
+            case .completed:
+                guard canContinue() else { return false }
+                setupStep = .goalSetting
+            }
+            return true
+        }
+
+        guard canContinue() else { return false }
+
+        guard let index = OnboardingSetupStep.allCases.firstIndex(of: setupStep),
               OnboardingSetupStep.allCases.indices.contains(index + 1) else {
             return false
         }
@@ -269,16 +358,57 @@ final class OnboardingStateStore {
         return true
     }
 
-    /// 前の専用画面へ戻る。1枚目ではfalseを返す。
+    /// 前の段階・画面へ戻る。習慣選択画面からは名前を編集できる位置へ戻す。
     @discardableResult
     func retreatSetup() -> Bool {
         guard !isCompleted,
-              phase == .dedicatedSetup,
-              let index = OnboardingSetupStep.allCases.firstIndex(of: setupStep),
+              phase == .dedicatedSetup else {
+            return false
+        }
+
+        if setupStep == .introduction {
+            switch introductionStage {
+            case .nameEntry:
+                return false
+            case .firstMessage:
+                introductionStage = .nameEntry
+            case .secondMessage:
+                introductionStage = .firstMessage
+            case .characterExplanation:
+                introductionStage = .secondMessage
+            }
+            return true
+        }
+
+        if setupStep == .habitSelection {
+            switch habitSelectionStage {
+            case .firstMessage:
+                habitSelectionStage = .awaitingSelection
+                return true
+            case .secondMessage:
+                habitSelectionStage = .firstMessage
+                return true
+            case .systemExplanation:
+                habitSelectionStage = .secondMessage
+                return true
+            case .awaitingSelection, .completed:
+                break
+            }
+        }
+
+        guard let index = OnboardingSetupStep.allCases.firstIndex(of: setupStep),
               index > OnboardingSetupStep.allCases.startIndex else {
             return false
         }
-        setupStep = OnboardingSetupStep.allCases[index - 1]
+        performBatchUpdate {
+            setupStep = OnboardingSetupStep.allCases[index - 1]
+            if setupStep == .introduction {
+                introductionStage = .nameEntry
+                habitSelectionStage = .awaitingSelection
+            } else if setupStep == .habitSelection {
+                habitSelectionStage = .completed
+            }
+        }
         return true
     }
 
@@ -424,6 +554,8 @@ final class OnboardingStateStore {
         let initial = Snapshot.initial
         performBatchUpdate {
             setupStep = initial.setupStep
+            introductionStage = .nameEntry
+            habitSelectionStage = .awaitingSelection
             phase = initial.phase
             draft = initial.draft
             createdRoutineID = nil
@@ -454,6 +586,8 @@ final class OnboardingStateStore {
         let snapshot = Snapshot(
             version: Self.schemaVersion,
             setupStep: setupStep,
+            introductionStage: introductionStage,
+            habitSelectionStage: habitSelectionStage,
             phase: phase,
             draft: draft,
             createdRoutineID: createdRoutineID,
@@ -482,6 +616,19 @@ final class OnboardingStateStore {
         return snapshot
     }
 
+    private static func restoredHabitSelectionStage(
+        from snapshot: Snapshot
+    ) -> OnboardingHabitSelectionStage {
+        if snapshot.setupStep.rawValue > OnboardingSetupStep.habitSelection.rawValue {
+            return .completed
+        }
+        if snapshot.setupStep == .habitSelection,
+           snapshot.draft.selectedHabitID != nil {
+            return .firstMessage
+        }
+        return .awaitingSelection
+    }
+
     /// 通常の通知再計算からも、オンボーディングで指定した初回通知下限を参照する。
     static func persistedNotificationNotBefore(
         for routineID: UUID,
@@ -496,6 +643,10 @@ final class OnboardingStateStore {
     private struct Snapshot: Codable {
         let version: Int
         var setupStep: OnboardingSetupStep
+        // 追加前の保存データでも入力内容・後半の進行を復元できるようOptionalにする。
+        var introductionStage: OnboardingIntroductionStage?
+        // 追加前の保存データは画面位置と選択内容から安全な段階へ復元する。
+        var habitSelectionStage: OnboardingHabitSelectionStage?
         var phase: OnboardingPhase
         var draft: OnboardingDraft
         var createdRoutineID: UUID?
@@ -511,6 +662,8 @@ final class OnboardingStateStore {
         static let initial = Snapshot(
             version: OnboardingStateStore.schemaVersion,
             setupStep: .introduction,
+            introductionStage: .nameEntry,
+            habitSelectionStage: .awaitingSelection,
             phase: .dedicatedSetup,
             draft: OnboardingDraft(),
             createdRoutineID: nil,

@@ -8,6 +8,8 @@ final class OnboardingStateStoreTests: XCTestCase {
             let store = OnboardingStateStore(defaults: defaults)
 
             XCTAssertEqual(store.setupStep, .introduction)
+            XCTAssertEqual(store.introductionStage, .nameEntry)
+            XCTAssertEqual(store.habitSelectionStage, .awaitingSelection)
             XCTAssertEqual(store.phase, .dedicatedSetup)
             XCTAssertEqual(store.draft, OnboardingDraft())
             XCTAssertNil(store.createdRoutineID)
@@ -25,9 +27,9 @@ final class OnboardingStateStoreTests: XCTestCase {
             first.draft.habitTitle = "本を読む"
             first.draft.habitIconName = "book"
 
-            XCTAssertTrue(first.advanceSetup())
+            finishIntroduction(first)
             XCTAssertEqual(first.setupStep, .habitSelection)
-            XCTAssertTrue(first.advanceSetup())
+            finishHabitSelectionIntroduction(first)
 
             let restored = OnboardingStateStore(defaults: defaults)
             XCTAssertEqual(restored.setupStep, .goalSetting)
@@ -45,14 +47,16 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertFalse(store.advanceSetup())
             store.draft.userName = "  "
             XCTAssertFalse(store.advanceSetup())
+            XCTAssertEqual(store.introductionStage, .nameEntry)
+            XCTAssertEqual(store.setupStep, .introduction)
 
             store.draft.userName = "かずし"
-            XCTAssertTrue(store.advanceSetup())
+            finishIntroduction(store)
 
             store.draft.habitTitle = "本を読む"
             XCTAssertFalse(store.advanceSetup(), "選択IDのないタイトルだけでは進めない")
             store.draft.selectedHabitID = "onboarding-read"
-            XCTAssertTrue(store.advanceSetup())
+            finishHabitSelectionIntroduction(store)
 
             store.draft.selectedGoalID = "one-page"
             store.draft.routineTitle = "本を1ページ読む"
@@ -63,6 +67,230 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertTrue(store.advanceSetup())
             XCTAssertEqual(store.setupStep, .confirmation)
             XCTAssertFalse(store.advanceSetup(), "最終確認後はRoutine保存APIを明示的に呼ぶ")
+        }
+    }
+
+    func testIntroductionProgressResumesAtEachMessageWithoutLeavingFirstScreen() {
+        withDefaults { defaults in
+            var store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+
+            let stages: [OnboardingIntroductionStage] = [
+                .firstMessage, .secondMessage, .characterExplanation
+            ]
+            for stage in stages {
+                XCTAssertTrue(store.advanceSetup())
+                XCTAssertEqual(store.introductionStage, stage)
+                XCTAssertEqual(store.setupStep, .introduction)
+
+                store = OnboardingStateStore(defaults: defaults)
+                XCTAssertEqual(store.introductionStage, stage)
+                XCTAssertEqual(store.setupStep, .introduction)
+                XCTAssertEqual(store.draft.userName, "かずし")
+                XCTAssertNil(store.createdRoutineID)
+                XCTAssertFalse(store.isCompleted)
+            }
+
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.setupStep, .habitSelection)
+            XCTAssertEqual(OnboardingStateStore(defaults: defaults).setupStep, .habitSelection)
+        }
+    }
+
+    func testRetreatWithinIntroductionReturnsOneStageAtATime() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertTrue(store.advanceSetup())
+
+            let stages: [OnboardingIntroductionStage] = [.secondMessage, .firstMessage, .nameEntry]
+            for stage in stages {
+                XCTAssertTrue(store.retreatSetup())
+                XCTAssertEqual(store.introductionStage, stage)
+                XCTAssertEqual(store.setupStep, .introduction)
+                XCTAssertEqual(OnboardingStateStore(defaults: defaults).introductionStage, stage)
+            }
+            XCTAssertFalse(store.retreatSetup())
+            XCTAssertEqual(store.draft.userName, "かずし")
+        }
+    }
+
+    func testHabitSelectionIntroductionPersistsAndAdvancesOneStageAtATime() {
+        withDefaults { defaults in
+            var store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            finishIntroduction(store)
+            store.draft.selectedHabitID = "onboarding-read"
+            store.draft.habitTitle = "本を読む"
+
+            store.beginHabitSelectionIntroductionIfNeeded()
+            XCTAssertEqual(store.habitSelectionStage, .firstMessage)
+            XCTAssertEqual(store.setupStep, .habitSelection)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.habitSelectionStage, .firstMessage)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.habitSelectionStage, .secondMessage)
+            XCTAssertEqual(store.setupStep, .habitSelection)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.habitSelectionStage, .secondMessage)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.habitSelectionStage, .systemExplanation)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.habitSelectionStage, .systemExplanation)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.habitSelectionStage, .completed)
+            XCTAssertEqual(store.setupStep, .goalSetting)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.habitSelectionStage, .completed)
+            XCTAssertEqual(restored.setupStep, .goalSetting)
+        }
+    }
+
+    func testCustomHabitShowsExplanationBeforeRequiringItsTitle() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            finishIntroduction(store)
+            store.draft.selectedHabitID = "custom"
+
+            store.beginHabitSelectionIntroductionIfNeeded()
+            XCTAssertEqual(store.habitSelectionStage, .firstMessage)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.habitSelectionStage, .secondMessage)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.habitSelectionStage, .systemExplanation)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.habitSelectionStage, .completed)
+            XCTAssertEqual(store.setupStep, .habitSelection)
+            XCTAssertFalse(store.advanceSetup())
+
+            store.draft.habitTitle = "ストレッチする"
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.setupStep, .goalSetting)
+        }
+    }
+
+    func testHabitSelectionIntroductionRetreatsToSelectionAndDoesNotReplayAfterGoal() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            finishIntroduction(store)
+            store.draft.selectedHabitID = "onboarding-read"
+            store.draft.habitTitle = "本を読む"
+            store.beginHabitSelectionIntroductionIfNeeded()
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.habitSelectionStage, .secondMessage)
+            XCTAssertTrue(store.advanceSetup())
+
+            XCTAssertTrue(store.retreatSetup())
+            XCTAssertEqual(store.habitSelectionStage, .secondMessage)
+            XCTAssertTrue(store.retreatSetup())
+            XCTAssertEqual(store.habitSelectionStage, .firstMessage)
+            XCTAssertTrue(store.retreatSetup())
+            XCTAssertEqual(store.habitSelectionStage, .awaitingSelection)
+            XCTAssertEqual(store.setupStep, .habitSelection)
+
+            finishHabitSelectionIntroduction(store)
+            XCTAssertTrue(store.retreatSetup())
+            XCTAssertEqual(store.setupStep, .habitSelection)
+            XCTAssertEqual(store.habitSelectionStage, .completed)
+        }
+    }
+
+    func testReturningFromHabitSelectionAllowsNameEditingAndReplaysIntroduction() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            finishIntroduction(store)
+            store.draft.selectedHabitID = "onboarding-read"
+            store.draft.habitTitle = "本を読む"
+
+            XCTAssertTrue(store.retreatSetup())
+            XCTAssertEqual(store.setupStep, .introduction)
+            XCTAssertEqual(store.introductionStage, .nameEntry)
+            XCTAssertEqual(store.draft.userName, "かずし")
+            XCTAssertEqual(store.draft.selectedHabitID, "onboarding-read")
+
+            store.draft.userName = " "
+            XCTAssertFalse(store.advanceSetup())
+            store.draft.userName = "新しい名前"
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.setupStep, .introduction)
+            XCTAssertEqual(store.introductionStage, .firstMessage)
+            XCTAssertEqual(OnboardingStateStore(defaults: defaults).draft.userName, "新しい名前")
+        }
+    }
+
+    func testDirectNavigationToIntroductionResetsItsStageButPreservesDraft() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertTrue(store.advanceSetup())
+
+            store.goToSetupStep(.introduction)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.introductionStage, .nameEntry)
+            XCTAssertEqual(restored.setupStep, .introduction)
+            XCTAssertEqual(restored.draft.userName, "かずし")
+        }
+    }
+
+    func testOlderSnapshotWithoutIntroductionStagePreservesExistingProgress() throws {
+        try withDefaults { defaults in
+            let first = OnboardingStateStore(defaults: defaults)
+            first.draft.userName = "かずし"
+            first.draft.selectedHabitID = "onboarding-read"
+            first.draft.habitTitle = "本を読む"
+
+            let steps: [OnboardingSetupStep] = [.introduction, .habitSelection, .goalSetting]
+            for step in steps {
+                first.goToSetupStep(step)
+                let data = try XCTUnwrap(defaults.data(forKey: OnboardingStateStore.defaultStorageKey))
+                var legacySnapshot = try XCTUnwrap(
+                    JSONSerialization.jsonObject(with: data) as? [String: Any]
+                )
+                legacySnapshot.removeValue(forKey: "introductionStage")
+                legacySnapshot.removeValue(forKey: "habitSelectionStage")
+                defaults.set(
+                    try JSONSerialization.data(withJSONObject: legacySnapshot),
+                    forKey: OnboardingStateStore.defaultStorageKey
+                )
+
+                let restored = OnboardingStateStore(defaults: defaults)
+                XCTAssertFalse(restored.startedWithoutSavedState)
+                XCTAssertEqual(restored.setupStep, step)
+                XCTAssertEqual(restored.introductionStage, .nameEntry)
+                let expectedHabitStage: OnboardingHabitSelectionStage = switch step {
+                case .introduction: .awaitingSelection
+                case .habitSelection: .firstMessage
+                default: .completed
+                }
+                XCTAssertEqual(restored.habitSelectionStage, expectedHabitStage)
+                XCTAssertEqual(restored.draft.userName, "かずし")
+                XCTAssertEqual(restored.draft.selectedHabitID, "onboarding-read")
+            }
+        }
+    }
+
+    func testLaterSetupScreensStillRetreatOneScreenAtATime() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.confirmation)
+
+            let steps: [OnboardingSetupStep] = [.cueSelection, .goalSetting, .habitSelection]
+            for step in steps {
+                XCTAssertTrue(store.retreatSetup())
+                XCTAssertEqual(store.setupStep, step)
+                XCTAssertEqual(OnboardingStateStore(defaults: defaults).setupStep, step)
+            }
         }
     }
 
@@ -128,6 +356,7 @@ final class OnboardingStateStoreTests: XCTestCase {
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
             store.draft.userName = "かずし"
+            XCTAssertTrue(store.advanceSetup())
             store.beginInAppTutorial(createdRoutineID: UUID())
             store.completeFirstReport(with: .completed)
 
@@ -135,6 +364,8 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             let restored = OnboardingStateStore(defaults: defaults)
             XCTAssertEqual(restored.setupStep, .introduction)
+            XCTAssertEqual(restored.introductionStage, .nameEntry)
+            XCTAssertEqual(restored.habitSelectionStage, .awaitingSelection)
             XCTAssertEqual(restored.phase, .dedicatedSetup)
             XCTAssertEqual(restored.draft, OnboardingDraft())
             XCTAssertNil(restored.createdRoutineID)
@@ -339,6 +570,33 @@ final class OnboardingStateStoreTests: XCTestCase {
         store.completeConversationPrompt(with: .later)
         store.completeStoryUnlockPresentation()
         return store
+    }
+
+    private func finishIntroduction(
+        _ store: OnboardingStateStore,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        for _ in 0..<4 {
+            XCTAssertTrue(store.advanceSetup(), file: file, line: line)
+        }
+        XCTAssertEqual(store.setupStep, .habitSelection, file: file, line: line)
+    }
+
+    private func finishHabitSelectionIntroduction(
+        _ store: OnboardingStateStore,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        store.beginHabitSelectionIntroductionIfNeeded()
+        XCTAssertEqual(store.habitSelectionStage, .firstMessage, file: file, line: line)
+        XCTAssertTrue(store.advanceSetup(), file: file, line: line)
+        XCTAssertEqual(store.habitSelectionStage, .secondMessage, file: file, line: line)
+        XCTAssertTrue(store.advanceSetup(), file: file, line: line)
+        XCTAssertEqual(store.habitSelectionStage, .systemExplanation, file: file, line: line)
+        XCTAssertTrue(store.advanceSetup(), file: file, line: line)
+        XCTAssertEqual(store.habitSelectionStage, .completed, file: file, line: line)
+        XCTAssertEqual(store.setupStep, .goalSetting, file: file, line: line)
     }
 
     private func withDefaults(_ body: (UserDefaults) throws -> Void) rethrows {

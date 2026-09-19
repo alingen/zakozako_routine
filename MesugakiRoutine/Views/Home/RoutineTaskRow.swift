@@ -34,19 +34,22 @@ struct RoutineTaskRow: View {
                 regularLayout
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, isHighlighted ? 8 : 0)
-        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-        .background(
-            isHighlighted ? AppColor.primarySoft.opacity(0.46) : Color.clear,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
-            if isHighlighted {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(AppColor.primary.opacity(0.55), lineWidth: 1.5)
-            }
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(
+                    isHighlighted ? AppColor.primary : AppColor.border.opacity(0.72),
+                    lineWidth: isHighlighted ? 2.5 : 1
+                )
         }
+        .shadow(
+            color: isHighlighted ? AppColor.primary.opacity(0.16) : AppColor.text.opacity(0.035),
+            radius: isHighlighted ? 12 : 7,
+            y: isHighlighted ? 4 : 3
+        )
         .animation(.easeInOut(duration: 0.2), value: isCompleted)
         .accessibilityElement(children: .contain)
     }
@@ -93,14 +96,14 @@ struct RoutineTaskRow: View {
         HStack(spacing: 12) {
             RoutineProgressPie(
                 progress: progressFraction,
-                size: 40,
+                size: 52,
                 tint: AppColor.primary,
                 centerSystemImage: iconName ?? "checklist"
             )
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.subheadline)
+                    .font(.headline)
                     .foregroundStyle(AppColor.text)
                     .multilineTextAlignment(.leading)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
@@ -136,13 +139,13 @@ struct RoutineTaskRow: View {
 
             if showsEditChevron {
                 Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(AppColor.muted)
-                    .frame(width: 24, height: 40)
+                    .frame(width: 28, height: 50)
                     .accessibilityHidden(true)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         .contentShape(Rectangle())
     }
 
@@ -159,9 +162,9 @@ struct RoutineTaskRow: View {
                 if let timerTargetDurationMinutes, !isCompleted {
                     Button(action: onStartTimer) {
                         Image(systemName: isTimerActive ? "clock.fill" : "clock")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 19, weight: .semibold))
                             .foregroundStyle(isTimerActive ? Color.white : AppColor.primary)
-                            .frame(width: 40, height: 40)
+                            .frame(width: 46, height: 46)
                             .background(
                                 isTimerActive ? AppColor.primary : AppColor.primarySoft,
                                 in: Circle()
@@ -227,8 +230,15 @@ struct BlockedBehaviorTaskRow: View {
                 regularLayout
             }
         }
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+        }
+        .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
         .accessibilityElement(children: .contain)
     }
 
@@ -264,9 +274,9 @@ struct BlockedBehaviorTaskRow: View {
         HStack(spacing: 12) {
             summaryIcon
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.subheadline)
+                    .font(.headline)
                     .foregroundStyle(AppColor.text)
                     .multilineTextAlignment(.leading)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
@@ -295,12 +305,12 @@ struct BlockedBehaviorTaskRow: View {
             Image(systemName: iconName ?? "hand.raised")
                 .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(AppColor.error)
-                .frame(width: 40, height: 40)
+                .frame(width: 52, height: 52)
                 .background(AppColor.error.opacity(0.12), in: Circle())
         } else {
             RoutineProgressPie(
                 progress: progressFraction,
-                size: 40,
+                size: 52,
                 tint: AppColor.primary,
                 centerSystemImage: iconName ?? "hand.raised"
             )
@@ -320,10 +330,10 @@ struct BlockedBehaviorTaskRow: View {
                     )
 
                 Image(systemName: stateIconName)
-                    .font(.system(size: isFailed ? 25 : 16, weight: .bold))
+                    .font(.system(size: isFailed ? 32 : 19, weight: .bold))
                     .foregroundStyle(isKeepingPromise ? Color.white : (needsRepair ? AppColor.error : AppColor.primary))
             }
-            .frame(width: 40, height: 40)
+            .frame(width: 50, height: 50)
             .contentShape(Circle())
         }
         .buttonStyle(RoutineCompletionPressStyle())
@@ -402,7 +412,7 @@ private struct RoutineCompletionButton: View {
                         )
                 }
             }
-            .frame(width: 40, height: 40)
+            .frame(width: 50, height: 50)
             .contentShape(Circle())
         }
         .buttonStyle(RoutineCompletionPressStyle())
@@ -500,24 +510,30 @@ struct AddRoutineTaskRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: "plus")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 21, weight: .bold))
                     .foregroundStyle(AppColor.primary)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 52, height: 52)
                     .background(AppColor.primarySoft, in: Circle())
 
                 Text("約束を追加")
-                    .font(.subheadline)
+                    .font(.headline)
                     .foregroundStyle(AppColor.primary)
 
                 Spacer(minLength: 0)
 
                 Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(AppColor.muted)
             }
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .contentShape(Rectangle())
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 76)
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(RoutineRowPressStyle())
         .accessibilityHint("新しい約束を作成")
@@ -531,24 +547,30 @@ struct AddBlockedBehaviorTaskRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Image(systemName: "hand.raised")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 21, weight: .semibold))
                     .foregroundStyle(AppColor.primary)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 52, height: 52)
                     .background(AppColor.primarySoft, in: Circle())
 
                 Text("やらないことを決める")
-                    .font(.subheadline)
+                    .font(.headline)
                     .foregroundStyle(AppColor.primary)
 
                 Spacer(minLength: 0)
 
                 Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(AppColor.muted)
             }
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .contentShape(Rectangle())
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 76)
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(RoutineRowPressStyle())
         .accessibilityHint("新しいやらないことを設定")
@@ -577,10 +599,11 @@ private struct RoutineCompletionPressStyle: ButtonStyle {
 }
 
 extension View {
-    /// ホームのフィード型カードで、区切り線をアイコン後ろの本文位置に揃える。
-    func homeFeedListRow() -> some View {
-        listRowBackground(AppColor.surface)
-            .alignmentGuide(.listRowSeparatorLeading) { _ in 52 }
+    /// 今日の約束カードを、List の標準背景・区切り線から独立させる。
+    func routineListRowStyle() -> some View {
+        listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
     }
 }
 

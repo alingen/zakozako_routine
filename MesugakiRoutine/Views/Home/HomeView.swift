@@ -212,17 +212,26 @@ struct HomeView: View {
                 Text("今日の約束はありません")
                     .font(.subheadline)
                     .foregroundStyle(AppColor.muted)
-                    .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-                    .homeFeedListRow()
+                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .background(
+                        AppColor.surface,
+                        in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+                    }
+                    .routineListRowStyle()
             }
 
             ForEach(viewModel.todayRoutines) { routine in
                 routineListRow(routine)
-                    .homeFeedListRow()
+                    .routineListRowStyle()
 
                 if routine.id == onboardingRoutineID {
                     onboardingReportGuide
-                        .homeFeedListRow()
+                        .routineListRowStyle()
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
@@ -231,12 +240,14 @@ struct HomeView: View {
                 AddRoutineTaskRow {
                     isPresentingNewRoutine = true
                 }
-                .homeFeedListRow()
+                .routineListRowStyle()
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         } header: {
             HStack(spacing: 8) {
-                Text("今日の約束")
+                Label("今日の約束", systemImage: "checkmark.circle")
+                    .font(.headline)
+                    .foregroundStyle(AppColor.text)
                 Spacer()
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
                     .font(.caption.monospacedDigit())
@@ -256,6 +267,7 @@ struct HomeView: View {
                     .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
                 }
             }
+            .textCase(nil)
         }
         .animation(.easeInOut(duration: 0.22), value: isEditingRoutines)
     }
@@ -338,15 +350,15 @@ struct HomeView: View {
 
     @ViewBuilder
     private var todayPromiseSection: some View {
-        Section("やらないこと") {
+        Section {
             if let behavior = viewModel.currentBehavior {
                 promiseCard(behavior)
-                    .homeFeedListRow()
+                    .routineListRowStyle()
             } else {
                 AddBlockedBehaviorTaskRow {
                     isPresentingNewBlockedBehavior = true
                 }
-                .homeFeedListRow()
+                .routineListRowStyle()
             }
 
             if !viewModel.masteredBehaviors.isEmpty {
@@ -364,6 +376,11 @@ struct HomeView: View {
                 }
                 .appCardRow()
             }
+        } header: {
+            Label("やらないこと", systemImage: "nosign")
+                .font(.headline)
+                .foregroundStyle(AppColor.text)
+                .textCase(nil)
         }
     }
 
