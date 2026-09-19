@@ -26,12 +26,12 @@ struct InteractionCharacterSpeechBubble: View {
             .padding(.bottom, 18)
             .frame(maxWidth: .infinity, minHeight: 102, alignment: .leading)
             .background {
-                InteractionLabeledSpeechBubbleShape()
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(AppColor.surface.opacity(0.91))
                     .shadow(color: AppColor.text.opacity(0.14), radius: 16, y: 6)
             }
             .overlay {
-                InteractionLabeledSpeechBubbleShape()
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(.white.opacity(0.9), lineWidth: 1)
             }
             .overlay(alignment: .topLeading) {
@@ -70,21 +70,6 @@ struct InteractionCharacterSpeechBubble: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("莉央、\(text)")
-    }
-}
-
-private struct InteractionLabeledSpeechBubbleShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        let body = CGRect(x: rect.minX, y: rect.minY, width: max(0, rect.width - 14), height: rect.height)
-        var path = Path(roundedRect: body, cornerRadius: 24)
-        path.move(to: CGPoint(x: body.maxX - 1, y: rect.minY + 23))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.maxX, y: rect.minY + 12),
-            control: CGPoint(x: body.maxX + 5, y: rect.minY + 19)
-        )
-        path.addLine(to: CGPoint(x: body.maxX - 1, y: rect.minY + 47))
-        path.closeSubpath()
-        return path
     }
 }
 
