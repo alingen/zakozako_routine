@@ -1,6 +1,6 @@
 import Foundation
 
-/// Home の約束グリッドに出す「現在の期間の進捗」。
+/// Home の約束リストに出す「現在の期間の進捗」。
 struct RoutineTodayProgress {
     let fraction: Double
     let done: Int

@@ -21,8 +21,6 @@ struct HomeView: View {
 
     @Binding private var appDialog: AppDialogRequest?
 
-    private let routineGridColumns = [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
-
     init(appDialog: Binding<AppDialogRequest?> = .constant(nil)) {
         _appDialog = appDialog
     }
@@ -177,7 +175,7 @@ struct HomeView: View {
         .sensoryFeedback(.success, trigger: backgroundTimerCompletionFeedbackTrigger)
     }
 
-    // MARK: - 1. 今日の約束(2列グリッド)
+    // MARK: - 1. 今日の約束
 
     private var todayRoutinesSection: some View {
         Section {
@@ -185,22 +183,30 @@ struct HomeView: View {
                 Text("今日の約束はありません")
                     .font(.subheadline)
                     .foregroundStyle(AppColor.muted)
-            } else {
-                LazyVGrid(columns: routineGridColumns, spacing: 14) {
-                    ForEach(viewModel.todayRoutines) { routine in
-                        routineGridCell(routine)
+                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .background(
+                        AppColor.surface,
+                        in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
                     }
-                    if isEditingRoutines {
-                        addRoutineCell
-                    }
+                    .routineListRowStyle()
+            }
+
+            ForEach(viewModel.todayRoutines) { routine in
+                routineListRow(routine)
+                    .routineListRowStyle()
+            }
+
+            if isEditingRoutines {
+                AddRoutineTaskRow {
+                    isPresentingNewRoutine = true
                 }
-                .padding(.vertical, 6)
-                .listRowInsets(EdgeInsets(top: 4, leading: 10, bottom: 4, trailing: 10))
-                // 編集モード中、円以外(余白・タイトル)をタップしたら編集を終える。
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if isEditingRoutines { isEditingRoutines = false }
-                }
+                .routineListRowStyle()
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         } header: {
             HStack(spacing: 8) {
@@ -223,84 +229,42 @@ struct HomeView: View {
                 .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
             }
         }
-        .appCardRow()
+        .animation(.easeInOut(duration: 0.22), value: isEditingRoutines)
     }
 
-    /// 約束1件の大きな円セル。通常はホールド、タイマー対象はタップで開始、編集中はタップで編集する。
+    /// 約束1件。カード本体は編集、時計はタイマー、右端の丸は達成状態の変更に分離する。
     @ViewBuilder
-    private func routineGridCell(_ routine: Routine) -> some View {
+    private func routineListRow(_ routine: Routine) -> some View {
         let progress = viewModel.todayProgress(for: routine)
         let streak = viewModel.currentRoutineStreak(for: routine)
         let activeTimerForRoutine = activeTimer.flatMap {
             $0.routine.id == routine.id ? $0 : nil
         }
 
-        VStack(spacing: 8) {
-            RoutineProgressButton(
-                progress: progress.fraction,
-                iconName: routine.iconName,
-                isEditing: isEditingRoutines,
-                isCompleted: progress.isCompletedToday,
-                timerTargetDurationMinutes: routine.targetDurationMinutes,
-                isTimerActive: activeTimerForRoutine != nil,
-                accessibilityLabel: routine.title,
-                onAdvance: { viewModel.advanceRoutine(routine) },
-                onStartTimer: { openTimer(for: routine) },
-                onEdit: { requestRoutineEdit(routine) }
-            )
-
-            VStack(spacing: 2) {
-                Text(routine.title)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(AppColor.text)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-
-                if let activeTimerForRoutine {
-                    Text(timerStatusText(for: activeTimerForRoutine.session))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(AppColor.primary)
-                } else if progress.showsCountBreakdown {
-                    Text("\(progress.done) / \(progress.target)回")
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.muted)
-                } else if streak >= 1 {
-                    Text("\(streak)\(routine.period.streakUnitLabel)達成！")
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.success)
-                } else {
-                    Text("今日から")
-                        .font(.caption2)
-                        .foregroundStyle(AppColor.muted)
-                }
+        RoutineTaskRow(
+            title: routine.title,
+            iconName: routine.iconName,
+            streakText: streak >= 1
+                ? "\(streak)\(routine.period.streakUnitLabel)連続！"
+                : "今日から",
+            hasStreak: streak >= 1,
+            progressText: progress.showsCountBreakdown
+                ? "\(progress.done) / \(progress.target)回"
+                : nil,
+            timerStatusText: activeTimerForRoutine.map { timerStatusText(for: $0.session) },
+            timerTargetDurationMinutes: routine.targetDurationMinutes,
+            isTimerActive: activeTimerForRoutine != nil,
+            isCompleted: progress.isCompletedToday,
+            isEditing: isEditingRoutines,
+            onEdit: { requestRoutineEdit(routine) },
+            onStartTimer: { openTimer(for: routine) },
+            onSetCompletion: { completed in
+                updateRoutineCompletion(routine, completed: completed)
+            },
+            onCompletionAnimationFinished: {
+                viewModel.presentRoutineCompletion(routine)
             }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    /// 編集モードのときだけ出る「約束を追加」セル。
-    private var addRoutineCell: some View {
-        Button {
-            isPresentingNewRoutine = true
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: "plus")
-                    .font(.system(size: 44, weight: .bold))
-                    .foregroundStyle(AppColor.primary)
-                    .frame(width: 116, height: 116)
-                    .overlay(Circle().stroke(AppColor.border, lineWidth: 7))
-                Text("約束を追加")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(AppColor.primary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                Text(" ")
-                    .font(.caption2)
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        )
     }
 
     // MARK: - 2. やらないこと
@@ -491,6 +455,17 @@ struct HomeView: View {
             ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
         }
         .appCardRow()
+    }
+
+    private func updateRoutineCompletion(_ routine: Routine, completed: Bool) -> Bool {
+        let didUpdate = viewModel.setRoutineCompletion(routine, completed: completed)
+        if didUpdate,
+           completed,
+           let timer = activeTimer,
+           timer.routine.id == routine.id {
+            stopTimer(timer)
+        }
+        return didUpdate
     }
 
     private func recordPendingTimerCompletion() {
@@ -706,151 +681,6 @@ enum BlockedBehaviorTauntKind {
                 "わざわざ敗北報告しに来たんだ♡",
                 "うわ、大人なのに我慢できなかったんだ〜",
             ]
-        }
-    }
-}
-
-/// 短いタップでは反応せず、円が中央から外周まで広がる長押しで進捗を記録する。
-private struct RoutineProgressButton: View {
-    private static let holdDuration: TimeInterval = 0.8
-
-    let progress: Double
-    let iconName: String?
-    let isEditing: Bool
-    let isCompleted: Bool
-    let timerTargetDurationMinutes: Int?
-    let isTimerActive: Bool
-    let accessibilityLabel: String
-    let onAdvance: () -> Void
-    let onStartTimer: () -> Void
-    let onEdit: () -> Void
-
-    @State private var confirmationProgress = 0.0
-    @State private var isHoldConfirmed = false
-    @State private var confirmationFeedbackTrigger = 0
-
-    var body: some View {
-        Group {
-            if isEditing {
-                Button(action: onEdit) {
-                    content
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("タップして編集")
-            } else if isCompleted {
-                content
-                    .accessibilityValue("達成済み")
-                    .accessibilityHint("次の集計期間まで記録できません")
-            } else if let timerTargetDurationMinutes {
-                Button(action: onStartTimer) {
-                    content
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(
-                    isTimerActive
-                        ? "タップして動作中のタイマーを表示"
-                        : "タップして\(timerTargetDurationMinutes)分のタイマーを開始"
-                )
-            } else {
-                content
-                    .onLongPressGesture(
-                        minimumDuration: Self.holdDuration,
-                        maximumDistance: 24,
-                        perform: confirmHold,
-                        onPressingChanged: updateHoldingState
-                    )
-                    // LongPressGestureは成立時に終了するため、指を離した瞬間は並行するDragGestureで拾う。
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 0)
-                            .onEnded { _ in finishHold() }
-                    )
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityHint("長押しして1回分を記録")
-                    .accessibilityAction(named: "1回分を記録", onAdvance)
-            }
-        }
-        .accessibilityLabel(
-            timerTargetDurationMinutes == nil || isEditing
-                ? accessibilityLabel
-                : "\(accessibilityLabel)のタイマー"
-        )
-        .accessibilityValue(progressAccessibilityValue)
-        .sensoryFeedback(.success, trigger: confirmationFeedbackTrigger)
-        .onChange(of: isEditing) {
-            resetConfirmation()
-        }
-        .onChange(of: isCompleted) {
-            if isCompleted { resetConfirmation() }
-        }
-    }
-
-    private var content: some View {
-        ZStack(alignment: .bottomTrailing) {
-            RoutineProgressPie(
-                progress: progress,
-                size: 116,
-                centerSystemImage: iconName,
-                confirmationProgress: confirmationProgress,
-                showsConfirmationCheckmark: isHoldConfirmed
-            )
-            if isEditing || (timerTargetDurationMinutes != nil && !isCompleted) {
-                Image(systemName: isEditing ? "ellipsis" : "clock.fill")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(
-                        isEditing
-                            ? AppColor.text
-                            : (isTimerActive ? Color.white : AppColor.primary)
-                    )
-                    .frame(width: 36, height: 36)
-                    .background(
-                        isTimerActive && !isEditing ? AppColor.primary : AppColor.surface,
-                        in: Circle()
-                    )
-                    .overlay(Circle().stroke(AppColor.border, lineWidth: 1))
-                    .offset(x: 4, y: 4)
-            }
-        }
-        .contentShape(Circle())
-    }
-
-    private var progressAccessibilityValue: String {
-        if isCompleted { return "達成済み" }
-        if isTimerActive { return "動作中" }
-        return ""
-    }
-
-    private func updateHoldingState(_ isHolding: Bool) {
-        if isHolding {
-            isHoldConfirmed = false
-            confirmationProgress = 0
-            withAnimation(.linear(duration: Self.holdDuration)) {
-                confirmationProgress = 1
-            }
-        } else if !isHoldConfirmed {
-            resetConfirmation()
-        }
-    }
-
-    /// 円が満たされた時点で振動とチェック表示を確定し、記録自体は指を離すまで待つ。
-    private func confirmHold() {
-        guard !isCompleted, !isHoldConfirmed else { return }
-        isHoldConfirmed = true
-        confirmationProgress = 1
-        confirmationFeedbackTrigger += 1
-    }
-
-    private func finishHold() {
-        let shouldAdvance = isHoldConfirmed && !isCompleted
-        resetConfirmation()
-        if shouldAdvance {
-            onAdvance()
-        }
-    }
-
-    private func resetConfirmation() {
-        isHoldConfirmed = false
-        withAnimation(.easeOut(duration: 0.18)) {
-            confirmationProgress = 0
         }
     }
 }

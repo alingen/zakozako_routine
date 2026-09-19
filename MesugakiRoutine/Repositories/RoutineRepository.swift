@@ -75,6 +75,8 @@ final class RoutineRepository {
                     until: now
                 )
                 routine.currentRuleStartedAt = now
+                routine.homeCompletionRecordedAt = nil
+                routine.homeCompletionAddedCount = nil
             }
 
             routine.title = title
@@ -99,6 +101,81 @@ final class RoutineRepository {
     func recordProgress(_ routine: Routine, now: Date = .now) throws {
         try performMutation {
             routine.progressEvents.append(now)
+            routine.updatedAt = now
+        }
+    }
+
+    /// 現在の集計期間を、チェックボックス操作に合わせて完了／未完了へ切り替える。
+    ///
+    /// 複数回目標では、完了時は不足分だけを補い、その補完数を保存する。
+    /// 解除時は補ったログを優先して除くため、タップ前に途中まで実行していた回数へ戻せる。
+    /// タイマー等で達成した場合は、現在期間の最新ログから未達成になる件数まで戻す。
+    func setCompletion(
+        _ routine: Routine,
+        completed: Bool,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) throws {
+        let window = routine.period.window(containing: now, calendar: calendar)
+        let lowerBound = max(window.start, routine.currentRuleStartedAt)
+        let currentEventIndices = routine.progressEvents.indices.filter { index in
+            let event = routine.progressEvents[index]
+            return event >= lowerBound && event < window.end && event <= now
+        }
+
+        if completed {
+            let missingCount = max(routine.targetCount - currentEventIndices.count, 0)
+            guard missingCount > 0 else { return }
+
+            try performMutation {
+                routine.progressEvents.append(contentsOf: Array(repeating: now, count: missingCount))
+                routine.homeCompletionRecordedAt = now
+                routine.homeCompletionAddedCount = missingCount
+                routine.updatedAt = now
+            }
+            return
+        }
+
+        var indicesToRemove = Set<Int>()
+        if let recordedAt = routine.homeCompletionRecordedAt,
+           let addedCount = routine.homeCompletionAddedCount,
+           addedCount > 0,
+           recordedAt >= lowerBound,
+           recordedAt < window.end {
+            indicesToRemove.formUnion(
+                currentEventIndices
+                    .filter { routine.progressEvents[$0] == recordedAt }
+                    .sorted(by: >)
+                    .prefix(addedCount)
+            )
+        }
+
+        // マーカーのない旧データや、補完後に別ログが増えた場合でも、確実に未達成へ戻す。
+        let remainingCount = currentEventIndices.count - indicesToRemove.count
+        let retainedCount = max(routine.targetCount - 1, 0)
+        let additionalRemovalCount = max(remainingCount - retainedCount, 0)
+        if additionalRemovalCount > 0 {
+            indicesToRemove.formUnion(
+                currentEventIndices
+                    .filter { !indicesToRemove.contains($0) }
+                    .sorted { lhs, rhs in
+                        let leftDate = routine.progressEvents[lhs]
+                        let rightDate = routine.progressEvents[rhs]
+                        if leftDate == rightDate { return lhs > rhs }
+                        return leftDate > rightDate
+                    }
+                    .prefix(additionalRemovalCount)
+            )
+        }
+
+        guard !indicesToRemove.isEmpty else { return }
+
+        try performMutation {
+            routine.progressEvents = routine.progressEvents.enumerated().compactMap { index, event in
+                indicesToRemove.contains(index) ? nil : event
+            }
+            routine.homeCompletionRecordedAt = nil
+            routine.homeCompletionAddedCount = nil
             routine.updatedAt = now
         }
     }

@@ -3,9 +3,9 @@ import SwiftData
 
 /// ユーザーの「約束」(やること)。
 ///
-/// 「1日 / 1週間のうち / 1ヶ月のうち に 〇回」のかたちで目標回数を持ち、Home でタップするたびに
-/// 1回消費する(`progressEvents` にタイムスタンプを積む)。期間内の回数が目標に達したら「達成」。
-/// ステップの概念は廃止し、回数に一本化した。
+/// 「1日 / 1週間のうち / 1ヶ月のうち に 〇回」のかたちで目標回数を持つ。
+/// タイマー完了では1回ずつ、Home の完了ボタンでは現在期間が達成になる不足回数ぶんを
+/// `progressEvents` に記録する。期間内の回数が目標に達したら「達成」。
 @Model
 final class Routine {
     @Attribute(.unique) var id: UUID
@@ -14,7 +14,7 @@ final class Routine {
     var createdAt: Date
     var updatedAt: Date
 
-    /// グリッドの円の中に表示する SF Symbol 名。未設定(nil)なら何も表示しない。
+    /// Home のカード先頭に表示する SF Symbol 名。未設定(nil)なら共通アイコンを表示する。
     var iconName: String?
 
     /// 開始予定時刻(0時からの分数、0〜1439)。未設定ならnil。通知の起点に使う。
@@ -32,6 +32,11 @@ final class Routine {
     var targetCountValue: Int
     /// 「1回やった」時刻のログ。
     var progressEventsStore: [Date]
+
+    /// Home の完了ボタンが補ったログを、解除時に元へ戻すための印。
+    /// Optional にして、既存ストアからの軽量移行でも値を持たない状態を表せるようにする。
+    var homeCompletionRecordedAt: Date?
+    var homeCompletionAddedCount: Int?
 
     /// 現在の回数・期間・対象曜日ルールを適用し始めた時刻。
     /// 設定変更時にだけ更新し、変更前後の進捗を混ぜない。
@@ -80,6 +85,8 @@ final class Routine {
         self.periodRawValue = period.rawValue
         self.targetCountValue = max(targetCount, 1)
         self.progressEventsStore = progressEvents
+        self.homeCompletionRecordedAt = nil
+        self.homeCompletionAddedCount = nil
         self.currentRuleStartedAt = createdAt
         self.progressStatisticsArchiveData = nil
     }

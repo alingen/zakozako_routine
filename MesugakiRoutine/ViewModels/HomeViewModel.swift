@@ -286,7 +286,7 @@ final class HomeViewModel {
         }
     }
 
-    /// 約束のホールド操作が成立した時: 1回進める。目標に達したら完了演出を出す。
+    /// タイマー完了など、約束の実行を1回ぶん記録する。目標に達したら完了演出を出す。
     @discardableResult
     func advanceRoutine(_ routine: Routine, now: Date = .now) -> Bool {
         // 達成済みの期間には追加ログを積まない。日/週/月の次の期間に入ると再び記録できる。
@@ -308,6 +308,46 @@ final class HomeViewModel {
             )
         }
         return true
+    }
+
+    /// Home のチェック操作で、現在期間の達成状態を直接切り替える。
+    @discardableResult
+    func setRoutineCompletion(
+        _ routine: Routine,
+        completed: Bool,
+        now: Date = .now
+    ) -> Bool {
+        guard let dependencies else { return false }
+        guard routine.isComplete(now: now) != completed else { return true }
+
+        do {
+            try dependencies.routineRepository.setCompletion(
+                routine,
+                completed: completed,
+                now: now
+            )
+            routineOperationErrorMessage = nil
+        } catch {
+            routineOperationErrorMessage = error.localizedDescription
+            return false
+        }
+
+        reload()
+
+        if !completed {
+            completionContext = nil
+        }
+        return true
+    }
+
+    /// 行内のチェックアニメーションを見せ終えてから、既存の達成演出を表示する。
+    func presentRoutineCompletion(_ routine: Routine, now: Date = .now) {
+        guard routine.isComplete(now: now) else { return }
+        completionContext = RoutineCompletionContext(
+            routineTitle: routine.title,
+            currentStreak: RoutineStreak.currentStreak(routine: routine, now: now),
+            streakUnitLabel: routine.period.streakUnitLabel
+        )
     }
 
     func clearCompletion() {
