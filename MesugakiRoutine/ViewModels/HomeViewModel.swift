@@ -233,6 +233,80 @@ final class HomeViewModel {
         return nil
     }
 
+    /// 編集画面の下書きを保存する。進捗は維持し、Screen Time の設定だけ監視を再構成する。
+    func updateBlockedBehavior(
+        _ behavior: BlockedBehavior,
+        with draft: BlockedBehaviorDraft
+    ) -> String? {
+        guard let dependencies else {
+            return "保存先を準備できませんでした。もう一度お試しください。"
+        }
+
+        let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return "タイトルを入力してください。" }
+
+        let previousTitle = behavior.title
+        let previousIconName = behavior.iconName
+        let previousLimitPeriod = behavior.limitPeriod
+        let previousLimitCount = behavior.limitCount
+        let previousTrackingKind = behavior.trackingKind
+        let previousScreenTimeLimitMinutes = behavior.screenTimeLimitMinutes
+        let previousScreenTimeSelectionData = behavior.screenTimeSelectionData
+
+        if previousTrackingKind == .screenTime {
+            dependencies.screenTimeMonitoringService.stopMonitoring(for: behavior)
+        }
+
+        let didSave = dependencies.blockedBehaviorRepository.update(
+            behavior,
+            title: title,
+            iconName: draft.iconName,
+            limitPeriod: draft.effectiveLimitPeriod,
+            limitCount: draft.effectiveLimitCount,
+            trackingKind: draft.trackingKind,
+            screenTimeLimitMinutes: draft.trackingKind == .screenTime
+                ? draft.screenTimeLimitMinutes
+                : nil,
+            screenTimeSelectionData: draft.trackingKind == .screenTime
+                ? draft.screenTimeSelectionData
+                : nil
+        )
+
+        guard didSave else {
+            if previousTrackingKind == .screenTime {
+                try? dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
+            }
+            return "保存できませんでした。もう一度お試しください。"
+        }
+
+        if draft.trackingKind == .screenTime {
+            do {
+                try dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
+            } catch {
+                dependencies.screenTimeMonitoringService.stopMonitoring(for: behavior)
+                _ = dependencies.blockedBehaviorRepository.update(
+                    behavior,
+                    title: previousTitle,
+                    iconName: previousIconName,
+                    limitPeriod: previousLimitPeriod,
+                    limitCount: previousLimitCount,
+                    trackingKind: previousTrackingKind,
+                    screenTimeLimitMinutes: previousScreenTimeLimitMinutes,
+                    screenTimeSelectionData: previousScreenTimeSelectionData
+                )
+                if previousTrackingKind == .screenTime {
+                    try? dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
+                }
+                reload()
+                return error.localizedDescription
+            }
+        }
+
+        blockedBehaviorOperationErrorMessage = nil
+        reload()
+        return nil
+    }
+
     /// カードの再設定導線からScreen Time権限を取り直し、監視を再開する。
     func repairScreenTimeMonitoring(_ behavior: BlockedBehavior) async {
         guard let dependencies, behavior.trackingKind == .screenTime else { return }

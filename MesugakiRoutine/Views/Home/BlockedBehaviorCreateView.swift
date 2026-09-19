@@ -2,7 +2,7 @@ import FamilyControls
 import SwiftUI
 import UIKit
 
-/// プリセットまたはカスタム入力から、内容をすべて決めて保存する「やらないこと」の新規作成画面。
+/// 「やらないこと」の新規作成と編集で共用する入力画面。
 struct BlockedBehaviorCreateView: View {
     private struct ScreenTimeAuthorizationAlert: Identifiable {
         let id = UUID()
@@ -23,8 +23,10 @@ struct BlockedBehaviorCreateView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
+    private let behavior: BlockedBehavior?
     let onRequestScreenTimeAuthorization: () async throws -> Void
     let onSave: (BlockedBehaviorDraft) -> String?
+    let onRequestDelete: (() -> Void)?
 
     @State private var creationStep: CreationStep = .presetSelection
     @State private var draftSource: DraftSource?
@@ -35,6 +37,21 @@ struct BlockedBehaviorCreateView: View {
     @State private var screenTimeAuthorizationRequestID: UUID?
     @State private var saveErrorMessage: String?
     @State private var screenTimeAuthorizationAlert: ScreenTimeAuthorizationAlert?
+
+    init(
+        behavior: BlockedBehavior? = nil,
+        onRequestScreenTimeAuthorization: @escaping () async throws -> Void,
+        onSave: @escaping (BlockedBehaviorDraft) -> String?,
+        onRequestDelete: (() -> Void)? = nil
+    ) {
+        self.behavior = behavior
+        self.onRequestScreenTimeAuthorization = onRequestScreenTimeAuthorization
+        self.onSave = onSave
+        self.onRequestDelete = onRequestDelete
+        _creationStep = State(initialValue: behavior == nil ? .presetSelection : .details)
+        _draftSource = State(initialValue: behavior == nil ? nil : .custom)
+        _draft = State(initialValue: behavior.map(BlockedBehaviorDraft.init(behavior:)) ?? BlockedBehaviorDraft())
+    }
 
     var body: some View {
         Group {
@@ -47,21 +64,23 @@ struct BlockedBehaviorCreateView: View {
                 detailsForm
             }
         }
-        .navigationTitle(isSelectingPreset ? "やらないことを追加" : "やらないことを確認")
+        .navigationTitle(navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                if isSelectingPreset {
-                    Button("キャンセル") {
-                        dismiss()
-                    }
-                } else {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            creationStep = .presetSelection
+            if !isEditing {
+                ToolbarItem(placement: .cancellationAction) {
+                    if isSelectingPreset {
+                        Button("キャンセル") {
+                            dismiss()
                         }
-                    } label: {
-                        Label("プリセット", systemImage: "chevron.left")
+                    } else {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                creationStep = .presetSelection
+                            }
+                        } label: {
+                            Label("プリセット", systemImage: "chevron.left")
+                        }
                     }
                 }
             }
@@ -116,6 +135,15 @@ struct BlockedBehaviorCreateView: View {
 
     private var isSelectingPreset: Bool {
         creationStep == .presetSelection
+    }
+
+    private var isEditing: Bool {
+        behavior != nil
+    }
+
+    private var navigationTitle: String {
+        if isEditing { return "やらないことを編集" }
+        return isSelectingPreset ? "やらないことを追加" : "やらないことを確認"
     }
 
     private var detailsForm: some View {
@@ -225,6 +253,15 @@ struct BlockedBehaviorCreateView: View {
                          : "設定した回数に達すると、その期間は失敗になります。")
                 }
             }
+
+            if let onRequestDelete {
+                Section {
+                    Button(role: .destructive, action: onRequestDelete) {
+                        Text("削除する")
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
+            }
         }
     }
 
@@ -236,7 +273,7 @@ struct BlockedBehaviorCreateView: View {
                 dismiss()
             }
         } label: {
-            Text("やらないことを保存")
+            Text(isEditing ? "変更を保存" : "やらないことを保存")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)

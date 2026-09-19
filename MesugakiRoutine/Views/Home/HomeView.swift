@@ -7,6 +7,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = HomeViewModel()
     @State private var editingRoutine: Routine?
+    @State private var editingBlockedBehavior: BlockedBehavior?
     @State private var activeTimer: ActiveRoutineTimer?
     @State private var presentedTimer: ActiveRoutineTimer?
     @State private var pendingTimerCompletion: PendingTimerCompletion?
@@ -43,7 +44,13 @@ struct HomeView: View {
         .navigationDestination(item: $editingRoutine) { routine in
             RoutineEditView(routine: routine)
         }
+        .navigationDestination(item: $editingBlockedBehavior) { behavior in
+            blockedBehaviorEditor(for: behavior)
+        }
         .onChange(of: editingRoutine) { _, new in
+            if new == nil { viewModel.reload() }
+        }
+        .onChange(of: editingBlockedBehavior) { _, new in
             if new == nil { viewModel.reload() }
         }
         .sheet(isPresented: $isPresentingNewRoutine, onDismiss: { viewModel.reload() }) {
@@ -151,28 +158,47 @@ struct HomeView: View {
             }
         }
         .task(id: hiddenTimerWatcherID) {
-            guard let timer = activeTimer,
-                  presentedTimer == nil,
-                  timer.session.phase == .running else { return }
-
-            while !Task.isCancelled,
-                  activeTimer?.id == timer.id,
-                  presentedTimer == nil,
-                  timer.session.phase == .running {
-                if let completedAt = timer.session.refresh(now: .now)
-                    ?? timer.session.completedAt {
-                    completeTimer(timer, at: completedAt)
-                    return
-                }
-
-                do {
-                    try await Task.sleep(for: .milliseconds(250))
-                } catch {
-                    return
-                }
-            }
+            await watchHiddenTimer()
         }
         .sensoryFeedback(.success, trigger: backgroundTimerCompletionFeedbackTrigger)
+    }
+
+    private func blockedBehaviorEditor(for behavior: BlockedBehavior) -> some View {
+        BlockedBehaviorCreateView(
+            behavior: behavior,
+            onRequestScreenTimeAuthorization: {
+                try await viewModel.requestScreenTimeAuthorization()
+            },
+            onSave: { draft in
+                viewModel.updateBlockedBehavior(behavior, with: draft)
+            },
+            onRequestDelete: {
+                presentBlockedBehaviorDeleteConfirmation(for: behavior)
+            }
+        )
+    }
+
+    private func watchHiddenTimer() async {
+        guard let timer = activeTimer,
+              presentedTimer == nil,
+              timer.session.phase == .running else { return }
+
+        while !Task.isCancelled,
+              activeTimer?.id == timer.id,
+              presentedTimer == nil,
+              timer.session.phase == .running {
+            if let completedAt = timer.session.refresh(now: .now)
+                ?? timer.session.completedAt {
+                completeTimer(timer, at: completedAt)
+                return
+            }
+
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return
+            }
+        }
     }
 
     // MARK: - 1. 今日の約束
@@ -275,27 +301,6 @@ struct HomeView: View {
             if let behavior = viewModel.currentBehavior {
                 promiseCard(behavior)
                     .routineListRowStyle()
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        Button(role: .destructive) {
-                            appDialog = AppDialogRequest(
-                                title: "本当に削除しますか？",
-                                message: "「\(behavior.title)」を削除します。",
-                                actions: [
-                                    AppDialogAction("いいえ") {
-                                        .dismiss
-                                    },
-                                    AppDialogAction("はい", style: .destructive) {
-                                        if !viewModel.deleteBlockedBehavior(behavior) {
-                                            isShowingBlockedBehaviorDeleteError = true
-                                        }
-                                        return .dismiss
-                                    },
-                                ]
-                            )
-                        } label: {
-                            Label("削除", systemImage: "trash")
-                        }
-                    }
             } else {
                 AddBlockedBehaviorTaskRow {
                     isPresentingNewBlockedBehavior = true
@@ -321,7 +326,7 @@ struct HomeView: View {
         }
     }
 
-    /// 「やらないこと」カード。タップすると危機／失敗の選択肢を表示する。
+    /// 「やらないこと」カード。カード本体は編集、右端の丸は危機／失敗の選択肢を表示する。
     @ViewBuilder
     private func promiseCard(_ behavior: BlockedBehavior) -> some View {
         let usage = viewModel.promiseUsage(for: behavior)
@@ -348,16 +353,20 @@ struct HomeView: View {
             ),
             remainingFraction: usage.fraction,
             isFailed: usage.failed,
-            needsRepair: hasScreenTimeIssue
-        ) {
-            if hasScreenTimeIssue {
-                Task {
-                    await viewModel.repairScreenTimeMonitoring(behavior)
+            needsRepair: hasScreenTimeIssue,
+            onEdit: {
+                editingBlockedBehavior = behavior
+            },
+            onAction: {
+                if hasScreenTimeIssue {
+                    Task {
+                        await viewModel.repairScreenTimeMonitoring(behavior)
+                    }
+                } else {
+                    presentBlockedBehaviorActions(for: behavior)
                 }
-            } else {
-                presentBlockedBehaviorActions(for: behavior)
             }
-        }
+        )
     }
 
     private func promiseStatusText(
@@ -414,6 +423,26 @@ struct HomeView: View {
                 },
                 AppDialogAction("負けました", style: .destructive) {
                     .replace(failureConfirmation(for: behavior))
+                },
+            ]
+        )
+    }
+
+    private func presentBlockedBehaviorDeleteConfirmation(for behavior: BlockedBehavior) {
+        appDialog = AppDialogRequest(
+            title: "本当に削除しますか？",
+            message: "「\(behavior.title)」を削除します。",
+            actions: [
+                AppDialogAction("いいえ") {
+                    .dismiss
+                },
+                AppDialogAction("はい", style: .destructive) {
+                    if viewModel.deleteBlockedBehavior(behavior) {
+                        editingBlockedBehavior = nil
+                    } else {
+                        isShowingBlockedBehaviorDeleteError = true
+                    }
+                    return .dismiss
                 },
             ]
         )

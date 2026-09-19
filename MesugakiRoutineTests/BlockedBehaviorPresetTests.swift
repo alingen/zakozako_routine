@@ -309,6 +309,64 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertTrue(repository.canAddNew())
     }
 
+    func testDraftLoadsExistingBehaviorForEditing() {
+        let behavior = BlockedBehavior(
+            title: "SNSを見ない",
+            iconName: "bubble.left.and.bubble.right",
+            limitPeriod: .week,
+            limitCount: 3,
+            currentStreakDays: 5
+        )
+
+        let draft = BlockedBehaviorDraft(behavior: behavior)
+
+        XCTAssertEqual(draft.title, "SNSを見ない")
+        XCTAssertEqual(draft.iconName, "bubble.left.and.bubble.right")
+        XCTAssertFalse(draft.isQuitCompletely)
+        XCTAssertEqual(draft.limitPeriod, .week)
+        XCTAssertEqual(draft.limitCount, 3)
+        XCTAssertEqual(draft.trackingKind, .manual)
+        XCTAssertTrue(draft.canSave)
+    }
+
+    func testUpdatingBehaviorPersistsSettingsWithoutChangingProgress() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let repository = BlockedBehaviorRepository(context: context)
+        let eventDate = Date(timeIntervalSince1970: 1_700_000_000)
+        let updatedAt = eventDate.addingTimeInterval(600)
+        let behavior = try XCTUnwrap(repository.create(title: "ゲームをしない"))
+        behavior.usageEvents = [eventDate]
+        behavior.currentStreakDays = 4
+        try context.save()
+        let behaviorID = behavior.id
+
+        XCTAssertTrue(repository.update(
+            behavior,
+            title: "夜にゲームをしない",
+            iconName: "gamecontroller.fill",
+            limitPeriod: .week,
+            limitCount: 3,
+            trackingKind: .manual,
+            screenTimeLimitMinutes: nil,
+            screenTimeSelectionData: nil,
+            now: updatedAt
+        ))
+
+        let verificationContext = ModelContext(container)
+        let descriptor = FetchDescriptor<BlockedBehavior>(
+            predicate: #Predicate { $0.id == behaviorID }
+        )
+        let persisted = try XCTUnwrap(try verificationContext.fetch(descriptor).first)
+        XCTAssertEqual(persisted.title, "夜にゲームをしない")
+        XCTAssertEqual(persisted.iconName, "gamecontroller.fill")
+        XCTAssertEqual(persisted.limitPeriod, .week)
+        XCTAssertEqual(persisted.limitCount, 3)
+        XCTAssertEqual(persisted.usageEvents, [eventDate])
+        XCTAssertEqual(persisted.currentStreakDays, 4)
+        XCTAssertEqual(persisted.updatedAt, updatedAt)
+    }
+
     func testSeederLeavesBlockedBehaviorEmptySoPresetFlowIsReachable() throws {
         let container = try makeContainer()
         let context = container.mainContext

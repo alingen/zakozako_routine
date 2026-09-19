@@ -119,6 +119,23 @@ struct BlockedBehaviorDraft: Equatable {
     var screenTimeLimitMinutes = 20
     var screenTimeSelection = FamilyActivitySelection()
 
+    init() {}
+
+    init(behavior: BlockedBehavior) {
+        title = behavior.title
+        iconName = behavior.iconName
+        isQuitCompletely = behavior.limitPeriod == .day && behavior.effectiveLimit == 1
+        limitPeriod = behavior.limitPeriod
+        limitCount = behavior.effectiveLimit
+        trackingKind = behavior.trackingKind
+        screenTimeLimitMinutes = behavior.screenTimeLimitMinutes
+
+        if let data = behavior.screenTimeSelectionData,
+           let selection = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) {
+            screenTimeSelection = selection
+        }
+    }
+
     var canSave: Bool {
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return false

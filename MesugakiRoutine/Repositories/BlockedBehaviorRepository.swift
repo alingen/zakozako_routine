@@ -95,6 +95,39 @@ final class BlockedBehaviorRepository {
         }
     }
 
+    /// 挑戦中の項目の設定だけを更新する。進捗・連続日数・作成日は維持する。
+    @discardableResult
+    func update(
+        _ behavior: BlockedBehavior,
+        title: String,
+        iconName: String?,
+        limitPeriod: HabitPeriod,
+        limitCount: Int,
+        trackingKind: BlockedBehaviorTrackingKind,
+        screenTimeLimitMinutes: Int?,
+        screenTimeSelectionData: Data?,
+        now: Date = .now
+    ) -> Bool {
+        behavior.title = title
+        behavior.iconName = iconName
+        behavior.limitPeriod = limitPeriod
+        behavior.limitCount = max(limitCount, 1)
+        behavior.trackingKind = trackingKind
+        if let screenTimeLimitMinutes {
+            behavior.screenTimeLimitMinutes = screenTimeLimitMinutes
+        }
+        behavior.screenTimeSelectionData = screenTimeSelectionData
+        behavior.updatedAt = now
+
+        do {
+            try context.save()
+            return true
+        } catch {
+            context.rollback()
+            return false
+        }
+    }
+
     /// ユーザーが敗北を確定した時、現在期間の上限に達するまでログを補って失敗を記録する。
     /// すでに失敗済みなら何も変更しないため、連続タップでも重複しない。
     @discardableResult

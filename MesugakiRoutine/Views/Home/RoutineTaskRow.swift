@@ -173,7 +173,7 @@ struct RoutineTaskRow: View {
 }
 
 /// 「やらないこと」を「今日の約束」と同じカード骨格で表示する。
-/// カード全体のタップで既存の危機／失敗メニュー（または権限再設定）を開く。
+/// カード本体は編集、右端の丸ボタンは危機／失敗メニュー（または権限再設定）を開く。
 struct BlockedBehaviorTaskRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -185,40 +185,36 @@ struct BlockedBehaviorTaskRow: View {
     let remainingFraction: Double
     let isFailed: Bool
     let needsRepair: Bool
-    let action: () -> Void
+    let onEdit: () -> Void
+    let onAction: () -> Void
 
     private var clampedRemainingFraction: CGFloat {
         CGFloat(min(max(remainingFraction, 0), 1))
     }
 
     var body: some View {
-        Button(action: action) {
-            Group {
-                if dynamicTypeSize.isAccessibilitySize {
-                    accessibilityLayout
-                } else {
-                    regularLayout
-                }
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                accessibilityLayout
+            } else {
+                regularLayout
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
-            }
-            .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
-            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-        .buttonStyle(RoutineRowPressStyle())
-        .accessibilityLabel([title, statusText, detailText].compactMap { $0 }.joined(separator: "、"))
-        .accessibilityHint(needsRepair ? "タップして許可を確認" : "タップして選択肢を表示")
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+        }
+        .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
+        .accessibilityElement(children: .contain)
     }
 
     private var regularLayout: some View {
         HStack(spacing: 12) {
-            summary
+            editButton
                 .frame(maxWidth: .infinity, alignment: .leading)
             stateButton
         }
@@ -226,12 +222,22 @@ struct BlockedBehaviorTaskRow: View {
 
     private var accessibilityLayout: some View {
         VStack(alignment: .leading, spacing: 12) {
-            summary
+            editButton
             HStack {
                 Spacer(minLength: 0)
                 stateButton
             }
         }
+    }
+
+    private var editButton: some View {
+        Button(action: onEdit) {
+            summary
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(RoutineRowPressStyle())
+        .accessibilityLabel([title, statusText, detailText].compactMap { $0 }.joined(separator: "、"))
+        .accessibilityHint("タップして内容を編集")
     }
 
     private var summary: some View {
@@ -271,38 +277,49 @@ struct BlockedBehaviorTaskRow: View {
     }
 
     private var stateButton: some View {
-        ZStack {
-            Circle()
-                .fill(isFailed ? AppColor.error : AppColor.surface)
-
-            Circle()
-                .stroke(
-                    isFailed || needsRepair ? AppColor.error : AppColor.border,
-                    lineWidth: isFailed ? 0 : 2.5
-                )
-
-            if !isFailed && !needsRepair && clampedRemainingFraction > 0 {
+        Button(action: onAction) {
+            ZStack {
                 Circle()
-                    .trim(from: 0, to: clampedRemainingFraction)
-                    .stroke(
-                        AppColor.primary,
-                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-            }
+                    .fill(isFailed ? AppColor.error : AppColor.surface)
 
-            Image(systemName: stateIconName)
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(isFailed ? Color.white : (needsRepair ? AppColor.error : AppColor.primary))
+                Circle()
+                    .stroke(
+                        isFailed || needsRepair ? AppColor.error : AppColor.border,
+                        lineWidth: isFailed ? 0 : 2.5
+                    )
+
+                if !isFailed && !needsRepair && clampedRemainingFraction > 0 {
+                    Circle()
+                        .trim(from: 0, to: clampedRemainingFraction)
+                        .stroke(
+                            AppColor.primary,
+                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                }
+
+                Image(systemName: stateIconName)
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(isFailed ? Color.white : (needsRepair ? AppColor.error : AppColor.primary))
+            }
+            .frame(width: 50, height: 50)
+            .contentShape(Circle())
         }
-        .frame(width: 50, height: 50)
-        .accessibilityHidden(true)
+        .buttonStyle(RoutineCompletionPressStyle())
+        .accessibilityLabel(actionAccessibilityLabel)
+        .accessibilityHint(needsRepair ? "タップして許可を確認" : "タップして選択肢を表示")
     }
 
     private var stateIconName: String {
-        if isFailed { return "exclamationmark" }
+        if isFailed { return "stop.fill" }
         if needsRepair { return "arrow.clockwise" }
         return "ellipsis"
+    }
+
+    private var actionAccessibilityLabel: String {
+        if needsRepair { return "\(title)のスクリーンタイムを再設定" }
+        if isFailed { return "\(title)は失敗" }
+        return "\(title)の選択肢"
     }
 }
 
