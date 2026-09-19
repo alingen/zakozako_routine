@@ -114,24 +114,31 @@ final class HomeViewModel {
         calendar: Calendar = .current
     ) -> [ZakoBulletinItem] {
         let who = AppSettingsStore.userDisplayName
-        var entries: [(date: Date, line: String)] = []
+        var entries: [(date: Date, line: String, kind: ZakoBulletinKind)] = []
 
         for routine in routines where routine.isComplete(now: now) {
             guard let last = routine.progressEvents.max(),
                   calendar.isDate(last, inSameDayAs: now) else { continue }
-            entries.append((last, "\(who)が \(routine.title) を達成しました！"))
+            entries.append((last, "\(who)が \(routine.title) を達成しました！", .achievement))
         }
 
         if let behavior, behavior.usageInCurrentPeriod(now: now) >= behavior.effectiveLimit,
            let lastUse = behavior.usageEvents.max(),
            calendar.isDate(lastUse, inSameDayAs: now) {
-            entries.append((lastUse, "\(who)が \(behavior.title) に負けました…"))
+            entries.append((lastUse, "\(who)が \(behavior.title) に負けました…", .failure))
         }
 
         return entries
             .sorted { $0.date > $1.date }
             .prefix(3)
-            .map { ZakoBulletinItem(id: UUID(), line: $0.line, relativeTime: Self.relativeTime(from: $0.date, now: now)) }
+            .map {
+                ZakoBulletinItem(
+                    id: UUID(),
+                    line: $0.line,
+                    relativeTime: Self.relativeTime(from: $0.date, now: now),
+                    kind: $0.kind
+                )
+            }
     }
 
     private static func relativeTime(from date: Date, now: Date) -> String {

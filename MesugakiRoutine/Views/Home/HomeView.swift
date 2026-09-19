@@ -532,8 +532,13 @@ struct HomeView: View {
     // MARK: - 3. みんなのざこ速報
 
     private var zakoBulletinSection: some View {
-        Section("みんなのざこ速報") {
+        Section {
             ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
+        } header: {
+            Label("みんなのざこ速報", systemImage: "ellipsis.bubble")
+                .font(.headline)
+                .foregroundStyle(AppColor.text)
+                .textCase(nil)
         }
         .appCardRow()
     }
