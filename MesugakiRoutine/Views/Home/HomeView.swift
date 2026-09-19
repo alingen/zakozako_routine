@@ -90,14 +90,6 @@ struct HomeView: View {
             .presentationCornerRadius(28)
             .presentationBackground(AppColor.background)
         }
-        .fullScreenCover(
-            item: Binding(
-                get: { viewModel.completionContext },
-                set: { if $0 == nil { viewModel.clearCompletion() } }
-            )
-        ) { context in
-            RoutineCompletionPresentation(context: context, onFinish: { viewModel.clearCompletion() })
-        }
         .alert("削除できませんでした", isPresented: $isShowingBlockedBehaviorDeleteError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -286,9 +278,6 @@ struct HomeView: View {
             onStartTimer: { openTimer(for: routine) },
             onSetCompletion: { completed in
                 updateRoutineCompletion(routine, completed: completed)
-            },
-            onCompletionAnimationFinished: {
-                viewModel.presentRoutineCompletion(routine)
             }
         )
     }

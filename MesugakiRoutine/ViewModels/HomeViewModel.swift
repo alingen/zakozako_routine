@@ -49,8 +49,6 @@ final class HomeViewModel {
     /// 「みんなのざこ速報」に出す項目(いまは自分の記録だけ。最大3件)。
     private(set) var zakoBulletinItems: [ZakoBulletinItem] = []
 
-    /// 約束が完了した直後に、完了演出へ渡す表示データが入る。閉じる時は `clearCompletion()`。
-    private(set) var completionContext: RoutineCompletionContext?
     private(set) var routineOperationErrorMessage: String?
     private(set) var blockedBehaviorOperationErrorMessage: String?
     /// Screen Time の権限取消・監視復元失敗を、カード内の再設定導線に表示する。
@@ -360,7 +358,7 @@ final class HomeViewModel {
         }
     }
 
-    /// タイマー完了など、約束の実行を1回ぶん記録する。目標に達したら完了演出を出す。
+    /// タイマー完了など、約束の実行を1回ぶん記録する。
     @discardableResult
     func advanceRoutine(_ routine: Routine, now: Date = .now) -> Bool {
         // 達成済みの期間には追加ログを積まない。日/週/月の次の期間に入ると再び記録できる。
@@ -374,13 +372,6 @@ final class HomeViewModel {
             return false
         }
         reload()
-        if routine.isComplete(now: now) {
-            completionContext = RoutineCompletionContext(
-                routineTitle: routine.title,
-                currentStreak: RoutineStreak.currentStreak(routine: routine, now: now),
-                streakUnitLabel: routine.period.streakUnitLabel
-            )
-        }
         return true
     }
 
@@ -407,25 +398,7 @@ final class HomeViewModel {
         }
 
         reload()
-
-        if !completed {
-            completionContext = nil
-        }
         return true
-    }
-
-    /// 行内のチェックアニメーションを見せ終えてから、既存の達成演出を表示する。
-    func presentRoutineCompletion(_ routine: Routine, now: Date = .now) {
-        guard routine.isComplete(now: now) else { return }
-        completionContext = RoutineCompletionContext(
-            routineTitle: routine.title,
-            currentStreak: RoutineStreak.currentStreak(routine: routine, now: now),
-            streakUnitLabel: routine.period.streakUnitLabel
-        )
-    }
-
-    func clearCompletion() {
-        completionContext = nil
     }
 
     func clearRoutineOperationError() {

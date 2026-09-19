@@ -18,7 +18,6 @@ struct RoutineTaskRow: View {
     let onEdit: () -> Void
     let onStartTimer: () -> Void
     let onSetCompletion: (Bool) -> Bool
-    let onCompletionAnimationFinished: () -> Void
 
     var body: some View {
         Group {
@@ -164,8 +163,7 @@ struct RoutineTaskRow: View {
                 RoutineCompletionButton(
                     title: title,
                     isCompleted: isCompleted,
-                    onSetCompletion: onSetCompletion,
-                    onCompletionAnimationFinished: onCompletionAnimationFinished
+                    onSetCompletion: onSetCompletion
                 )
             }
         }
@@ -330,7 +328,6 @@ private struct RoutineCompletionButton: View {
     let title: String
     let isCompleted: Bool
     let onSetCompletion: (Bool) -> Bool
-    let onCompletionAnimationFinished: () -> Void
 
     @State private var fillProgress: CGFloat = 0
     @State private var showsCheckmark = false
@@ -435,14 +432,6 @@ private struct RoutineCompletionButton: View {
                     showsCheckmark = true
                 }
                 successFeedbackTrigger += 1
-
-                do {
-                    try await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 160))
-                } catch {
-                    return
-                }
-                guard !Task.isCancelled else { return }
-                onCompletionAnimationFinished()
             } else {
                 withAnimation(.easeOut(duration: 0.16)) {
                     fillProgress = 0
@@ -573,8 +562,7 @@ extension View {
             isEditing: false,
             onEdit: {},
             onStartTimer: {},
-            onSetCompletion: { _ in true },
-            onCompletionAnimationFinished: {}
+            onSetCompletion: { _ in true }
         )
         RoutineTaskRow(
             title: "散歩する",
@@ -589,8 +577,7 @@ extension View {
             isEditing: false,
             onEdit: {},
             onStartTimer: {},
-            onSetCompletion: { _ in true },
-            onCompletionAnimationFinished: {}
+            onSetCompletion: { _ in true }
         )
     }
     .padding()
