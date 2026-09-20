@@ -28,6 +28,14 @@ enum OnboardingHabitSelectionStage: String, Codable, Sendable {
     case completed
 }
 
+/// 3・4枚目で、補足説明を1回だけ重ねる進行状態。
+enum OnboardingDelayedGuidanceStage: String, Codable, Sendable {
+    case waitingToPresent
+    case presented
+    case explanation
+    case completed
+}
+
 /// 専用画面終了後を含む、オンボーディング全体の現在位置。
 enum OnboardingPhase: String, Codable, Sendable {
     case dedicatedSetup
@@ -176,6 +184,12 @@ final class OnboardingStateStore {
     private(set) var habitSelectionStage: OnboardingHabitSelectionStage {
         didSet { persistIfNeeded() }
     }
+    private(set) var goalSettingGuidanceStage: OnboardingDelayedGuidanceStage {
+        didSet { persistIfNeeded() }
+    }
+    private(set) var cueSelectionGuidanceStage: OnboardingDelayedGuidanceStage {
+        didSet { persistIfNeeded() }
+    }
     private(set) var phase: OnboardingPhase {
         didSet { persistIfNeeded() }
     }
@@ -234,6 +248,16 @@ final class OnboardingStateStore {
         introductionStage = snapshot.introductionStage ?? .nameEntry
         habitSelectionStage = snapshot.habitSelectionStage
             ?? Self.restoredHabitSelectionStage(from: snapshot)
+        goalSettingGuidanceStage = Self.restoredDelayedGuidanceStage(
+            snapshot.goalSettingGuidanceStage,
+            for: .goalSetting,
+            setupStep: snapshot.setupStep
+        )
+        cueSelectionGuidanceStage = Self.restoredDelayedGuidanceStage(
+            snapshot.cueSelectionGuidanceStage,
+            for: .cueSelection,
+            setupStep: snapshot.setupStep
+        )
         phase = snapshot.phase
         draft = snapshot.draft
         createdRoutineID = snapshot.createdRoutineID
@@ -268,8 +292,10 @@ final class OnboardingStateStore {
         case .habitSelection:
             return draft.hasHabitSelection
         case .goalSetting:
-            return draft.hasConcreteGoal
-        case .cueSelection, .confirmation:
+            return draft.hasConcreteGoal && goalSettingGuidanceStage == .completed
+        case .cueSelection:
+            return draft.hasCueSelection && cueSelectionGuidanceStage == .completed
+        case .confirmation:
             return draft.hasCueSelection
         }
     }
@@ -296,6 +322,95 @@ final class OnboardingStateStore {
               habitSelectionStage == .awaitingSelection,
               draft.selectedHabitID != nil else { return }
         habitSelectionStage = .firstMessage
+    }
+
+    func delayedGuidanceStage(for step: OnboardingSetupStep) -> OnboardingDelayedGuidanceStage? {
+        switch step {
+        case .goalSetting:
+            return goalSettingGuidanceStage
+        case .cueSelection:
+            return cueSelectionGuidanceStage
+        case .introduction, .habitSelection, .confirmation:
+            return nil
+        }
+    }
+
+    /// 短い表示待機後も対象画面にいる場合、莉央の補足説明を表示する。
+    func presentDelayedGuidanceIfNeeded(for step: OnboardingSetupStep) {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == step else { return }
+
+        switch step {
+        case .goalSetting:
+            guard goalSettingGuidanceStage == .waitingToPresent else { return }
+            goalSettingGuidanceStage = .presented
+        case .cueSelection:
+            guard cueSelectionGuidanceStage == .waitingToPresent else { return }
+            cueSelectionGuidanceStage = .presented
+        case .introduction, .habitSelection, .confirmation:
+            break
+        }
+    }
+
+    /// 莉央のセリフから説明へ進み、説明後は元の選択画面へ戻す。
+    func advanceDelayedGuidance(for step: OnboardingSetupStep) {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == step else { return }
+
+        switch step {
+        case .goalSetting:
+            switch goalSettingGuidanceStage {
+            case .presented:
+                goalSettingGuidanceStage = .explanation
+            case .explanation:
+                goalSettingGuidanceStage = .completed
+            case .waitingToPresent, .completed:
+                break
+            }
+        case .cueSelection:
+            switch cueSelectionGuidanceStage {
+            case .presented:
+                cueSelectionGuidanceStage = .explanation
+            case .explanation:
+                cueSelectionGuidanceStage = .completed
+            case .waitingToPresent, .completed:
+                break
+            }
+        case .introduction, .habitSelection, .confirmation:
+            break
+        }
+    }
+
+    /// 説明からはセリフへ戻し、セリフからは案内を閉じて選択画面へ戻す。
+    func retreatDelayedGuidance(for step: OnboardingSetupStep) {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == step else { return }
+
+        switch step {
+        case .goalSetting:
+            switch goalSettingGuidanceStage {
+            case .explanation:
+                goalSettingGuidanceStage = .presented
+            case .presented:
+                goalSettingGuidanceStage = .completed
+            case .waitingToPresent, .completed:
+                break
+            }
+        case .cueSelection:
+            switch cueSelectionGuidanceStage {
+            case .explanation:
+                cueSelectionGuidanceStage = .presented
+            case .presented:
+                cueSelectionGuidanceStage = .completed
+            case .waitingToPresent, .completed:
+                break
+            }
+        case .introduction, .habitSelection, .confirmation:
+            break
+        }
     }
 
     /// 1・2枚目では説明を1段階ずつ進め、それ以降は次の専用画面へ進む。
@@ -556,6 +671,8 @@ final class OnboardingStateStore {
             setupStep = initial.setupStep
             introductionStage = .nameEntry
             habitSelectionStage = .awaitingSelection
+            goalSettingGuidanceStage = .waitingToPresent
+            cueSelectionGuidanceStage = .waitingToPresent
             phase = initial.phase
             draft = initial.draft
             createdRoutineID = nil
@@ -588,6 +705,8 @@ final class OnboardingStateStore {
             setupStep: setupStep,
             introductionStage: introductionStage,
             habitSelectionStage: habitSelectionStage,
+            goalSettingGuidanceStage: goalSettingGuidanceStage,
+            cueSelectionGuidanceStage: cueSelectionGuidanceStage,
             phase: phase,
             draft: draft,
             createdRoutineID: createdRoutineID,
@@ -629,6 +748,17 @@ final class OnboardingStateStore {
         return .awaitingSelection
     }
 
+    private static func restoredDelayedGuidanceStage(
+        _ savedStage: OnboardingDelayedGuidanceStage?,
+        for guidedStep: OnboardingSetupStep,
+        setupStep: OnboardingSetupStep
+    ) -> OnboardingDelayedGuidanceStage {
+        if let savedStage {
+            return savedStage
+        }
+        return setupStep.rawValue > guidedStep.rawValue ? .completed : .waitingToPresent
+    }
+
     /// 通常の通知再計算からも、オンボーディングで指定した初回通知下限を参照する。
     static func persistedNotificationNotBefore(
         for routineID: UUID,
@@ -647,6 +777,9 @@ final class OnboardingStateStore {
         var introductionStage: OnboardingIntroductionStage?
         // 追加前の保存データは画面位置と選択内容から安全な段階へ復元する。
         var habitSelectionStage: OnboardingHabitSelectionStage?
+        // 追加前の保存データは画面位置から補完する。
+        var goalSettingGuidanceStage: OnboardingDelayedGuidanceStage?
+        var cueSelectionGuidanceStage: OnboardingDelayedGuidanceStage?
         var phase: OnboardingPhase
         var draft: OnboardingDraft
         var createdRoutineID: UUID?
@@ -664,6 +797,8 @@ final class OnboardingStateStore {
             setupStep: .introduction,
             introductionStage: .nameEntry,
             habitSelectionStage: .awaitingSelection,
+            goalSettingGuidanceStage: .waitingToPresent,
+            cueSelectionGuidanceStage: .waitingToPresent,
             phase: .dedicatedSetup,
             draft: OnboardingDraft(),
             createdRoutineID: nil,

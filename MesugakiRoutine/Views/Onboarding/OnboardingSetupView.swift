@@ -26,8 +26,23 @@ struct OnboardingSetupView: View {
             || stateStore.habitSelectionStage == .systemExplanation
     }
 
+    private var delayedGuidanceStep: OnboardingSetupStep? {
+        let step = stateStore.setupStep
+        guard let stage = stateStore.delayedGuidanceStage(for: step),
+              stage == .presented || stage == .explanation else { return nil }
+        return step
+    }
+
+    private var isWaitingForDelayedGuidance: Bool {
+        stateStore.delayedGuidanceStage(for: stateStore.setupStep) == .waitingToPresent
+    }
+
     private var showsOnboardingOverlay: Bool {
-        showsRioIntroduction || showsHabitSelectionIntroduction
+        showsRioIntroduction || showsHabitSelectionIntroduction || delayedGuidanceStep != nil
+    }
+
+    private var blocksUnderlyingInteraction: Bool {
+        showsOnboardingOverlay || isWaitingForDelayedGuidance
     }
 
     var body: some View {
@@ -64,8 +79,16 @@ struct OnboardingSetupView: View {
                     .opacity(showsOnboardingOverlay ? 0 : 1)
             }
             .blur(radius: showsOnboardingOverlay ? 3 : 0)
-            .allowsHitTesting(!showsOnboardingOverlay)
-            .accessibilityHidden(showsOnboardingOverlay)
+            .allowsHitTesting(!blocksUnderlyingInteraction)
+            .accessibilityHidden(blocksUnderlyingInteraction)
+
+            if isWaitingForDelayedGuidance {
+                Color.clear
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .zIndex(0.5)
+                    .accessibilityHidden(true)
+            }
 
             if showsRioIntroduction {
                 OnboardingRioIntroductionView(
@@ -80,11 +103,19 @@ struct OnboardingSetupView: View {
             if showsHabitSelectionIntroduction {
                 OnboardingHabitSelectionIntroductionView(
                     stage: stateStore.habitSelectionStage,
+                    habitTitle: stateStore.draft.habitTitle,
+                    habitIconName: stateStore.draft.habitIconName,
                     onContinue: { stateStore.advanceSetup() },
                     onBack: { stateStore.retreatSetup() }
                 )
                 .transition(.opacity)
                 .zIndex(1)
+            }
+
+            if let step = delayedGuidanceStep {
+                delayedGuidanceOverlay(for: step)
+                    .transition(.opacity)
+                    .zIndex(1)
             }
         }
         .ignoresSafeArea(.keyboard, edges: showsOnboardingOverlay ? .bottom : [])
@@ -98,6 +129,9 @@ struct OnboardingSetupView: View {
                   stateStore.draft.selectedHabitID == "custom",
                   !stateStore.draft.hasHabitSelection else { return }
             focusedField = .customHabit
+        }
+        .task(id: stateStore.setupStep.rawValue) {
+            await presentDelayedGuidanceIfNeeded()
         }
     }
 
@@ -228,8 +262,6 @@ struct OnboardingSetupView: View {
     private var goalSettingPage: some View {
         VStack(alignment: .leading, spacing: 22) {
             onboardingTitle("どのくらいやりますか？")
-            rioMessage("張り切って入れたのに明日すぐサボってそ〜w")
-            systemExplanation("最初は少なすぎるくらいの目標を入れましょう。\n継続することが大切です。")
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(stateStore.draft.habitTitle)
@@ -279,8 +311,6 @@ struct OnboardingSetupView: View {
     private var cueSelectionPage: some View {
         VStack(alignment: .leading, spacing: 22) {
             onboardingTitle("いつやりますか？")
-            rioMessage("適当に『〇〇する』だけ決めてもどうせやらないでしょ〜w")
-            systemExplanation("いつもしている行動の後に組み込んでみましょう。")
 
             VStack(spacing: 10) {
                 ForEach(cueOptions) { option in
@@ -325,35 +355,17 @@ struct OnboardingSetupView: View {
         VStack(alignment: .leading, spacing: 24) {
             onboardingTitle("最初の約束")
 
-            VStack(alignment: .leading, spacing: 10) {
-                Label(cueLeadText, systemImage: "clock")
-                    .font(.headline)
-                    .foregroundStyle(AppColor.muted)
-
-                HStack(spacing: 14) {
-                    Image(systemName: stateStore.draft.habitIconName ?? "checklist")
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 62, height: 62)
-                        .background(AppColor.primary, in: Circle())
-
-                    Text(stateStore.draft.trimmedRoutineTitle)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(AppColor.text)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24))
-            .overlay {
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(AppColor.primary.opacity(0.25), lineWidth: 1)
-            }
-
             rioMessage("じゃあできたら教えてね〜")
 
-            systemExplanation("休んだ日があっても、達成済みの記録や物語の進行は消えません。")
+            OnboardingExplanationPanel(
+                illustration: .completedPromise(
+                    cueText: cueLeadText,
+                    routineTitle: stateStore.draft.trimmedRoutineTitle,
+                    iconName: stateStore.draft.habitIconName ?? "checklist"
+                ),
+                message: "休んだ日があっても、達成済みの記録や物語の進行は消えません。",
+                scrollsContent: false
+            )
         }
     }
 
@@ -485,6 +497,61 @@ struct OnboardingSetupView: View {
         return "\(cue)に"
     }
 
+    private var selectedPromiseTitle: String {
+        let routineTitle = stateStore.draft.trimmedRoutineTitle
+        if !routineTitle.isEmpty {
+            return routineTitle
+        }
+        return stateStore.draft.habitTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func presentDelayedGuidanceIfNeeded() async {
+        let step = stateStore.setupStep
+        guard stateStore.delayedGuidanceStage(for: step) == .waitingToPresent else { return }
+
+        do {
+            try await Task.sleep(for: .milliseconds(700))
+        } catch {
+            return
+        }
+
+        guard !Task.isCancelled,
+              stateStore.setupStep == step,
+              stateStore.delayedGuidanceStage(for: step) == .waitingToPresent else { return }
+        stateStore.presentDelayedGuidanceIfNeeded(for: step)
+    }
+
+    @ViewBuilder
+    private func delayedGuidanceOverlay(for step: OnboardingSetupStep) -> some View {
+        switch step {
+        case .goalSetting:
+            OnboardingDelayedGuidanceView(
+                stage: stateStore.delayedGuidanceStage(for: step) ?? .presented,
+                message: "張り切って入れたのに明日すぐサボってそ〜w",
+                illustration: .smallGoal,
+                title: "最初は少なすぎるくらいでOK",
+                explanation: "まずは、余裕でできる量から始めましょう。",
+                onContinue: { stateStore.advanceDelayedGuidance(for: step) },
+                onBack: { stateStore.retreatDelayedGuidance(for: step) }
+            )
+        case .cueSelection:
+            OnboardingDelayedGuidanceView(
+                stage: stateStore.delayedGuidanceStage(for: step) ?? .presented,
+                message: "適当に『\(selectedPromiseTitle)』だけ決めてもどうせやらないでしょ〜w",
+                illustration: .cueToHabit(
+                    habitTitle: selectedPromiseTitle,
+                    iconName: stateStore.draft.habitIconName ?? "checklist"
+                ),
+                title: "いつもの行動をきっかけに",
+                explanation: "すでに毎日している行動のあとに、\n新しい約束をつなげてみましょう。",
+                onContinue: { stateStore.advanceDelayedGuidance(for: step) },
+                onBack: { stateStore.retreatDelayedGuidance(for: step) }
+            )
+        case .introduction, .habitSelection, .confirmation:
+            EmptyView()
+        }
+    }
+
     private func chooseHabit(_ preset: RoutinePreset) {
         guard stateStore.draft.selectedHabitID != preset.id else {
             stateStore.beginHabitSelectionIntroductionIfNeeded()
@@ -544,20 +611,6 @@ struct OnboardingSetupView: View {
         .accessibilityLabel("莉央、\(text)")
     }
 
-    private func systemExplanation(_ text: String) -> some View {
-        Text(text)
-            .font(.body)
-            .foregroundStyle(AppColor.muted)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 18))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(AppColor.border, lineWidth: 1)
-            }
-    }
-
     private func systemFootnote(_ text: String) -> some View {
         Label(text, systemImage: "info.circle")
             .font(.footnote)
@@ -605,7 +658,7 @@ private struct OnboardingRioIntroductionView: View {
                     .onTapGesture(perform: onContinue)
                     .accessibilityHidden(true)
 
-                VStack(spacing: 20) {
+                VStack(spacing: OnboardingExplanationLayout.spacing(in: proxy.size)) {
                     HStack {
                         Button(action: onBack) {
                             Image(systemName: "chevron.left")
@@ -650,7 +703,7 @@ private struct OnboardingRioIntroductionView: View {
                             }
                         }
                     }
-                    .padding(.top, min(48, proxy.size.height * 0.06))
+                    .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
                     .frame(maxHeight: .infinity, alignment: .top)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onContinue)
@@ -663,7 +716,7 @@ private struct OnboardingRioIntroductionView: View {
                                 .transition(revealTransition)
                         }
                     }
-                    .frame(height: proxy.size.height * (dynamicTypeSize.isAccessibilitySize ? 0.40 : 0.34))
+                    .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onContinue)
 
@@ -702,23 +755,12 @@ private struct OnboardingRioIntroductionView: View {
     }
 
     private var explanationPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("彼女の名前は阿古座 莉央（あこざ りお）。")
-                    .font(.headline)
-                Text("あなたの習慣化をサポートしてくれるキャラクターです。")
-                Text("毎日約束を達成することで、莉央との会話や物語を進めることができます。")
-            }
-            .font(.body)
-            .foregroundStyle(AppColor.text)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
-            .accessibilityElement(children: .combine)
-            .accessibilityFocused($focusedContent, equals: .explanation)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        OnboardingExplanationPanel(
+            illustration: .promiseToStory,
+            title: "阿古座 莉央（あこざ りお）",
+            message: "毎日の約束を達成すると、\n莉央との会話や物語が進みます。"
+        )
+        .accessibilityFocused($focusedContent, equals: .explanation)
         .accessibilityIdentifier("onboarding.introduction.explanation")
     }
 }
@@ -734,6 +776,8 @@ private struct OnboardingHabitSelectionIntroductionView: View {
     }
 
     let stage: OnboardingHabitSelectionStage
+    let habitTitle: String
+    let habitIconName: String?
     let onContinue: () -> Void
     let onBack: () -> Void
 
@@ -757,7 +801,7 @@ private struct OnboardingHabitSelectionIntroductionView: View {
                     .onTapGesture(perform: continueFromMessageIfNeeded)
                     .accessibilityHidden(true)
 
-                VStack(spacing: 20) {
+                VStack(spacing: OnboardingExplanationLayout.spacing(in: proxy.size)) {
                     HStack {
                         Button(action: onBack) {
                             Image(systemName: "chevron.left")
@@ -802,7 +846,7 @@ private struct OnboardingHabitSelectionIntroductionView: View {
                             }
                         }
                     }
-                    .padding(.top, min(48, proxy.size.height * 0.06))
+                    .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
                     .frame(maxHeight: .infinity, alignment: .top)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: continueFromMessageIfNeeded)
@@ -814,7 +858,7 @@ private struct OnboardingHabitSelectionIntroductionView: View {
                                 .transition(revealTransition)
                         }
                     }
-                    .frame(height: proxy.size.height * (dynamicTypeSize.isAccessibilitySize ? 0.48 : 0.42))
+                    .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
                     .contentShape(Rectangle())
                     .onTapGesture(perform: continueFromMessageIfNeeded)
 
@@ -859,27 +903,211 @@ private struct OnboardingHabitSelectionIntroductionView: View {
     }
 
     private var explanationPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text(
-                    "まずは、たくさん頑張るよりも１つに集中しましょう。"
-                )
-                Text(
-                    "同じ行動を何度も繰り返すことで、少しずつ「考えなくてもできる行動」に変わっていきます。"
-                )
-            }
-            .font(.body)
-            .foregroundStyle(AppColor.text)
-            .lineSpacing(4)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
-            .accessibilityElement(children: .combine)
-            .accessibilityFocused($focusedContent, equals: .explanation)
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        OnboardingExplanationPanel(
+            illustration: .repeatOneHabit(
+                title: habitTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? "決めた習慣を1つ" : habitTitle,
+                iconName: habitIconName ?? "checklist"
+            ),
+            title: "まずは1つに集中",
+            message: "同じ行動を繰り返すことで、\n少しずつ『いつもの行動』になっていきます。"
+        )
+        .accessibilityFocused($focusedContent, equals: .explanation)
         .accessibilityIdentifier("onboarding.habitIntroduction.explanation")
+    }
+}
+
+/// 3・4枚目に入って0.7秒後、同じ画面上に重ねる1回限りの補足説明。
+private struct OnboardingDelayedGuidanceView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AccessibilityFocusState private var focusedContent: FocusedContent?
+
+    private enum FocusedContent: Hashable {
+        case message, explanation
+    }
+
+    let stage: OnboardingDelayedGuidanceStage
+    let message: String
+    let illustration: OnboardingIllustration.Kind
+    let title: String
+    let explanation: String
+    let onContinue: () -> Void
+    let onBack: () -> Void
+
+    private var showsExplanation: Bool {
+        stage == .explanation
+    }
+
+    private var revealTransition: AnyTransition {
+        reduceMotion ? .opacity : .offset(y: 10).combined(with: .opacity)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Color.black.opacity(0.26)
+                    .ignoresSafeArea()
+                    .onTapGesture(perform: continueFromMessageIfNeeded)
+                    .accessibilityHidden(true)
+
+                VStack(spacing: OnboardingExplanationLayout.spacing(in: proxy.size)) {
+                    HStack {
+                        Button(action: onBack) {
+                            Image(systemName: "chevron.left")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(AppColor.text)
+                                .frame(width: 44, height: 44)
+                                .background(AppColor.surface, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("前の説明へ戻る")
+                        Spacer()
+                    }
+
+                    HStack(alignment: .top, spacing: 10) {
+                        OnboardingRioPortrait()
+
+                        ScrollView {
+                            OnboardingRioBubble(text: message)
+                                .accessibilityLabel("莉央、\(message)")
+                                .accessibilityFocused($focusedContent, equals: .message)
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                    }
+                    .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                    ZStack(alignment: .bottom) {
+                        Color.clear
+                        if showsExplanation {
+                            OnboardingExplanationPanel(
+                                illustration: illustration,
+                                title: title,
+                                message: explanation
+                            )
+                            .accessibilityFocused($focusedContent, equals: .explanation)
+                            .accessibilityIdentifier("onboarding.delayedGuidance.explanation")
+                            .transition(revealTransition)
+                        }
+                    }
+                    .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                    Button("次へ", action: onContinue)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(AppColor.text)
+                        .padding(.horizontal, 20)
+                        .frame(minHeight: 44)
+                        .background(AppColor.surface.opacity(0.95), in: Capsule())
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("onboarding.delayedGuidance.continue")
+                }
+                .frame(maxWidth: 560)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.22), value: stage)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape, onBack)
+        .task(id: stage) {
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 250))
+            guard !Task.isCancelled else { return }
+            switch stage {
+            case .presented:
+                focusedContent = .message
+            case .explanation:
+                focusedContent = .explanation
+            case .waitingToPresent, .completed:
+                focusedContent = nil
+            }
+        }
+    }
+
+    private func continueFromMessageIfNeeded() {
+        guard !showsExplanation else { return }
+        onContinue()
+    }
+}
+
+/// 説明が現れる前から同じ高さを確保し、セリフや莉央の位置を動かさない。
+private enum OnboardingExplanationLayout {
+    static func spacing(in size: CGSize) -> CGFloat {
+        size.height < 680 ? 12 : 20
+    }
+
+    static func conversationTopPadding(in size: CGSize) -> CGFloat {
+        size.height < 680 ? 8 : min(48, size.height * 0.06)
+    }
+
+    static func panelHeight(in size: CGSize, typeSize: DynamicTypeSize) -> CGFloat {
+        min(typeSize.isAccessibilitySize ? 420 : 340, size.height * 0.52)
+    }
+}
+
+/// 図解を先に見せ、短い本文を添えるオンボーディング共通の説明パネル。
+private struct OnboardingExplanationPanel: View {
+    let illustration: OnboardingIllustration.Kind
+    let title: String?
+    let message: String?
+    let scrollsContent: Bool
+
+    init(
+        illustration: OnboardingIllustration.Kind,
+        title: String? = nil,
+        message: String? = nil,
+        scrollsContent: Bool = true
+    ) {
+        self.illustration = illustration
+        self.title = title
+        self.message = message
+        self.scrollsContent = scrollsContent
+    }
+
+    var body: some View {
+        Group {
+            if scrollsContent {
+                ScrollView {
+                    panelContent
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            } else {
+                panelContent
+            }
+        }
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var panelContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            OnboardingIllustration(kind: illustration)
+
+            if title != nil || message != nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let title {
+                        Text(title)
+                            .font(.headline)
+                    }
+                    if let message {
+                        Text(message)
+                            .font(.subheadline)
+                            .lineSpacing(3)
+                    }
+                }
+                .foregroundStyle(AppColor.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(16)
+        .contentShape(Rectangle())
     }
 }
 

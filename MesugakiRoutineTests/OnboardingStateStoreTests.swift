@@ -10,6 +10,8 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(store.setupStep, .introduction)
             XCTAssertEqual(store.introductionStage, .nameEntry)
             XCTAssertEqual(store.habitSelectionStage, .awaitingSelection)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .waitingToPresent)
+            XCTAssertEqual(store.cueSelectionGuidanceStage, .waitingToPresent)
             XCTAssertEqual(store.phase, .dedicatedSetup)
             XCTAssertEqual(store.draft, OnboardingDraft())
             XCTAssertNil(store.createdRoutineID)
@@ -60,10 +62,12 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             store.draft.selectedGoalID = "one-page"
             store.draft.routineTitle = "本を1ページ読む"
+            completeDelayedGuidance(store, for: .goalSetting)
             XCTAssertTrue(store.advanceSetup())
 
             store.draft.selectedCueID = "before-bed"
             store.draft.cueText = "寝る前"
+            completeDelayedGuidance(store, for: .cueSelection)
             XCTAssertTrue(store.advanceSetup())
             XCTAssertEqual(store.setupStep, .confirmation)
             XCTAssertFalse(store.advanceSetup(), "最終確認後はRoutine保存APIを明示的に呼ぶ")
@@ -203,6 +207,81 @@ final class OnboardingStateStoreTests: XCTestCase {
         }
     }
 
+    func testDelayedGuidancePersistsAndBlocksAdvancingUntilDismissed() {
+        withDefaults { defaults in
+            var store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            finishIntroduction(store)
+            store.draft.selectedHabitID = "onboarding-read"
+            store.draft.habitTitle = "本を読む"
+            finishHabitSelectionIntroduction(store)
+            store.draft.selectedGoalID = "one-page"
+            store.draft.routineTitle = "本を1ページ読む"
+
+            XCTAssertEqual(store.goalSettingGuidanceStage, .waitingToPresent)
+            XCTAssertFalse(store.advanceSetup())
+
+            store.presentDelayedGuidanceIfNeeded(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .presented)
+            XCTAssertFalse(store.advanceSetup())
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.setupStep, .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .presented)
+
+            store.advanceDelayedGuidance(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .explanation)
+            XCTAssertFalse(store.advanceSetup())
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.setupStep, .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .explanation)
+
+            store.retreatDelayedGuidance(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .presented)
+            store.advanceDelayedGuidance(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .explanation)
+            store.advanceDelayedGuidance(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .completed)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.setupStep, .cueSelection)
+
+            store.draft.selectedCueID = "before-bed"
+            store.draft.cueText = "寝る前"
+            XCTAssertFalse(store.advanceSetup())
+            completeDelayedGuidance(store, for: .cueSelection)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.setupStep, .confirmation)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.goalSettingGuidanceStage, .completed)
+            XCTAssertEqual(restored.cueSelectionGuidanceStage, .completed)
+        }
+    }
+
+    func testDelayedGuidanceBackNavigationReturnsOneStageAtATime() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            finishIntroduction(store)
+            store.draft.selectedHabitID = "onboarding-read"
+            store.draft.habitTitle = "本を読む"
+            finishHabitSelectionIntroduction(store)
+
+            store.presentDelayedGuidanceIfNeeded(for: .goalSetting)
+            store.advanceDelayedGuidance(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .explanation)
+
+            store.retreatDelayedGuidance(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .presented)
+            XCTAssertEqual(store.setupStep, .goalSetting)
+
+            store.retreatDelayedGuidance(for: .goalSetting)
+            XCTAssertEqual(store.goalSettingGuidanceStage, .completed)
+            XCTAssertEqual(store.setupStep, .goalSetting)
+        }
+    }
+
     func testReturningFromHabitSelectionAllowsNameEditingAndReplaysIntroduction() {
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
@@ -250,7 +329,9 @@ final class OnboardingStateStoreTests: XCTestCase {
             first.draft.selectedHabitID = "onboarding-read"
             first.draft.habitTitle = "本を読む"
 
-            let steps: [OnboardingSetupStep] = [.introduction, .habitSelection, .goalSetting]
+            let steps: [OnboardingSetupStep] = [
+                .introduction, .habitSelection, .goalSetting, .cueSelection, .confirmation,
+            ]
             for step in steps {
                 first.goToSetupStep(step)
                 let data = try XCTUnwrap(defaults.data(forKey: OnboardingStateStore.defaultStorageKey))
@@ -259,6 +340,8 @@ final class OnboardingStateStoreTests: XCTestCase {
                 )
                 legacySnapshot.removeValue(forKey: "introductionStage")
                 legacySnapshot.removeValue(forKey: "habitSelectionStage")
+                legacySnapshot.removeValue(forKey: "goalSettingGuidanceStage")
+                legacySnapshot.removeValue(forKey: "cueSelectionGuidanceStage")
                 defaults.set(
                     try JSONSerialization.data(withJSONObject: legacySnapshot),
                     forKey: OnboardingStateStore.defaultStorageKey
@@ -274,6 +357,16 @@ final class OnboardingStateStoreTests: XCTestCase {
                 default: .completed
                 }
                 XCTAssertEqual(restored.habitSelectionStage, expectedHabitStage)
+                XCTAssertEqual(
+                    restored.goalSettingGuidanceStage,
+                    step.rawValue > OnboardingSetupStep.goalSetting.rawValue
+                        ? .completed : .waitingToPresent
+                )
+                XCTAssertEqual(
+                    restored.cueSelectionGuidanceStage,
+                    step.rawValue > OnboardingSetupStep.cueSelection.rawValue
+                        ? .completed : .waitingToPresent
+                )
                 XCTAssertEqual(restored.draft.userName, "かずし")
                 XCTAssertEqual(restored.draft.selectedHabitID, "onboarding-read")
             }
@@ -366,6 +459,8 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(restored.setupStep, .introduction)
             XCTAssertEqual(restored.introductionStage, .nameEntry)
             XCTAssertEqual(restored.habitSelectionStage, .awaitingSelection)
+            XCTAssertEqual(restored.goalSettingGuidanceStage, .waitingToPresent)
+            XCTAssertEqual(restored.cueSelectionGuidanceStage, .waitingToPresent)
             XCTAssertEqual(restored.phase, .dedicatedSetup)
             XCTAssertEqual(restored.draft, OnboardingDraft())
             XCTAssertNil(restored.createdRoutineID)
@@ -597,6 +692,20 @@ final class OnboardingStateStoreTests: XCTestCase {
         XCTAssertTrue(store.advanceSetup(), file: file, line: line)
         XCTAssertEqual(store.habitSelectionStage, .completed, file: file, line: line)
         XCTAssertEqual(store.setupStep, .goalSetting, file: file, line: line)
+    }
+
+    private func completeDelayedGuidance(
+        _ store: OnboardingStateStore,
+        for step: OnboardingSetupStep,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        store.presentDelayedGuidanceIfNeeded(for: step)
+        XCTAssertEqual(store.delayedGuidanceStage(for: step), .presented, file: file, line: line)
+        store.advanceDelayedGuidance(for: step)
+        XCTAssertEqual(store.delayedGuidanceStage(for: step), .explanation, file: file, line: line)
+        store.advanceDelayedGuidance(for: step)
+        XCTAssertEqual(store.delayedGuidanceStage(for: step), .completed, file: file, line: line)
     }
 
     private func withDefaults(_ body: (UserDefaults) throws -> Void) rethrows {
