@@ -16,7 +16,13 @@ struct OnboardingSetupView: View {
     }
 
     private var showsRioIntroduction: Bool {
-        stateStore.setupStep == .introduction && stateStore.introductionStage != .nameEntry
+        guard stateStore.setupStep == .introduction else { return false }
+        switch stateStore.introductionStage {
+        case .firstMessage, .secondMessage, .characterExplanation:
+            return true
+        case .appIntroduction, .nameEntry:
+            return false
+        }
     }
 
     private var showsHabitSelectionIntroduction: Bool {
@@ -121,6 +127,7 @@ struct OnboardingSetupView: View {
         .ignoresSafeArea(.keyboard, edges: showsOnboardingOverlay ? .bottom : [])
         .preferredColorScheme(.light)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.setupStep)
+        .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.introductionStage)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: showsOnboardingOverlay)
         .onChange(of: showsHabitSelectionIntroduction) { wasShowing, isShowing in
             guard wasShowing,
@@ -138,7 +145,8 @@ struct OnboardingSetupView: View {
     private var header: some View {
         VStack(spacing: 12) {
             HStack {
-                if stateStore.setupStep != .introduction {
+                if stateStore.setupStep != .introduction
+                    || stateStore.introductionStage == .nameEntry {
                     Button {
                         focusedField = nil
                         stateStore.retreatSetup()
@@ -184,33 +192,52 @@ struct OnboardingSetupView: View {
     }
 
     private var introductionPage: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            onboardingTitle("小さな約束から、はじめよう")
+        Group {
+            if stateStore.introductionStage == .appIntroduction {
+                VStack(spacing: 22) {
+                    Text("小さな約束から、はじめよう")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(AppColor.text)
 
-            VStack(alignment: .leading, spacing: 18) {
-                Text("毎日の小さな約束を達成して、キャラクターとの会話や物語を楽しむアプリです。")
-                Text("まずはあなたの名前を教えてください。")
-            }
-            .font(.body)
-            .foregroundStyle(AppColor.text)
-            .lineSpacing(5)
-            .fixedSize(horizontal: false, vertical: true)
+                    Text("毎日の小さな約束を達成して、キャラクターとの会話や物語を楽しむアプリです。")
+                        .font(.title3)
+                        .foregroundStyle(AppColor.text)
+                        .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .multilineTextAlignment(.center)
+                .transition(.opacity)
+            } else {
+                VStack(spacing: 22) {
+                    Text("あなたの名前を教えてください。")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(AppColor.text)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("あなたの名前")
-                    .font(.subheadline.weight(.semibold))
-                TextField("名前を入力", text: $stateStore.draft.userName)
-                    .textInputAutocapitalization(.never)
-                    .submitLabel(.done)
-                    .focused($focusedField, equals: .name)
-                    .onSubmit { focusedField = nil }
-                    .onChange(of: stateStore.draft.userName) { _, value in
-                        if value.count > 20 {
-                            stateStore.draft.userName = String(value.prefix(20))
+                    TextField("名前を入力", text: $stateStore.draft.userName)
+                        .textInputAutocapitalization(.never)
+                        .submitLabel(.done)
+                        .focused($focusedField, equals: .name)
+                        .onSubmit { focusedField = nil }
+                        .onChange(of: stateStore.draft.userName) { _, value in
+                            if value.count > 20 {
+                                stateStore.draft.userName = String(value.prefix(20))
+                            }
                         }
-                    }
-                    .onboardingTextField()
-                    .accessibilityIdentifier("onboarding.name")
+                        .onboardingTextField()
+                        .accessibilityLabel("あなたの名前")
+                        .accessibilityIdentifier("onboarding.name")
+                }
+                .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: 430)
+        .frame(maxWidth: .infinity)
+        .containerRelativeFrame(.vertical, alignment: .center)
+        .onChange(of: stateStore.introductionStage) { _, stage in
+            if stage != .nameEntry {
+                focusedField = nil
             }
         }
     }
@@ -408,7 +435,8 @@ struct OnboardingSetupView: View {
 
     private var primaryButtonTitle: String {
         switch stateStore.setupStep {
-        case .introduction: return "はじめる"
+        case .introduction:
+            return stateStore.introductionStage == .appIntroduction ? "次へ" : "はじめる"
         case .confirmation: return "この約束ではじめる"
         default: return "次へ"
         }
@@ -416,39 +444,51 @@ struct OnboardingSetupView: View {
 
     private var goalOptions: [OnboardingGoalOption] {
         switch stateStore.draft.selectedHabitID {
-        case "onboarding-read-book":
-            return [
-                .init(id: "page-1", label: "1ページ", routineTitle: "本を1ページ読む"),
-                .init(id: "page-5", label: "5ページ", routineTitle: "本を5ページ読む"),
-                .init(id: "page-10", label: "10ページ", routineTitle: "本を10ページ読む"),
-            ]
+        case "onboarding-strength-training":
+            return durationOptions { minutes in
+                "筋トレを\(minutes)分する"
+            }
+        case "onboarding-walk":
+            return durationOptions { minutes in
+                "\(minutes)分散歩をする"
+            }
         case "onboarding-study":
             return [
                 .init(id: "problem-1", label: "1問", routineTitle: "問題を1問解く"),
                 .init(id: "minutes-5", label: "5分", routineTitle: "5分勉強する"),
                 .init(id: "minutes-10", label: "10分", routineTitle: "10分勉強する"),
             ]
-        case "onboarding-exercise":
-            return minuteOptions(verb: "運動する")
-        case "onboarding-drink-water":
+        case "onboarding-journal":
+            return [1, 3, 5].map { lines in
+                OnboardingGoalOption(
+                    id: "lines-\(lines)",
+                    label: "\(lines)行",
+                    routineTitle: "日記を\(lines)行書く"
+                )
+            }
+        case "onboarding-read-book":
             return [
-                .init(id: "glass-1", label: "コップ1杯", routineTitle: "コップ1杯の水を飲む"),
-                .init(id: "glass-2", label: "コップ2杯", routineTitle: "コップ2杯の水を飲む"),
-                .init(id: "milliliter-500", label: "500ml", routineTitle: "水を500ml飲む"),
+                .init(id: "page-1", label: "1ページ", routineTitle: "本を1ページ読む"),
+                .init(id: "page-5", label: "5ページ", routineTitle: "本を5ページ読む"),
+                .init(id: "page-10", label: "10ページ", routineTitle: "本を10ページ読む"),
             ]
         case "onboarding-tidy-up":
-            return minuteOptions(verb: "片づける")
+            return durationOptions { minutes in
+                "\(minutes)分部屋を片付ける"
+            }
         default:
             return []
         }
     }
 
-    private func minuteOptions(verb: String) -> [OnboardingGoalOption] {
+    private func durationOptions(
+        routineTitle: (Int) -> String
+    ) -> [OnboardingGoalOption] {
         [1, 5, 10].map { minutes in
             OnboardingGoalOption(
                 id: "minutes-\(minutes)",
                 label: "\(minutes)分",
-                routineTitle: "\(minutes)分\(verb)"
+                routineTitle: routineTitle(minutes)
             )
         }
     }
@@ -672,64 +712,77 @@ private struct OnboardingRioIntroductionView: View {
                         Spacer()
                     }
 
-                    HStack(alignment: .top, spacing: 10) {
-                        OnboardingRioPortrait()
+                    VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
+                        HStack(alignment: .top, spacing: 10) {
+                            OnboardingRioPortrait()
 
-                        ScrollViewReader { scrollProxy in
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    OnboardingRioBubble(text: "お、ざこのおにいさん発見〜")
-                                        .accessibilityLabel("莉央、お、ざこのおにいさん発見〜")
-                                        .accessibilityFocused($focusedContent, equals: .firstMessage)
+                            ScrollViewReader { scrollProxy in
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        OnboardingRioBubble(text: "お、ざこのおにいさん発見〜")
+                                            .accessibilityLabel("莉央、お、ざこのおにいさん発見〜")
+                                            .accessibilityFocused($focusedContent, equals: .firstMessage)
 
-                                    if showsSecondMessage {
-                                        OnboardingRioBubble(text: "もしかして習慣化アプリ入れただけで満足してないよね？")
-                                            .accessibilityLabel("莉央、もしかして習慣化アプリ入れただけで満足してないよね？")
-                                            .accessibilityFocused($focusedContent, equals: .secondMessage)
-                                            .id(IntroductionContent.secondMessage)
-                                            .transition(revealTransition)
+                                        if showsSecondMessage {
+                                            OnboardingRioBubble(text: "もしかして習慣化アプリ入れただけで満足してないよね？")
+                                                .accessibilityLabel("莉央、もしかして習慣化アプリ入れただけで満足してないよね？")
+                                                .accessibilityFocused($focusedContent, equals: .secondMessage)
+                                                .id(IntroductionContent.secondMessage)
+                                                .transition(revealTransition)
+                                        }
                                     }
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                            }
-                            .scrollBounceBehavior(.basedOnSize)
-                            .task(id: showsSecondMessage) {
-                                guard showsSecondMessage else { return }
-                                await Task.yield()
-                                guard !Task.isCancelled else { return }
-                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
-                                    scrollProxy.scrollTo(IntroductionContent.secondMessage, anchor: .bottom)
+                                .scrollBounceBehavior(.basedOnSize)
+                                .task(id: showsSecondMessage) {
+                                    guard showsSecondMessage else { return }
+                                    await Task.yield()
+                                    guard !Task.isCancelled else { return }
+                                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                                        scrollProxy.scrollTo(IntroductionContent.secondMessage, anchor: .bottom)
+                                    }
                                 }
                             }
                         }
+                        .frame(
+                            height: OnboardingExplanationLayout.conversationHeight(
+                                in: proxy.size,
+                                typeSize: dynamicTypeSize,
+                                hasMultipleMessages: true
+                            ),
+                            alignment: .top
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: onContinue)
+
+                        // 会話の直下を基準にし、カードの上端を一定間隔で配置する。
+                        ZStack(alignment: .top) {
+                            Color.clear
+                            if showsExplanation {
+                                explanationPanel
+                                    .transition(revealTransition)
+                            }
+                        }
+                        .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: onContinue)
+
+                        Button(action: onContinue) {
+                            Text("次へ")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(AppColor.text)
+                                .padding(.horizontal, 20)
+                                .frame(minHeight: 44)
+                                .background(AppColor.surface.opacity(0.95), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .opacity(showsExplanation ? 1 : 0)
+                        .allowsHitTesting(showsExplanation)
+                        .accessibilityHidden(!showsExplanation)
+                        .accessibilityIdentifier("onboarding.introduction.continue")
                     }
                     .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
                     .frame(maxHeight: .infinity, alignment: .top)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onContinue)
-
-                    // 初めから領域を確保し、説明が出ても莉央と過去のセリフを動かさない。
-                    ZStack(alignment: .bottom) {
-                        Color.clear
-                        if showsExplanation {
-                            explanationPanel
-                                .transition(revealTransition)
-                        }
-                    }
-                    .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onContinue)
-
-                    Button(action: onContinue) {
-                        Text("次へ")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(AppColor.text)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: 44)
-                            .background(AppColor.surface.opacity(0.95), in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("onboarding.introduction.continue")
                 }
                 .frame(maxWidth: 560)
                 .padding(.horizontal, 20)
@@ -746,7 +799,7 @@ private struct OnboardingRioIntroductionView: View {
             try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 250))
             guard !Task.isCancelled else { return }
             switch stage {
-            case .nameEntry: focusedContent = nil
+            case .appIntroduction, .nameEntry: focusedContent = nil
             case .firstMessage: focusedContent = .firstMessage
             case .secondMessage: focusedContent = .secondMessage
             case .characterExplanation: focusedContent = .explanation
@@ -757,7 +810,7 @@ private struct OnboardingRioIntroductionView: View {
     private var explanationPanel: some View {
         OnboardingExplanationPanel(
             illustration: .promiseToStory,
-            title: "阿古座 莉央（あこざ りお）",
+            title: "約束を達成しよう",
             message: "毎日の約束を達成すると、\n莉央との会話や物語が進みます。"
         )
         .accessibilityFocused($focusedContent, equals: .explanation)
@@ -815,61 +868,74 @@ private struct OnboardingHabitSelectionIntroductionView: View {
                         Spacer()
                     }
 
-                    HStack(alignment: .top, spacing: 10) {
-                        OnboardingRioPortrait()
+                    VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
+                        HStack(alignment: .top, spacing: 10) {
+                            OnboardingRioPortrait()
 
-                        ScrollViewReader { scrollProxy in
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    OnboardingRioBubble(text: "まずは１つだけでいいよ〜")
-                                        .accessibilityLabel("莉央、まずは１つだけでいいよ〜")
-                                        .accessibilityFocused($focusedContent, equals: .firstMessage)
+                            ScrollViewReader { scrollProxy in
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        OnboardingRioBubble(text: "まずは１つだけでいいよ〜")
+                                            .accessibilityLabel("莉央、まずは１つだけでいいよ〜")
+                                            .accessibilityFocused($focusedContent, equals: .firstMessage)
 
-                                    if showsSecondMessage {
-                                        OnboardingRioBubble(text: "おにいさんのよわよわメンタルじゃ何個も続かないでしょw")
-                                            .accessibilityLabel("莉央、おにいさんのよわよわメンタルじゃ何個も続かないでしょw")
-                                            .accessibilityFocused($focusedContent, equals: .secondMessage)
-                                            .id(FocusedContent.secondMessage)
-                                            .transition(revealTransition)
+                                        if showsSecondMessage {
+                                            OnboardingRioBubble(text: "おにいさんのよわよわメンタルじゃ何個も続かないでしょw")
+                                                .accessibilityLabel("莉央、おにいさんのよわよわメンタルじゃ何個も続かないでしょw")
+                                                .accessibilityFocused($focusedContent, equals: .secondMessage)
+                                                .id(FocusedContent.secondMessage)
+                                                .transition(revealTransition)
+                                        }
                                     }
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                            }
-                            .scrollBounceBehavior(.basedOnSize)
-                            .task(id: showsSecondMessage) {
-                                guard showsSecondMessage else { return }
-                                await Task.yield()
-                                guard !Task.isCancelled else { return }
-                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
-                                    scrollProxy.scrollTo(FocusedContent.secondMessage, anchor: .bottom)
+                                .scrollBounceBehavior(.basedOnSize)
+                                .task(id: showsSecondMessage) {
+                                    guard showsSecondMessage else { return }
+                                    await Task.yield()
+                                    guard !Task.isCancelled else { return }
+                                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                                        scrollProxy.scrollTo(FocusedContent.secondMessage, anchor: .bottom)
+                                    }
                                 }
                             }
                         }
+                        .frame(
+                            height: OnboardingExplanationLayout.conversationHeight(
+                                in: proxy.size,
+                                typeSize: dynamicTypeSize,
+                                hasMultipleMessages: true
+                            ),
+                            alignment: .top
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        ZStack(alignment: .top) {
+                            Color.clear
+                            if showsExplanation {
+                                explanationPanel
+                                    .transition(revealTransition)
+                            }
+                        }
+                        .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        Button("次へ", action: onContinue)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(AppColor.text)
+                            .padding(.horizontal, 20)
+                            .frame(minHeight: 44)
+                            .background(AppColor.surface.opacity(0.95), in: Capsule())
+                            .buttonStyle(.plain)
+                            .opacity(showsExplanation ? 1 : 0)
+                            .allowsHitTesting(showsExplanation)
+                            .accessibilityHidden(!showsExplanation)
+                            .accessibilityIdentifier("onboarding.habitIntroduction.continue")
                     }
                     .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
                     .frame(maxHeight: .infinity, alignment: .top)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: continueFromMessageIfNeeded)
-
-                    ZStack(alignment: .bottom) {
-                        Color.clear
-                        if showsExplanation {
-                            explanationPanel
-                                .transition(revealTransition)
-                        }
-                    }
-                    .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: continueFromMessageIfNeeded)
-
-                    Button("次へ", action: onContinue)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(AppColor.text)
-                        .padding(.horizontal, 20)
-                        .frame(minHeight: 44)
-                        .background(AppColor.surface.opacity(0.95), in: Capsule())
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("onboarding.habitIntroduction.continue")
                 }
                 .frame(maxWidth: 560)
                 .padding(.horizontal, 20)
@@ -965,46 +1031,59 @@ private struct OnboardingDelayedGuidanceView: View {
                         Spacer()
                     }
 
-                    HStack(alignment: .top, spacing: 10) {
-                        OnboardingRioPortrait()
+                    VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
+                        HStack(alignment: .top, spacing: 10) {
+                            OnboardingRioPortrait()
 
-                        ScrollView {
-                            OnboardingRioBubble(text: message)
-                                .accessibilityLabel("莉央、\(message)")
-                                .accessibilityFocused($focusedContent, equals: .message)
+                            ScrollView {
+                                OnboardingRioBubble(text: message)
+                                    .accessibilityLabel("莉央、\(message)")
+                                    .accessibilityFocused($focusedContent, equals: .message)
+                            }
+                            .scrollBounceBehavior(.basedOnSize)
                         }
-                        .scrollBounceBehavior(.basedOnSize)
+                        .frame(
+                            height: OnboardingExplanationLayout.conversationHeight(
+                                in: proxy.size,
+                                typeSize: dynamicTypeSize,
+                                hasMultipleMessages: false
+                            ),
+                            alignment: .top
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        ZStack(alignment: .top) {
+                            Color.clear
+                            if showsExplanation {
+                                OnboardingExplanationPanel(
+                                    illustration: illustration,
+                                    title: title,
+                                    message: explanation
+                                )
+                                .accessibilityFocused($focusedContent, equals: .explanation)
+                                .accessibilityIdentifier("onboarding.delayedGuidance.explanation")
+                                .transition(revealTransition)
+                            }
+                        }
+                        .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        Button("次へ", action: onContinue)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(AppColor.text)
+                            .padding(.horizontal, 20)
+                            .frame(minHeight: 44)
+                            .background(AppColor.surface.opacity(0.95), in: Capsule())
+                            .buttonStyle(.plain)
+                            .opacity(showsExplanation ? 1 : 0)
+                            .allowsHitTesting(showsExplanation)
+                            .accessibilityHidden(!showsExplanation)
+                            .accessibilityIdentifier("onboarding.delayedGuidance.continue")
                     }
                     .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
                     .frame(maxHeight: .infinity, alignment: .top)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: continueFromMessageIfNeeded)
-
-                    ZStack(alignment: .bottom) {
-                        Color.clear
-                        if showsExplanation {
-                            OnboardingExplanationPanel(
-                                illustration: illustration,
-                                title: title,
-                                message: explanation
-                            )
-                            .accessibilityFocused($focusedContent, equals: .explanation)
-                            .accessibilityIdentifier("onboarding.delayedGuidance.explanation")
-                            .transition(revealTransition)
-                        }
-                    }
-                    .frame(height: OnboardingExplanationLayout.panelHeight(in: proxy.size, typeSize: dynamicTypeSize))
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: continueFromMessageIfNeeded)
-
-                    Button("次へ", action: onContinue)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(AppColor.text)
-                        .padding(.horizontal, 20)
-                        .frame(minHeight: 44)
-                        .background(AppColor.surface.opacity(0.95), in: Capsule())
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("onboarding.delayedGuidance.continue")
                 }
                 .frame(maxWidth: 560)
                 .padding(.horizontal, 20)
@@ -1046,6 +1125,26 @@ private enum OnboardingExplanationLayout {
         size.height < 680 ? 8 : min(48, size.height * 0.06)
     }
 
+    static func conversationToPanelSpacing(in size: CGSize) -> CGFloat {
+        size.height < 680 ? 8 : 12
+    }
+
+    static func conversationHeight(
+        in size: CGSize,
+        typeSize: DynamicTypeSize,
+        hasMultipleMessages: Bool
+    ) -> CGFloat {
+        let desiredHeight: CGFloat
+        if typeSize.isAccessibilitySize {
+            desiredHeight = hasMultipleMessages ? 210 : 150
+        } else {
+            desiredHeight = hasMultipleMessages ? 148 : 104
+        }
+
+        let maximumHeight = size.height * (hasMultipleMessages ? 0.28 : 0.20)
+        return max(92, min(desiredHeight, maximumHeight))
+    }
+
     static func panelHeight(in size: CGSize, typeSize: DynamicTypeSize) -> CGFloat {
         min(typeSize.isAccessibilitySize ? 420 : 340, size.height * 0.52)
     }
@@ -1053,6 +1152,8 @@ private enum OnboardingExplanationLayout {
 
 /// 図解を先に見せ、短い本文を添えるオンボーディング共通の説明パネル。
 private struct OnboardingExplanationPanel: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let illustration: OnboardingIllustration.Kind
     let title: String?
     let message: String?
@@ -1073,37 +1174,50 @@ private struct OnboardingExplanationPanel: View {
     var body: some View {
         Group {
             if scrollsContent {
-                ScrollView {
-                    panelContent
+                GeometryReader { proxy in
+                    ScrollView {
+                        panelContent
+                            .frame(
+                                minHeight: dynamicTypeSize.isAccessibilitySize
+                                    ? nil
+                                    : proxy.size.height,
+                                alignment: .center
+                            )
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
                 }
-                .scrollBounceBehavior(.basedOnSize)
             } else {
                 panelContent
             }
         }
         .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .scaleEffect(0.95, anchor: .top)
         .accessibilityElement(children: .combine)
     }
 
     private var panelContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .center, spacing: 14) {
             OnboardingIllustration(kind: illustration)
 
             if title != nil || message != nil {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .center, spacing: 8) {
                     if let title {
                         Text(title)
                             .font(.headline)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
                     if let message {
                         Text(message)
                             .font(.subheadline)
                             .lineSpacing(3)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .center)
                     }
                 }
                 .foregroundStyle(AppColor.text)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .padding(16)

@@ -11,9 +11,9 @@ struct OnboardingIllustration: View {
     }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .caption) private var iconSize: CGFloat = 32
-    @ScaledMetric(relativeTo: .caption) private var portraitSize: CGFloat = 42
-    @ScaledMetric(relativeTo: .caption) private var checkSize: CGFloat = 24
+    @ScaledMetric(relativeTo: .caption) private var iconSize: CGFloat = 38
+    @ScaledMetric(relativeTo: .caption) private var portraitSize: CGFloat = 50
+    @ScaledMetric(relativeTo: .caption) private var checkSize: CGFloat = 28
 
     let kind: Kind
 
@@ -32,7 +32,7 @@ struct OnboardingIllustration: View {
                 completedPromise(cueText: cueText, routineTitle: routineTitle, iconName: iconName)
             }
         }
-        .padding(12)
+        .padding(14)
         .frame(maxWidth: .infinity)
         .background(
             AppColor.background,
@@ -101,7 +101,7 @@ struct OnboardingIllustration: View {
                     .background(AppColor.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                Text("ほんとにやったんだ〜")
+                Text("えらいえらい♡")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppColor.text)
                     .fixedSize(horizontal: false, vertical: true)

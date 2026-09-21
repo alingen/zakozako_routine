@@ -32,7 +32,14 @@ final class RoutinePresetTests: XCTestCase {
     func testOnboardingCatalogIsSeparateAndContainsRequestedPresets() {
         XCTAssertEqual(
             RoutinePreset.onboarding.map(\.title),
-            ["本を読む", "勉強する", "運動する", "水を飲む", "片づける"]
+            [
+                "筋トレをする",
+                "散歩をする",
+                "勉強する",
+                "日記をつける",
+                "本を読む",
+                "部屋を片付ける",
+            ]
         )
         XCTAssertEqual(
             Set(RoutinePreset.onboarding.map(\.id)).count,

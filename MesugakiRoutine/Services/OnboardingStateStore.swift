@@ -10,8 +10,9 @@ enum OnboardingSetupStep: Int, Codable, CaseIterable, Sendable {
     case confirmation
 }
 
-/// 1枚目の名前入力から、莉央との出会いを段階的に表示する現在位置。
+/// 1枚目のアプリ紹介・名前入力から、莉央との出会いを段階的に表示する現在位置。
 enum OnboardingIntroductionStage: String, Codable, Sendable {
+    case appIntroduction
     case nameEntry
     case firstMessage
     case secondMessage
@@ -288,7 +289,7 @@ final class OnboardingStateStore {
     func canContinue(from step: OnboardingSetupStep? = nil) -> Bool {
         switch step ?? setupStep {
         case .introduction:
-            return draft.hasIdentity
+            return introductionStage == .appIntroduction || draft.hasIdentity
         case .habitSelection:
             return draft.hasHabitSelection
         case .goalSetting:
@@ -425,6 +426,8 @@ final class OnboardingStateStore {
         if setupStep == .introduction {
             guard canContinue() else { return false }
             switch introductionStage {
+            case .appIntroduction:
+                introductionStage = .nameEntry
             case .nameEntry:
                 introductionStage = .firstMessage
             case .firstMessage:
@@ -483,8 +486,10 @@ final class OnboardingStateStore {
 
         if setupStep == .introduction {
             switch introductionStage {
-            case .nameEntry:
+            case .appIntroduction:
                 return false
+            case .nameEntry:
+                introductionStage = .appIntroduction
             case .firstMessage:
                 introductionStage = .nameEntry
             case .secondMessage:
@@ -669,7 +674,7 @@ final class OnboardingStateStore {
         let initial = Snapshot.initial
         performBatchUpdate {
             setupStep = initial.setupStep
-            introductionStage = .nameEntry
+            introductionStage = .appIntroduction
             habitSelectionStage = .awaitingSelection
             goalSettingGuidanceStage = .waitingToPresent
             cueSelectionGuidanceStage = .waitingToPresent
@@ -795,7 +800,7 @@ final class OnboardingStateStore {
         static let initial = Snapshot(
             version: OnboardingStateStore.schemaVersion,
             setupStep: .introduction,
-            introductionStage: .nameEntry,
+            introductionStage: .appIntroduction,
             habitSelectionStage: .awaitingSelection,
             goalSettingGuidanceStage: .waitingToPresent,
             cueSelectionGuidanceStage: .waitingToPresent,

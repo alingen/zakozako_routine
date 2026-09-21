@@ -8,7 +8,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             let store = OnboardingStateStore(defaults: defaults)
 
             XCTAssertEqual(store.setupStep, .introduction)
-            XCTAssertEqual(store.introductionStage, .nameEntry)
+            XCTAssertEqual(store.introductionStage, .appIntroduction)
             XCTAssertEqual(store.habitSelectionStage, .awaitingSelection)
             XCTAssertEqual(store.goalSettingGuidanceStage, .waitingToPresent)
             XCTAssertEqual(store.cueSelectionGuidanceStage, .waitingToPresent)
@@ -46,6 +46,8 @@ final class OnboardingStateStoreTests: XCTestCase {
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
 
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.introductionStage, .nameEntry)
             XCTAssertFalse(store.advanceSetup())
             store.draft.userName = "  "
             XCTAssertFalse(store.advanceSetup())
@@ -80,7 +82,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             store.draft.userName = "かずし"
 
             let stages: [OnboardingIntroductionStage] = [
-                .firstMessage, .secondMessage, .characterExplanation
+                .nameEntry, .firstMessage, .secondMessage, .characterExplanation,
             ]
             for stage in stages {
                 XCTAssertTrue(store.advanceSetup())
@@ -108,8 +110,11 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertTrue(store.advanceSetup())
             XCTAssertTrue(store.advanceSetup())
             XCTAssertTrue(store.advanceSetup())
+            XCTAssertTrue(store.advanceSetup())
 
-            let stages: [OnboardingIntroductionStage] = [.secondMessage, .firstMessage, .nameEntry]
+            let stages: [OnboardingIntroductionStage] = [
+                .secondMessage, .firstMessage, .nameEntry, .appIntroduction,
+            ]
             for stage in stages {
                 XCTAssertTrue(store.retreatSetup())
                 XCTAssertEqual(store.introductionStage, stage)
@@ -457,7 +462,7 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             let restored = OnboardingStateStore(defaults: defaults)
             XCTAssertEqual(restored.setupStep, .introduction)
-            XCTAssertEqual(restored.introductionStage, .nameEntry)
+            XCTAssertEqual(restored.introductionStage, .appIntroduction)
             XCTAssertEqual(restored.habitSelectionStage, .awaitingSelection)
             XCTAssertEqual(restored.goalSettingGuidanceStage, .waitingToPresent)
             XCTAssertEqual(restored.cueSelectionGuidanceStage, .waitingToPresent)
@@ -672,7 +677,21 @@ final class OnboardingStateStoreTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        for _ in 0..<4 {
+        let remainingAdvances: Int
+        switch store.introductionStage {
+        case .appIntroduction:
+            remainingAdvances = 5
+        case .nameEntry:
+            remainingAdvances = 4
+        case .firstMessage:
+            remainingAdvances = 3
+        case .secondMessage:
+            remainingAdvances = 2
+        case .characterExplanation:
+            remainingAdvances = 1
+        }
+
+        for _ in 0..<remainingAdvances {
             XCTAssertTrue(store.advanceSetup(), file: file, line: line)
         }
         XCTAssertEqual(store.setupStep, .habitSelection, file: file, line: line)

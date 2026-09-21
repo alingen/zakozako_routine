@@ -124,9 +124,14 @@ struct RoutinePreset: Identifiable {
     /// 通常の追加画面に同じ候補を重複表示しないよう `all` には含めない。
     static let onboarding: [RoutinePreset] = [
         RoutinePreset(
-            id: "onboarding-read-book",
-            title: "本を読む",
-            iconName: "book"
+            id: "onboarding-strength-training",
+            title: "筋トレをする",
+            iconName: "figure.strengthtraining.traditional"
+        ),
+        RoutinePreset(
+            id: "onboarding-walk",
+            title: "散歩をする",
+            iconName: "figure.walk"
         ),
         RoutinePreset(
             id: "onboarding-study",
@@ -134,18 +139,18 @@ struct RoutinePreset: Identifiable {
             iconName: "graduationcap"
         ),
         RoutinePreset(
-            id: "onboarding-exercise",
-            title: "運動する",
-            iconName: "figure.run"
+            id: "onboarding-journal",
+            title: "日記をつける",
+            iconName: "pencil.and.outline"
         ),
         RoutinePreset(
-            id: "onboarding-drink-water",
-            title: "水を飲む",
-            iconName: "drop"
+            id: "onboarding-read-book",
+            title: "本を読む",
+            iconName: "book"
         ),
         RoutinePreset(
             id: "onboarding-tidy-up",
-            title: "片づける",
+            title: "部屋を片付ける",
             iconName: "sparkles"
         ),
     ]
