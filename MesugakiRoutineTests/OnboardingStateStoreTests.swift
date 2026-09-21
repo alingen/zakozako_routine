@@ -1,3 +1,4 @@
+import FamilyControls
 import XCTest
 @testable import MesugakiRoutine
 
@@ -12,6 +13,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(store.habitSelectionStage, .awaitingSelection)
             XCTAssertEqual(store.goalSettingGuidanceStage, .waitingToPresent)
             XCTAssertEqual(store.cueSelectionGuidanceStage, .waitingToPresent)
+            XCTAssertEqual(store.blockedBehaviorStage, .waitingToPresent)
             XCTAssertEqual(store.phase, .dedicatedSetup)
             XCTAssertEqual(store.draft, OnboardingDraft())
             XCTAssertNil(store.createdRoutineID)
@@ -70,6 +72,17 @@ final class OnboardingStateStoreTests: XCTestCase {
             store.draft.selectedCueID = "before-bed"
             store.draft.cueText = "寝る前"
             completeDelayedGuidance(store, for: .cueSelection)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
+
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.noneID,
+                    title: "特にない",
+                    iconName: "minus.circle"
+                )
+            )
             XCTAssertTrue(store.advanceSetup())
             XCTAssertEqual(store.setupStep, .confirmation)
             XCTAssertFalse(store.advanceSetup(), "最終確認後はRoutine保存APIを明示的に呼ぶ")
@@ -256,11 +269,202 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertFalse(store.advanceSetup())
             completeDelayedGuidance(store, for: .cueSelection)
             XCTAssertTrue(store.advanceSetup())
-            XCTAssertEqual(store.setupStep, .confirmation)
+            XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
 
             let restored = OnboardingStateStore(defaults: defaults)
             XCTAssertEqual(restored.goalSettingGuidanceStage, .completed)
             XCTAssertEqual(restored.cueSelectionGuidanceStage, .completed)
+            XCTAssertEqual(restored.blockedBehaviorStage, .waitingToPresent)
+        }
+    }
+
+    func testBlockedBehaviorNoneSelectionSkipsPostSelectionGuidance() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.noneID,
+                    title: "特にない",
+                    iconName: "minus.circle"
+                )
+            )
+
+            XCTAssertTrue(store.canContinue())
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .completed)
+            XCTAssertEqual(store.setupStep, .confirmation)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.draft.blockedBehavior?.selectionID, OnboardingBlockedBehaviorDraft.noneID)
+            XCTAssertEqual(restored.blockedBehaviorStage, .completed)
+            XCTAssertEqual(restored.setupStep, .confirmation)
+        }
+    }
+
+    func testBlockedBehaviorSelectionShowsMessagesThenExplanationBeforeConfirmation() {
+        withDefaults { defaults in
+            var store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: "onboarding-view-social-media",
+                    title: "SNSを見る",
+                    iconName: "bubble.left.and.bubble.right"
+                )
+            )
+
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
+            XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .postSelectionSecondMessage)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .systemExplanation)
+            XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .completed)
+            XCTAssertEqual(store.setupStep, .confirmation)
+            XCTAssertEqual(store.draft.blockedBehavior?.title, "SNSを見る")
+        }
+    }
+
+    func testVideoBlockedBehaviorOpensScreenTimeConfigurationAndRequiresTargets() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.screenTimeVideoID,
+                    title: "動画をだらだら見る",
+                    iconName: "play.rectangle",
+                    screenTimeLimitMinutes: 20
+                )
+            )
+
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+            XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveScreenTimeLimitMinutes, 20)
+            XCTAssertEqual(store.draft.blockedBehavior?.screenTimeTargetCount, 0)
+            XCTAssertFalse(store.canContinue())
+            XCTAssertFalse(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+        }
+    }
+
+    func testScreenTimeTargetsAndLimitPersistBeforeAdvancingToGuidance() throws {
+        try withDefaults { defaults in
+            let selectionData = try makeNonemptyScreenTimeSelectionData()
+            var store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.screenTimeVideoID,
+                    title: "動画をだらだら見る",
+                    iconName: "play.rectangle",
+                    screenTimeLimitMinutes: 20
+                )
+            )
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+
+            store.updateBlockedBehaviorScreenTimeConfiguration(
+                selectionData: selectionData,
+                limitMinutes: 45
+            )
+            XCTAssertTrue(store.canContinue())
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+            XCTAssertEqual(store.draft.blockedBehavior?.screenTimeSelectionData, selectionData)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveScreenTimeLimitMinutes, 45)
+            XCTAssertEqual(store.draft.blockedBehavior?.screenTimeTargetCount, 1)
+            XCTAssertTrue(store.canContinue())
+
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
+            XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
+        }
+    }
+
+    func testScreenTimeConfigurationBackNavigationReturnsToSelectionAndGuidanceReturnsToConfiguration() throws {
+        try withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.screenTimeVideoID,
+                    title: "動画をだらだら見る",
+                    iconName: "play.rectangle"
+                )
+            )
+
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+            XCTAssertTrue(store.retreatSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .awaitingSelection)
+            XCTAssertEqual(
+                store.draft.blockedBehavior?.selectionID,
+                OnboardingBlockedBehaviorDraft.screenTimeVideoID
+            )
+
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+            store.updateBlockedBehaviorScreenTimeConfiguration(
+                selectionData: try makeNonemptyScreenTimeSelectionData(),
+                limitMinutes: 30
+            )
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
+
+            XCTAssertTrue(store.retreatSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+            XCTAssertTrue(store.canContinue())
+        }
+    }
+
+    func testEmptyCustomBlockedBehaviorCannotContinue() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.customID,
+                    title: "  \n ",
+                    iconName: "pencil"
+                )
+            )
+
+            XCTAssertFalse(store.canContinue())
+            XCTAssertFalse(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .awaitingSelection)
+            XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
+
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.customID,
+                    title: "ゲームをだらだらする",
+                    iconName: "pencil"
+                )
+            )
+            XCTAssertTrue(store.canContinue())
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
         }
     }
 
@@ -347,6 +551,7 @@ final class OnboardingStateStoreTests: XCTestCase {
                 legacySnapshot.removeValue(forKey: "habitSelectionStage")
                 legacySnapshot.removeValue(forKey: "goalSettingGuidanceStage")
                 legacySnapshot.removeValue(forKey: "cueSelectionGuidanceStage")
+                legacySnapshot.removeValue(forKey: "blockedBehaviorStage")
                 defaults.set(
                     try JSONSerialization.data(withJSONObject: legacySnapshot),
                     forKey: OnboardingStateStore.defaultStorageKey
@@ -364,17 +569,112 @@ final class OnboardingStateStoreTests: XCTestCase {
                 XCTAssertEqual(restored.habitSelectionStage, expectedHabitStage)
                 XCTAssertEqual(
                     restored.goalSettingGuidanceStage,
-                    step.rawValue > OnboardingSetupStep.goalSetting.rawValue
+                    step.orderIndex > OnboardingSetupStep.goalSetting.orderIndex
                         ? .completed : .waitingToPresent
                 )
                 XCTAssertEqual(
                     restored.cueSelectionGuidanceStage,
-                    step.rawValue > OnboardingSetupStep.cueSelection.rawValue
+                    step.orderIndex > OnboardingSetupStep.cueSelection.orderIndex
                         ? .completed : .waitingToPresent
+                )
+                XCTAssertEqual(
+                    restored.blockedBehaviorStage,
+                    step == .confirmation ? .completed : .waitingToPresent
                 )
                 XCTAssertEqual(restored.draft.userName, "かずし")
                 XCTAssertEqual(restored.draft.selectedHabitID, "onboarding-read")
             }
+        }
+    }
+
+    func testLegacyConfirmationRawValueFourStillRestoresAsConfirmation() throws {
+        try withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.draft.userName = "かずし"
+            store.draft.selectedHabitID = "onboarding-read-book"
+            store.draft.habitTitle = "本を読む"
+            store.draft.habitIconName = "book"
+            store.draft.selectedGoalID = "page-1"
+            store.draft.goalText = "1ページ"
+            store.draft.routineTitle = "本を1ページ読む"
+            store.draft.selectedCueID = "before-sleep"
+            store.draft.cueText = "寝る前"
+            store.goToSetupStep(.confirmation)
+
+            let data = try XCTUnwrap(
+                defaults.data(forKey: OnboardingStateStore.defaultStorageKey)
+            )
+            var legacySnapshot = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: data) as? [String: Any]
+            )
+            XCTAssertEqual(legacySnapshot["setupStep"] as? Int, 4)
+            legacySnapshot["goalSettingGuidanceStage"] = "completed"
+            legacySnapshot["cueSelectionGuidanceStage"] = "completed"
+            legacySnapshot.removeValue(forKey: "blockedBehaviorStage")
+            if var draft = legacySnapshot["draft"] as? [String: Any] {
+                draft.removeValue(forKey: "blockedBehavior")
+                legacySnapshot["draft"] = draft
+            }
+            defaults.set(
+                try JSONSerialization.data(withJSONObject: legacySnapshot),
+                forKey: OnboardingStateStore.defaultStorageKey
+            )
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.setupStep, .confirmation)
+            XCTAssertEqual(restored.setupStep.rawValue, 4)
+            XCTAssertEqual(restored.blockedBehaviorStage, .completed)
+            XCTAssertNil(restored.draft.blockedBehavior)
+
+            restored.goToSetupStep(.habitSelection)
+            XCTAssertTrue(restored.advanceSetup())
+            XCTAssertTrue(restored.advanceSetup())
+            XCTAssertTrue(restored.advanceSetup())
+            XCTAssertEqual(restored.setupStep, .blockedBehaviorSelection)
+            XCTAssertEqual(restored.blockedBehaviorStage, .waitingToPresent)
+        }
+    }
+
+    func testOlderManualBlockedBehaviorDraftWithoutScreenTimeFieldsStillRestores() throws {
+        try withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(
+                OnboardingBlockedBehaviorDraft(
+                    selectionID: "onboarding-view-social-media",
+                    title: "SNSを見る",
+                    iconName: "bubble.left.and.bubble.right"
+                )
+            )
+
+            let data = try XCTUnwrap(
+                defaults.data(forKey: OnboardingStateStore.defaultStorageKey)
+            )
+            var legacySnapshot = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: data) as? [String: Any]
+            )
+            var draft = try XCTUnwrap(legacySnapshot["draft"] as? [String: Any])
+            var blockedBehavior = try XCTUnwrap(
+                draft["blockedBehavior"] as? [String: Any]
+            )
+            blockedBehavior.removeValue(forKey: "screenTimeLimitMinutes")
+            blockedBehavior.removeValue(forKey: "screenTimeSelectionData")
+            draft["blockedBehavior"] = blockedBehavior
+            legacySnapshot["draft"] = draft
+            defaults.set(
+                try JSONSerialization.data(withJSONObject: legacySnapshot),
+                forKey: OnboardingStateStore.defaultStorageKey
+            )
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.setupStep, .blockedBehaviorSelection)
+            XCTAssertEqual(restored.blockedBehaviorStage, .awaitingSelection)
+            XCTAssertEqual(restored.draft.blockedBehavior?.selectionID, "onboarding-view-social-media")
+            XCTAssertEqual(restored.draft.blockedBehavior?.title, "SNSを見る")
+            XCTAssertNil(restored.draft.blockedBehavior?.screenTimeLimitMinutes)
+            XCTAssertNil(restored.draft.blockedBehavior?.screenTimeSelectionData)
+            XCTAssertTrue(restored.canContinue())
         }
     }
 
@@ -383,11 +683,20 @@ final class OnboardingStateStoreTests: XCTestCase {
             let store = OnboardingStateStore(defaults: defaults)
             store.goToSetupStep(.confirmation)
 
-            let steps: [OnboardingSetupStep] = [.cueSelection, .goalSetting, .habitSelection]
+            let steps: [OnboardingSetupStep] = [
+                .blockedBehaviorSelection, .cueSelection, .goalSetting, .habitSelection,
+            ]
             for step in steps {
                 XCTAssertTrue(store.retreatSetup())
                 XCTAssertEqual(store.setupStep, step)
                 XCTAssertEqual(OnboardingStateStore(defaults: defaults).setupStep, step)
+                if step == .blockedBehaviorSelection {
+                    XCTAssertEqual(
+                        store.draft.blockedBehavior?.selectionID,
+                        OnboardingBlockedBehaviorDraft.noneID
+                    )
+                    XCTAssertTrue(store.canContinue())
+                }
             }
         }
     }
@@ -466,6 +775,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(restored.habitSelectionStage, .awaitingSelection)
             XCTAssertEqual(restored.goalSettingGuidanceStage, .waitingToPresent)
             XCTAssertEqual(restored.cueSelectionGuidanceStage, .waitingToPresent)
+            XCTAssertEqual(restored.blockedBehaviorStage, .waitingToPresent)
             XCTAssertEqual(restored.phase, .dedicatedSetup)
             XCTAssertEqual(restored.draft, OnboardingDraft())
             XCTAssertNil(restored.createdRoutineID)
@@ -725,6 +1035,32 @@ final class OnboardingStateStoreTests: XCTestCase {
         XCTAssertEqual(store.delayedGuidanceStage(for: step), .explanation, file: file, line: line)
         store.advanceDelayedGuidance(for: step)
         XCTAssertEqual(store.delayedGuidanceStage(for: step), .completed, file: file, line: line)
+    }
+
+    private func finishBlockedBehaviorIntroduction(
+        _ store: OnboardingStateStore,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        store.presentBlockedBehaviorGuidanceIfNeeded()
+        XCTAssertEqual(store.blockedBehaviorStage, .firstMessage, file: file, line: line)
+        XCTAssertTrue(store.advanceSetup(), file: file, line: line)
+        XCTAssertEqual(store.blockedBehaviorStage, .secondMessage, file: file, line: line)
+        XCTAssertTrue(store.advanceSetup(), file: file, line: line)
+        XCTAssertEqual(store.blockedBehaviorStage, .awaitingSelection, file: file, line: line)
+        XCTAssertEqual(store.setupStep, .blockedBehaviorSelection, file: file, line: line)
+    }
+
+    private func makeNonemptyScreenTimeSelectionData() throws -> Data {
+        let encodedSelection = Data(
+            #"{"untokenizedCategoryIdentifiers":[],"categoryTokens":[],"webDomainTokens":[],"untokenizedApplicationIdentifiers":[],"applicationTokens":[{"data":"AQID"}],"untokenizedWebDomainIdentifiers":[],"includeEntireCategory":false}"#.utf8
+        )
+        let selection = try JSONDecoder().decode(
+            FamilyActivitySelection.self,
+            from: encodedSelection
+        )
+        XCTAssertEqual(selection.applicationTokens.count, 1)
+        return try JSONEncoder().encode(selection)
     }
 
     private func withDefaults(_ body: (UserDefaults) throws -> Void) rethrows {

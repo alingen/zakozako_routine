@@ -1,18 +1,33 @@
+import FamilyControls
 import SwiftUI
+import UIKit
 
-/// 初回起動時に、莉央と最初の約束を決める5画面のオンボーディング。
+/// 初回起動時に、莉央と最初の約束を決める6画面のオンボーディング。
 struct OnboardingSetupView: View {
+    private struct ScreenTimeAuthorizationAlert: Identifiable {
+        let id = UUID()
+        let message: String
+        let offersSettingsAction: Bool
+    }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openURL) private var openURL
     @Bindable var stateStore: OnboardingStateStore
+    let onRequestScreenTimeAuthorization: () async throws -> Void
     let onConfirmPromise: () -> Void
 
     @FocusState private var focusedField: InputField?
+    @State private var isPresentingScreenTimePicker = false
+    @State private var isRequestingScreenTimeAuthorization = false
+    @State private var screenTimeAuthorizationRequestID: UUID?
+    @State private var screenTimeAuthorizationAlert: ScreenTimeAuthorizationAlert?
 
     private enum InputField: Hashable {
         case name
         case customHabit
         case customGoal
         case customCue
+        case customBlockedBehavior
     }
 
     private var showsRioIntroduction: Bool {
@@ -39,12 +54,31 @@ struct OnboardingSetupView: View {
         return step
     }
 
+    private var showsBlockedBehaviorGuidance: Bool {
+        guard stateStore.setupStep == .blockedBehaviorSelection else { return false }
+        switch stateStore.blockedBehaviorStage {
+        case .firstMessage,
+             .secondMessage,
+             .postSelectionFirstMessage,
+             .postSelectionSecondMessage,
+             .systemExplanation:
+            return true
+        case .waitingToPresent, .awaitingSelection, .screenTimeConfiguration, .completed:
+            return false
+        }
+    }
+
     private var isWaitingForDelayedGuidance: Bool {
         stateStore.delayedGuidanceStage(for: stateStore.setupStep) == .waitingToPresent
+            || (stateStore.setupStep == .blockedBehaviorSelection
+                && stateStore.blockedBehaviorStage == .waitingToPresent)
     }
 
     private var showsOnboardingOverlay: Bool {
-        showsRioIntroduction || showsHabitSelectionIntroduction || delayedGuidanceStep != nil
+        showsRioIntroduction
+            || showsHabitSelectionIntroduction
+            || delayedGuidanceStep != nil
+            || showsBlockedBehaviorGuidance
     }
 
     private var blocksUnderlyingInteraction: Bool {
@@ -69,6 +103,8 @@ struct OnboardingSetupView: View {
                             goalSettingPage
                         case .cueSelection:
                             cueSelectionPage
+                        case .blockedBehaviorSelection:
+                            blockedBehaviorSelectionPage
                         case .confirmation:
                             confirmationPage
                         }
@@ -123,11 +159,22 @@ struct OnboardingSetupView: View {
                     .transition(.opacity)
                     .zIndex(1)
             }
+
+            if showsBlockedBehaviorGuidance {
+                OnboardingBlockedBehaviorGuidanceView(
+                    stage: stateStore.blockedBehaviorStage,
+                    onContinue: { stateStore.advanceSetup() },
+                    onBack: { stateStore.retreatSetup() }
+                )
+                .transition(.opacity)
+                .zIndex(1)
+            }
         }
         .ignoresSafeArea(.keyboard, edges: showsOnboardingOverlay ? .bottom : [])
         .preferredColorScheme(.light)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.setupStep)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.introductionStage)
+        .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.blockedBehaviorStage)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: showsOnboardingOverlay)
         .onChange(of: showsHabitSelectionIntroduction) { wasShowing, isShowing in
             guard wasShowing,
@@ -139,6 +186,29 @@ struct OnboardingSetupView: View {
         }
         .task(id: stateStore.setupStep.rawValue) {
             await presentDelayedGuidanceIfNeeded()
+        }
+        .familyActivityPicker(
+            headerText: "使いすぎを計測するアプリやカテゴリを選んでください",
+            footerText: "選んだ対象の合計使用時間が、設定した上限を超えると失敗になります。",
+            isPresented: $isPresentingScreenTimePicker,
+            selection: screenTimeSelectionBinding
+        )
+        .alert(
+            "スクリーンタイムを利用できません",
+            isPresented: Binding(
+                get: { screenTimeAuthorizationAlert != nil },
+                set: { if !$0 { screenTimeAuthorizationAlert = nil } }
+            ),
+            presenting: screenTimeAuthorizationAlert
+        ) { alert in
+            if alert.offersSettingsAction {
+                Button("設定アプリを開く") {
+                    openAppSettings()
+                }
+            }
+            Button("閉じる", role: .cancel) {}
+        } message: { alert in
+            Text(alert.message)
         }
     }
 
@@ -176,14 +246,16 @@ struct OnboardingSetupView: View {
             HStack(spacing: 8) {
                 ForEach(OnboardingSetupStep.allCases, id: \.rawValue) { step in
                     Capsule()
-                        .fill(step.rawValue <= stateStore.setupStep.rawValue
+                        .fill(step.orderIndex <= stateStore.setupStep.orderIndex
                               ? AppColor.primary
                               : AppColor.border)
                         .frame(width: step == stateStore.setupStep ? 30 : 9, height: 7)
                 }
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("5ステップ中\(stateStore.setupStep.rawValue + 1)ステップ目")
+            .accessibilityLabel(
+                "\(OnboardingSetupStep.allCases.count)ステップ中\(stateStore.setupStep.orderIndex + 1)ステップ目"
+            )
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
@@ -378,6 +450,164 @@ struct OnboardingSetupView: View {
         }
     }
 
+    @ViewBuilder
+    private var blockedBehaviorSelectionPage: some View {
+        if stateStore.blockedBehaviorStage == .screenTimeConfiguration {
+            screenTimeConfigurationPage
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+        } else {
+            blockedBehaviorPresetPage
+                .transition(.move(edge: .leading).combined(with: .opacity))
+        }
+    }
+
+    private var blockedBehaviorPresetPage: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            onboardingTitle("やめたい習慣はありますか？")
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
+                spacing: 12
+            ) {
+                ForEach(BlockedBehaviorPreset.onboarding) { preset in
+                    OnboardingHabitCard(
+                        title: preset.title,
+                        iconName: preset.iconName,
+                        isSelected: stateStore.draft.blockedBehavior?.selectionID == preset.id
+                    ) {
+                        chooseBlockedBehavior(preset)
+                    }
+                }
+
+                OnboardingHabitCard(
+                    title: "自分で決める",
+                    iconName: "pencil",
+                    isSelected: stateStore.draft.blockedBehavior?.selectionID
+                        == OnboardingBlockedBehaviorDraft.customID
+                ) {
+                    chooseCustomBlockedBehavior()
+                }
+
+                OnboardingHabitCard(
+                    title: "特にない",
+                    iconName: "minus.circle",
+                    isSelected: stateStore.draft.blockedBehavior?.selectionID
+                        == OnboardingBlockedBehaviorDraft.noneID
+                ) {
+                    chooseNoBlockedBehavior()
+                }
+            }
+
+            if stateStore.draft.blockedBehavior?.selectionID
+                == OnboardingBlockedBehaviorDraft.customID {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("やめたいこと")
+                        .font(.subheadline.weight(.semibold))
+                    TextField("例：ゲームをだらだらする", text: customBlockedBehaviorBinding)
+                        .focused($focusedField, equals: .customBlockedBehavior)
+                        .submitLabel(.done)
+                        .onSubmit { focusedField = nil }
+                        .onboardingTextField()
+                        .accessibilityLabel("やめたいこと")
+                        .accessibilityIdentifier("onboarding.blockedBehavior.customTitle")
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
+            systemFootnote("ここでは1つだけ選べます")
+        }
+    }
+
+    private var screenTimeConfigurationPage: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            onboardingTitle("動画を見る時間を決める")
+
+            Text("使いすぎを防ぎたいアプリと、1日の上限時間を選んでください。")
+                .font(.body)
+                .foregroundStyle(AppColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(spacing: 0) {
+                Button(action: requestScreenTimeAuthorization) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "iphone")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(AppColor.primary)
+                            .frame(width: 40, height: 40)
+                            .background(AppColor.primary.opacity(0.1), in: Circle())
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("対象アプリ")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(AppColor.text)
+                            Text(screenTimeTargetSummary)
+                                .font(.caption)
+                                .foregroundStyle(
+                                    screenTimeTargetCount == 0
+                                        ? AppColor.error
+                                        : AppColor.muted
+                                )
+                        }
+
+                        Spacer()
+
+                        if isRequestingScreenTimeAuthorization {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(AppColor.primary)
+                        } else {
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(AppColor.muted)
+                        }
+                    }
+                    .padding(16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isRequestingScreenTimeAuthorization)
+                .accessibilityIdentifier("onboarding.blockedBehavior.screenTimeTargets")
+
+                Divider()
+                    .padding(.leading, 70)
+
+                Stepper(
+                    value: screenTimeLimitBinding,
+                    in: 5...720,
+                    step: 5
+                ) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "hourglass")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(AppColor.primary)
+                            .frame(width: 40, height: 40)
+                            .background(AppColor.primary.opacity(0.1), in: Circle())
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("上限時間")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(AppColor.text)
+                            Text(formattedScreenTimeDuration(screenTimeLimitMinutes))
+                                .font(.caption)
+                                .foregroundStyle(AppColor.muted)
+                        }
+                    }
+                }
+                .padding(16)
+                .accessibilityIdentifier("onboarding.blockedBehavior.screenTimeLimit")
+            }
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(AppColor.border, lineWidth: 1)
+            }
+
+            systemFootnote(
+                "選んだ対象の合計使用時間が上限を超えると、その日は自動で失敗になります。"
+            )
+        }
+    }
+
     private var confirmationPage: some View {
         VStack(alignment: .leading, spacing: 24) {
             onboardingTitle("最初の約束")
@@ -393,6 +623,41 @@ struct OnboardingSetupView: View {
                 message: "休んだ日があっても、達成済みの記録や物語の進行は消えません。",
                 scrollsContent: false
             )
+
+            if let blockedBehavior = stateStore.draft.blockedBehavior {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("やめたい習慣")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppColor.primary)
+
+                    if blockedBehavior.isNone {
+                        Label("特にない", systemImage: "minus.circle")
+                    } else {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Label(
+                                blockedBehavior.trimmedTitle,
+                                systemImage: blockedBehavior.iconName ?? "hand.raised"
+                            )
+                            if blockedBehavior.usesScreenTime {
+                                Text(
+                                    "対象\(blockedBehavior.screenTimeTargetCount)項目・1日\(formattedScreenTimeDuration(blockedBehavior.effectiveScreenTimeLimitMinutes))まで"
+                                )
+                                .font(.caption)
+                                .foregroundStyle(AppColor.muted)
+                            }
+                        }
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppColor.text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(AppColor.border, lineWidth: 1)
+                }
+            }
         }
     }
 
@@ -528,6 +793,66 @@ struct OnboardingSetupView: View {
         )
     }
 
+    private var customBlockedBehaviorBinding: Binding<String> {
+        Binding(
+            get: { stateStore.draft.blockedBehavior?.title ?? "" },
+            set: { value in
+                stateStore.selectBlockedBehavior(
+                    OnboardingBlockedBehaviorDraft(
+                        selectionID: OnboardingBlockedBehaviorDraft.customID,
+                        title: String(value.prefix(28)),
+                        iconName: "hand.raised"
+                    )
+                )
+            }
+        )
+    }
+
+    private var screenTimeSelectionBinding: Binding<FamilyActivitySelection> {
+        Binding(
+            get: {
+                guard let data = stateStore.draft.blockedBehavior?.screenTimeSelectionData,
+                      let selection = try? JSONDecoder().decode(
+                          FamilyActivitySelection.self,
+                          from: data
+                      ) else {
+                    return FamilyActivitySelection()
+                }
+                return selection
+            },
+            set: { selection in
+                stateStore.updateBlockedBehaviorScreenTimeConfiguration(
+                    selectionData: try? JSONEncoder().encode(selection),
+                    limitMinutes: screenTimeLimitMinutes
+                )
+            }
+        )
+    }
+
+    private var screenTimeLimitBinding: Binding<Int> {
+        Binding(
+            get: { screenTimeLimitMinutes },
+            set: { limit in
+                stateStore.updateBlockedBehaviorScreenTimeConfiguration(
+                    selectionData: stateStore.draft.blockedBehavior?.screenTimeSelectionData,
+                    limitMinutes: limit
+                )
+            }
+        )
+    }
+
+    private var screenTimeLimitMinutes: Int {
+        stateStore.draft.blockedBehavior?.effectiveScreenTimeLimitMinutes ?? 20
+    }
+
+    private var screenTimeTargetCount: Int {
+        stateStore.draft.blockedBehavior?.screenTimeTargetCount ?? 0
+    }
+
+    private var screenTimeTargetSummary: String {
+        screenTimeTargetCount == 0 ? "未選択" : "\(screenTimeTargetCount)項目を選択中"
+    }
+
     private var cueLeadText: String {
         let cue = stateStore.draft.trimmedCueText
         guard !cue.isEmpty else { return "" }
@@ -547,7 +872,10 @@ struct OnboardingSetupView: View {
 
     private func presentDelayedGuidanceIfNeeded() async {
         let step = stateStore.setupStep
-        guard stateStore.delayedGuidanceStage(for: step) == .waitingToPresent else { return }
+        let isWaiting = step == .blockedBehaviorSelection
+            ? stateStore.blockedBehaviorStage == .waitingToPresent
+            : stateStore.delayedGuidanceStage(for: step) == .waitingToPresent
+        guard isWaiting else { return }
 
         do {
             try await Task.sleep(for: .milliseconds(700))
@@ -555,10 +883,14 @@ struct OnboardingSetupView: View {
             return
         }
 
-        guard !Task.isCancelled,
-              stateStore.setupStep == step,
-              stateStore.delayedGuidanceStage(for: step) == .waitingToPresent else { return }
-        stateStore.presentDelayedGuidanceIfNeeded(for: step)
+        guard !Task.isCancelled, stateStore.setupStep == step else { return }
+        if step == .blockedBehaviorSelection {
+            guard stateStore.blockedBehaviorStage == .waitingToPresent else { return }
+            stateStore.presentBlockedBehaviorGuidanceIfNeeded()
+        } else {
+            guard stateStore.delayedGuidanceStage(for: step) == .waitingToPresent else { return }
+            stateStore.presentDelayedGuidanceIfNeeded(for: step)
+        }
     }
 
     @ViewBuilder
@@ -587,7 +919,7 @@ struct OnboardingSetupView: View {
                 onContinue: { stateStore.advanceDelayedGuidance(for: step) },
                 onBack: { stateStore.retreatDelayedGuidance(for: step) }
             )
-        case .introduction, .habitSelection, .confirmation:
+        case .introduction, .habitSelection, .blockedBehaviorSelection, .confirmation:
             EmptyView()
         }
     }
@@ -633,6 +965,112 @@ struct OnboardingSetupView: View {
         stateStore.draft.routineTitle = ""
         stateStore.draft.selectedCueID = nil
         stateStore.draft.cueText = ""
+    }
+
+    private func chooseBlockedBehavior(_ preset: BlockedBehaviorPreset) {
+        let existing = stateStore.draft.blockedBehavior
+        let keepsScreenTimeConfiguration = existing?.selectionID == preset.id
+            && preset.trackingKind == .screenTime
+        stateStore.selectBlockedBehavior(
+            OnboardingBlockedBehaviorDraft(
+                selectionID: preset.id,
+                title: preset.title,
+                iconName: preset.iconName,
+                screenTimeLimitMinutes: preset.trackingKind == .screenTime
+                    ? (keepsScreenTimeConfiguration
+                        ? existing?.effectiveScreenTimeLimitMinutes
+                        : preset.screenTimeLimitMinutes)
+                    : nil,
+                screenTimeSelectionData: keepsScreenTimeConfiguration
+                    ? existing?.screenTimeSelectionData
+                    : nil
+            )
+        )
+        focusedField = nil
+    }
+
+    private func chooseCustomBlockedBehavior() {
+        let existingTitle = stateStore.draft.blockedBehavior?.selectionID
+            == OnboardingBlockedBehaviorDraft.customID
+            ? stateStore.draft.blockedBehavior?.title ?? ""
+            : ""
+        stateStore.selectBlockedBehavior(
+            OnboardingBlockedBehaviorDraft(
+                selectionID: OnboardingBlockedBehaviorDraft.customID,
+                title: existingTitle,
+                iconName: "hand.raised"
+            )
+        )
+        focusedField = .customBlockedBehavior
+    }
+
+    private func chooseNoBlockedBehavior() {
+        stateStore.selectBlockedBehavior(
+            OnboardingBlockedBehaviorDraft(
+                selectionID: OnboardingBlockedBehaviorDraft.noneID,
+                title: "",
+                iconName: nil
+            )
+        )
+        focusedField = nil
+    }
+
+    private func formattedScreenTimeDuration(_ minutes: Int) -> String {
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        switch (hours, remainingMinutes) {
+        case (0, _):
+            return "\(remainingMinutes)分"
+        case (_, 0):
+            return "\(hours)時間"
+        default:
+            return "\(hours)時間\(remainingMinutes)分"
+        }
+    }
+
+    private func requestScreenTimeAuthorization() {
+        guard !isRequestingScreenTimeAuthorization else { return }
+
+        let requestID = UUID()
+        screenTimeAuthorizationRequestID = requestID
+        isRequestingScreenTimeAuthorization = true
+
+        Task { @MainActor in
+            defer {
+                if screenTimeAuthorizationRequestID == requestID {
+                    screenTimeAuthorizationRequestID = nil
+                    isRequestingScreenTimeAuthorization = false
+                }
+            }
+
+            do {
+                try await onRequestScreenTimeAuthorization()
+                guard screenTimeAuthorizationRequestID == requestID,
+                      stateStore.setupStep == .blockedBehaviorSelection,
+                      stateStore.blockedBehaviorStage == .screenTimeConfiguration else { return }
+                isPresentingScreenTimePicker = true
+            } catch ScreenTimeMonitoringError.authorizationCanceled {
+                return
+            } catch let error as ScreenTimeMonitoringError {
+                guard screenTimeAuthorizationRequestID == requestID else { return }
+                screenTimeAuthorizationAlert = ScreenTimeAuthorizationAlert(
+                    message: error.errorDescription
+                        ?? "設定からスクリーンタイムの許可を確認してください。",
+                    offersSettingsAction: error.offersSettingsAction
+                )
+            } catch {
+                guard screenTimeAuthorizationRequestID == requestID else { return }
+                screenTimeAuthorizationAlert = ScreenTimeAuthorizationAlert(
+                    message: "スクリーンタイムの許可を確認できませんでした。\n\(error.localizedDescription)",
+                    offersSettingsAction: false
+                )
+            }
+        }
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 
     private func onboardingTitle(_ text: String) -> some View {
@@ -980,6 +1418,202 @@ private struct OnboardingHabitSelectionIntroductionView: View {
         )
         .accessibilityFocused($focusedContent, equals: .explanation)
         .accessibilityIdentifier("onboarding.habitIntroduction.explanation")
+    }
+}
+
+/// 5枚目で、選択の前後に段階的に重ねる莉央の会話と報告方法の説明。
+private struct OnboardingBlockedBehaviorGuidanceView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AccessibilityFocusState private var focusedContent: FocusedContent?
+
+    private enum FocusedContent: Hashable {
+        case firstMessage, secondMessage, explanation
+    }
+
+    let stage: OnboardingBlockedBehaviorStage
+    let onContinue: () -> Void
+    let onBack: () -> Void
+
+    private var isPostSelection: Bool {
+        switch stage {
+        case .postSelectionFirstMessage, .postSelectionSecondMessage, .systemExplanation:
+            return true
+        case .waitingToPresent,
+             .firstMessage,
+             .secondMessage,
+             .awaitingSelection,
+             .screenTimeConfiguration,
+             .completed:
+            return false
+        }
+    }
+
+    private var showsSecondMessage: Bool {
+        stage == .secondMessage
+            || stage == .postSelectionSecondMessage
+            || stage == .systemExplanation
+    }
+
+    private var showsExplanation: Bool { stage == .systemExplanation }
+
+    private var firstMessage: String {
+        isPostSelection
+            ? "負けそうになったらちゃんと教えてね？"
+            : "せっかくやること決めたのにスマホとかに負けてそ〜w"
+    }
+
+    private var secondMessage: String {
+        isPostSelection
+            ? "おにいさんのなさけない顔見にいくから♡"
+            : "まずはそのざこざこ習慣やめることから考えようね？"
+    }
+
+    private var revealTransition: AnyTransition {
+        reduceMotion ? .opacity : .offset(y: 10).combined(with: .opacity)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Color.black.opacity(0.26)
+                    .ignoresSafeArea()
+                    .onTapGesture(perform: continueFromMessageIfNeeded)
+                    .accessibilityHidden(true)
+
+                VStack(spacing: OnboardingExplanationLayout.spacing(in: proxy.size)) {
+                    HStack {
+                        Button(action: onBack) {
+                            Image(systemName: "chevron.left")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(AppColor.text)
+                                .frame(width: 44, height: 44)
+                                .background(AppColor.surface, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("前の説明へ戻る")
+                        Spacer()
+                    }
+
+                    VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
+                        HStack(alignment: .top, spacing: 10) {
+                            OnboardingRioPortrait()
+
+                            ScrollViewReader { scrollProxy in
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        OnboardingRioBubble(text: firstMessage)
+                                            .accessibilityLabel("莉央、\(firstMessage)")
+                                            .accessibilityFocused($focusedContent, equals: .firstMessage)
+
+                                        if showsSecondMessage {
+                                            OnboardingRioBubble(text: secondMessage)
+                                                .accessibilityLabel("莉央、\(secondMessage)")
+                                                .accessibilityFocused($focusedContent, equals: .secondMessage)
+                                                .id(FocusedContent.secondMessage)
+                                                .transition(revealTransition)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                }
+                                .scrollBounceBehavior(.basedOnSize)
+                                .task(id: showsSecondMessage) {
+                                    guard showsSecondMessage else { return }
+                                    await Task.yield()
+                                    guard !Task.isCancelled else { return }
+                                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                                        scrollProxy.scrollTo(FocusedContent.secondMessage, anchor: .bottom)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(
+                            height: OnboardingExplanationLayout.conversationHeight(
+                                in: proxy.size,
+                                typeSize: dynamicTypeSize,
+                                hasMultipleMessages: true
+                            ),
+                            alignment: .top
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        ZStack(alignment: .top) {
+                            Color.clear
+                            if showsExplanation {
+                                OnboardingExplanationPanel(
+                                    illustration: .askRioForHelp,
+                                    title: "負けそうなときは莉央に報告",
+                                    message: "我慢するのが難しくなったときは「負けそう…」から莉央に報告できます。"
+                                )
+                                .accessibilityFocused($focusedContent, equals: .explanation)
+                                .accessibilityIdentifier("onboarding.blockedBehavior.explanation")
+                                .transition(revealTransition)
+                            }
+                        }
+                        .frame(height: blockedBehaviorPanelHeight(in: proxy.size))
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        Button("次へ", action: onContinue)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(AppColor.text)
+                            .padding(.horizontal, 20)
+                            .frame(minHeight: 44)
+                            .background(AppColor.surface.opacity(0.95), in: Capsule())
+                            .buttonStyle(.plain)
+                            .opacity(showsExplanation ? 1 : 0)
+                            .allowsHitTesting(showsExplanation)
+                            .accessibilityHidden(!showsExplanation)
+                            .accessibilityIdentifier("onboarding.blockedBehavior.continue")
+                    }
+                    .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
+                    .frame(maxHeight: .infinity, alignment: .top)
+                }
+                .frame(maxWidth: 560)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.22), value: stage)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape, onBack)
+        .task(id: stage) {
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 250))
+            guard !Task.isCancelled else { return }
+            switch stage {
+            case .firstMessage, .postSelectionFirstMessage:
+                focusedContent = .firstMessage
+            case .secondMessage, .postSelectionSecondMessage:
+                focusedContent = .secondMessage
+            case .systemExplanation:
+                focusedContent = .explanation
+            case .waitingToPresent, .awaitingSelection, .screenTimeConfiguration, .completed:
+                focusedContent = nil
+            }
+        }
+    }
+
+    private func continueFromMessageIfNeeded() {
+        guard !showsExplanation else { return }
+        onContinue()
+    }
+
+    /// 小さい端末や大きい文字でも、説明カード下の「次へ」が必ず画面内に残る高さにする。
+    private func blockedBehaviorPanelHeight(in size: CGSize) -> CGFloat {
+        let standardHeight = OnboardingExplanationLayout.panelHeight(
+            in: size,
+            typeSize: dynamicTypeSize
+        )
+        let conversationHeight = OnboardingExplanationLayout.conversationHeight(
+            in: size,
+            typeSize: dynamicTypeSize,
+            hasMultipleMessages: true
+        )
+        let availableHeight = size.height - conversationHeight - 144
+        return min(standardHeight, max(190, availableHeight))
     }
 }
 
@@ -1372,6 +2006,7 @@ private extension View {
         stateStore: OnboardingStateStore(
             defaults: UserDefaults(suiteName: "OnboardingSetupViewPreview")!
         ),
+        onRequestScreenTimeAuthorization: {},
         onConfirmPromise: {}
     )
 }

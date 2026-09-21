@@ -1,13 +1,29 @@
 import Foundation
+import FamilyControls
 import Observation
 
-/// 専用オンボーディング画面（5画面）の現在位置。
+/// 専用オンボーディング画面（6画面）の現在位置。
 enum OnboardingSetupStep: Int, Codable, CaseIterable, Sendable {
-    case introduction
-    case habitSelection
-    case goalSetting
-    case cueSelection
-    case confirmation
+    case introduction = 0
+    case habitSelection = 1
+    case goalSetting = 2
+    case cueSelection = 3
+    // 既存保存データの confirmation = 4 を維持するため、新画面には未使用値を割り当てる。
+    case blockedBehaviorSelection = 5
+    case confirmation = 4
+
+    static let allCases: [OnboardingSetupStep] = [
+        .introduction,
+        .habitSelection,
+        .goalSetting,
+        .cueSelection,
+        .blockedBehaviorSelection,
+        .confirmation,
+    ]
+
+    var orderIndex: Int {
+        Self.allCases.firstIndex(of: self) ?? 0
+    }
 }
 
 /// 1枚目のアプリ紹介・名前入力から、莉央との出会いを段階的に表示する現在位置。
@@ -34,6 +50,19 @@ enum OnboardingDelayedGuidanceStage: String, Codable, Sendable {
     case waitingToPresent
     case presented
     case explanation
+    case completed
+}
+
+/// 「やらないこと」画面の、選択前後に表示する莉央の案内位置。
+enum OnboardingBlockedBehaviorStage: String, Codable, Sendable {
+    case waitingToPresent
+    case firstMessage
+    case secondMessage
+    case awaitingSelection
+    case screenTimeConfiguration
+    case postSelectionFirstMessage
+    case postSelectionSecondMessage
+    case systemExplanation
     case completed
 }
 
@@ -81,7 +110,45 @@ struct OnboardingNotificationSetup: Codable, Equatable, Sendable {
     let originalNotificationsEnabled: Bool
 }
 
-/// 5画面で入力する内容。Routine を作成するまでは UserDefaults にだけ保持する。
+/// オンボーディングで選択した、まだ保存前の「やらないこと」。
+struct OnboardingBlockedBehaviorDraft: Codable, Equatable, Sendable {
+    static let customID = "custom"
+    static let noneID = "none"
+    static let screenTimeVideoID = "onboarding-stop-watching-videos"
+
+    var selectionID: String
+    var title: String
+    var iconName: String?
+    /// 追加前の保存データをそのまま復元できるよう、Screen Time項目はoptionalで保持する。
+    var screenTimeLimitMinutes: Int? = nil
+    var screenTimeSelectionData: Data? = nil
+
+    var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var isNone: Bool { selectionID == Self.noneID }
+    var shouldCreate: Bool { !isNone && !trimmedTitle.isEmpty }
+    var usesScreenTime: Bool { selectionID == Self.screenTimeVideoID }
+    var effectiveScreenTimeLimitMinutes: Int {
+        min(max(screenTimeLimitMinutes ?? 20, 5), 720)
+    }
+    var screenTimeTargetCount: Int {
+        guard let screenTimeSelectionData,
+              let selection = try? JSONDecoder().decode(
+                  FamilyActivitySelection.self,
+                  from: screenTimeSelectionData
+              ) else { return 0 }
+        return selection.applicationTokens.count
+            + selection.categoryTokens.count
+            + selection.webDomainTokens.count
+    }
+    var hasValidScreenTimeConfiguration: Bool {
+        !usesScreenTime || screenTimeTargetCount > 0
+    }
+}
+
+/// 6画面で入力する内容。実データを作成するまでは UserDefaults にだけ保持する。
 struct OnboardingDraft: Codable, Equatable, Sendable {
     var userName: String
 
@@ -106,6 +173,9 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
     /// 最終フェーズで選んだ通知時刻。0時からの分数（0...1439）。
     var reminderMinuteOfDay: Int?
 
+    /// 最初に挑戦する「やらないこと」。特にない場合も sentinel 値を保持する。
+    var blockedBehavior: OnboardingBlockedBehaviorDraft?
+
     init(
         userName: String = "",
         selectedHabitID: String? = nil,
@@ -116,7 +186,8 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
         routineTitle: String = "",
         selectedCueID: String? = nil,
         cueText: String = "",
-        reminderMinuteOfDay: Int? = nil
+        reminderMinuteOfDay: Int? = nil,
+        blockedBehavior: OnboardingBlockedBehaviorDraft? = nil
     ) {
         self.userName = userName
         self.selectedHabitID = selectedHabitID
@@ -128,6 +199,7 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
         self.selectedCueID = selectedCueID
         self.cueText = cueText
         self.reminderMinuteOfDay = reminderMinuteOfDay.map(Self.normalizedMinuteOfDay)
+        self.blockedBehavior = blockedBehavior
     }
 
     var trimmedUserName: String {
@@ -157,6 +229,11 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
         selectedCueID != nil && !trimmedCueText.isEmpty
     }
 
+    var hasBlockedBehaviorSelection: Bool {
+        guard let blockedBehavior else { return false }
+        return blockedBehavior.isNone || !blockedBehavior.trimmedTitle.isEmpty
+    }
+
     mutating func setReminderMinuteOfDay(_ minute: Int?) {
         reminderMinuteOfDay = minute.map(Self.normalizedMinuteOfDay)
     }
@@ -168,7 +245,7 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
 
 /// オンボーディングの入力内容と進行を、アプリ終了をまたいで復元するストア。
 ///
-/// Routine の実データは5画面目で通常Repositoryへ保存し、このストアにはそのIDだけを保持する。
+/// Routine の実データは6画面目で通常Repositoryへ保存し、このストアにはそのIDだけを保持する。
 @Observable
 @MainActor
 final class OnboardingStateStore {
@@ -189,6 +266,9 @@ final class OnboardingStateStore {
         didSet { persistIfNeeded() }
     }
     private(set) var cueSelectionGuidanceStage: OnboardingDelayedGuidanceStage {
+        didSet { persistIfNeeded() }
+    }
+    private(set) var blockedBehaviorStage: OnboardingBlockedBehaviorStage {
         didSet { persistIfNeeded() }
     }
     private(set) var phase: OnboardingPhase {
@@ -259,6 +339,8 @@ final class OnboardingStateStore {
             for: .cueSelection,
             setupStep: snapshot.setupStep
         )
+        blockedBehaviorStage = snapshot.blockedBehaviorStage
+            ?? Self.restoredBlockedBehaviorStage(from: snapshot)
         phase = snapshot.phase
         draft = snapshot.draft
         createdRoutineID = snapshot.createdRoutineID
@@ -296,8 +378,24 @@ final class OnboardingStateStore {
             return draft.hasConcreteGoal && goalSettingGuidanceStage == .completed
         case .cueSelection:
             return draft.hasCueSelection && cueSelectionGuidanceStage == .completed
+        case .blockedBehaviorSelection:
+            guard draft.hasBlockedBehaviorSelection else { return false }
+            switch blockedBehaviorStage {
+            case .awaitingSelection, .completed:
+                return true
+            case .screenTimeConfiguration:
+                return draft.blockedBehavior?.hasValidScreenTimeConfiguration == true
+            case .waitingToPresent,
+                 .firstMessage,
+                 .secondMessage,
+                 .postSelectionFirstMessage,
+                 .postSelectionSecondMessage,
+                 .systemExplanation:
+                return false
+            }
         case .confirmation:
             return draft.hasCueSelection
+                && (draft.blockedBehavior?.hasValidScreenTimeConfiguration ?? true)
         }
     }
 
@@ -311,8 +409,46 @@ final class OnboardingStateStore {
                 habitSelectionStage = .awaitingSelection
             } else if step == .habitSelection {
                 habitSelectionStage = draft.selectedHabitID == nil ? .awaitingSelection : .completed
+            } else if step == .blockedBehaviorSelection {
+                blockedBehaviorStage = draft.hasBlockedBehaviorSelection
+                    ? .awaitingSelection
+                    : .waitingToPresent
             }
         }
+    }
+
+    func selectBlockedBehavior(_ selection: OnboardingBlockedBehaviorDraft) {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == .blockedBehaviorSelection else { return }
+        performBatchUpdate {
+            draft.blockedBehavior = selection
+            if blockedBehaviorStage == .completed {
+                blockedBehaviorStage = .awaitingSelection
+            }
+        }
+    }
+
+    func updateBlockedBehaviorScreenTimeConfiguration(
+        selectionData: Data?,
+        limitMinutes: Int
+    ) {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == .blockedBehaviorSelection,
+              var blockedBehavior = draft.blockedBehavior,
+              blockedBehavior.usesScreenTime else { return }
+        blockedBehavior.screenTimeSelectionData = selectionData
+        blockedBehavior.screenTimeLimitMinutes = min(max(limitMinutes, 5), 720)
+        draft.blockedBehavior = blockedBehavior
+    }
+
+    func presentBlockedBehaviorGuidanceIfNeeded() {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == .blockedBehaviorSelection,
+              blockedBehaviorStage == .waitingToPresent else { return }
+        blockedBehaviorStage = .firstMessage
     }
 
     /// 2枚目で項目を選んだ直後に、莉央の説明を開始する。
@@ -331,7 +467,7 @@ final class OnboardingStateStore {
             return goalSettingGuidanceStage
         case .cueSelection:
             return cueSelectionGuidanceStage
-        case .introduction, .habitSelection, .confirmation:
+        case .introduction, .habitSelection, .blockedBehaviorSelection, .confirmation:
             return nil
         }
     }
@@ -349,7 +485,7 @@ final class OnboardingStateStore {
         case .cueSelection:
             guard cueSelectionGuidanceStage == .waitingToPresent else { return }
             cueSelectionGuidanceStage = .presented
-        case .introduction, .habitSelection, .confirmation:
+        case .introduction, .habitSelection, .blockedBehaviorSelection, .confirmation:
             break
         }
     }
@@ -379,7 +515,7 @@ final class OnboardingStateStore {
             case .waitingToPresent, .completed:
                 break
             }
-        case .introduction, .habitSelection, .confirmation:
+        case .introduction, .habitSelection, .blockedBehaviorSelection, .confirmation:
             break
         }
     }
@@ -409,7 +545,7 @@ final class OnboardingStateStore {
             case .waitingToPresent, .completed:
                 break
             }
-        case .introduction, .habitSelection, .confirmation:
+        case .introduction, .habitSelection, .blockedBehaviorSelection, .confirmation:
             break
         }
     }
@@ -466,13 +602,62 @@ final class OnboardingStateStore {
             return true
         }
 
+        if setupStep == .blockedBehaviorSelection {
+            switch blockedBehaviorStage {
+            case .waitingToPresent:
+                return false
+            case .firstMessage:
+                blockedBehaviorStage = .secondMessage
+            case .secondMessage:
+                blockedBehaviorStage = .awaitingSelection
+            case .awaitingSelection:
+                guard draft.hasBlockedBehaviorSelection else { return false }
+                if draft.blockedBehavior?.isNone == true {
+                    performBatchUpdate {
+                        blockedBehaviorStage = .completed
+                        setupStep = .confirmation
+                    }
+                } else if draft.blockedBehavior?.usesScreenTime == true {
+                    blockedBehaviorStage = .screenTimeConfiguration
+                } else {
+                    blockedBehaviorStage = .postSelectionFirstMessage
+                }
+            case .screenTimeConfiguration:
+                guard draft.blockedBehavior?.hasValidScreenTimeConfiguration == true else {
+                    return false
+                }
+                blockedBehaviorStage = .postSelectionFirstMessage
+            case .postSelectionFirstMessage:
+                blockedBehaviorStage = .postSelectionSecondMessage
+            case .postSelectionSecondMessage:
+                blockedBehaviorStage = .systemExplanation
+            case .systemExplanation:
+                performBatchUpdate {
+                    blockedBehaviorStage = .completed
+                    setupStep = .confirmation
+                }
+            case .completed:
+                setupStep = .confirmation
+            }
+            return true
+        }
+
         guard canContinue() else { return false }
 
         guard let index = OnboardingSetupStep.allCases.firstIndex(of: setupStep),
               OnboardingSetupStep.allCases.indices.contains(index + 1) else {
             return false
         }
-        setupStep = OnboardingSetupStep.allCases[index + 1]
+        let nextStep = OnboardingSetupStep.allCases[index + 1]
+        performBatchUpdate {
+            if nextStep == .blockedBehaviorSelection,
+               draft.blockedBehavior == nil,
+               blockedBehaviorStage == .completed {
+                // 追加前の最終確認データから内容を変更した場合は、新しい案内を初回表示する。
+                blockedBehaviorStage = .waitingToPresent
+            }
+            setupStep = nextStep
+        }
         return true
     }
 
@@ -516,6 +701,33 @@ final class OnboardingStateStore {
             }
         }
 
+        if setupStep == .blockedBehaviorSelection {
+            switch blockedBehaviorStage {
+            case .firstMessage:
+                blockedBehaviorStage = .awaitingSelection
+                return true
+            case .secondMessage:
+                blockedBehaviorStage = .firstMessage
+                return true
+            case .postSelectionFirstMessage:
+                blockedBehaviorStage = draft.blockedBehavior?.usesScreenTime == true
+                    ? .screenTimeConfiguration
+                    : .awaitingSelection
+                return true
+            case .postSelectionSecondMessage:
+                blockedBehaviorStage = .postSelectionFirstMessage
+                return true
+            case .systemExplanation:
+                blockedBehaviorStage = .postSelectionSecondMessage
+                return true
+            case .screenTimeConfiguration:
+                blockedBehaviorStage = .awaitingSelection
+                return true
+            case .waitingToPresent, .awaitingSelection, .completed:
+                break
+            }
+        }
+
         guard let index = OnboardingSetupStep.allCases.firstIndex(of: setupStep),
               index > OnboardingSetupStep.allCases.startIndex else {
             return false
@@ -527,12 +739,21 @@ final class OnboardingStateStore {
                 habitSelectionStage = .awaitingSelection
             } else if setupStep == .habitSelection {
                 habitSelectionStage = .completed
+            } else if setupStep == .blockedBehaviorSelection,
+                      draft.blockedBehavior == nil {
+                // 新画面追加前に最終確認まで進んでいた保存データは、戻っても行き止まりにしない。
+                draft.blockedBehavior = OnboardingBlockedBehaviorDraft(
+                    selectionID: OnboardingBlockedBehaviorDraft.noneID,
+                    title: "",
+                    iconName: nil
+                )
+                blockedBehaviorStage = .completed
             }
         }
         return true
     }
 
-    /// 5枚目でRoutineの保存に成功した直後に呼び、通常Home上のチュートリアルへ移る。
+    /// 6枚目でRoutineの保存に成功した直後に呼び、通常Home上のチュートリアルへ移る。
     func beginInAppTutorial(createdRoutineID: UUID) {
         guard !isCompleted else { return }
         performBatchUpdate {
@@ -678,6 +899,7 @@ final class OnboardingStateStore {
             habitSelectionStage = .awaitingSelection
             goalSettingGuidanceStage = .waitingToPresent
             cueSelectionGuidanceStage = .waitingToPresent
+            blockedBehaviorStage = .waitingToPresent
             phase = initial.phase
             draft = initial.draft
             createdRoutineID = nil
@@ -712,6 +934,7 @@ final class OnboardingStateStore {
             habitSelectionStage: habitSelectionStage,
             goalSettingGuidanceStage: goalSettingGuidanceStage,
             cueSelectionGuidanceStage: cueSelectionGuidanceStage,
+            blockedBehaviorStage: blockedBehaviorStage,
             phase: phase,
             draft: draft,
             createdRoutineID: createdRoutineID,
@@ -743,7 +966,7 @@ final class OnboardingStateStore {
     private static func restoredHabitSelectionStage(
         from snapshot: Snapshot
     ) -> OnboardingHabitSelectionStage {
-        if snapshot.setupStep.rawValue > OnboardingSetupStep.habitSelection.rawValue {
+        if snapshot.setupStep.orderIndex > OnboardingSetupStep.habitSelection.orderIndex {
             return .completed
         }
         if snapshot.setupStep == .habitSelection,
@@ -761,7 +984,20 @@ final class OnboardingStateStore {
         if let savedStage {
             return savedStage
         }
-        return setupStep.rawValue > guidedStep.rawValue ? .completed : .waitingToPresent
+        return setupStep.orderIndex > guidedStep.orderIndex ? .completed : .waitingToPresent
+    }
+
+    private static func restoredBlockedBehaviorStage(
+        from snapshot: Snapshot
+    ) -> OnboardingBlockedBehaviorStage {
+        if snapshot.setupStep.orderIndex > OnboardingSetupStep.blockedBehaviorSelection.orderIndex {
+            return .completed
+        }
+        if snapshot.setupStep == .blockedBehaviorSelection,
+           snapshot.draft.hasBlockedBehaviorSelection {
+            return .awaitingSelection
+        }
+        return .waitingToPresent
     }
 
     /// 通常の通知再計算からも、オンボーディングで指定した初回通知下限を参照する。
@@ -785,6 +1021,7 @@ final class OnboardingStateStore {
         // 追加前の保存データは画面位置から補完する。
         var goalSettingGuidanceStage: OnboardingDelayedGuidanceStage?
         var cueSelectionGuidanceStage: OnboardingDelayedGuidanceStage?
+        var blockedBehaviorStage: OnboardingBlockedBehaviorStage?
         var phase: OnboardingPhase
         var draft: OnboardingDraft
         var createdRoutineID: UUID?
@@ -804,6 +1041,7 @@ final class OnboardingStateStore {
             habitSelectionStage: .awaitingSelection,
             goalSettingGuidanceStage: .waitingToPresent,
             cueSelectionGuidanceStage: .waitingToPresent,
+            blockedBehaviorStage: .waitingToPresent,
             phase: .dedicatedSetup,
             draft: OnboardingDraft(),
             createdRoutineID: nil,

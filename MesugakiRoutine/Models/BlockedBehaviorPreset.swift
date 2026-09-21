@@ -106,6 +106,38 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
             iconName: "gamecontroller"
         ),
     ]
+
+    /// 初回オンボーディングで、最初に見直す習慣として提示する候補。
+    /// 動画だけは続く内部画面で対象アプリと時間上限を設定し、Screen Time で自動判定する。
+    static let onboarding: [BlockedBehaviorPreset] = [
+        BlockedBehaviorPreset(
+            id: "onboarding-stop-watching-videos",
+            title: "動画をだらだら見る",
+            iconName: "play.rectangle",
+            trackingKind: .screenTime,
+            screenTimeLimitMinutes: 20
+        ),
+        BlockedBehaviorPreset(
+            id: "onboarding-view-social-media",
+            title: "SNSを見る",
+            iconName: "bubble.left.and.bubble.right"
+        ),
+        BlockedBehaviorPreset(
+            id: "onboarding-smoking",
+            title: "タバコを吸う",
+            iconName: "lungs"
+        ),
+        BlockedBehaviorPreset(
+            id: "onboarding-drink-alcohol",
+            title: "お酒を飲む",
+            iconName: "wineglass"
+        ),
+        BlockedBehaviorPreset(
+            id: "onboarding-snacking",
+            title: "間食をする",
+            iconName: "birthday.cake"
+        ),
+    ]
 }
 
 /// 選択画面と確認画面の間だけで保持する、未保存の入力内容。

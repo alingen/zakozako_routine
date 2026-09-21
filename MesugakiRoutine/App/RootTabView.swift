@@ -74,6 +74,11 @@ struct RootTabView: View {
             if onboardingState.shouldPresentDedicatedSetup {
                 OnboardingSetupView(
                     stateStore: onboardingState,
+                    onRequestScreenTimeAuthorization: {
+                        let dependencies = AppDependencies(context: modelContext)
+                        try await dependencies.screenTimeMonitoringService
+                            .requestAuthorizationIfNeeded()
+                    },
                     onConfirmPromise: saveFirstPromise
                 )
                 .transition(.opacity)
@@ -231,6 +236,38 @@ struct RootTabView: View {
         let dependencies = AppDependencies(context: modelContext)
 
         do {
+            let blockedBehaviorToCreate = draft.blockedBehavior.flatMap { blockedBehavior in
+                blockedBehavior.shouldCreate ? blockedBehavior : nil
+            }
+            let existingBlockedBehavior = blockedBehaviorToCreate.flatMap { blockedBehavior in
+                let trackingKind: BlockedBehaviorTrackingKind = blockedBehavior.usesScreenTime
+                    ? .screenTime
+                    : .manual
+                return dependencies.blockedBehaviorRepository.fetchAll().first {
+                    $0.title == blockedBehavior.trimmedTitle
+                        && $0.iconName == blockedBehavior.iconName
+                        && $0.isActive
+                        && $0.masteredAt == nil
+                        && $0.limitPeriod == .day
+                        && $0.effectiveLimit == 1
+                        && $0.trackingKind == trackingKind
+                        && (!blockedBehavior.usesScreenTime
+                            || ($0.screenTimeLimitMinutes
+                                == blockedBehavior.effectiveScreenTimeLimitMinutes
+                                && $0.screenTimeSelectionData
+                                    == blockedBehavior.screenTimeSelectionData))
+                        && $0.usageEvents.isEmpty
+                }
+            }
+
+            // 「やらないこと」は同時に1件だけ挑戦できる。Routineを作る前に確認し、部分保存を避ける。
+            if blockedBehaviorToCreate != nil,
+               existingBlockedBehavior == nil,
+               !dependencies.blockedBehaviorRepository.canAddNew() {
+                presentOnboardingError("すでに挑戦中の「やらないこと」があります。")
+                return
+            }
+
             // 保存直後にアプリが中断された場合も、同じ内容の約束を重複作成しない。
             let existing = dependencies.routineRepository.fetchAll().first {
                 $0.title == draft.trimmedRoutineTitle
@@ -256,6 +293,52 @@ struct RootTabView: View {
                 activeWeekdayValues: Weekday.allWeekdayValues,
                 targetDurationMinutes: nil
             )
+
+            if let blockedBehavior = blockedBehaviorToCreate {
+                let trackingKind: BlockedBehaviorTrackingKind = blockedBehavior.usesScreenTime
+                    ? .screenTime
+                    : .manual
+                var createdBlockedBehavior: BlockedBehavior?
+                if existingBlockedBehavior == nil {
+                    guard let created = dependencies.blockedBehaviorRepository.create(
+                        title: blockedBehavior.trimmedTitle,
+                        iconName: blockedBehavior.iconName,
+                        limitPeriod: .day,
+                        limitCount: 1,
+                        trackingKind: trackingKind,
+                        screenTimeLimitMinutes: blockedBehavior.usesScreenTime
+                            ? blockedBehavior.effectiveScreenTimeLimitMinutes
+                            : nil,
+                        screenTimeSelectionData: blockedBehavior.usesScreenTime
+                            ? blockedBehavior.screenTimeSelectionData
+                            : nil
+                    ) else {
+                        if existing == nil {
+                            try? dependencies.routineRepository.delete(routine)
+                        }
+                        presentOnboardingError("やめたい習慣を保存できませんでした。もう一度お試しください。")
+                        return
+                    }
+                    createdBlockedBehavior = created
+                }
+
+                if blockedBehavior.usesScreenTime,
+                   let savedBlockedBehavior = existingBlockedBehavior ?? createdBlockedBehavior {
+                    do {
+                        try dependencies.screenTimeMonitoringService
+                            .ensureMonitoring(for: savedBlockedBehavior)
+                    } catch {
+                        if let createdBlockedBehavior {
+                            _ = dependencies.blockedBehaviorRepository.delete(createdBlockedBehavior)
+                        }
+                        if existing == nil {
+                            try? dependencies.routineRepository.delete(routine)
+                        }
+                        presentOnboardingError(error.localizedDescription)
+                        return
+                    }
+                }
+            }
 
             AppSettingsStore.userName = draft.trimmedUserName
             selectedTab = .home

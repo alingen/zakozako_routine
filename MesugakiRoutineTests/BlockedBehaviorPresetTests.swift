@@ -42,6 +42,38 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         }
     }
 
+    func testOnboardingCatalogUsesRequestedPresetsAndScreenTimeOnlyForVideo() {
+        XCTAssertEqual(
+            BlockedBehaviorPreset.onboarding.map(\.title),
+            [
+                "動画をだらだら見る",
+                "SNSを見る",
+                "タバコを吸う",
+                "お酒を飲む",
+                "間食をする",
+            ]
+        )
+        XCTAssertEqual(
+            Set(BlockedBehaviorPreset.onboarding.map(\.id)).count,
+            BlockedBehaviorPreset.onboarding.count
+        )
+        let videoPreset = BlockedBehaviorPreset.onboarding.first
+        XCTAssertEqual(videoPreset?.id, OnboardingBlockedBehaviorDraft.screenTimeVideoID)
+        XCTAssertEqual(videoPreset?.trackingKind, .screenTime)
+        XCTAssertEqual(videoPreset?.screenTimeLimitMinutes, 20)
+
+        let remainingPresets = BlockedBehaviorPreset.onboarding.dropFirst()
+        XCTAssertTrue(remainingPresets.allSatisfy { $0.trackingKind == .manual })
+        XCTAssertTrue(
+            BlockedBehaviorPreset.onboarding.allSatisfy { $0.limitRule == .quitCompletely }
+        )
+
+        for preset in BlockedBehaviorPreset.onboarding {
+            XCTAssertTrue(BlockedBehaviorIcon.all.contains(preset.iconName), preset.iconName)
+            XCTAssertNotNil(UIImage(systemName: preset.iconName), preset.iconName)
+        }
+    }
+
     func testApplyingQuitCompletelyPresetFillsDraft() throws {
         let preset = try XCTUnwrap(
             BlockedBehaviorPreset.all.first { $0.id == "quit-smoking" }

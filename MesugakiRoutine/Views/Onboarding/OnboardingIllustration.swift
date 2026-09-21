@@ -7,6 +7,7 @@ struct OnboardingIllustration: View {
         case repeatOneHabit(title: String, iconName: String)
         case smallGoal
         case cueToHabit(habitTitle: String, iconName: String)
+        case askRioForHelp
         case completedPromise(cueText: String, routineTitle: String, iconName: String)
     }
 
@@ -28,6 +29,8 @@ struct OnboardingIllustration: View {
                 smallGoal
             case let .cueToHabit(habitTitle, iconName):
                 cueToHabit(habitTitle: habitTitle, iconName: iconName)
+            case .askRioForHelp:
+                askRioForHelp
             case let .completedPromise(cueText, routineTitle, iconName):
                 completedPromise(cueText: cueText, routineTitle: routineTitle, iconName: iconName)
             }
@@ -286,10 +289,65 @@ struct OnboardingIllustration: View {
         .miniOnboardingCard()
     }
 
+    /// 「負けそう…」から莉央へ報告できる流れを、実際の操作を要求せずに伝える図。
+    private var askRioForHelp: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                habitIcon("ellipsis.bubble")
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("我慢が難しいとき")
+                        .font(.caption2)
+                        .foregroundStyle(AppColor.muted)
+                    Text("負けそう…")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppColor.text)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("報告")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppColor.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(AppColor.primarySoft, in: Capsule())
+            }
+            .padding(10)
+            .miniOnboardingCard()
+
+            flowArrow
+
+            let responseLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+            responseLayout {
+                Image("rio_blocked_behavior_taunt")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: portraitSize, height: portraitSize, alignment: .top)
+                    .clipped()
+                    .background(AppColor.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                Text("負けそうだから莉央ちゃんに\n助け求めにきたんだw")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppColor.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 9)
+                    .background(
+                        AppColor.primarySoft,
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+            }
+        }
+    }
+
     private func completedPromise(cueText: String, routineTitle: String, iconName: String) -> some View {
         VStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("最初の約束")
+                Text("最初の約束を確認しましょう")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppColor.primary)
 
@@ -384,6 +442,8 @@ struct OnboardingIllustration: View {
             return "図解。筋トレ30分は難しそうでも、スクワット1回ならできそう。目標を小さくして始めます。"
         case let .cueToHabit(habitTitle, _):
             return "図解。歯を磨くという、いつもの行動の後に、\(habitTitle)を続けます。"
+        case .askRioForHelp:
+            return "図解。我慢が難しいときは、負けそうと莉央に報告できます。莉央が反応します。"
         case let .completedPromise(cueText, routineTitle, _):
             return "図解。最初の約束。\(cueText)、\(routineTitle)。できたら莉央に報告します。"
         }
