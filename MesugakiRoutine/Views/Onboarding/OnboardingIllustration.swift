@@ -345,51 +345,26 @@ struct OnboardingIllustration: View {
     }
 
     private func completedPromise(cueText: String, routineTitle: String, iconName: String) -> some View {
-        VStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("最初の約束を確認しましょう")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppColor.primary)
-
-                Label(cueText, systemImage: "sparkles")
-                    .font(.caption)
-                    .foregroundStyle(AppColor.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(alignment: .center, spacing: 10) {
-                    habitIcon(iconName)
-                    Text(routineTitle)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppColor.text)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .miniOnboardingCard()
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(AppColor.primary.opacity(0.4), lineWidth: 1)
-            }
+        VStack(spacing: 12) {
+            OnboardingPromiseTaskCard(
+                cueText: cueText,
+                routineTitle: routineTitle,
+                iconName: iconName,
+                isChecked: false
+            )
 
             let reportLayout = dynamicTypeSize.isAccessibilitySize
                 ? AnyLayout(VStackLayout(spacing: 8))
                 : AnyLayout(HStackLayout(spacing: 8))
             reportLayout {
-                Text("できたら莉央に報告")
+                Text("できたらタップでチェック")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppColor.text)
                     .fixedSize(horizontal: false, vertical: true)
                 Image(systemName: dynamicTypeSize.isAccessibilitySize ? "arrow.down" : "arrow.right")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppColor.primary)
-                Image("rio_blocked_behavior_taunt")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: portraitSize, height: portraitSize, alignment: .top)
-                    .clipped()
-                    .background(AppColor.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                OnboardingPromiseCheck(isChecked: true, size: checkSize + 12)
             }
         }
     }
@@ -445,8 +420,90 @@ struct OnboardingIllustration: View {
         case .askRioForHelp:
             return "図解。我慢が難しいときは、負けそうと莉央に報告できます。莉央が反応します。"
         case let .completedPromise(cueText, routineTitle, _):
-            return "図解。最初の約束。\(cueText)、\(routineTitle)。できたら莉央に報告します。"
+            return "図解。最初の約束。\(routineTitle)、\(cueText)、今日から。できたらタップしてチェックします。"
         }
+    }
+}
+
+/// Homeの「今日の約束」を小さく再現した、最終確認用のタスクカード。
+struct OnboardingPromiseTaskCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let cueText: String
+    let routineTitle: String
+    let iconName: String
+    let isChecked: Bool
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    taskDetails
+                    HStack {
+                        Spacer(minLength: 0)
+                        OnboardingPromiseCheck(isChecked: isChecked, size: 44)
+                    }
+                }
+            } else {
+                HStack(spacing: 10) {
+                    taskDetails
+                    OnboardingPromiseCheck(isChecked: isChecked, size: 44)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .miniOnboardingCard()
+    }
+
+    private var taskDetails: some View {
+        HStack(spacing: 10) {
+            RoutineProgressPie(
+                progress: isChecked ? 1 : 0,
+                size: 46,
+                tint: AppColor.primary,
+                centerSystemImage: iconName
+            )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(routineTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppColor.text)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Label(cueText, systemImage: "clock")
+                    .font(.caption2)
+                    .foregroundStyle(AppColor.muted)
+                    .lineLimit(1)
+
+                Text(isChecked ? "1日連続！" : "今日から")
+                    .font(.caption)
+                    .foregroundStyle(isChecked ? AppColor.success : AppColor.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct OnboardingPromiseCheck: View {
+    let isChecked: Bool
+    let size: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(isChecked ? AppColor.primary : AppColor.surface)
+            Circle()
+                .stroke(isChecked ? AppColor.primary : AppColor.border, lineWidth: 2.5)
+            if isChecked {
+                Image(systemName: "checkmark")
+                    .font(.system(size: size * 0.42, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityLabel(isChecked ? "チェック済み" : "未チェック")
     }
 }
 

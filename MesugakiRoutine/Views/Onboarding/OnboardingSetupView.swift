@@ -68,10 +68,22 @@ struct OnboardingSetupView: View {
         }
     }
 
+    private var showsConfirmationGuidance: Bool {
+        guard stateStore.setupStep == .confirmation else { return false }
+        switch stateStore.confirmationGuidanceStage {
+        case .firstMessage, .secondMessage, .explanation:
+            return true
+        case .waitingToPresent, .completed:
+            return false
+        }
+    }
+
     private var isWaitingForDelayedGuidance: Bool {
         stateStore.delayedGuidanceStage(for: stateStore.setupStep) == .waitingToPresent
             || (stateStore.setupStep == .blockedBehaviorSelection
                 && stateStore.blockedBehaviorStage == .waitingToPresent)
+            || (stateStore.setupStep == .confirmation
+                && stateStore.confirmationGuidanceStage == .waitingToPresent)
     }
 
     private var showsOnboardingOverlay: Bool {
@@ -79,6 +91,7 @@ struct OnboardingSetupView: View {
             || showsHabitSelectionIntroduction
             || delayedGuidanceStep != nil
             || showsBlockedBehaviorGuidance
+            || showsConfirmationGuidance
     }
 
     private var blocksUnderlyingInteraction: Bool {
@@ -169,12 +182,26 @@ struct OnboardingSetupView: View {
                 .transition(.opacity)
                 .zIndex(1)
             }
+
+            if showsConfirmationGuidance {
+                OnboardingConfirmationGuidanceView(
+                    stage: stateStore.confirmationGuidanceStage,
+                    cueText: stateStore.draft.trimmedCueText,
+                    routineTitle: stateStore.draft.trimmedRoutineTitle,
+                    iconName: stateStore.draft.habitIconName ?? "checklist",
+                    onContinue: { stateStore.advanceConfirmationGuidance() },
+                    onBack: { stateStore.retreatConfirmationGuidance() }
+                )
+                .transition(.opacity)
+                .zIndex(1)
+            }
         }
         .ignoresSafeArea(.keyboard, edges: showsOnboardingOverlay ? .bottom : [])
         .preferredColorScheme(.light)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.setupStep)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.introductionStage)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.blockedBehaviorStage)
+        .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: stateStore.confirmationGuidanceStage)
         .animation(.easeInOut(duration: reduceMotion ? 0.1 : 0.22), value: showsOnboardingOverlay)
         .onChange(of: showsHabitSelectionIntroduction) { wasShowing, isShowing in
             guard wasShowing,
@@ -610,18 +637,13 @@ struct OnboardingSetupView: View {
 
     private var confirmationPage: some View {
         VStack(alignment: .leading, spacing: 24) {
-            onboardingTitle("最初の約束")
+            onboardingTitle("最初の約束を確認しましょう")
 
-            rioMessage("じゃあできたら教えてね〜")
-
-            OnboardingExplanationPanel(
-                illustration: .completedPromise(
-                    cueText: cueLeadText,
-                    routineTitle: stateStore.draft.trimmedRoutineTitle,
-                    iconName: stateStore.draft.habitIconName ?? "checklist"
-                ),
-                message: "休んだ日があっても、達成済みの記録や物語の進行は消えません。",
-                scrollsContent: false
+            OnboardingPromiseTaskCard(
+                cueText: stateStore.draft.trimmedCueText,
+                routineTitle: stateStore.draft.trimmedRoutineTitle,
+                iconName: stateStore.draft.habitIconName ?? "checklist",
+                isChecked: false
             )
 
             if let blockedBehavior = stateStore.draft.blockedBehavior {
@@ -853,15 +875,6 @@ struct OnboardingSetupView: View {
         screenTimeTargetCount == 0 ? "未選択" : "\(screenTimeTargetCount)項目を選択中"
     }
 
-    private var cueLeadText: String {
-        let cue = stateStore.draft.trimmedCueText
-        guard !cue.isEmpty else { return "" }
-        if cue.hasSuffix("に") || cue.hasSuffix("すぐ") || cue.hasSuffix("たら") {
-            return cue
-        }
-        return "\(cue)に"
-    }
-
     private var selectedPromiseTitle: String {
         let routineTitle = stateStore.draft.trimmedRoutineTitle
         if !routineTitle.isEmpty {
@@ -872,9 +885,15 @@ struct OnboardingSetupView: View {
 
     private func presentDelayedGuidanceIfNeeded() async {
         let step = stateStore.setupStep
-        let isWaiting = step == .blockedBehaviorSelection
-            ? stateStore.blockedBehaviorStage == .waitingToPresent
-            : stateStore.delayedGuidanceStage(for: step) == .waitingToPresent
+        let isWaiting: Bool
+        switch step {
+        case .blockedBehaviorSelection:
+            isWaiting = stateStore.blockedBehaviorStage == .waitingToPresent
+        case .confirmation:
+            isWaiting = stateStore.confirmationGuidanceStage == .waitingToPresent
+        default:
+            isWaiting = stateStore.delayedGuidanceStage(for: step) == .waitingToPresent
+        }
         guard isWaiting else { return }
 
         do {
@@ -887,6 +906,9 @@ struct OnboardingSetupView: View {
         if step == .blockedBehaviorSelection {
             guard stateStore.blockedBehaviorStage == .waitingToPresent else { return }
             stateStore.presentBlockedBehaviorGuidanceIfNeeded()
+        } else if step == .confirmation {
+            guard stateStore.confirmationGuidanceStage == .waitingToPresent else { return }
+            stateStore.presentConfirmationGuidanceIfNeeded()
         } else {
             guard stateStore.delayedGuidanceStage(for: step) == .waitingToPresent else { return }
             stateStore.presentDelayedGuidanceIfNeeded(for: step)
@@ -1078,15 +1100,6 @@ struct OnboardingSetupView: View {
             .font(.title2.weight(.bold))
             .foregroundStyle(AppColor.text)
             .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private func rioMessage(_ text: String) -> some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            OnboardingRioPortrait()
-            OnboardingRioBubble(text: text)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("莉央、\(text)")
     }
 
     private func systemFootnote(_ text: String) -> some View {
@@ -1603,6 +1616,183 @@ private struct OnboardingBlockedBehaviorGuidanceView: View {
 
     /// 小さい端末や大きい文字でも、説明カード下の「次へ」が必ず画面内に残る高さにする。
     private func blockedBehaviorPanelHeight(in size: CGSize) -> CGFloat {
+        let standardHeight = OnboardingExplanationLayout.panelHeight(
+            in: size,
+            typeSize: dynamicTypeSize
+        )
+        let conversationHeight = OnboardingExplanationLayout.conversationHeight(
+            in: size,
+            typeSize: dynamicTypeSize,
+            hasMultipleMessages: true
+        )
+        let availableHeight = size.height - conversationHeight - 144
+        return min(standardHeight, max(190, availableHeight))
+    }
+}
+
+/// 最終確認画面で0.7秒後に重ねる、莉央の会話と完了操作の説明。
+private struct OnboardingConfirmationGuidanceView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @AccessibilityFocusState private var focusedContent: FocusedContent?
+
+    private enum FocusedContent: Hashable {
+        case firstMessage, secondMessage, explanation
+    }
+
+    let stage: OnboardingConfirmationGuidanceStage
+    let cueText: String
+    let routineTitle: String
+    let iconName: String
+    let onContinue: () -> Void
+    let onBack: () -> Void
+
+    private var showsSecondMessage: Bool {
+        stage == .secondMessage || stage == .explanation
+    }
+
+    private var showsExplanation: Bool {
+        stage == .explanation
+    }
+
+    private var revealTransition: AnyTransition {
+        reduceMotion ? .opacity : .offset(y: 10).combined(with: .opacity)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Color.black.opacity(0.26)
+                    .ignoresSafeArea()
+                    .onTapGesture(perform: continueFromMessageIfNeeded)
+                    .accessibilityHidden(true)
+
+                VStack(spacing: OnboardingExplanationLayout.spacing(in: proxy.size)) {
+                    HStack {
+                        Button(action: onBack) {
+                            Image(systemName: "chevron.left")
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(AppColor.text)
+                                .frame(width: 44, height: 44)
+                                .background(AppColor.surface, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("前の説明へ戻る")
+                        Spacer()
+                    }
+
+                    VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
+                        HStack(alignment: .top, spacing: 10) {
+                            OnboardingRioPortrait()
+
+                            ScrollViewReader { scrollProxy in
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        OnboardingRioBubble(text: "じゃあできたら教えてね〜")
+                                            .accessibilityLabel("莉央、じゃあできたら教えてね〜")
+                                            .accessibilityFocused($focusedContent, equals: .firstMessage)
+
+                                        if showsSecondMessage {
+                                            OnboardingRioBubble(text: "どこまでできるか楽しみ〜w")
+                                                .accessibilityLabel("莉央、どこまでできるか楽しみ〜w")
+                                                .accessibilityFocused($focusedContent, equals: .secondMessage)
+                                                .id(FocusedContent.secondMessage)
+                                                .transition(revealTransition)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                                }
+                                .scrollBounceBehavior(.basedOnSize)
+                                .task(id: showsSecondMessage) {
+                                    guard showsSecondMessage else { return }
+                                    await Task.yield()
+                                    guard !Task.isCancelled else { return }
+                                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+                                        scrollProxy.scrollTo(FocusedContent.secondMessage, anchor: .bottom)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(
+                            height: OnboardingExplanationLayout.conversationHeight(
+                                in: proxy.size,
+                                typeSize: dynamicTypeSize,
+                                hasMultipleMessages: true
+                            ),
+                            alignment: .top
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        ZStack(alignment: .top) {
+                            Color.clear
+                            if showsExplanation {
+                                OnboardingExplanationPanel(
+                                    illustration: .completedPromise(
+                                        cueText: cueText,
+                                        routineTitle: routineTitle,
+                                        iconName: iconName
+                                    ),
+                                    title: "準備が完了しました！",
+                                    message: "このままはじめましょう"
+                                )
+                                .accessibilityFocused($focusedContent, equals: .explanation)
+                                .accessibilityIdentifier("onboarding.confirmation.explanation")
+                                .transition(revealTransition)
+                            }
+                        }
+                        .frame(height: confirmationPanelHeight(in: proxy.size))
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: continueFromMessageIfNeeded)
+
+                        Button("次へ", action: onContinue)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(AppColor.text)
+                            .padding(.horizontal, 20)
+                            .frame(minHeight: 44)
+                            .background(AppColor.surface.opacity(0.95), in: Capsule())
+                            .buttonStyle(.plain)
+                            .opacity(showsExplanation ? 1 : 0)
+                            .allowsHitTesting(showsExplanation)
+                            .accessibilityHidden(!showsExplanation)
+                            .accessibilityIdentifier("onboarding.confirmation.continue")
+                    }
+                    .padding(.top, OnboardingExplanationLayout.conversationTopPadding(in: proxy.size))
+                    .frame(maxHeight: .infinity, alignment: .top)
+                }
+                .frame(maxWidth: 560)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.22), value: stage)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape, onBack)
+        .task(id: stage) {
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 100 : 250))
+            guard !Task.isCancelled else { return }
+            switch stage {
+            case .firstMessage:
+                focusedContent = .firstMessage
+            case .secondMessage:
+                focusedContent = .secondMessage
+            case .explanation:
+                focusedContent = .explanation
+            case .waitingToPresent, .completed:
+                focusedContent = nil
+            }
+        }
+    }
+
+    private func continueFromMessageIfNeeded() {
+        guard !showsExplanation else { return }
+        onContinue()
+    }
+
+    /// 小さい端末や大きい文字でも、カード下の「次へ」を画面内に残す。
+    private func confirmationPanelHeight(in size: CGSize) -> CGFloat {
         let standardHeight = OnboardingExplanationLayout.panelHeight(
             in: size,
             typeSize: dynamicTypeSize

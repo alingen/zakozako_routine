@@ -66,6 +66,15 @@ enum OnboardingBlockedBehaviorStage: String, Codable, Sendable {
     case completed
 }
 
+/// 最終確認画面で、莉央の会話と約束の確認方法を段階的に表示する現在位置。
+enum OnboardingConfirmationGuidanceStage: String, Codable, Sendable {
+    case waitingToPresent
+    case firstMessage
+    case secondMessage
+    case explanation
+    case completed
+}
+
 /// 専用画面終了後を含む、オンボーディング全体の現在位置。
 enum OnboardingPhase: String, Codable, Sendable {
     case dedicatedSetup
@@ -271,6 +280,9 @@ final class OnboardingStateStore {
     private(set) var blockedBehaviorStage: OnboardingBlockedBehaviorStage {
         didSet { persistIfNeeded() }
     }
+    private(set) var confirmationGuidanceStage: OnboardingConfirmationGuidanceStage {
+        didSet { persistIfNeeded() }
+    }
     private(set) var phase: OnboardingPhase {
         didSet { persistIfNeeded() }
     }
@@ -341,6 +353,8 @@ final class OnboardingStateStore {
         )
         blockedBehaviorStage = snapshot.blockedBehaviorStage
             ?? Self.restoredBlockedBehaviorStage(from: snapshot)
+        confirmationGuidanceStage = snapshot.confirmationGuidanceStage
+            ?? Self.restoredConfirmationGuidanceStage(from: snapshot)
         phase = snapshot.phase
         draft = snapshot.draft
         createdRoutineID = snapshot.createdRoutineID
@@ -396,6 +410,7 @@ final class OnboardingStateStore {
         case .confirmation:
             return draft.hasCueSelection
                 && (draft.blockedBehavior?.hasValidScreenTimeConfiguration ?? true)
+                && confirmationGuidanceStage == .completed
         }
     }
 
@@ -449,6 +464,46 @@ final class OnboardingStateStore {
               setupStep == .blockedBehaviorSelection,
               blockedBehaviorStage == .waitingToPresent else { return }
         blockedBehaviorStage = .firstMessage
+    }
+
+    func presentConfirmationGuidanceIfNeeded() {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == .confirmation,
+              confirmationGuidanceStage == .waitingToPresent else { return }
+        confirmationGuidanceStage = .firstMessage
+    }
+
+    func advanceConfirmationGuidance() {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == .confirmation else { return }
+        switch confirmationGuidanceStage {
+        case .firstMessage:
+            confirmationGuidanceStage = .secondMessage
+        case .secondMessage:
+            confirmationGuidanceStage = .explanation
+        case .explanation:
+            confirmationGuidanceStage = .completed
+        case .waitingToPresent, .completed:
+            break
+        }
+    }
+
+    func retreatConfirmationGuidance() {
+        guard !isCompleted,
+              phase == .dedicatedSetup,
+              setupStep == .confirmation else { return }
+        switch confirmationGuidanceStage {
+        case .explanation:
+            confirmationGuidanceStage = .secondMessage
+        case .secondMessage:
+            confirmationGuidanceStage = .firstMessage
+        case .firstMessage:
+            confirmationGuidanceStage = .completed
+        case .waitingToPresent, .completed:
+            break
+        }
     }
 
     /// 2枚目で項目を選んだ直後に、莉央の説明を開始する。
@@ -900,6 +955,7 @@ final class OnboardingStateStore {
             goalSettingGuidanceStage = .waitingToPresent
             cueSelectionGuidanceStage = .waitingToPresent
             blockedBehaviorStage = .waitingToPresent
+            confirmationGuidanceStage = .waitingToPresent
             phase = initial.phase
             draft = initial.draft
             createdRoutineID = nil
@@ -935,6 +991,7 @@ final class OnboardingStateStore {
             goalSettingGuidanceStage: goalSettingGuidanceStage,
             cueSelectionGuidanceStage: cueSelectionGuidanceStage,
             blockedBehaviorStage: blockedBehaviorStage,
+            confirmationGuidanceStage: confirmationGuidanceStage,
             phase: phase,
             draft: draft,
             createdRoutineID: createdRoutineID,
@@ -1000,6 +1057,15 @@ final class OnboardingStateStore {
         return .waitingToPresent
     }
 
+    private static func restoredConfirmationGuidanceStage(
+        from snapshot: Snapshot
+    ) -> OnboardingConfirmationGuidanceStage {
+        guard snapshot.phase == .dedicatedSetup, !snapshot.isCompleted else {
+            return .completed
+        }
+        return .waitingToPresent
+    }
+
     /// 通常の通知再計算からも、オンボーディングで指定した初回通知下限を参照する。
     static func persistedNotificationNotBefore(
         for routineID: UUID,
@@ -1022,6 +1088,7 @@ final class OnboardingStateStore {
         var goalSettingGuidanceStage: OnboardingDelayedGuidanceStage?
         var cueSelectionGuidanceStage: OnboardingDelayedGuidanceStage?
         var blockedBehaviorStage: OnboardingBlockedBehaviorStage?
+        var confirmationGuidanceStage: OnboardingConfirmationGuidanceStage?
         var phase: OnboardingPhase
         var draft: OnboardingDraft
         var createdRoutineID: UUID?
@@ -1042,6 +1109,7 @@ final class OnboardingStateStore {
             goalSettingGuidanceStage: .waitingToPresent,
             cueSelectionGuidanceStage: .waitingToPresent,
             blockedBehaviorStage: .waitingToPresent,
+            confirmationGuidanceStage: .waitingToPresent,
             phase: .dedicatedSetup,
             draft: OnboardingDraft(),
             createdRoutineID: nil,

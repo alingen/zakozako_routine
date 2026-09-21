@@ -14,6 +14,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(store.goalSettingGuidanceStage, .waitingToPresent)
             XCTAssertEqual(store.cueSelectionGuidanceStage, .waitingToPresent)
             XCTAssertEqual(store.blockedBehaviorStage, .waitingToPresent)
+            XCTAssertEqual(store.confirmationGuidanceStage, .waitingToPresent)
             XCTAssertEqual(store.phase, .dedicatedSetup)
             XCTAssertEqual(store.draft, OnboardingDraft())
             XCTAssertNil(store.createdRoutineID)
@@ -85,6 +86,11 @@ final class OnboardingStateStoreTests: XCTestCase {
             )
             XCTAssertTrue(store.advanceSetup())
             XCTAssertEqual(store.setupStep, .confirmation)
+            XCTAssertEqual(store.confirmationGuidanceStage, .waitingToPresent)
+            XCTAssertFalse(store.canContinue())
+
+            completeConfirmationGuidance(store)
+            XCTAssertTrue(store.canContinue())
             XCTAssertFalse(store.advanceSetup(), "最終確認後はRoutine保存APIを明示的に呼ぶ")
         }
     }
@@ -275,6 +281,80 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(restored.goalSettingGuidanceStage, .completed)
             XCTAssertEqual(restored.cueSelectionGuidanceStage, .completed)
             XCTAssertEqual(restored.blockedBehaviorStage, .waitingToPresent)
+        }
+    }
+
+    func testConfirmationGuidancePersistsEachStageAndControlsContinue() {
+        withDefaults { defaults in
+            var store = OnboardingStateStore(defaults: defaults)
+            store.draft.selectedCueID = "before-bed"
+            store.draft.cueText = "寝る前"
+            store.goToSetupStep(.confirmation)
+
+            XCTAssertEqual(store.confirmationGuidanceStage, .waitingToPresent)
+            XCTAssertFalse(store.canContinue())
+
+            store.presentConfirmationGuidanceIfNeeded()
+            XCTAssertEqual(store.confirmationGuidanceStage, .firstMessage)
+            XCTAssertFalse(store.canContinue())
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.setupStep, .confirmation)
+            XCTAssertEqual(store.confirmationGuidanceStage, .firstMessage)
+            XCTAssertFalse(store.canContinue())
+
+            store.advanceConfirmationGuidance()
+            XCTAssertEqual(store.confirmationGuidanceStage, .secondMessage)
+            XCTAssertFalse(store.canContinue())
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.confirmationGuidanceStage, .secondMessage)
+            store.advanceConfirmationGuidance()
+            XCTAssertEqual(store.confirmationGuidanceStage, .explanation)
+            XCTAssertFalse(store.canContinue())
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.confirmationGuidanceStage, .explanation)
+            store.advanceConfirmationGuidance()
+            XCTAssertEqual(store.confirmationGuidanceStage, .completed)
+            XCTAssertTrue(store.canContinue())
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.setupStep, .confirmation)
+            XCTAssertEqual(restored.confirmationGuidanceStage, .completed)
+            XCTAssertTrue(restored.canContinue())
+            XCTAssertFalse(restored.advanceSetup(), "最終確認後はRoutine保存APIを明示的に呼ぶ")
+        }
+    }
+
+    func testConfirmationGuidanceRetreatsOneStageAndDismissesFromFirstMessage() {
+        withDefaults { defaults in
+            var store = OnboardingStateStore(defaults: defaults)
+            store.draft.selectedCueID = "before-bed"
+            store.draft.cueText = "寝る前"
+            store.goToSetupStep(.confirmation)
+            store.presentConfirmationGuidanceIfNeeded()
+            store.advanceConfirmationGuidance()
+            store.advanceConfirmationGuidance()
+            XCTAssertEqual(store.confirmationGuidanceStage, .explanation)
+
+            store.retreatConfirmationGuidance()
+            XCTAssertEqual(store.confirmationGuidanceStage, .secondMessage)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.confirmationGuidanceStage, .secondMessage)
+            store.retreatConfirmationGuidance()
+            XCTAssertEqual(store.confirmationGuidanceStage, .firstMessage)
+
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.confirmationGuidanceStage, .firstMessage)
+            store.retreatConfirmationGuidance()
+            XCTAssertEqual(store.confirmationGuidanceStage, .completed)
+            XCTAssertTrue(store.canContinue())
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.confirmationGuidanceStage, .completed)
+            XCTAssertTrue(restored.canContinue())
         }
     }
 
@@ -552,6 +632,7 @@ final class OnboardingStateStoreTests: XCTestCase {
                 legacySnapshot.removeValue(forKey: "goalSettingGuidanceStage")
                 legacySnapshot.removeValue(forKey: "cueSelectionGuidanceStage")
                 legacySnapshot.removeValue(forKey: "blockedBehaviorStage")
+                legacySnapshot.removeValue(forKey: "confirmationGuidanceStage")
                 defaults.set(
                     try JSONSerialization.data(withJSONObject: legacySnapshot),
                     forKey: OnboardingStateStore.defaultStorageKey
@@ -581,6 +662,7 @@ final class OnboardingStateStoreTests: XCTestCase {
                     restored.blockedBehaviorStage,
                     step == .confirmation ? .completed : .waitingToPresent
                 )
+                XCTAssertEqual(restored.confirmationGuidanceStage, .waitingToPresent)
                 XCTAssertEqual(restored.draft.userName, "かずし")
                 XCTAssertEqual(restored.draft.selectedHabitID, "onboarding-read")
             }
@@ -611,6 +693,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             legacySnapshot["goalSettingGuidanceStage"] = "completed"
             legacySnapshot["cueSelectionGuidanceStage"] = "completed"
             legacySnapshot.removeValue(forKey: "blockedBehaviorStage")
+            legacySnapshot.removeValue(forKey: "confirmationGuidanceStage")
             if var draft = legacySnapshot["draft"] as? [String: Any] {
                 draft.removeValue(forKey: "blockedBehavior")
                 legacySnapshot["draft"] = draft
@@ -624,6 +707,8 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(restored.setupStep, .confirmation)
             XCTAssertEqual(restored.setupStep.rawValue, 4)
             XCTAssertEqual(restored.blockedBehaviorStage, .completed)
+            XCTAssertEqual(restored.confirmationGuidanceStage, .waitingToPresent)
+            XCTAssertFalse(restored.canContinue())
             XCTAssertNil(restored.draft.blockedBehavior)
 
             restored.goToSetupStep(.habitSelection)
@@ -776,6 +861,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(restored.goalSettingGuidanceStage, .waitingToPresent)
             XCTAssertEqual(restored.cueSelectionGuidanceStage, .waitingToPresent)
             XCTAssertEqual(restored.blockedBehaviorStage, .waitingToPresent)
+            XCTAssertEqual(restored.confirmationGuidanceStage, .waitingToPresent)
             XCTAssertEqual(restored.phase, .dedicatedSetup)
             XCTAssertEqual(restored.draft, OnboardingDraft())
             XCTAssertNil(restored.createdRoutineID)
@@ -1035,6 +1121,21 @@ final class OnboardingStateStoreTests: XCTestCase {
         XCTAssertEqual(store.delayedGuidanceStage(for: step), .explanation, file: file, line: line)
         store.advanceDelayedGuidance(for: step)
         XCTAssertEqual(store.delayedGuidanceStage(for: step), .completed, file: file, line: line)
+    }
+
+    private func completeConfirmationGuidance(
+        _ store: OnboardingStateStore,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        store.presentConfirmationGuidanceIfNeeded()
+        XCTAssertEqual(store.confirmationGuidanceStage, .firstMessage, file: file, line: line)
+        store.advanceConfirmationGuidance()
+        XCTAssertEqual(store.confirmationGuidanceStage, .secondMessage, file: file, line: line)
+        store.advanceConfirmationGuidance()
+        XCTAssertEqual(store.confirmationGuidanceStage, .explanation, file: file, line: line)
+        store.advanceConfirmationGuidance()
+        XCTAssertEqual(store.confirmationGuidanceStage, .completed, file: file, line: line)
     }
 
     private func finishBlockedBehaviorIntroduction(
