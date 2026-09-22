@@ -1,6 +1,60 @@
 import XCTest
 @testable import MesugakiRoutine
 
+final class ADVTextLayoutTests: XCTestCase {
+    func testStoryDisplayTextConvertsBRForADVAndLogs() {
+        let node = StoryNode(
+            nodeId: "line-break",
+            lineOrder: 1,
+            speaker: "rio",
+            messageType: .text,
+            text: "前半[br]後半"
+        )
+
+        XCTAssertEqual(node.storyDisplayText, "前半\n後半")
+    }
+
+    func testFormatsBRAsAnExplicitLineBreak() {
+        XCTAssertEqual(
+            ADVTextLayout.formatted("今日はここまで。[br]また明日。"),
+            "今日はここまで。\nまた明日。"
+        )
+    }
+
+    func testWrapsEveryLineAtEighteenCharacters() {
+        let firstLine = String(repeating: "あ", count: 19)
+        let secondLine = String(repeating: "い", count: 18)
+        let formatted = ADVTextLayout.formatted("\(firstLine)[br]\(secondLine)")
+        let lines = formatted.split(separator: "\n", omittingEmptySubsequences: false)
+
+        XCTAssertEqual(lines.map(\.count), [18, 1, 18])
+        XCTAssertTrue(lines.allSatisfy { $0.count <= ADVTextLayout.maximumCharactersPerLine })
+    }
+
+    func testKeepsConsecutiveExplicitBreaks() {
+        XCTAssertEqual(ADVTextLayout.formatted("前[br][br]後"), "前\n\n後")
+    }
+
+    func testCountsEmojiSequenceAsOneDisplayedCharacter() {
+        let familyEmoji = "👨‍👩‍👧‍👦"
+        let formatted = ADVTextLayout.formatted(String(repeating: familyEmoji, count: 19))
+        let lines = formatted.split(separator: "\n")
+
+        XCTAssertEqual(lines.map(\.count), [18, 1])
+    }
+
+    func testFontSizeGrowsWithWidthAndRemainsWithinReadableBounds() {
+        let compact = ADVTextLayout.fontSize(for: 236)
+        let regular = ADVTextLayout.fontSize(for: 306)
+        let wide = ADVTextLayout.fontSize(for: 1_000)
+
+        XCTAssertGreaterThan(regular, compact)
+        XCTAssertEqual(compact, 13, accuracy: 0.01)
+        XCTAssertEqual(wide, 22, accuracy: 0.01)
+        XCTAssertEqual(ADVTextLayout.maximumLines, 3)
+    }
+}
+
 final class StoryScenarioGraphTests: XCTestCase {
     func testPrologueIsDecodedAsAFirstClassScenarioAndEventType() {
         XCTAssertEqual(StoryScenarioType(rawValue: "prologue"), .prologue)

@@ -248,16 +248,25 @@ struct ADVTextWindow: View {
         }
     }
 
+    private var displayText: String {
+        ADVTextLayout.formatted(node.storyDisplayText)
+    }
+
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Text(node.storyDisplayText)
-                .font(.title3)
-                .foregroundStyle(AppColor.text)
-                .lineLimit(3)
-                .padding(.horizontal, horizontalPadding)
-                .padding(.top, 28)
-                .padding(.bottom, 16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            GeometryReader { proxy in
+                let textWidth = max(0, proxy.size.width - horizontalPadding * 2)
+
+                Text(displayText)
+                    .font(.system(size: ADVTextLayout.fontSize(for: textWidth)))
+                    .foregroundStyle(AppColor.text)
+                    .lineLimit(ADVTextLayout.maximumLines)
+                    .truncationMode(.tail)
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.top, 28)
+                    .padding(.bottom, 16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
         }
         .frame(maxWidth: maxWidth)
         .frame(height: 136, alignment: .topLeading)
@@ -297,6 +306,59 @@ struct ADVTextWindow: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(onAdvance == nil ? [] : .isButton)
         .accessibilityHint(onAdvance == nil ? "" : "ダブルタップして次へ進みます")
+    }
+}
+
+enum ADVTextLayout {
+    static let maximumCharactersPerLine = 18
+    static let maximumLines = 3
+
+    private static let minimumFontSize: CGFloat = 13
+    private static let maximumFontSize: CGFloat = 22
+    private static let widthSafetyFactor: CGFloat = 0.96
+
+    /// `[br]` と既存の改行を優先し、それぞれの行を18文字以内に収める。
+    static func formatted(_ source: String) -> String {
+        let normalized = source
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "[br]", with: "\n")
+
+        return normalized
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .flatMap(wrappedLines)
+            .joined(separator: "\n")
+    }
+
+    /// 18文字分が収まる大きさを端末幅から求め、極端に大小にならない範囲へ収める。
+    static func fontSize(for availableTextWidth: CGFloat) -> CGFloat {
+        guard availableTextWidth.isFinite, availableTextWidth > 0 else {
+            return minimumFontSize
+        }
+
+        let fittedSize = availableTextWidth
+            / CGFloat(maximumCharactersPerLine)
+            * widthSafetyFactor
+        return min(maximumFontSize, max(minimumFontSize, fittedSize))
+    }
+
+    private static func wrappedLines(_ line: Substring) -> [String] {
+        guard !line.isEmpty else { return [""] }
+
+        var result: [String] = []
+        var remainder = line[...]
+
+        while !remainder.isEmpty {
+            let endIndex = remainder.index(
+                remainder.startIndex,
+                offsetBy: maximumCharactersPerLine,
+                limitedBy: remainder.endIndex
+            ) ?? remainder.endIndex
+            result.append(String(remainder[..<endIndex]))
+            remainder = remainder[endIndex...]
+        }
+
+        return result
     }
 }
 
