@@ -178,6 +178,13 @@ story_content.generated.json
 - `entry_scenario_id` は `senarios.scenario_id` を参照し、`event_type` と参照先の
   `scenario_type` を一致させます。
 
+### 背景を黒に戻す
+
+ADVで表示中の背景画像を破棄して黒い土台へ戻す場合は、対象nodeの
+`command` に `clear_background` を指定します。`command_args` と
+`background` は空欄で構いません。空の `scene_transition` として置けば、
+読者に空の台詞を表示せず自動的に次のnodeへ進みます。
+
 ## 検証と前方互換性
 
 必須値、型、pair列、重複、シート間参照、scenario内遷移、event metadata、到達可能性、

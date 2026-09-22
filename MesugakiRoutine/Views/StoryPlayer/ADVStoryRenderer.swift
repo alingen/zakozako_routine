@@ -60,14 +60,16 @@ struct ADVStoryRenderer: View {
                     .ignoresSafeArea()
 
                 if openingRevealPhase.showsScene {
-                    StoryAssetView(
-                        assetID: effectiveBackground,
-                        purpose: .background,
-                        contentMode: .fill
-                    )
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .clipped()
-                    .ignoresSafeArea()
+                    if let effectiveBackground {
+                        StoryAssetView(
+                            assetID: effectiveBackground,
+                            purpose: .background,
+                            contentMode: .fill
+                        )
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                        .ignoresSafeArea()
+                    }
 
                     Color.black.opacity(effectiveCG == nil ? 0.12 : 0.28)
                         .ignoresSafeArea()
@@ -79,12 +81,11 @@ struct ADVStoryRenderer: View {
                     } else if let effectivePortrait {
                         StoryAssetView(assetID: effectivePortrait, purpose: .image, contentMode: .fit)
                             .frame(
-                                maxWidth: proxy.size.width * 0.78,
-                                maxHeight: proxy.size.height * 0.72,
+                                width: proxy.size.width * 1.15,
+                                height: proxy.size.height * 0.82,
                                 alignment: .bottom
                             )
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                            .padding(.bottom, 150)
                     }
                 }
 
@@ -637,7 +638,7 @@ struct ADVTextWindow: View {
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
                             .fill(AppColor.primary)
                     }
-                    .offset(x: horizontalPadding, y: -19)
+                    .offset(y: -19)
             }
         }
         .overlay(alignment: .bottomTrailing) {

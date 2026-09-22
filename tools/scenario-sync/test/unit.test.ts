@@ -66,6 +66,55 @@ describe('source normalization', () => {
     });
   });
 
+  it('accepts clear_background as a known command without arguments', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_type: 'small_event',
+            message_type: 'action',
+            ui_variant: 'scene_transition',
+            command: 'clear_background',
+          }),
+        ],
+      }),
+    );
+    const node = generate(result.data).scenarios[0]!.nodes[0]!;
+
+    expect(result.errors).toEqual([]);
+    expect(
+      result.warnings.filter(
+        (issue) => issue.code === 'unknown_value' && issue.at?.column === 'command',
+      ),
+    ).toEqual([]);
+    expect(node.command).toBe('clear_background');
+    expect(node.commandArgs).toBeUndefined();
+  });
+
+  it.each(['show_portrait', 'hide_portrait', 'play_bgm', 'stop_bgm'])(
+    'accepts %s as a known presentation command',
+    (command) => {
+      const result = process(
+        sheets({
+          scenarios: [
+            scenario({
+              scenario_type: 'prologue',
+              message_type: 'action',
+              ui_variant: 'scene_transition',
+              command,
+            }),
+          ],
+        }),
+      );
+
+      expect(
+        result.warnings.filter(
+          (issue) => issue.code === 'unknown_value' && issue.at?.column === 'command',
+        ),
+      ).toEqual([]);
+    },
+  );
+
   it('preserves a per-line Rio typing duration', () => {
     const raw = sheets({ scenarios: [scenario({ typing_duration_ms: 650 })] });
     const result = process(raw);
@@ -196,7 +245,10 @@ describe('source normalization', () => {
             background: 'bg_test',
           }),
         ],
-        assets: [assetCatalog({ asset_id: 'bg_test', asset_type: 'background' }), { enabled: false }],
+        assets: [
+          assetCatalog({ asset_id: 'bg_test', asset_type: 'background' }),
+          { enabled: false },
+        ],
       }),
     );
     expect(valid.errors).toEqual([]);

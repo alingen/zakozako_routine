@@ -6,10 +6,20 @@ enum StoryCallPresentationState: String, Equatable {
     case ended
 }
 
+struct StoryBGMPlaybackState: Equatable {
+    let assetID: String
+    let loop: Bool
+    let fadeMilliseconds: UInt64
+    let volume: Float
+}
+
 /// A small, UI-independent vocabulary of effects produced by CMS commands.
 /// Unknown command strings never become fatal errors.
 enum StoryCommandEffect: Equatable {
     case setBackground(String)
+    case clearBackground
+    case setPortrait(String)
+    case clearPortrait
     case setScreenMode(StoryScreenMode)
     case showCG(String)
     case hideCG
@@ -19,6 +29,8 @@ enum StoryCommandEffect: Equatable {
     case setCallState(StoryCallPresentationState)
     case playAudio(String?)
     case recordAudio(String?)
+    case playBGM(StoryBGMPlaybackState)
+    case stopBGM
 }
 
 struct StoryCommandDispatchResult: Equatable {
@@ -62,6 +74,21 @@ struct StoryCommandDispatcher {
                 return missingArgument(command: command, argument: "background / screen_mode")
             }
             return StoryCommandDispatchResult(effects: effects)
+
+        case "clear_background":
+            return StoryCommandDispatchResult(effect: .clearBackground)
+
+        case "show_portrait":
+            guard let assetID = firstString(
+                in: node.commandArgs,
+                keys: ["asset_id", "portrait", "portrait_asset_id"]
+            ) ?? normalized(node.portrait) ?? normalized(node.assetId) else {
+                return missingArgument(command: command, argument: "asset_id")
+            }
+            return StoryCommandDispatchResult(effect: .setPortrait(assetID))
+
+        case "hide_portrait":
+            return StoryCommandDispatchResult(effect: .clearPortrait)
 
         case "show_cg":
             guard let assetID = firstString(
@@ -118,6 +145,31 @@ struct StoryCommandDispatcher {
                 )
             )
 
+        case "play_bgm":
+            guard let assetID = firstString(
+                in: node.commandArgs,
+                keys: ["asset_id", "bgm", "audio_asset_id"]
+            ) ?? normalized(node.assetId) else {
+                return missingArgument(command: command, argument: "asset_id")
+            }
+            let loop = boolean(from: node.commandArgs?["loop"]) ?? true
+            let rawFade = node.commandArgs?["fade_ms"].flatMap(number(from:)) ?? 0
+            let fadeMilliseconds = UInt64(max(0, min(rawFade, 10_000)).rounded())
+            let rawVolume = node.commandArgs?["volume"].flatMap(number(from:)) ?? 1
+            return StoryCommandDispatchResult(
+                effect: .playBGM(
+                    StoryBGMPlaybackState(
+                        assetID: assetID,
+                        loop: loop,
+                        fadeMilliseconds: fadeMilliseconds,
+                        volume: Float(max(0, min(rawVolume, 1)))
+                    )
+                )
+            )
+
+        case "stop_bgm":
+            return StoryCommandDispatchResult(effect: .stopBGM)
+
         default:
             return StoryCommandDispatchResult(
                 effects: [],
@@ -165,6 +217,23 @@ private extension StoryCommandDispatcher {
             return number
         case .string(let string):
             return Double(string.trimmingCharacters(in: .whitespacesAndNewlines))
+        default:
+            return nil
+        }
+    }
+
+    func boolean(from value: JSONValue?) -> Bool? {
+        switch value {
+        case .bool(let value):
+            return value
+        case .string(let value):
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "true", "1", "yes": return true
+            case "false", "0", "no": return false
+            default: return nil
+            }
+        case .number(let value):
+            return value != 0
         default:
             return nil
         }

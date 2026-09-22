@@ -63,14 +63,7 @@ function validateAssetCatalog(
     } else {
       assets.set(row.assetId, row);
     }
-    warnUnknown(
-      issues,
-      KNOWN_ASSET_TYPES,
-      row.assetType,
-      'asset_type',
-      row.__row,
-      'asset_catalog',
-    );
+    warnUnknown(issues, KNOWN_ASSET_TYPES, row.assetType, 'asset_type', row.__row, 'asset_catalog');
   }
   return assets;
 }
@@ -143,9 +136,13 @@ function validateAssetReferences(
         expectedTypes:
           row.command === 'show_cg' || row.command === 'hide_cg'
             ? one('cg')
-            : row.command === 'play_audio' || row.command === 'record_audio'
-              ? audioTypes
-              : undefined,
+            : row.command === 'show_portrait'
+              ? one('portrait')
+              : row.command === 'play_bgm'
+                ? one('bgm')
+                : row.command === 'play_audio' || row.command === 'record_audio'
+                  ? audioTypes
+                  : undefined,
       });
     }
     const commandBackground = jsonString(args?.background);
@@ -215,6 +212,12 @@ function inferredAssetTypes(
 ): ReadonlySet<string> | undefined {
   if (row.command === 'show_cg' || row.command === 'hide_cg' || row.uiVariant === 'cg') {
     return new Set(['cg']);
+  }
+  if (row.command === 'show_portrait') {
+    return new Set(['portrait']);
+  }
+  if (row.command === 'play_bgm') {
+    return new Set(['bgm']);
   }
   if (
     row.command === 'play_audio' ||

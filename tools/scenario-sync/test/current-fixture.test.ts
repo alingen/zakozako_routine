@@ -32,13 +32,17 @@ const EXPECTED_COMMANDS = [
   'call_connected',
   'call_end',
   'call_start',
+  'clear_background',
   'hide_cg',
+  'hide_portrait',
+  'play_bgm',
   'play_audio',
   'premium_gate',
   'record_audio',
   'scene_change',
   'set_state',
   'show_cg',
+  'show_portrait',
   'show_modal',
   'typing_hide',
   'typing_show',
@@ -50,9 +54,7 @@ const hasCurrentFixture = (() => {
   const parsed = JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8')) as {
     tabs?: { daily_catalog?: unknown; asset_catalog?: unknown };
   };
-  return (
-    Array.isArray(parsed.tabs?.daily_catalog) && Array.isArray(parsed.tabs?.asset_catalog)
-  );
+  return Array.isArray(parsed.tabs?.daily_catalog) && Array.isArray(parsed.tabs?.asset_catalog);
 })();
 
 const raw = hasCurrentFixture
@@ -144,7 +146,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       scenarioId: 'prologue_001',
       scenarioType: 'prologue',
     });
-    expect(prologueScenario?.nodes).toHaveLength(42);
+    expect(prologueScenario?.nodes).toHaveLength(52);
     expect(prologueScenario?.nodes[0]).toMatchObject({
       nodeId: 'prologue_001_001',
       screenMode: 'adv',
@@ -154,6 +156,20 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     });
     expect(prologueScenario?.nodes).toContainEqual(
       expect.objectContaining({ text: 'LOSE', uiVariant: 'title_card' }),
+    );
+    expect(prologueScenario?.nodes).toContainEqual(
+      expect.objectContaining({
+        command: 'play_bgm',
+        commandArgs: expect.objectContaining({
+          asset_id: 'bgm_usually',
+          loop: true,
+          fade_ms: 1000,
+          volume: 0.8,
+        }),
+      }),
+    );
+    expect(prologueScenario?.nodes).toContainEqual(
+      expect.objectContaining({ command: 'clear_background' }),
     );
     expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     for (const event of [prologueEvent!, ...chapterOneEpisodes]) {

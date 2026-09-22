@@ -213,6 +213,185 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         )
     }
 
+    func testClearBackgroundCommandDiscardsTheCurrentBackground() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "clear_background",
+            scenarioType: .smallEvent,
+            nodes: [
+                StoryNode(
+                    nodeId: "set_background",
+                    lineOrder: 1,
+                    speaker: "system",
+                    messageType: .action,
+                    background: "bg_protagonist_living_room",
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "scene_change"
+                ),
+                StoryNode(
+                    nodeId: "before_clear",
+                    lineOrder: 2,
+                    speaker: "narrator",
+                    messageType: .text,
+                    text: "背景あり",
+                    screenMode: .adv,
+                    uiVariant: .narration
+                ),
+                StoryNode(
+                    nodeId: "clear_background",
+                    lineOrder: 3,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "clear_background"
+                ),
+                StoryNode(
+                    nodeId: "after_clear",
+                    lineOrder: 4,
+                    speaker: "narrator",
+                    messageType: .text,
+                    text: "黒背景",
+                    screenMode: .adv,
+                    uiVariant: .narration
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(
+                scenarios: [scenario],
+                choiceGroups: [],
+                events: []
+            )
+        )
+        let stateRepository = try makeStateRepository()
+        let playbackKey = "integration:clear_background"
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "before_clear")
+        XCTAssertEqual(player.backgroundAssetID, "bg_protagonist_living_room")
+
+        await player.advance()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "after_clear")
+        XCTAssertNil(player.backgroundAssetID)
+        XCTAssertEqual(
+            try stateRepository.checkpoint(for: playbackKey)?.visitedNodeIds,
+            ["set_background", "before_clear", "clear_background", "after_clear"]
+        )
+    }
+
+    func testPortraitAndBGMCommandsPersistUntilExplicitlyHiddenOrStopped() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "presentation_commands",
+            scenarioType: .prologue,
+            nodes: [
+                StoryNode(
+                    nodeId: "play_bgm",
+                    lineOrder: 1,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "play_bgm",
+                    commandArgs: .object([
+                        "asset_id": .string("bgm_usually"),
+                        "loop": .bool(true),
+                        "fade_ms": .number(1_000),
+                        "volume": .number(0.8),
+                    ])
+                ),
+                StoryNode(
+                    nodeId: "show_portrait",
+                    lineOrder: 2,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "show_portrait",
+                    commandArgs: .object([
+                        "asset_id": .string("portrait_rio_laugh"),
+                    ])
+                ),
+                StoryNode(
+                    nodeId: "with_presentation",
+                    lineOrder: 3,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "あははっ",
+                    speakerName: "莉央",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+                StoryNode(
+                    nodeId: "hide_portrait",
+                    lineOrder: 4,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "hide_portrait"
+                ),
+                StoryNode(
+                    nodeId: "stop_bgm",
+                    lineOrder: 5,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "stop_bgm"
+                ),
+                StoryNode(
+                    nodeId: "without_presentation",
+                    lineOrder: 6,
+                    speaker: "narrator",
+                    messageType: .text,
+                    text: "暗転",
+                    speakerName: "地の文",
+                    screenMode: .adv,
+                    uiVariant: .narration
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(scenarios: [scenario], choiceGroups: [], events: [])
+        )
+        let stateRepository = try makeStateRepository()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:presentation_commands",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "with_presentation")
+        XCTAssertEqual(player.portraitAssetID, "portrait_rio_laugh")
+        XCTAssertEqual(
+            player.bgmPlaybackState,
+            StoryBGMPlaybackState(
+                assetID: "bgm_usually",
+                loop: true,
+                fadeMilliseconds: 1_000,
+                volume: 0.8
+            )
+        )
+
+        await player.advance()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "without_presentation")
+        XCTAssertNil(player.portraitAssetID)
+        XCTAssertNil(player.bgmPlaybackState)
+    }
+
     func testRealDailyChoiceTargetsExistingBranchAndPersistsValue() async throws {
         let contentRepository = try makeGeneratedContentRepository()
         let stateRepository = try makeStateRepository()

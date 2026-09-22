@@ -8915,7 +8915,7 @@
           "text": "",
           "background": "bg_protagonist_living_room",
           "enabled": true,
-          "notes": "確定原稿: ユーザー提供 prologue_001",
+          "notes": "確定原稿: ユーザー提供 prologue_001（演出更新）",
           "screenMode": "adv",
           "uiVariant": "scene_transition",
           "command": "scene_change",
@@ -8930,6 +8930,40 @@
         {
           "lineOrder": 2,
           "nodeId": "prologue_001_002",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_usually",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
+        },
+        {
+          "lineOrder": 3,
+          "nodeId": "prologue_001_003",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "hide_portrait",
+          "commandArgs": {
+            "action": "hide",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 4,
+          "nodeId": "prologue_001_004",
           "speaker": "rio",
           "messageType": "text",
           "text": "ほらほらどうしたの〜？",
@@ -8939,8 +8973,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 3,
-          "nodeId": "prologue_001_003",
+          "lineOrder": 5,
+          "nodeId": "prologue_001_005",
           "speaker": "rio",
           "messageType": "text",
           "text": "あ、これいつも弱いよね♡",
@@ -8950,8 +8984,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 4,
-          "nodeId": "prologue_001_004",
+          "lineOrder": 6,
+          "nodeId": "prologue_001_006",
           "speaker": "rio",
           "messageType": "text",
           "text": "ためてないで早く出しちゃいなよ〜",
@@ -8961,8 +8995,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 5,
-          "nodeId": "prologue_001_005",
+          "lineOrder": 7,
+          "nodeId": "prologue_001_007",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "ちょっと…そんな攻め方…",
@@ -8972,8 +9006,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 6,
-          "nodeId": "prologue_001_006",
+          "lineOrder": 8,
+          "nodeId": "prologue_001_008",
           "speaker": "rio",
           "messageType": "text",
           "text": "なんかボソボソいってる〜w",
@@ -8983,19 +9017,19 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 7,
-          "nodeId": "prologue_001_007",
+          "lineOrder": 9,
+          "nodeId": "prologue_001_009",
           "speaker": "rio",
           "messageType": "text",
-          "text": "ねえねえほんとは莉央ちゃんに負けたいの？",
+          "text": "ねえねえほんとは莉央ちゃんに[br]負けたいの？",
           "speakerName": "莉央",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 8,
-          "nodeId": "prologue_001_008",
+          "lineOrder": 10,
+          "nodeId": "prologue_001_010",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "そんなことは…",
@@ -9005,8 +9039,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 9,
-          "nodeId": "prologue_001_009",
+          "lineOrder": 11,
+          "nodeId": "prologue_001_011",
           "speaker": "rio",
           "messageType": "text",
           "text": "はい、３…２…１…",
@@ -9016,8 +9050,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 10,
-          "nodeId": "prologue_001_010",
+          "lineOrder": 12,
+          "nodeId": "prologue_001_012",
           "speaker": "rio",
           "messageType": "text",
           "text": "おわり〜",
@@ -9027,8 +9061,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 11,
-          "nodeId": "prologue_001_011",
+          "lineOrder": 13,
+          "nodeId": "prologue_001_013",
           "speaker": "system",
           "messageType": "text",
           "text": "LOSE",
@@ -9037,8 +9071,8 @@
           "uiVariant": "title_card"
         },
         {
-          "lineOrder": 12,
-          "nodeId": "prologue_001_012",
+          "lineOrder": 14,
+          "nodeId": "prologue_001_014",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "…",
@@ -9048,8 +9082,26 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 13,
-          "nodeId": "prologue_001_013",
+          "lineOrder": 15,
+          "nodeId": "prologue_001_015",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_laugh",
+          "portrait": "portrait_rio_laugh",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_laugh",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 16,
+          "nodeId": "prologue_001_016",
           "speaker": "rio",
           "messageType": "text",
           "text": "あははっ",
@@ -9059,8 +9111,26 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 14,
-          "nodeId": "prologue_001_014",
+          "lineOrder": 17,
+          "nodeId": "prologue_001_017",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_triumphant",
+          "portrait": "portrait_rio_triumphant",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_triumphant",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 18,
+          "nodeId": "prologue_001_018",
           "speaker": "rio",
           "messageType": "text",
           "text": "今日も負けちゃったね♡",
@@ -9070,30 +9140,30 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 15,
-          "nodeId": "prologue_001_015",
+          "lineOrder": 19,
+          "nodeId": "prologue_001_019",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "俺はコントローラーを置いて顔をしかめた。",
+          "text": "俺はコントローラーを置いて[br]顔をしかめた。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 16,
-          "nodeId": "prologue_001_016",
+          "lineOrder": 20,
+          "nodeId": "prologue_001_020",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "結局ためていたウルトも使いどころを見失った。",
+          "text": "結局ためていたウルトも[br]使いどころを見失った。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 17,
-          "nodeId": "prologue_001_017",
+          "lineOrder": 21,
+          "nodeId": "prologue_001_021",
           "speaker": "narrator",
           "messageType": "text",
           "text": "こいつの戦法はわかっていた。",
@@ -9103,8 +9173,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 18,
-          "nodeId": "prologue_001_018",
+          "lineOrder": 22,
+          "nodeId": "prologue_001_022",
           "speaker": "narrator",
           "messageType": "text",
           "text": "対策を練って、動画を見て、特訓をして",
@@ -9114,8 +9184,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 19,
-          "nodeId": "prologue_001_019",
+          "lineOrder": 23,
+          "nodeId": "prologue_001_023",
           "speaker": "narrator",
           "messageType": "text",
           "text": "そして負けた。",
@@ -9125,8 +9195,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 20,
-          "nodeId": "prologue_001_020",
+          "lineOrder": 24,
+          "nodeId": "prologue_001_024",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "…",
@@ -9136,8 +9206,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 21,
-          "nodeId": "prologue_001_021",
+          "lineOrder": 25,
+          "nodeId": "prologue_001_025",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "もう一回",
@@ -9147,8 +9217,26 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 22,
-          "nodeId": "prologue_001_022",
+          "lineOrder": 26,
+          "nodeId": "prologue_001_026",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 27,
+          "nodeId": "prologue_001_027",
           "speaker": "rio",
           "messageType": "text",
           "text": "やだ",
@@ -9158,8 +9246,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 23,
-          "nodeId": "prologue_001_023",
+          "lineOrder": 28,
+          "nodeId": "prologue_001_028",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "次は勝てるから",
@@ -9169,8 +9257,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 24,
-          "nodeId": "prologue_001_024",
+          "lineOrder": 29,
+          "nodeId": "prologue_001_029",
           "speaker": "rio",
           "messageType": "text",
           "text": "前も言ってたじゃんそれ",
@@ -9180,66 +9268,11 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 25,
-          "nodeId": "prologue_001_025",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "ねえやっぱり悔しい感じ？w",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 26,
-          "nodeId": "prologue_001_026",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "くっ…",
-          "speakerName": "主人公",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 27,
-          "nodeId": "prologue_001_027",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "あ、悔しくて言葉もでないんだ〜w",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 28,
-          "nodeId": "prologue_001_028",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "かわいそ〜w",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 29,
-          "nodeId": "prologue_001_029",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "莉央は勝ち誇った顔で、一冊のノートをひらひらと振った。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
           "lineOrder": 30,
           "nodeId": "prologue_001_030",
           "speaker": "rio",
           "messageType": "text",
-          "text": "じゃあ『あのノート』は今日も莉央ちゃんが預かりまーす",
+          "text": "ねえやっぱり悔しい感じ？w",
           "speakerName": "莉央",
           "enabled": true,
           "screenMode": "adv",
@@ -9250,7 +9283,7 @@
           "nodeId": "prologue_001_031",
           "speaker": "protagonist",
           "messageType": "text",
-          "text": "…本当に返す気あるの？",
+          "text": "くっ…",
           "speakerName": "主人公",
           "enabled": true,
           "screenMode": "adv",
@@ -9261,7 +9294,7 @@
           "nodeId": "prologue_001_032",
           "speaker": "rio",
           "messageType": "text",
-          "text": "あるよ？ 勝ったら返すって言ってるじゃん",
+          "text": "あ、悔しくて言葉もでないんだ〜w",
           "speakerName": "莉央",
           "enabled": true,
           "screenMode": "adv",
@@ -9270,17 +9303,144 @@
         {
           "lineOrder": 33,
           "nodeId": "prologue_001_033",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_laugh",
+          "portrait": "portrait_rio_laugh",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_laugh",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 34,
+          "nodeId": "prologue_001_034",
           "speaker": "rio",
           "messageType": "text",
-          "text": "今日はおしまい。また暇だったら遊んであげる〜",
+          "text": "かわいそ〜w",
           "speakerName": "莉央",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 34,
-          "nodeId": "prologue_001_034",
+          "lineOrder": 35,
+          "nodeId": "prologue_001_035",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央は勝ち誇った顔で、[br]一冊のノートをひらひらと振った。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 36,
+          "nodeId": "prologue_001_036",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 37,
+          "nodeId": "prologue_001_037",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあ『このノート』は[br]今日も莉央ちゃんが預かりまーす",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 38,
+          "nodeId": "prologue_001_038",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…本当に返す気あるの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 39,
+          "nodeId": "prologue_001_039",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_neutral",
+          "portrait": "portrait_rio_neutral",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_neutral",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 40,
+          "nodeId": "prologue_001_040",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あるよ？[br] 勝ったら返すって言ってるじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 41,
+          "nodeId": "prologue_001_041",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 42,
+          "nodeId": "prologue_001_042",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "今日はおしまい。[br]また暇だったら遊んであげる〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 43,
+          "nodeId": "prologue_001_043",
           "speaker": "narrator",
           "messageType": "text",
           "text": "…またこうなった。",
@@ -9290,19 +9450,52 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 35,
-          "nodeId": "prologue_001_035",
+          "lineOrder": 44,
+          "nodeId": "prologue_001_044",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "この子は俺をからかうのが楽しくてしょうがないらしい。",
+          "text": "この子は俺をからかうのが[br]楽しくてしょうがないらしい。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 36,
-          "nodeId": "prologue_001_036",
+          "lineOrder": 45,
+          "nodeId": "prologue_001_045",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "clear_background",
+          "commandArgs": {
+            "scene_id": "scene_black",
+            "screen": "adv",
+            "transition": "fade",
+            "command": "clear_background",
+            "label": "暗転"
+          }
+        },
+        {
+          "lineOrder": 46,
+          "nodeId": "prologue_001_046",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "hide_portrait",
+          "commandArgs": {
+            "action": "hide",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 47,
+          "nodeId": "prologue_001_047",
           "speaker": "narrator",
           "messageType": "text",
           "text": "数週間前。",
@@ -9312,19 +9505,19 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 37,
-          "nodeId": "prologue_001_037",
+          "lineOrder": 48,
+          "nodeId": "prologue_001_048",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "俺はこの子に『あるノート』を発見された。",
+          "text": "俺はこの子に[br]『あるノート』を発見された。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 38,
-          "nodeId": "prologue_001_038",
+          "lineOrder": 49,
+          "nodeId": "prologue_001_049",
           "speaker": "narrator",
           "messageType": "text",
           "text": "あれ以来、完全に弱みを握られている。",
@@ -9334,30 +9527,30 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 39,
-          "nodeId": "prologue_001_039",
+          "lineOrder": 50,
+          "nodeId": "prologue_001_050",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "でも、負けっぱなしでいるつもりはない。",
+          "text": "でも、[br]負けっぱなしでいるつもりはない。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 40,
-          "nodeId": "prologue_001_040",
+          "lineOrder": 51,
+          "nodeId": "prologue_001_051",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "いつか絶対、こいつに「負けました」と言わせる。",
+          "text": "いつか絶対、[br]こいつに「負けました」と言わせる。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 41,
-          "nodeId": "prologue_001_041",
+          "lineOrder": 52,
+          "nodeId": "prologue_001_052",
           "speaker": "narrator",
           "messageType": "text",
           "text": "そして――",
@@ -9367,8 +9560,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 42,
-          "nodeId": "prologue_001_042",
+          "lineOrder": 53,
+          "nodeId": "prologue_001_053",
           "speaker": "narrator",
           "messageType": "text",
           "text": "『あのノート』を取り返す。",

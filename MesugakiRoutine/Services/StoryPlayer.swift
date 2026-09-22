@@ -95,6 +95,7 @@ final class StoryPlayer {
     /// renderers can continue reading `currentNode.assetId` directly.
     private(set) var callState: StoryCallPresentationState?
     private(set) var activeAudioAssetID: String?
+    private(set) var bgmPlaybackState: StoryBGMPlaybackState?
 
     @ObservationIgnored private let scenario: StoryScenario
     @ObservationIgnored private let event: StoryEvent?
@@ -724,6 +725,12 @@ private extension StoryPlayer {
             switch effect {
             case .setBackground(let assetID):
                 backgroundAssetID = assetID
+            case .clearBackground:
+                backgroundAssetID = nil
+            case .setPortrait(let assetID):
+                portraitAssetID = assetID
+            case .clearPortrait:
+                portraitAssetID = nil
             case .setScreenMode(let mode):
                 currentMode = mode
             case .showCG(let assetID):
@@ -741,6 +748,10 @@ private extension StoryPlayer {
                 callState = state
             case .playAudio(let assetID), .recordAudio(let assetID):
                 if allowTransientEffects { activeAudioAssetID = assetID }
+            case .playBGM(let state):
+                bgmPlaybackState = state
+            case .stopBGM:
+                bgmPlaybackState = nil
             }
         }
 
@@ -1021,6 +1032,7 @@ private extension StoryPlayer {
         isCompleted = false
         callState = nil
         activeAudioAssetID = nil
+        bgmPlaybackState = nil
         if clearError { recoverableError = nil }
     }
 

@@ -1,5 +1,56 @@
+import AVFoundation
 import SwiftData
 import SwiftUI
+
+@MainActor
+private final class StoryBGMPlaybackController: ObservableObject {
+    private var player: AVAudioPlayer?
+    private var currentState: StoryBGMPlaybackState?
+
+    func synchronize(with state: StoryBGMPlaybackState?) {
+        guard state != currentState else { return }
+        stop()
+        guard let state, let url = audioURL(for: state.assetID) else { return }
+
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = state.loop ? -1 : 0
+            player.volume = state.fadeMilliseconds > 0 ? 0 : state.volume
+            player.prepareToPlay()
+            guard player.play() else { return }
+            if state.fadeMilliseconds > 0 {
+                player.setVolume(
+                    state.volume,
+                    fadeDuration: TimeInterval(state.fadeMilliseconds) / 1_000
+                )
+            }
+            self.player = player
+            currentState = state
+        } catch {
+            player = nil
+            currentState = nil
+        }
+    }
+
+    func stop() {
+        player?.stop()
+        player = nil
+        currentState = nil
+    }
+
+    private func audioURL(for assetID: String) -> URL? {
+        if let exact = Bundle.main.url(forResource: assetID, withExtension: nil) {
+            return exact
+        }
+        for fileExtension in ["m4a", "mp3", "wav", "caf", "aac"] {
+            if let matched = Bundle.main.url(forResource: assetID, withExtension: fileExtension) {
+                return matched
+            }
+        }
+        return nil
+    }
+}
 
 enum ADVOpeningRevealPhase: Int, Equatable {
     case blackout
@@ -50,6 +101,7 @@ struct StoryPlaybackContainerView: View {
     @State private var advOpeningRevealPhase: ADVOpeningRevealPhase = .text
     @State private var lastActiveSnapshot: StoryPlayerViewSnapshot?
     @State private var isCompletionFadeVisible = false
+    @StateObject private var bgmPlayback = StoryBGMPlaybackController()
 
     var body: some View {
         ZStack {
@@ -153,8 +205,12 @@ struct StoryPlaybackContainerView: View {
         .task(id: shouldRunCompletionFade) {
             await runCompletionFadeIfNeeded()
         }
+        .onChange(of: player?.bgmPlaybackState) { _, state in
+            bgmPlayback.synchronize(with: state)
+        }
         .onDisappear {
             player?.close()
+            bgmPlayback.stop()
             AppOrientationController.set(.portrait)
         }
     }
@@ -180,6 +236,7 @@ struct StoryPlaybackContainerView: View {
 
     private func prepare() async {
         player?.close()
+        bgmPlayback.stop()
         player = nil
         preparationError = nil
         isShowingEventTitleIntro = false

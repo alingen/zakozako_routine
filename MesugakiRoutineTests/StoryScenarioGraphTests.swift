@@ -161,6 +161,55 @@ final class ADVOpeningRevealTimingTests: XCTestCase {
 
 @MainActor
 final class ADVStoryRendererRenderingTests: XCTestCase {
+    func testMissingBackgroundRendersAsPureBlackInsteadOfAssetPlaceholder() throws {
+        let node = StoryNode(
+            nodeId: "black-background",
+            lineOrder: 1,
+            speaker: "narrator",
+            messageType: .text,
+            text: "暗転後のテキスト",
+            screenMode: .adv,
+            uiVariant: .narration
+        )
+        let content = ADVStoryRenderer(
+            node: node,
+            scenarioType: .prologue,
+            backgroundAssetID: nil,
+            showsPlaybackControls: false,
+            onAdvance: { _ in },
+            onSelectChoice: { _ in },
+            onDismissModal: {}
+        )
+        .frame(width: 320, height: 568)
+        .environment(\.colorScheme, .light)
+
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = 1
+        let image = try XCTUnwrap(renderer.uiImage)
+        let cgImage = try XCTUnwrap(image.cgImage)
+        let sample = try XCTUnwrap(
+            cgImage.cropping(to: CGRect(x: 12, y: 12, width: 1, height: 1))
+        )
+        var rgba = [UInt8](repeating: 0, count: 4)
+        try rgba.withUnsafeMutableBytes { bytes in
+            let context = try XCTUnwrap(CGContext(
+                data: bytes.baseAddress,
+                width: 1,
+                height: 1,
+                bitsPerComponent: 8,
+                bytesPerRow: 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ))
+            context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
+
+        XCTAssertLessThanOrEqual(rgba[0], 2)
+        XCTAssertLessThanOrEqual(rgba[1], 2)
+        XCTAssertLessThanOrEqual(rgba[2], 2)
+        XCTAssertGreaterThanOrEqual(rgba[3], 253)
+    }
+
     func testDialogueAndPlaybackControlsRenderAtCompactAndRegularWidths() throws {
         let node = StoryNode(
             nodeId: "adv-preview",
