@@ -1,4 +1,4 @@
-/** Exact column vocabulary of the six CMS tabs. */
+/** Exact column vocabulary of the seven CMS tabs. */
 export const DAILY_COLUMNS = [
   'scenario_id',
   'line_order',
@@ -32,6 +32,16 @@ export const DAILY_CATALOG_COLUMNS = [
   'calendar_month_day',
   'status',
   'enabled',
+] as const;
+
+export const ASSET_CATALOG_COLUMNS = [
+  'asset_id',
+  'asset_type',
+  'display_name',
+  'file_name',
+  'status',
+  'enabled',
+  'notes',
 ] as const;
 
 export const SCENARIO_COLUMNS = [
@@ -116,6 +126,8 @@ export const REQUIRED_DAILY_COLUMNS = [
 ] as const;
 
 export const REQUIRED_DAILY_CATALOG_COLUMNS = DAILY_CATALOG_COLUMNS;
+
+export const REQUIRED_ASSET_CATALOG_COLUMNS = ASSET_CATALOG_COLUMNS;
 
 export const REQUIRED_SCENARIO_COLUMNS = [
   'scenario_id',
@@ -202,6 +214,15 @@ export const KNOWN_COMMANDS = new Set([
 export const KNOWN_OPERATORS = new Set(['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'exists']);
 export const KNOWN_STORY_CATEGORIES = new Set(['main', 'sub']);
 export const KNOWN_TIME_CONDITIONS = new Set(['always', 'morning', 'daytime', 'evening', 'night']);
+export const KNOWN_ASSET_TYPES = new Set([
+  'background',
+  'portrait',
+  'cg',
+  'image',
+  'bgm',
+  'se',
+  'voice',
+]);
 
 export function isBlank(value: unknown): boolean {
   return value === undefined || value === null || String(value).trim() === '';

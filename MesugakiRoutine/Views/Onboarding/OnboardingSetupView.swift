@@ -314,19 +314,39 @@ struct OnboardingSetupView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    TextField("名前を入力", text: $stateStore.draft.userName)
-                        .textInputAutocapitalization(.never)
-                        .submitLabel(.done)
-                        .focused($focusedField, equals: .name)
-                        .onSubmit { focusedField = nil }
-                        .onChange(of: stateStore.draft.userName) { _, value in
-                            if value.count > 20 {
-                                stateStore.draft.userName = String(value.prefix(20))
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("名前を入力", text: $stateStore.draft.userName)
+                            .textInputAutocapitalization(.never)
+                            .submitLabel(.done)
+                            .focused($focusedField, equals: .name)
+                            .onSubmit { focusedField = nil }
+                            .onChange(of: stateStore.draft.userName) { _, value in
+                                if value.count > 10 {
+                                    stateStore.draft.userName = String(value.prefix(10))
+                                }
                             }
+                            .onboardingTextField()
+                            .accessibilityLabel("あなたの名前")
+                            .accessibilityIdentifier("onboarding.name")
+
+                        Text("\(stateStore.draft.userName.count)/10")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(AppColor.muted)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .accessibilityLabel("10文字中\(stateStore.draft.userName.count)文字入力済み")
+
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("10文字以内で入力してください")
+                                .fontWeight(.semibold)
+                            Text("※名前はアプリ内で公開されます")
+                            Text("※名前はあとから変更できます")
+                            Text("※本名、メールアドレス、電話番号などの個人情報を入力しないでください")
                         }
-                        .onboardingTextField()
-                        .accessibilityLabel("あなたの名前")
-                        .accessibilityIdentifier("onboarding.name")
+                        .font(.caption)
+                        .foregroundStyle(AppColor.error)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .transition(.opacity)
             }

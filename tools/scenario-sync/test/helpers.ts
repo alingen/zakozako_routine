@@ -1,5 +1,6 @@
 import { gridToRows } from '../src/fetch.js';
 import {
+  ASSET_CATALOG_COLUMNS,
   CHOICE_COLUMNS,
   DAILY_CATALOG_COLUMNS,
   DAILY_COLUMNS,
@@ -14,6 +15,7 @@ type Values = Record<string, string | number | boolean | undefined>;
 export function sheets(options: {
   scenarios?: Values[];
   catalogs?: Values[];
+  assets?: Values[];
   choices?: Values[];
   interactions?: Values[];
   events?: Values[];
@@ -43,6 +45,14 @@ export function sheets(options: {
     dailyCatalog: gridToRows(
       grid(DAILY_CATALOG_COLUMNS, options.catalogs ?? defaultCatalogs, options.titleRows ?? 0),
       'scenario_id',
+    ),
+    assetCatalog: gridToRows(
+      grid(
+        ASSET_CATALOG_COLUMNS,
+        options.assets ?? [],
+        options.titleRows ?? 0,
+      ),
+      'asset_id',
     ),
     scenarios: gridToRows(
       grid(SCENARIO_COLUMNS, eventScenarioRows, options.titleRows ?? 0),
@@ -90,6 +100,18 @@ export function dailyCatalog(values: Values = {}): Values {
     title: 'Test daily',
     display_order: 1,
     category: 'test',
+    status: '公開可能',
+    enabled: true,
+    ...values,
+  };
+}
+
+export function assetCatalog(values: Values = {}): Values {
+  return {
+    asset_id: 'asset_test',
+    asset_type: 'image',
+    display_name: 'Test asset',
+    file_name: 'asset_test',
     status: '公開可能',
     enabled: true,
     ...values,

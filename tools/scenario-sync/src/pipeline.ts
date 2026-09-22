@@ -27,6 +27,7 @@ export function runPipeline(raw: RawSheets, outputPath = OUTPUT_PATH): PipelineR
   const identityColumn = {
     daily: 'scenario_id',
     dailyCatalog: 'scenario_id',
+    assetCatalog: 'asset_id',
     interactions: 'id',
     scenarios: 'scenario_id',
     choices: 'choice_id',
@@ -35,19 +36,32 @@ export function runPipeline(raw: RawSheets, outputPath = OUTPUT_PATH): PipelineR
   for (const tab of [
     'daily',
     'dailyCatalog',
+    'assetCatalog',
     'choices',
     'interactions',
     'scenarios',
     'events',
   ] as const) {
     const sheetName =
-      tab === 'scenarios' ? 'senarios' : tab === 'dailyCatalog' ? 'daily_catalog' : tab;
+      tab === 'scenarios'
+        ? 'senarios'
+        : tab === 'dailyCatalog'
+          ? 'daily_catalog'
+          : tab === 'assetCatalog'
+            ? 'asset_catalog'
+            : tab;
     const sourceRowCount =
-      tab === 'dailyCatalog' ? normalized.data.dailyCatalog.length : raw[tab].length;
+      tab === 'dailyCatalog'
+        ? normalized.data.dailyCatalog.length
+        : tab === 'assetCatalog'
+          ? normalized.data.assetCatalog.length
+          : raw[tab].length;
     const enabledRowCount =
       tab === 'dailyCatalog'
         ? normalized.data.dailyCatalog.filter((row) => row.enabled).length
-        : normalized.data[tab].length;
+        : tab === 'assetCatalog'
+          ? normalized.data.assetCatalog.filter((row) => row.enabled).length
+          : normalized.data[tab].length;
     if (sourceRowCount === 0) {
       issues.error('empty_source_tab', `${tab} has no source rows; refusing to generate`, {
         at: { sheet: sheetName, row: 1, column: identityColumn[tab] },

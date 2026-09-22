@@ -45,31 +45,43 @@ const EXPECTED_COMMANDS = [
   'wait',
 ];
 
-const hasDailyCatalogFixture = (() => {
+const hasCurrentFixture = (() => {
   if (!existsSync(SNAPSHOT_PATH)) return false;
   const parsed = JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8')) as {
-    tabs?: { daily_catalog?: unknown };
+    tabs?: { daily_catalog?: unknown; asset_catalog?: unknown };
   };
-  return Array.isArray(parsed.tabs?.daily_catalog);
+  return (
+    Array.isArray(parsed.tabs?.daily_catalog) && Array.isArray(parsed.tabs?.asset_catalog)
+  );
 })();
 
-const raw = hasDailyCatalogFixture
+const raw = hasCurrentFixture
   ? snapshotToRawSheets(loadSnapshot())
-  : { daily: [], dailyCatalog: [], choices: [], interactions: [], scenarios: [], events: [] };
+  : {
+      daily: [],
+      dailyCatalog: [],
+      assetCatalog: [],
+      choices: [],
+      interactions: [],
+      scenarios: [],
+      events: [],
+    };
 const normalized = normalize(raw);
 const validated = validate(normalized.data);
 const bundle = generate(normalized.data);
 
-describe.skipIf(!hasDailyCatalogFixture)('current Google Sheets fixture', () => {
+describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
   it('captures all current rows and detects the headers below the title area', () => {
     expect(raw.daily.length).toBeGreaterThan(0);
     expect(raw.dailyCatalog.length).toBeGreaterThan(0);
+    expect(raw.assetCatalog.length).toBeGreaterThan(0);
     expect(raw.scenarios.length).toBeGreaterThan(0);
     expect(raw.choices.length).toBeGreaterThan(0);
     expect(raw.interactions.length).toBeGreaterThan(0);
     expect(raw.events.length).toBeGreaterThan(0);
     expect(raw.daily[0]?.__row).toBeGreaterThan(1);
     expect(raw.dailyCatalog[0]?.__row).toBeGreaterThan(1);
+    expect(raw.assetCatalog[0]?.__row).toBeGreaterThan(1);
     expect(raw.scenarios[0]?.__row).toBeGreaterThan(1);
     expect(raw.choices[0]?.__row).toBeGreaterThan(1);
     expect(raw.interactions[0]?.__row).toBeGreaterThan(1);
@@ -274,6 +286,7 @@ describe.skipIf(!hasDailyCatalogFixture)('current Google Sheets fixture', () => 
     const reversed = {
       daily: [...normalized.data.daily].reverse(),
       dailyCatalog: [...normalized.data.dailyCatalog].reverse(),
+      assetCatalog: [...normalized.data.assetCatalog].reverse(),
       scenarios: [...normalized.data.scenarios].reverse(),
       choices: [...normalized.data.choices].reverse(),
       interactions: [...normalized.data.interactions].reverse(),

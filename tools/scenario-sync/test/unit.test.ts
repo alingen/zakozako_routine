@@ -4,7 +4,15 @@ import { generate, serialize } from '../src/generate.js';
 import { normalize } from '../src/normalize.js';
 import { runPipeline } from '../src/pipeline.js';
 import { validate } from '../src/validate.js';
-import { choice, dailyCatalog, event, interaction, scenario, sheets } from './helpers.js';
+import {
+  assetCatalog,
+  choice,
+  dailyCatalog,
+  event,
+  interaction,
+  scenario,
+  sheets,
+} from './helpers.js';
 
 function process(raw: ReturnType<typeof sheets>) {
   const normalized = normalize(raw);
@@ -176,6 +184,44 @@ describe('source normalization', () => {
     expect(result.errors).toEqual([]);
     expect(result.data.dailyCatalog).toHaveLength(1);
     expect(result.data.dailyCatalog[0]?.scenarioId).toBe('daily_test');
+  });
+
+  it('validates asset catalog references, types, duplicates, and checkbox-only rows', () => {
+    const valid = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_id: 'small_test',
+            scenario_type: 'small_event',
+            background: 'bg_test',
+          }),
+        ],
+        assets: [assetCatalog({ asset_id: 'bg_test', asset_type: 'background' }), { enabled: false }],
+      }),
+    );
+    expect(valid.errors).toEqual([]);
+    expect(valid.data.assetCatalog).toHaveLength(1);
+
+    const invalid = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_id: 'small_test',
+            scenario_type: 'small_event',
+            background: 'missing_bg',
+            asset_id: 'wrong_type',
+            message_type: 'image',
+          }),
+        ],
+        assets: [
+          assetCatalog({ asset_id: 'wrong_type', asset_type: 'voice' }),
+          assetCatalog({ asset_id: 'wrong_type', asset_type: 'image', display_name: 'Duplicate' }),
+        ],
+      }),
+    );
+    expect(invalid.errors.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining(['duplicate_asset_id', 'dangling_asset_id', 'asset_type_mismatch']),
+    );
   });
 
   it('requires a one-to-one relationship between daily and daily_catalog', () => {
@@ -618,7 +664,7 @@ describe('transition graph', () => {
 });
 
 describe('destructive sync guards', () => {
-  it('compiles a complete six-tab source with one authored catalog row', () => {
+  it('compiles a complete seven-tab source with one authored catalog row', () => {
     const result = runPipeline(
       sheets({
         scenarios: [
@@ -628,6 +674,7 @@ describe('destructive sync guards', () => {
         choices: [choice()],
         interactions: [interaction()],
         events: [event()],
+        assets: [assetCatalog()],
       }),
     );
 
@@ -648,7 +695,7 @@ describe('destructive sync guards', () => {
     expect(result.artifact).toBeNull();
     expect(result.plans).toEqual([]);
     expect(result.issues.errors.filter((issue) => issue.code === 'empty_source_tab')).toHaveLength(
-      6,
+      7,
     );
   });
 
@@ -656,6 +703,7 @@ describe('destructive sync guards', () => {
     const raw = sheets({
       scenarios: [scenario()],
       catalogs: [{ enabled: false }],
+      assets: [assetCatalog()],
     });
     const result = runPipeline(raw);
 
@@ -681,6 +729,7 @@ describe('destructive sync guards', () => {
         choices: [choice({ enabled: false })],
         interactions: [interaction({ active: false })],
         events: [event({ enabled: false })],
+        assets: [assetCatalog()],
       }),
     );
 
@@ -705,6 +754,7 @@ describe('deterministic generation and CLI contracts', () => {
     const reversed = {
       daily: [...normalized.daily].reverse(),
       dailyCatalog: [...normalized.dailyCatalog].reverse(),
+      assetCatalog: [...normalized.assetCatalog].reverse(),
       scenarios: [...normalized.scenarios].reverse(),
       choices: [...normalized.choices].reverse(),
       interactions: [...normalized.interactions].reverse(),

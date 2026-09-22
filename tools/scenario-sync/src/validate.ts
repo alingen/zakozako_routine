@@ -1,6 +1,7 @@
 import { IssueBag } from './issues.js';
 import { checkReachability } from './reachability.js';
 import {
+  KNOWN_ASSET_TYPES,
   KNOWN_COMMANDS,
   KNOWN_EVENT_TYPES,
   KNOWN_MESSAGE_TYPES,
@@ -12,6 +13,8 @@ import {
   KNOWN_UI_VARIANTS,
 } from './schema.js';
 import type {
+  JsonValue,
+  NormalizedAssetCatalogRow,
   NormalizedChoiceRow,
   NormalizedDailyCatalogRow,
   NormalizedEventRow,
@@ -31,15 +34,208 @@ export function validate(data: NormalizedSheets): ValidateResult {
   const scenarioRows = allScenarioRows(data);
   const scenarios = groupScenarios(scenarioRows);
   const choices = groupChoices(data.choices);
+  const assets = validateAssetCatalog(data.assetCatalog, issues);
 
   validateDailyCatalog(data.dailyCatalog, data.daily, issues);
   validateScenarioRows(scenarioRows, scenarios, choices, issues);
+  validateAssetReferences(scenarioRows, data.events, assets, issues);
   validateChoiceRows(data.choices, data.daily, choices, issues);
   validateInteractions(data.interactions, issues);
   validateEventRows(data.events, scenarios, issues);
   checkReachability(data, issues);
 
   return { issues };
+}
+
+function validateAssetCatalog(
+  rows: NormalizedAssetCatalogRow[],
+  issues: IssueBag,
+): Map<string, NormalizedAssetCatalogRow> {
+  const assets = new Map<string, NormalizedAssetCatalogRow>();
+  for (const row of rows) {
+    const previous = assets.get(row.assetId);
+    if (previous) {
+      issues.error('duplicate_asset_id', `asset_id ${row.assetId} must be unique`, {
+        at: { sheet: 'asset_catalog', row: row.__row, column: 'asset_id' },
+        value: row.assetId,
+        fix: `Also used by asset_catalog row ${previous.__row}`,
+      });
+    } else {
+      assets.set(row.assetId, row);
+    }
+    warnUnknown(
+      issues,
+      KNOWN_ASSET_TYPES,
+      row.assetType,
+      'asset_type',
+      row.__row,
+      'asset_catalog',
+    );
+  }
+  return assets;
+}
+
+type AssetReference = {
+  id: string;
+  sheet: 'daily' | 'senarios' | 'events';
+  row: number;
+  column: string;
+  expectedTypes?: ReadonlySet<string>;
+};
+
+function validateAssetReferences(
+  scenarioRows: NormalizedScenarioRow[],
+  eventRows: NormalizedEventRow[],
+  assets: Map<string, NormalizedAssetCatalogRow>,
+  issues: IssueBag,
+): void {
+  const references: AssetReference[] = [];
+  const one = (type: string): ReadonlySet<string> => new Set([type]);
+  const audioTypes = new Set(['bgm', 'se', 'voice']);
+
+  for (const row of scenarioRows) {
+    if (row.background) {
+      references.push({
+        id: row.background,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'background',
+        expectedTypes: one('background'),
+      });
+    }
+    if (row.portrait) {
+      references.push({
+        id: row.portrait,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'portrait',
+        expectedTypes: one('portrait'),
+      });
+    }
+    if (row.cg) {
+      references.push({
+        id: row.cg,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'cg',
+        expectedTypes: one('cg'),
+      });
+    }
+    if (row.assetId) {
+      const expectedTypes = inferredAssetTypes(row, audioTypes);
+      references.push({
+        id: row.assetId,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'asset_id',
+        expectedTypes,
+      });
+    }
+
+    const args = jsonObject(row.commandArgs);
+    const commandAsset = jsonString(args?.asset_id);
+    if (commandAsset) {
+      references.push({
+        id: commandAsset,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'command_args',
+        expectedTypes:
+          row.command === 'show_cg' || row.command === 'hide_cg'
+            ? one('cg')
+            : row.command === 'play_audio' || row.command === 'record_audio'
+              ? audioTypes
+              : undefined,
+      });
+    }
+    const commandBackground = jsonString(args?.background);
+    if (commandBackground) {
+      references.push({
+        id: commandBackground,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'command_args',
+        expectedTypes: one('background'),
+      });
+    }
+  }
+
+  for (const row of eventRows) {
+    if (!row.background) continue;
+    references.push({
+      id: row.background,
+      sheet: 'events',
+      row: row.__row,
+      column: 'background',
+      expectedTypes: one('background'),
+    });
+  }
+
+  const visited = new Set<string>();
+  for (const reference of references) {
+    const key = `${reference.sheet}\u0000${reference.row}\u0000${reference.column}\u0000${reference.id}`;
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    const asset = assets.get(reference.id);
+    if (!asset) {
+      issues.error('dangling_asset_id', `Asset ${reference.id} does not exist in asset_catalog`, {
+        at: { sheet: reference.sheet, row: reference.row, column: reference.column },
+        value: reference.id,
+      });
+      continue;
+    }
+    if (!asset.enabled) {
+      issues.error('disabled_asset_reference', `Asset ${reference.id} is disabled`, {
+        at: { sheet: reference.sheet, row: reference.row, column: reference.column },
+        value: reference.id,
+        fix: `Enable asset_catalog row ${asset.__row} or remove the reference`,
+      });
+      continue;
+    }
+    if (reference.expectedTypes && !reference.expectedTypes.has(asset.assetType)) {
+      issues.error(
+        'asset_type_mismatch',
+        `Asset ${reference.id} has type ${asset.assetType}; expected ${[
+          ...reference.expectedTypes,
+        ].join(' / ')}`,
+        {
+          at: { sheet: reference.sheet, row: reference.row, column: reference.column },
+          value: reference.id,
+          fix: `Update asset_catalog row ${asset.__row}`,
+        },
+      );
+    }
+  }
+}
+
+function inferredAssetTypes(
+  row: NormalizedScenarioRow,
+  audioTypes: ReadonlySet<string>,
+): ReadonlySet<string> | undefined {
+  if (row.command === 'show_cg' || row.command === 'hide_cg' || row.uiVariant === 'cg') {
+    return new Set(['cg']);
+  }
+  if (
+    row.command === 'play_audio' ||
+    row.command === 'record_audio' ||
+    row.uiVariant === 'audio_message' ||
+    row.uiVariant === 'recording'
+  ) {
+    return audioTypes;
+  }
+  if (row.messageType === 'image' || row.uiVariant === 'image_message') {
+    return new Set(['image', 'cg']);
+  }
+  return undefined;
+}
+
+function jsonObject(value: JsonValue | undefined): Record<string, JsonValue> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+}
+
+function jsonString(value: JsonValue | undefined): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
 function validateDailyCatalog(

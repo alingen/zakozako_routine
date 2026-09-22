@@ -24,6 +24,7 @@ export interface SyncConfig {
   tabs: {
     daily: string;
     dailyCatalog: string;
+    assetCatalog: string;
     interactions: string;
     scenarios: string;
     choices: string;
@@ -71,6 +72,7 @@ export function loadConfig(): SyncConfig {
     tabs: {
       daily: process.env.SCENARIO_TAB_DAILY?.trim() || 'daily',
       dailyCatalog: process.env.SCENARIO_TAB_DAILY_CATALOG?.trim() || 'daily_catalog',
+      assetCatalog: process.env.SCENARIO_TAB_ASSET_CATALOG?.trim() || 'asset_catalog',
       choices: process.env.SCENARIO_TAB_CHOICES?.trim() || 'choices',
       interactions: process.env.SCENARIO_TAB_INTERACTIONS?.trim() || 'interactions',
       scenarios: process.env.SCENARIO_TAB_SCENARIOS?.trim() || 'senarios',

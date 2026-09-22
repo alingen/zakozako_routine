@@ -1,5 +1,6 @@
 import type {
   JsonValue,
+  NormalizedAssetCatalogRow,
   NormalizedChoiceRow,
   NormalizedDailyCatalogRow,
   NormalizedEventRow,
@@ -11,12 +12,14 @@ import type {
 } from './types.js';
 import { IssueBag } from './issues.js';
 import {
+  ASSET_CATALOG_COLUMNS,
   CHOICE_COLUMNS,
   DAILY_CATALOG_COLUMNS,
   DAILY_COLUMNS,
   EVENT_COLUMNS,
   INTERACTION_COLUMNS,
   REQUIRED_CHOICE_COLUMNS,
+  REQUIRED_ASSET_CATALOG_COLUMNS,
   REQUIRED_DAILY_CATALOG_COLUMNS,
   REQUIRED_DAILY_COLUMNS,
   REQUIRED_EVENT_COLUMNS,
@@ -285,6 +288,40 @@ function normalizeDailyCatalog(bag: IssueBag, rows: RawRow[]): NormalizedDailyCa
   return normalized;
 }
 
+function normalizeAssetCatalog(bag: IssueBag, rows: RawRow[]): NormalizedAssetCatalogRow[] {
+  const sheet = 'asset_catalog';
+  checkColumns(bag, sheet, rows, ASSET_CATALOG_COLUMNS, REQUIRED_ASSET_CATALOG_COLUMNS);
+  const normalized: NormalizedAssetCatalogRow[] = [];
+
+  for (const row of rows) {
+    const contentColumns = ASSET_CATALOG_COLUMNS.filter((column) => column !== 'enabled');
+    const enabledValue = trimmed(row, 'enabled').toLowerCase();
+    const checkboxOnlyPlaceholder =
+      contentColumns.every((column) => isBlank(row[column])) &&
+      (enabledValue === '' || ['false', '0', 'no'].includes(enabledValue));
+    if (checkboxOnlyPlaceholder) continue;
+
+    const assetId = requiredString(bag, sheet, row, 'asset_id');
+    const assetType = requiredString(bag, sheet, row, 'asset_type');
+    const displayName = requiredString(bag, sheet, row, 'display_name');
+    const status = requiredString(bag, sheet, row, 'status');
+    const enabled = booleanValue(bag, sheet, row, 'enabled', true);
+
+    if (!assetId || !assetType || !displayName || !status) continue;
+    normalized.push({
+      __row: row.__row,
+      assetId,
+      assetType,
+      displayName,
+      fileName: optionalString(row, 'file_name'),
+      status,
+      enabled,
+      notes: optionalString(row, 'notes'),
+    });
+  }
+  return normalized;
+}
+
 function normalizeChoices(bag: IssueBag, rows: RawRow[]): NormalizedChoiceRow[] {
   const sheet = 'choices';
   checkColumns(bag, sheet, rows, CHOICE_COLUMNS, REQUIRED_CHOICE_COLUMNS);
@@ -412,6 +449,7 @@ export function normalize(raw: RawSheets): NormalizeResult {
     data: {
       daily: normalizeScenarioRows(issues, raw.daily, 'daily'),
       dailyCatalog: normalizeDailyCatalog(issues, raw.dailyCatalog),
+      assetCatalog: normalizeAssetCatalog(issues, raw.assetCatalog),
       choices: normalizeChoices(issues, raw.choices),
       interactions: normalizeInteractions(issues, raw.interactions),
       scenarios: normalizeScenarioRows(issues, raw.scenarios, 'senarios'),

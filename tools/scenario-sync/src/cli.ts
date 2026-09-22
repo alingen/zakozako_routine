@@ -186,6 +186,7 @@ function printSummary(
   );
   console.log(
     `Rows: daily=${raw.daily.length}, daily_catalog=${raw.dailyCatalog.length}, ` +
+      `asset_catalog=${raw.assetCatalog.length}, ` +
       `choices=${raw.choices.length}, ` +
       `interactions=${raw.interactions.length}, senarios=${raw.scenarios.length}, ` +
       `events=${raw.events.length}`,

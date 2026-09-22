@@ -11,10 +11,11 @@ export interface RawRow {
   [column: string]: RawCell | number;
 }
 
-/** Editing-oriented six-tab CMS, normalized into one app-facing bundle later. */
+/** Editing-oriented seven-tab CMS, normalized into one app-facing bundle later. */
 export interface RawSheets {
   daily: RawRow[];
   dailyCatalog: RawRow[];
+  assetCatalog: RawRow[];
   choices: RawRow[];
   interactions: RawRow[];
   /** Event scenario lines from the intentionally named `senarios` tab. */
@@ -29,6 +30,7 @@ export interface SheetSnapshot {
   tabs: {
     daily: string[][];
     daily_catalog: string[][];
+    asset_catalog: string[][];
     choices: string[][];
     interactions: string[][];
     senarios: string[][];
@@ -84,6 +86,17 @@ export interface NormalizedDailyCatalogRow {
   enabled: boolean;
 }
 
+export interface NormalizedAssetCatalogRow {
+  __row: number;
+  assetId: string;
+  assetType: string;
+  displayName: string;
+  fileName?: string;
+  status: string;
+  enabled: boolean;
+  notes?: string;
+}
+
 export interface NormalizedChoiceRow {
   __row: number;
   dailyId: string;
@@ -133,6 +146,7 @@ export interface NormalizedEventRow {
 export interface NormalizedSheets {
   daily: NormalizedScenarioRow[];
   dailyCatalog: NormalizedDailyCatalogRow[];
+  assetCatalog: NormalizedAssetCatalogRow[];
   choices: NormalizedChoiceRow[];
   interactions: NormalizedInteractionRow[];
   scenarios: NormalizedScenarioRow[];

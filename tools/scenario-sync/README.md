@@ -23,6 +23,7 @@ npm install
 | `SCENARIO_SHEET_ID` | 対象Google Sheets ID。未設定時はコード内の既定ID |
 | `SCENARIO_TAB_DAILY` | 日常会話タブ名。既定値 `daily` |
 | `SCENARIO_TAB_DAILY_CATALOG` | 日常会話カタログタブ名。既定値 `daily_catalog` |
+| `SCENARIO_TAB_ASSET_CATALOG` | 素材カタログタブ名。既定値 `asset_catalog` |
 | `SCENARIO_TAB_CHOICES` | 日常会話の選択肢タブ名。既定値 `choices` |
 | `SCENARIO_TAB_INTERACTIONS` | 交流コメントタブ名。既定値 `interactions` |
 | `SCENARIO_TAB_SCENARIOS` | イベントシナリオタブ名。既定値 `senarios` |
@@ -70,6 +71,7 @@ npm --prefix tools/scenario-sync run typecheck
 Google Sheets (read only)
   ├─ daily:        1 row = 1 daily conversation node
   ├─ daily_catalog: 1 row = 1 daily conversation metadata entry
+  ├─ asset_catalog: 1 row = 1 referenced visual/audio asset
   ├─ choices:      1 row = 1 daily choice option
   ├─ interactions: 1 row = 1 short interaction comment
   ├─ senarios:     1 row = 1 event scenario node
@@ -124,6 +126,20 @@ story_content.generated.json
 - 1つの日常会話に複数の選択箇所を置けるよう、`daily_id` と `choice_id` を分けています。
 - 旧 `required_key`／`required_operator`／`required_value` は廃止しました。
 
+### asset_catalog（7列）
+
+`asset_id`, `asset_type`, `display_name`, `file_name`, `status`, `enabled`, `notes`
+
+- `asset_id` は `daily`、`senarios`、`events` から参照する一意の素材IDです。
+- `asset_type` は `background`、`portrait`、`cg`、`image`、`bgm`、`se`、`voice` を使います。
+- `file_name` は `Assets.xcassets` またはアプリBundle内の実ファイル名です。ユーザー録音など
+  ランタイム生成素材は空欄にできます。
+- `status` は制作管理用で、`未収録`、`下書き`、`制作中`、`確認待ち`、`公開可能`、
+  `ランタイム` を使用します。
+- `enabled=FALSE` の素材は参照できません。素材IDの重複、参照切れ、用途と種別の不一致は
+  同期時にエラーになります。
+- `bgm` は素材台帳として登録できますが、ループ再生・停止などのBGM制御は別途アプリ実装が必要です。
+
 ### interactions（7列）
 
 `id`, `text`, `condition`, `time_condition`, `touch_area`, `weight`, `active`
@@ -173,12 +189,12 @@ choiceの `next_node_id` が参照切れの場合はwarningとし、Playerと同
 `line_order` へ復旧できる前提で到達性も診断します。node自身の `next_node_id` 参照切れ、
 シートをまたぐ不正参照、その他の必須値・型・重複・終了不能cycleはerrorで生成を止めます。
 
-また、取得失敗や誤ったheader検出を全削除と誤認しないよう、6シートのいずれかが空、または
+また、取得失敗や誤ったheader検出を全削除と誤認しないよう、7シートのいずれかが空、または
 有効な正規化行が0件なら生成物を書き換えずerrorで停止します。
 
 ## 生成物
 
-生成JSONは編集用6シートを、そのまま複製せずアプリ向けの単一bundleへ統合します。
+生成JSONは編集用7シートを、そのまま複製せずアプリ向けの単一bundleへ統合します。
 
 ```json
 {

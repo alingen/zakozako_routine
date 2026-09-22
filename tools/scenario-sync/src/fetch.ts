@@ -36,6 +36,7 @@ export function snapshotToRawSheets(snapshot: SheetSnapshot): RawSheets {
   return {
     daily: gridToRows(snapshot.tabs.daily, 'scenario_id'),
     dailyCatalog: gridToRows(snapshot.tabs.daily_catalog, 'scenario_id'),
+    assetCatalog: gridToRows(snapshot.tabs.asset_catalog, 'asset_id'),
     choices: gridToRows(snapshot.tabs.choices, 'choice_id'),
     interactions: gridToRows(snapshot.tabs.interactions, 'id'),
     scenarios: gridToRows(snapshot.tabs.senarios, 'scenario_id'),
@@ -52,6 +53,7 @@ export function loadSnapshot(path = SNAPSHOT_PATH): SheetSnapshot {
     !parsed.sheetId ||
     !parsed.tabs?.daily ||
     !parsed.tabs.daily_catalog ||
+    !parsed.tabs.asset_catalog ||
     !parsed.tabs.choices ||
     !parsed.tabs.interactions ||
     !parsed.tabs.senarios ||
@@ -92,6 +94,7 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
     ranges: [
       config.tabs.daily,
       config.tabs.dailyCatalog,
+      config.tabs.assetCatalog,
       config.tabs.choices,
       config.tabs.interactions,
       config.tabs.scenarios,
@@ -110,10 +113,11 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
     tabs: {
       daily: grid(0),
       daily_catalog: grid(1),
-      choices: grid(2),
-      interactions: grid(3),
-      senarios: grid(4),
-      events: grid(5),
+      asset_catalog: grid(2),
+      choices: grid(3),
+      interactions: grid(4),
+      senarios: grid(5),
+      events: grid(6),
     },
   };
 }
@@ -151,6 +155,7 @@ async function fetchViaPublicXlsx(config: SyncConfig): Promise<SheetSnapshot> {
     tabs: {
       daily: readTab(config.tabs.daily),
       daily_catalog: readTab(config.tabs.dailyCatalog),
+      asset_catalog: readTab(config.tabs.assetCatalog),
       choices: readTab(config.tabs.choices),
       interactions: readTab(config.tabs.interactions),
       senarios: readTab(config.tabs.scenarios),
