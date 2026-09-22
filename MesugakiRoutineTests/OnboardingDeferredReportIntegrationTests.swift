@@ -29,6 +29,8 @@ final class OnboardingDeferredReportIntegrationTests: XCTestCase {
 
         let onboarding = OnboardingStateStore(defaults: defaults)
         onboarding.beginInAppTutorial(createdRoutineID: routine.id)
+        onboarding.completePrologue()
+        onboarding.completePrologueMessage()
         onboarding.completeFirstReport(with: .deferred)
 
         XCTAssertEqual(onboarding.firstReportOutcome, .deferred)

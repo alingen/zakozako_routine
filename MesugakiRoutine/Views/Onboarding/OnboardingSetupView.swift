@@ -2123,7 +2123,7 @@ private struct OnboardingExplanationPanel: View {
     }
 }
 
-private struct OnboardingRioPortrait: View {
+struct OnboardingRioPortrait: View {
     var body: some View {
         Image("rio_blocked_behavior_taunt")
             .resizable()
@@ -2140,7 +2140,7 @@ private struct OnboardingRioPortrait: View {
     }
 }
 
-private struct OnboardingRioBubble: View {
+struct OnboardingRioBubble: View {
     let text: String
 
     var body: some View {

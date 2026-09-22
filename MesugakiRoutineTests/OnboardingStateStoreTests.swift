@@ -801,6 +801,15 @@ final class OnboardingStateStoreTests: XCTestCase {
             first.draft.cueText = "寝る前"
 
             first.beginInAppTutorial(createdRoutineID: routineID)
+            XCTAssertEqual(first.phase, .prologue)
+            XCTAssertTrue(first.isPrologueAutoplayPending)
+
+            first.completePrologue()
+            XCTAssertEqual(first.phase, .prologueMessage)
+            XCTAssertFalse(first.isPrologueAutoplayPending)
+
+            first.completePrologueMessage()
+            XCTAssertEqual(first.phase, .firstReport)
             first.completeFirstReport(with: .deferred)
             first.completeConversationPrompt(with: .later)
 
@@ -825,10 +834,35 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(completed.createdRoutineID, routineID)
             XCTAssertEqual(completed.notificationChoice, .enabled)
             XCTAssertEqual(completed.draft.reminderMinuteOfDay, 23 * 60 + 30)
-            XCTAssertTrue(completed.isPrologueAutoplayPending)
+            XCTAssertFalse(completed.isPrologueAutoplayPending)
+        }
+    }
 
-            completed.markPrologueAutoplayStarted()
-            XCTAssertFalse(OnboardingStateStore(defaults: defaults).isPrologueAutoplayPending)
+    func testProloguePhasesPersistAcrossRestarts() {
+        withDefaults { defaults in
+            let routineID = UUID()
+            let setup = OnboardingStateStore(defaults: defaults)
+
+            setup.beginInAppTutorial(createdRoutineID: routineID)
+
+            let prologue = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(prologue.createdRoutineID, routineID)
+            XCTAssertEqual(prologue.phase, .prologue)
+            XCTAssertTrue(prologue.isPrologueAutoplayPending)
+
+            prologue.completePrologue()
+
+            let message = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(message.createdRoutineID, routineID)
+            XCTAssertEqual(message.phase, .prologueMessage)
+            XCTAssertFalse(message.isPrologueAutoplayPending)
+
+            message.completePrologueMessage()
+
+            let firstReport = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(firstReport.createdRoutineID, routineID)
+            XCTAssertEqual(firstReport.phase, .firstReport)
+            XCTAssertFalse(firstReport.isPrologueAutoplayPending)
         }
     }
 
@@ -859,6 +893,8 @@ final class OnboardingStateStoreTests: XCTestCase {
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
 
+            store.completePrologue()
+            store.completePrologueMessage()
             store.completeFirstReport(with: .completed)
             store.completeConversationPrompt(with: .started)
             store.completeStoryUnlockPresentation()
@@ -869,6 +905,31 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertNil(store.conversationChoice)
             XCTAssertNil(store.notificationChoice)
             XCTAssertFalse(store.isCompleted)
+
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologueMessage()
+            store.completeOnboarding(notificationChoice: .notNow)
+
+            XCTAssertEqual(store.phase, .prologue)
+            XCTAssertTrue(store.isPrologueAutoplayPending)
+            XCTAssertNil(store.notificationChoice)
+
+            store.completePrologue()
+            store.completePrologue()
+            store.completeFirstReport(with: .completed)
+            store.completeOnboarding(notificationChoice: .notNow)
+
+            XCTAssertEqual(store.phase, .prologueMessage)
+            XCTAssertFalse(store.isPrologueAutoplayPending)
+            XCTAssertNil(store.firstReportOutcome)
+            XCTAssertNil(store.notificationChoice)
+            XCTAssertFalse(store.isCompleted)
+
+            store.completePrologueMessage()
+            store.completePrologue()
+
+            XCTAssertEqual(store.phase, .firstReport)
+            XCTAssertFalse(store.isPrologueAutoplayPending)
         }
     }
 
@@ -878,6 +939,8 @@ final class OnboardingStateStoreTests: XCTestCase {
             store.draft.userName = "かずし"
             XCTAssertTrue(store.advanceSetup())
             store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
             store.completeFirstReport(with: .completed)
 
             store.reset()
@@ -972,6 +1035,8 @@ final class OnboardingStateStoreTests: XCTestCase {
             let routineID = UUID()
             let store = OnboardingStateStore(defaults: defaults)
             store.beginInAppTutorial(createdRoutineID: routineID)
+            store.completePrologue()
+            store.completePrologueMessage()
 
             store.reconcileFirstReportIfNeeded(isRoutineComplete: true)
 
@@ -988,6 +1053,8 @@ final class OnboardingStateStoreTests: XCTestCase {
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
             store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
 
             store.reconcileFirstReportIfNeeded(isRoutineComplete: false)
 
@@ -1091,6 +1158,8 @@ final class OnboardingStateStoreTests: XCTestCase {
     ) -> OnboardingStateStore {
         let store = OnboardingStateStore(defaults: defaults)
         store.beginInAppTutorial(createdRoutineID: routineID)
+        store.completePrologue()
+        store.completePrologueMessage()
         store.completeFirstReport(with: .deferred)
         store.completeConversationPrompt(with: .later)
         store.completeStoryUnlockPresentation()

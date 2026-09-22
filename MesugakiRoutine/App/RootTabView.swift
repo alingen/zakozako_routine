@@ -69,6 +69,7 @@ struct RootTabView: View {
     private var isPresentingOverlay: Bool {
         appDialog != nil
             || blockedBehaviorTaunt != nil
+            || onboardingState.phase == .prologueMessage
             || onboardingState.phase == .storyUnlockPresentation
     }
 
@@ -87,6 +88,14 @@ struct RootTabView: View {
                 .transition(.opacity)
             } else {
                 appShell
+
+                if onboardingState.phase == .prologueMessage {
+                    OnboardingPostPrologueMessageView(
+                        onContinue: completePostPrologueMessage
+                    )
+                    .transition(.opacity)
+                    .zIndex(9)
+                }
 
                 if onboardingState.phase == .storyUnlockPresentation {
                     OnboardingStoryUnlockView(
@@ -159,7 +168,7 @@ struct RootTabView: View {
                         onboardingConversationIdentity: onboardingState.conversationIdentity,
                         onOnboardingConversationPlaybackEnded: finishOnboardingConversation,
                         onOnboardingConversationUnavailable: finishUnavailableOnboardingConversation,
-                        onStoryEventAutoPlayStarted: finishStoryEventAutoPlay
+                        onStoryEventAutoPlayEnded: finishStoryEventAutoPlay
                     )
                 }
                 .tabItem {
@@ -346,8 +355,8 @@ struct RootTabView: View {
             }
 
             AppSettingsStore.userName = draft.trimmedUserName
-            selectedTab = .home
             onboardingState.beginInAppTutorial(createdRoutineID: routine.id)
+            presentPendingPrologueIfNeeded()
         } catch {
             presentOnboardingError("最初の約束を保存できませんでした。\n\(error.localizedDescription)")
         }
@@ -523,7 +532,6 @@ struct RootTabView: View {
                     notificationChoice: .enabled,
                     reminderMinuteOfDay: minute
                 )
-                presentPendingPrologueIfNeeded()
             } catch {
                 presentOnboardingError("通知設定を保存できませんでした。\n\(error.localizedDescription)")
             }
@@ -580,7 +588,6 @@ struct RootTabView: View {
         }
 
         onboardingState.completeOnboarding(notificationChoice: .notNow)
-        presentPendingPrologueIfNeeded()
         if let message {
             onboardingAlertTitle = "通知は設定されませんでした"
             onboardingErrorMessage = message
@@ -595,6 +602,12 @@ struct RootTabView: View {
     private func dismissOnboardingAlert() {
         onboardingErrorMessage = nil
         onboardingAlertTitle = "オンボーディングを完了できませんでした"
+        if onboardingState.phase == .prologue {
+            Task { @MainActor in
+                await Task.yield()
+                presentPendingPrologueIfNeeded()
+            }
+        }
     }
 
     private func onboardingRoutine() -> Routine? {
@@ -608,10 +621,7 @@ struct RootTabView: View {
     private func resumeOnboardingIfNeeded() {
         migrateExistingInstallationIfNeeded()
         clearCompletedOnboardingConversationIdentityIfNeeded()
-        guard !onboardingState.isCompleted else {
-            presentPendingPrologueIfNeeded()
-            return
-        }
+        guard !onboardingState.isCompleted else { return }
 
         if onboardingState.phase != .dedicatedSetup,
            onboardingRoutine() == nil {
@@ -622,6 +632,10 @@ struct RootTabView: View {
         switch onboardingState.phase {
         case .dedicatedSetup:
             break
+        case .prologue:
+            presentPendingPrologueIfNeeded()
+        case .prologueMessage:
+            selectedTab = .home
         case .firstReport:
             selectedTab = .home
             if let routine = onboardingRoutine(), routine.isComplete() {
@@ -640,15 +654,46 @@ struct RootTabView: View {
     }
 
     private func presentPendingPrologueIfNeeded() {
-        guard onboardingState.isPrologueAutoplayPending,
+        guard onboardingState.phase == .prologue,
+              onboardingState.isPrologueAutoplayPending,
               openStoryEventRequest == nil else { return }
+
+        // 読了保存と画面終了通知の間でアプリが終了した場合は、再生を要求し直さず
+        // Home上の案内から安全に再開する。
+        if isProloguePlaybackCompleted {
+            selectedTab = .home
+            onboardingState.completePrologue()
+            return
+        }
+
         selectedTab = .interaction
         openStoryEventRequest = Self.prologueEventID
     }
 
-    private func finishStoryEventAutoPlay(eventID: String) {
-        guard eventID == Self.prologueEventID else { return }
-        onboardingState.markPrologueAutoplayStarted()
+    private var isProloguePlaybackCompleted: Bool {
+        let playbackKey = "event:\(Self.prologueEventID)"
+        return (try? AppDependencies(context: modelContext)
+            .storyStateRepository
+            .checkpoint(for: playbackKey))?.isCompleted == true
+    }
+
+    private func finishStoryEventAutoPlay(eventID: String, didComplete: Bool) {
+        guard eventID == Self.prologueEventID,
+              onboardingState.phase == .prologue else { return }
+
+        guard didComplete else {
+            presentOnboardingError("プロローグが完了していません。もう一度お試しください。")
+            return
+        }
+
+        selectedTab = .home
+        onboardingState.completePrologue()
+    }
+
+    private func completePostPrologueMessage() {
+        guard onboardingState.phase == .prologueMessage else { return }
+        selectedTab = .home
+        onboardingState.completePrologueMessage()
     }
 
     /// オンボーディング導入前からデータがある端末は、既存ユーザーとして通常画面を維持する。
@@ -827,11 +872,45 @@ struct RootTabView: View {
 
     private func dismissPresentedOverlay() {
         if isOnboardingConversationDialog { return }
-        if blockedBehaviorTaunt != nil {
+        if onboardingState.phase == .prologueMessage {
+            completePostPrologueMessage()
+        } else if blockedBehaviorTaunt != nil {
             dismissBlockedBehaviorTaunt()
         } else {
             appDialog = nil
         }
+    }
+}
+
+/// プロローグ直後、初回報告へ移る前にHome上へ重ねる莉央の一言。
+private struct OnboardingPostPrologueMessageView: View {
+    let onContinue: () -> Void
+
+    var body: some View {
+        GeometryReader { _ in
+            VStack(spacing: 22) {
+                HStack(alignment: .top, spacing: 10) {
+                    OnboardingRioPortrait()
+                    OnboardingRioBubble(text: "できたら報告してね〜")
+                }
+                .frame(maxWidth: 520)
+
+                Button("次へ", action: onContinue)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(AppColor.text)
+                    .padding(.horizontal, 20)
+                    .frame(minHeight: 44)
+                    .background(AppColor.surface.opacity(0.95), in: Capsule())
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("onboarding.prologueMessage.continue")
+            }
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("莉央、できたら報告してね〜")
+        .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape, onContinue)
     }
 }
 

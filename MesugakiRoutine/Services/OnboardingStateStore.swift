@@ -78,6 +78,8 @@ enum OnboardingConfirmationGuidanceStage: String, Codable, Sendable {
 /// 専用画面終了後を含む、オンボーディング全体の現在位置。
 enum OnboardingPhase: String, Codable, Sendable {
     case dedicatedSetup
+    case prologue
+    case prologueMessage
     case firstReport
     case conversationPrompt
     case storyUnlockPresentation
@@ -812,13 +814,29 @@ final class OnboardingStateStore {
         return true
     }
 
-    /// 6枚目でRoutineの保存に成功した直後に呼び、通常Home上のチュートリアルへ移る。
+    /// 6枚目でRoutineの保存に成功した直後に呼び、プロローグへ移る。
     func beginInAppTutorial(createdRoutineID: UUID) {
         guard !isCompleted else { return }
         performBatchUpdate {
             self.createdRoutineID = createdRoutineID
-            phase = .firstReport
+            isPrologueAutoplayPending = true
+            phase = .prologue
         }
+    }
+
+    /// プロローグを最後まで再生（またはスキップ）した後、Home上の莉央の一言へ移る。
+    func completePrologue() {
+        guard !isCompleted, phase == .prologue else { return }
+        performBatchUpdate {
+            isPrologueAutoplayPending = false
+            phase = .prologueMessage
+        }
+    }
+
+    /// 莉央の一言を確認した後、通常Home上の初回報告チュートリアルへ移る。
+    func completePrologueMessage() {
+        guard !isCompleted, phase == .prologueMessage else { return }
+        phase = .firstReport
     }
 
     /// 旧バージョンですでにアプリを利用していたユーザーを移行する。
@@ -944,16 +962,9 @@ final class OnboardingStateStore {
                 notificationRoutineID = nil
                 notificationNotBefore = nil
             }
-            isPrologueAutoplayPending = true
             isCompleted = true
             phase = .completed
         }
-    }
-
-    /// プロローグの自動再生開始後に呼び、次回起動での重複起動を防ぐ。
-    func markPrologueAutoplayStarted() {
-        guard isPrologueAutoplayPending else { return }
-        isPrologueAutoplayPending = false
     }
 
     /// デバッグ・テスト・将来の「オンボーディングを再確認」に使える初期化。

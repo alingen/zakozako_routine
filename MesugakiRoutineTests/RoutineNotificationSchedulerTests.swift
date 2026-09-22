@@ -81,6 +81,8 @@ final class RoutineNotificationSchedulerTests: XCTestCase {
         let routineID = UUID()
         let store = OnboardingStateStore(defaults: defaults)
         store.beginInAppTutorial(createdRoutineID: routineID)
+        store.completePrologue()
+        store.completePrologueMessage()
         store.completeFirstReport(with: .deferred)
         store.completeConversationPrompt(with: .later)
         store.completeStoryUnlockPresentation()

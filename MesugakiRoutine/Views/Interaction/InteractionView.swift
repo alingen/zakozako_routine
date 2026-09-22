@@ -7,13 +7,14 @@ struct InteractionView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = InteractionViewModel()
     @State private var onboardingPlaybackKeyInPlayer: String?
+    @State private var autoPlayedStoryEventID: String?
 
     @Binding private var openTodayConversationRequest: Bool
     @Binding private var openStoryEventRequest: String?
     private let onboardingConversationIdentity: OnboardingConversationIdentity?
     private let onOnboardingConversationPlaybackEnded: (Bool) -> Void
     private let onOnboardingConversationUnavailable: () -> Void
-    private let onStoryEventAutoPlayStarted: (String) -> Void
+    private let onStoryEventAutoPlayEnded: (String, Bool) -> Void
 
     init(
         openTodayConversationRequest: Binding<Bool> = .constant(false),
@@ -21,14 +22,14 @@ struct InteractionView: View {
         onboardingConversationIdentity: OnboardingConversationIdentity? = nil,
         onOnboardingConversationPlaybackEnded: @escaping (Bool) -> Void = { _ in },
         onOnboardingConversationUnavailable: @escaping () -> Void = {},
-        onStoryEventAutoPlayStarted: @escaping (String) -> Void = { _ in }
+        onStoryEventAutoPlayEnded: @escaping (String, Bool) -> Void = { _, _ in }
     ) {
         _openTodayConversationRequest = openTodayConversationRequest
         _openStoryEventRequest = openStoryEventRequest
         self.onboardingConversationIdentity = onboardingConversationIdentity
         self.onOnboardingConversationPlaybackEnded = onOnboardingConversationPlaybackEnded
         self.onOnboardingConversationUnavailable = onOnboardingConversationUnavailable
-        self.onStoryEventAutoPlayStarted = onStoryEventAutoPlayStarted
+        self.onStoryEventAutoPlayEnded = onStoryEventAutoPlayEnded
     }
 
     private var homeDialogue: String? {
@@ -186,13 +187,24 @@ struct InteractionView: View {
             onDismiss: {
                 let playbackKey = onboardingPlaybackKeyInPlayer
                 let didComplete = playbackKey.map(viewModel.isPlaybackCompleted) ?? false
+                let autoPlayedEventID = autoPlayedStoryEventID
+                let didCompleteAutoPlayedEvent = autoPlayedEventID.map {
+                    viewModel.isPlaybackCompleted("event:\($0)")
+                } ?? false
                 onboardingPlaybackKeyInPlayer = nil
+                autoPlayedStoryEventID = nil
                 viewModel.reload()
                 if !didComplete, let identity = onboardingConversationIdentity {
                     viewModel.offerDeferredOnboardingConversationIfNeeded(identity: identity)
                 }
                 if playbackKey != nil {
                     onOnboardingConversationPlaybackEnded(didComplete)
+                }
+                if let autoPlayedEventID {
+                    onStoryEventAutoPlayEnded(
+                        autoPlayedEventID,
+                        didCompleteAutoPlayedEvent
+                    )
                 }
             }
         ) { launch in
@@ -296,9 +308,13 @@ struct InteractionView: View {
     private func openRequestedStoryEventIfNeeded() {
         guard let eventID = openStoryEventRequest else { return }
         viewModel.configure(context: modelContext)
-        guard viewModel.openEvent(id: eventID) else { return }
+        guard viewModel.openEvent(id: eventID) else {
+            openStoryEventRequest = nil
+            onStoryEventAutoPlayEnded(eventID, false)
+            return
+        }
+        autoPlayedStoryEventID = eventID
         openStoryEventRequest = nil
-        onStoryEventAutoPlayStarted(eventID)
     }
 }
 
