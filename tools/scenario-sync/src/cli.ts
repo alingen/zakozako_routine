@@ -185,7 +185,8 @@ function printSummary(
     `Source: ${snapshot.source} (sheet ${snapshot.sheetId}, fetched ${snapshot.fetchedAt})`,
   );
   console.log(
-    `Rows: daily=${raw.daily.length}, choices=${raw.choices.length}, ` +
+    `Rows: daily=${raw.daily.length}, daily_catalog=${raw.dailyCatalog.length}, ` +
+      `choices=${raw.choices.length}, ` +
       `interactions=${raw.interactions.length}, senarios=${raw.scenarios.length}, ` +
       `events=${raw.events.length}`,
   );

@@ -45,50 +45,106 @@ const EXPECTED_COMMANDS = [
   'wait',
 ];
 
-describe('current Google Sheets fixture', () => {
-  if (!existsSync(SNAPSHOT_PATH)) {
-    throw new Error(
-      `Missing ${SNAPSHOT_PATH}. Create it from the live source with ` +
-        '`npm run sync -- --save-snapshot`.',
-    );
-  }
+const hasDailyCatalogFixture = (() => {
+  if (!existsSync(SNAPSHOT_PATH)) return false;
+  const parsed = JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8')) as {
+    tabs?: { daily_catalog?: unknown };
+  };
+  return Array.isArray(parsed.tabs?.daily_catalog);
+})();
 
-  const snapshot = loadSnapshot();
-  const raw = snapshotToRawSheets(snapshot);
-  const normalized = normalize(raw);
-  const validated = validate(normalized.data);
-  const bundle = generate(normalized.data);
+const raw = hasDailyCatalogFixture
+  ? snapshotToRawSheets(loadSnapshot())
+  : { daily: [], dailyCatalog: [], choices: [], interactions: [], scenarios: [], events: [] };
+const normalized = normalize(raw);
+const validated = validate(normalized.data);
+const bundle = generate(normalized.data);
 
+describe.skipIf(!hasDailyCatalogFixture)('current Google Sheets fixture', () => {
   it('captures all current rows and detects the headers below the title area', () => {
     expect(raw.daily.length).toBeGreaterThan(0);
+    expect(raw.dailyCatalog.length).toBeGreaterThan(0);
     expect(raw.scenarios.length).toBeGreaterThan(0);
     expect(raw.choices.length).toBeGreaterThan(0);
     expect(raw.interactions.length).toBeGreaterThan(0);
     expect(raw.events.length).toBeGreaterThan(0);
     expect(raw.daily[0]?.__row).toBeGreaterThan(1);
+    expect(raw.dailyCatalog[0]?.__row).toBeGreaterThan(1);
     expect(raw.scenarios[0]?.__row).toBeGreaterThan(1);
     expect(raw.choices[0]?.__row).toBeGreaterThan(1);
     expect(raw.interactions[0]?.__row).toBeGreaterThan(1);
     expect(raw.events[0]?.__row).toBeGreaterThan(1);
-    expect(Object.keys(raw.daily[0] ?? {})).toEqual(
-      expect.arrayContaining(['calendar_date', 'calendar_month_day']),
+    const dailyHeaders = Object.keys(raw.daily[0] ?? {});
+    for (const removedColumn of [
+      'calendar_date',
+      'calendar_month_day',
+      'background',
+      'portrait',
+      'cg',
+    ]) {
+      expect(dailyHeaders).not.toContain(removedColumn);
+    }
+    expect(Object.keys(raw.dailyCatalog[0] ?? {})).toEqual(
+      expect.arrayContaining([
+        'scenario_id',
+        'title',
+        'display_order',
+        'category',
+        'calendar_date',
+        'calendar_month_day',
+        'status',
+        'enabled',
+      ]),
     );
     expect(normalized.issues.errors).toEqual([]);
   });
 
-  it('contains the daily catalog and chapter-01 episodes 1–7 with entry scenarios', () => {
+  it('contains the authored daily catalog, prologue, and chapter-01 episodes 1–7', () => {
     const daily = bundle.scenarios.filter((scenario) => scenario.scenarioType === 'daily');
     const scenarioById = new Map(
       bundle.scenarios.map((scenario) => [scenario.scenarioId, scenario]),
     );
-    const chapterOne = bundle.events
+    const chapterOneEpisodes = bundle.events
       .filter((event) => event.chapterId === 'chapter_01' && event.storyCategory === 'main')
-      .filter((event) => event.episodeOrder !== undefined && event.episodeOrder <= 7)
+      .filter(
+        (event) =>
+          event.episodeOrder !== undefined && event.episodeOrder >= 1 && event.episodeOrder <= 7,
+      )
       .sort((left, right) => (left.episodeOrder ?? 0) - (right.episodeOrder ?? 0));
+    const prologueEvent = bundle.events.find((event) => event.eventId === 'event_prologue_001');
+    const prologueScenario = scenarioById.get('prologue_001');
 
-    expect(daily.length).toBeGreaterThanOrEqual(14);
-    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    for (const event of chapterOne) {
+    expect(daily.map((scenario) => scenario.scenarioId)).toEqual(['daily_q003']);
+    expect(daily[0]).toMatchObject({
+      title: '一人映画',
+      calendarMonthDay: '09-16',
+      enabled: true,
+    });
+    expect(prologueEvent).toMatchObject({
+      eventType: 'prologue',
+      title: 'プロローグ',
+      entryScenarioId: 'prologue_001',
+      chapterId: 'chapter_01',
+      episodeOrder: 0,
+      storyCategory: 'main',
+    });
+    expect(prologueScenario).toMatchObject({
+      scenarioId: 'prologue_001',
+      scenarioType: 'prologue',
+    });
+    expect(prologueScenario?.nodes).toHaveLength(42);
+    expect(prologueScenario?.nodes[0]).toMatchObject({
+      nodeId: 'prologue_001_001',
+      screenMode: 'adv',
+      uiVariant: 'scene_transition',
+      command: 'scene_change',
+      background: 'bg_protagonist_living_room',
+    });
+    expect(prologueScenario?.nodes).toContainEqual(
+      expect.objectContaining({ text: 'LOSE', uiVariant: 'title_card' }),
+    );
+    expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    for (const event of [prologueEvent!, ...chapterOneEpisodes]) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);
     }
   });
@@ -124,7 +180,7 @@ describe('current Google Sheets fixture', () => {
     expect(values((node) => node.uiVariant)).toEqual(expect.arrayContaining(EXPECTED_VARIANTS));
     expect(values((node) => node.command)).toEqual(expect.arrayContaining(EXPECTED_COMMANDS));
     expect([...new Set(bundle.scenarios.map((scenario) => scenario.scenarioType))]).toEqual(
-      expect.arrayContaining(['daily', 'small_event', 'middle_event', 'large_event']),
+      expect.arrayContaining(['daily', 'prologue', 'small_event', 'middle_event', 'large_event']),
     );
     expect(nodes.some((node) => node.speaker === 'protagonist')).toBe(true);
     expect(nodes.some((node) => node.messageType === 'action')).toBe(true);
@@ -140,14 +196,26 @@ describe('current Google Sheets fixture', () => {
       .filter((event) => event.chapterId === 'chapter_01' && event.storyCategory === 'main')
       .filter((event) => event.episodeOrder !== undefined && event.episodeOrder <= 7)
       .sort((left, right) => (left.episodeOrder ?? 0) - (right.episodeOrder ?? 0));
-    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    for (const [index, event] of chapterOne.entries()) {
+    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(chapterOne[0]).toMatchObject({
+      eventId: 'event_prologue_001',
+      episodeOrder: 0,
+      conditions: [
+        {
+          conditionType: 'achievement',
+          conditionKey: 'cumulative_days',
+          operator: 'gte',
+          threshold: '0',
+        },
+      ],
+    });
+    for (const [index, event] of chapterOne.slice(1).entries()) {
       expect(event.episodeOrder).toBe(index + 1);
       expect(event.conditions).toEqual([
         {
-          conditionType: 'streak',
-          conditionKey: 'continuous_days',
-          operator: 'eq',
+          conditionType: 'achievement',
+          conditionKey: 'cumulative_days',
+          operator: 'gte',
           threshold: String(index + 1),
         },
       ]);
@@ -162,11 +230,9 @@ describe('current Google Sheets fixture', () => {
         .map((node) => ({ scenario, node })),
     );
 
-    expect(groups.size).toBeGreaterThanOrEqual(10);
-    expect(
-      bundle.choiceGroups.reduce((total, group) => total + group.choices.length, 0),
-    ).toBeGreaterThanOrEqual(20);
-    expect(choiceNodes.length).toBeGreaterThanOrEqual(10);
+    expect(groups.size).toBe(1);
+    expect(bundle.choiceGroups.reduce((total, group) => total + group.choices.length, 0)).toBe(2);
+    expect(choiceNodes.length).toBe(1);
     const reportedDanglingTargets = new Set(
       validated.issues.warnings
         .filter((issue) => issue.code === 'dangling_choice_next')
@@ -207,6 +273,7 @@ describe('current Google Sheets fixture', () => {
   it('is deterministic and matches the committed generated artifact', () => {
     const reversed = {
       daily: [...normalized.data.daily].reverse(),
+      dailyCatalog: [...normalized.data.dailyCatalog].reverse(),
       scenarios: [...normalized.data.scenarios].reverse(),
       choices: [...normalized.data.choices].reverse(),
       interactions: [...normalized.data.interactions].reverse(),

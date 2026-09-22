@@ -19,6 +19,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(store.draft, OnboardingDraft())
             XCTAssertNil(store.createdRoutineID)
             XCTAssertFalse(store.isCompleted)
+            XCTAssertFalse(store.isPrologueAutoplayPending)
             XCTAssertTrue(store.shouldPresentDedicatedSetup)
             XCTAssertFalse(store.isRunningInAppTutorial)
         }
@@ -824,6 +825,33 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(completed.createdRoutineID, routineID)
             XCTAssertEqual(completed.notificationChoice, .enabled)
             XCTAssertEqual(completed.draft.reminderMinuteOfDay, 23 * 60 + 30)
+            XCTAssertTrue(completed.isPrologueAutoplayPending)
+
+            completed.markPrologueAutoplayStarted()
+            XCTAssertFalse(OnboardingStateStore(defaults: defaults).isPrologueAutoplayPending)
+        }
+    }
+
+    func testCompletedLegacySnapshotWithoutPrologueAutoplayFieldDoesNotAutoplay() throws {
+        try withDefaults { defaults in
+            let store = makeTomorrowPromiseStore(defaults: defaults, routineID: UUID())
+            store.completeOnboarding(notificationChoice: .notNow)
+
+            let data = try XCTUnwrap(
+                defaults.data(forKey: OnboardingStateStore.defaultStorageKey)
+            )
+            var legacySnapshot = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: data) as? [String: Any]
+            )
+            legacySnapshot.removeValue(forKey: "isPrologueAutoplayPending")
+            defaults.set(
+                try JSONSerialization.data(withJSONObject: legacySnapshot),
+                forKey: OnboardingStateStore.defaultStorageKey
+            )
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertTrue(restored.isCompleted)
+            XCTAssertFalse(restored.isPrologueAutoplayPending)
         }
     }
 
@@ -919,6 +947,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             store.completeForExistingInstallationIfNeeded(hasExistingUserData: true)
 
             XCTAssertTrue(store.isCompleted)
+            XCTAssertFalse(store.isPrologueAutoplayPending)
             XCTAssertEqual(store.phase, .completed)
 
             let restored = OnboardingStateStore(defaults: defaults)

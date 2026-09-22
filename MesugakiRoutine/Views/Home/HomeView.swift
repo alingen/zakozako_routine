@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @Environment(SiriLaunchCoordinator.self) private var siriLaunchCoordinator
     @Environment(\.scenePhase) private var scenePhase
@@ -19,6 +20,7 @@ struct HomeView: View {
     @State private var isShowingBlockedBehaviorDeleteError = false
     @State private var nextStrugglingTauntIndex = 0
     @State private var nextDefeatedTauntIndex = 0
+    @State private var isOnboardingTapIconFaded = false
 
     @Binding private var appDialog: AppDialogRequest?
     private let onboardingRoutineID: UUID?
@@ -320,9 +322,23 @@ struct HomeView: View {
 
     private var onboardingReportGuide: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("実行したら、右の丸をタップして報告", systemImage: "hand.tap.fill")
+            HStack(spacing: 7) {
+                Image(systemName: "hand.tap.fill")
+                    .foregroundStyle(AppColor.primary)
+                    .opacity(reduceMotion ? 1 : (isOnboardingTapIconFaded ? 0.28 : 1))
+                    .scaleEffect(reduceMotion ? 1 : (isOnboardingTapIconFaded ? 0.94 : 1.04))
+                    .animation(
+                        reduceMotion
+                            ? nil
+                            : .easeInOut(duration: 0.72).repeatForever(autoreverses: true),
+                        value: isOnboardingTapIconFaded
+                    )
+
+                Text("実行したら、右の丸をタップして報告")
+            }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppColor.text)
+                .accessibilityElement(children: .combine)
 
             Text("今すぐできなくても大丈夫。約束はこの画面に残ります。")
                 .font(.caption)
@@ -342,6 +358,15 @@ struct HomeView: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18)
                 .stroke(AppColor.primary.opacity(0.35), lineWidth: 1)
+        }
+        .onAppear {
+            isOnboardingTapIconFaded = !reduceMotion
+        }
+        .onDisappear {
+            isOnboardingTapIconFaded = false
+        }
+        .onChange(of: reduceMotion) { _, shouldReduceMotion in
+            isOnboardingTapIconFaded = !shouldReduceMotion
         }
         .accessibilityElement(children: .contain)
     }

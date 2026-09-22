@@ -89,6 +89,14 @@ extension StoryConditionValueProvider {
             }
         }
 
+        for type in ["cumulative", "achievement"] {
+            for key in ["cumulative_days", "total_days"] {
+                provider.register(conditionType: type, conditionKey: key) { _, metrics in
+                    .number(Double(metrics.cumulativeAchievementDays))
+                }
+            }
+        }
+
         provider.register(conditionType: "relationship", conditionKey: "trust") { _, metrics in
             .number(Double(metrics.trust))
         }
@@ -125,9 +133,6 @@ extension StoryConditionValueProvider {
         )
         provider.register(conditionType: "event_completed", resolver: completedEventResolver)
 
-        // A cumulative resolver is intentionally absent: the current Routine
-        // repository discards old timestamps and cannot supply a truthful
-        // lifetime total. Adding one is a registry entry once that metric exists.
         return provider
     }
 }

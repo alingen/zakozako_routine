@@ -79,6 +79,7 @@ enum JSONValue: Codable, Hashable {
 
 enum StoryScenarioType: Hashable, Codable {
     case daily
+    case prologue
     case smallEvent
     case middleEvent
     case largeEvent
@@ -87,6 +88,7 @@ enum StoryScenarioType: Hashable, Codable {
     init(rawValue: String) {
         switch rawValue {
         case "daily": self = .daily
+        case "prologue": self = .prologue
         case "small_event": self = .smallEvent
         case "middle_event": self = .middleEvent
         case "large_event": self = .largeEvent
@@ -97,6 +99,7 @@ enum StoryScenarioType: Hashable, Codable {
     var rawValue: String {
         switch self {
         case .daily: return "daily"
+        case .prologue: return "prologue"
         case .smallEvent: return "small_event"
         case .middleEvent: return "middle_event"
         case .largeEvent: return "large_event"
@@ -115,6 +118,7 @@ enum StoryScenarioType: Hashable, Codable {
 }
 
 enum StoryEventType: Hashable, Codable {
+    case prologue
     case small
     case middle
     case large
@@ -122,6 +126,7 @@ enum StoryEventType: Hashable, Codable {
 
     init(rawValue: String) {
         switch rawValue {
+        case "prologue": self = .prologue
         case "small_event": self = .small
         case "middle_event": self = .middle
         case "large_event": self = .large
@@ -131,6 +136,7 @@ enum StoryEventType: Hashable, Codable {
 
     var rawValue: String {
         switch self {
+        case .prologue: return "prologue"
         case .small: return "small_event"
         case .middle: return "middle_event"
         case .large: return "large_event"
@@ -430,8 +436,13 @@ struct InteractionComment: Codable, Hashable, Identifiable {
 struct StoryScenario: Codable, Hashable, Identifiable {
     let scenarioId: String
     let scenarioType: StoryScenarioType
+    let title: String?
+    let displayOrder: Int?
+    let category: String?
     let calendarDate: String?
     let calendarMonthDay: String?
+    let status: String?
+    let enabled: Bool
     let nodes: [StoryNode]
 
     var id: String { scenarioId }
@@ -439,15 +450,52 @@ struct StoryScenario: Codable, Hashable, Identifiable {
     init(
         scenarioId: String,
         scenarioType: StoryScenarioType,
+        title: String? = nil,
+        displayOrder: Int? = nil,
+        category: String? = nil,
         calendarDate: String? = nil,
         calendarMonthDay: String? = nil,
+        status: String? = nil,
+        enabled: Bool = true,
         nodes: [StoryNode]
     ) {
         self.scenarioId = scenarioId
         self.scenarioType = scenarioType
+        self.title = title
+        self.displayOrder = displayOrder
+        self.category = category
         self.calendarDate = calendarDate
         self.calendarMonthDay = calendarMonthDay
+        self.status = status
+        self.enabled = enabled
         self.nodes = nodes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case scenarioId
+        case scenarioType
+        case title
+        case displayOrder
+        case category
+        case calendarDate
+        case calendarMonthDay
+        case status
+        case enabled
+        case nodes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        scenarioId = try container.decode(String.self, forKey: .scenarioId)
+        scenarioType = try container.decode(StoryScenarioType.self, forKey: .scenarioType)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        displayOrder = try container.decodeIfPresent(Int.self, forKey: .displayOrder)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        calendarDate = try container.decodeIfPresent(String.self, forKey: .calendarDate)
+        calendarMonthDay = try container.decodeIfPresent(String.self, forKey: .calendarMonthDay)
+        status = try container.decodeIfPresent(String.self, forKey: .status)
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        nodes = try container.decode([StoryNode].self, forKey: .nodes)
     }
 }
 

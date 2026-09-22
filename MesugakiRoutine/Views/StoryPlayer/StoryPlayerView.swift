@@ -97,7 +97,7 @@ struct StoryPlayerView: View {
 
     private var usesSkipOnlyDismissal: Bool {
         switch input.scenarioType {
-        case .smallEvent, .middleEvent, .largeEvent:
+        case .prologue, .smallEvent, .middleEvent, .largeEvent:
             return true
         case .daily, .unknown:
             return false
@@ -161,7 +161,7 @@ struct StoryPlayerView: View {
                     scenarioType: input.scenarioType,
                     onClose: onClose
                 )
-            case .middleEvent, .largeEvent:
+            case .prologue, .middleEvent, .largeEvent:
                 Color.black.ignoresSafeArea()
             case .unknown:
                 completionView

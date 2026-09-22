@@ -2,907 +2,14 @@
   "_generated": "AUTO-GENERATED FROM GOOGLE SHEETS — DO NOT EDIT BY HAND. Run: npm --prefix tools/scenario-sync run sync:write",
   "scenarios": [
     {
-      "scenarioId": "daily_001",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_001_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ふーん、ルーティンちゃんと終わらせたんだ",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_001_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ざこのわりにやるじゃん♪",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_001_03",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "べつに褒めてないけどね",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_001_04",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "あたりまえのことだし調子乗んな〜",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_001_05",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "もちろん明日もサボらずこれるよね？",
-          "choiceId": "first_day_can_do",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_001_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "は？1日でやめたらキモすぎ〜",
-          "nextNodeId": "daily_001_08",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_001_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "さすがに1日でやめるザコじゃないよね〜？",
-          "nextNodeId": "daily_001_08",
-          "enabled": true
-        },
-        {
-          "lineOrder": 8,
-          "nodeId": "daily_001_08",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "よわよわなんだから1日ぐらい頑張れ♡",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_002",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_002_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "よわよわおにいさんでも2日目はできるんだね♡",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_002_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "特別にお話ししてあげる〜",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_002_03",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "ねえ、おにいさんって兄弟っているの?",
-          "choiceId": "choice_siblings",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_002_has_sib",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "へぇ、兄弟いるんだ。ちょっとうらやましいかも",
-          "nextNodeId": "daily_002_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_002_no_sib",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "一人っ子か。わたしと同じだね。まあ気楽でいいよね〜",
-          "nextNodeId": "daily_002_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_002_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ま、どっちでもいいんだけどね。ちょっと聞いてみただけ",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_002_04",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "明日もルーティンできてたらよしよししてあげる〜",
-          "choiceId": "choice_yoshiyoshi",
-          "enabled": true
-        },
-        {
-          "lineOrder": 8,
-          "nodeId": "daily_002_05",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "嘘に決まってるじゃんキモー！",
-          "nextNodeId": "daily_002_07",
-          "enabled": true
-        },
-        {
-          "lineOrder": 9,
-          "nodeId": "daily_002_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ノリわるっモテなそ〜",
-          "nextNodeId": "daily_002_07",
-          "enabled": true
-        },
-        {
-          "lineOrder": 10,
-          "nodeId": "daily_002_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "じゃあ明日も忘れないでね",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_003",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_003_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "3日目も来たんだ。三日坊主判定は今日が本番だからね〜",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_003_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ところで、おにいさんって朝強い？ 夜のほうが元気？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_003_03",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "ちゃんと答えて。生活よわよわ度を採点してあげる",
-          "choiceId": "choice_active_time",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_003_morning",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "朝型なんだ。えら〜い。わたしは起きてもしばらく魂いないけど",
-          "nextNodeId": "daily_003_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_003_night",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "夜型ね。どうせ寝る直前までスマホ見てるタイプでしょ",
-          "nextNodeId": "daily_003_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_003_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "まあ、何時でも今日の分やったなら合格。ギリギリだけどね♡",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_003_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "明日も来たら、三日坊主じゃないって認めてあげる",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_004",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_004_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "おつかれ〜。今日も最低限はできたみたいだね",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_004_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたし、頑張ったあとは甘いもの食べたくなるんだよね",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_004_03",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "おにいさんは甘いのとしょっぱいの、どっち派？",
-          "choiceId": "choice_snack",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_004_sweet",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "甘党なんだ。疲れた顔でスイーツ選んでそう〜",
-          "nextNodeId": "daily_004_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_004_salty",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "しょっぱい派か〜。ポテチの粉、指につけたままスマホ触ってそう",
-          "nextNodeId": "daily_004_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_004_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたしはプリン。固めのやつが好き",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_004_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "べつに一緒に食べたいとかじゃないから。情報として教えただけ〜",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_005",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_005_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "今日、外出た瞬間に雨降ってきたんだけど。最悪〜",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_005_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "天気予報見てたのに傘忘れた。意味なさすぎて笑えるよね",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_005_03",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "……いま笑った？ おにいさんにだけは言われたくないんだけど",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_005_04",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "コンビニで傘買ったから、家にビニール傘がまた増えた",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_005_05",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ちゃんとしてそうに見えて抜けてる？ 余計なお世話〜",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_005_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "明日は忘れないし。たぶん",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_006",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_006_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ルーティン中って、無音でやってる？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_006_02",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "それとも何か流してないと無理なタイプ？",
-          "choiceId": "choice_routine_audio",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_006_music",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "音楽派ね。ノって肝心なこと忘れないようにね〜",
-          "nextNodeId": "daily_006_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_006_silence",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "無音派なんだ。意外と集中力あるじゃん。意外と",
-          "nextNodeId": "daily_006_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_006_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたしはプレイリスト作るところで満足しがち",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_006_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "選曲に一時間、作業は十分。効率よわよわ〜",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_006_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "今日はちゃんとやったけどね。おにいさんと違って♡",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_007",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_007_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "ねえ、スマホの充電いま何パーセント？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_007_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたし12パー。まだ余裕",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_007_03",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "え、全然余裕じゃない？ 1パーからが本番でしょ",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_007_04",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "モバイルバッテリーは持ってるよ。充電するの忘れてるだけ",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_007_05",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "そういうとこ雑って言うな〜。計画的な綱渡りだから",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_007_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "返信なくなったら電池切れね。無視じゃないから勘違いすんな♡",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_008",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_008_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "休みの日って、外に出たい派？ 家から出たくない派？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_008_02",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "おにいさんの休日、どうせ地味そうだけど聞いてあげる",
-          "choiceId": "choice_dayoff",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_008_out",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "外出派なんだ。行き先決めずにうろうろしてそう〜",
-          "nextNodeId": "daily_008_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_008_home",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "家派ね。気づいたら夕方になってるやつでしょ",
-          "nextNodeId": "daily_008_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_008_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたしは出かける準備まではするけど、玄関で面倒になる",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_008_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "で、着替えたままベッドで動画見る。完璧な休日",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_008_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "それをザコって言ったらブロックするからね",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_009",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_009_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "今日のお昼、辛いやつ食べたんだけど",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_009_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "見た目ぜんぜん辛くなさそうだったのに、罠だった",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_009_03",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "水飲んでも無理で、ずっと涼しい顔して耐えてたし",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_009_04",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "涙出てた？ あれは辛さじゃなくて、あくび",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_009_05",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたし辛いの苦手じゃないから。今日は相手が悪かっただけ",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_009_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "次は甘口にするけど。戦略的撤退〜",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_010",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_010_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "おにいさんの部屋って、ちゃんと片づいてる？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_010_02",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "正直に答えなよ。画面越しでも散らかってる気配するし",
-          "choiceId": "choice_room",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_010_tidy",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "片づいてるんだ。へえ〜、そこだけはちゃんとしてるじゃん",
-          "nextNodeId": "daily_010_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_010_messy",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "やっぱ散らかってるんだ。床に服の島できてそう",
-          "nextNodeId": "daily_010_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_010_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたしの部屋はきれいだよ。見える範囲は",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_010_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "クローゼット開けなければ完璧。開けたら雪崩だけど",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_010_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "これは収納が悪いの。わたしは悪くない〜",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_011",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_011_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "今日、空がちょっときれいだったから写真撮った",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_011_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "でも見返したら電線しか写ってなくて、センスなさすぎた",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_011_03",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "写真って肉眼で見た感じにならないよね",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_011_04",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "盛れるのは自撮りだけ。そこは技術あるから♡",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_011_05",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "見せてほしい？ はいはい、そういうのは小イベント待ちで〜す",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_011_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "今日は電線の写真で我慢して。送らないけど",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_012",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_012_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "疲れた日は、お風呂ちゃんと入る？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_012_02",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "湯船まで入る派か、シャワーで済ませる派か聞いてんの",
-          "choiceId": "choice_bath",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_012_tub",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "湯船派なんだ。寝落ちしないようにね、危なっかしいし",
-          "nextNodeId": "daily_012_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_012_shower",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "シャワー派ね。効率重視って言えば聞こえはいいかも",
-          "nextNodeId": "daily_012_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_012_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "わたしは入るまでが長いけど、入ったら出たくなくなる",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_012_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "お風呂上がりのアイスまでがセット",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_012_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "健康的かどうかは知らな〜い",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_013",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_013_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "今朝、アラーム五個かけたのに全部止めてた",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_013_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "最後のやつ、止めた記憶すらないんだけど。こわ〜",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_013_03",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "でも遅刻はしてないから、結果オーライ",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_013_04",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "髪？ ちゃんと整えたし。後ろだけちょっと跳ねてたけど",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_013_05",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "誰も見てないって？ わたしが気にするの",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_013_06",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "おにいさんも明日寝坊すんなよ。わたしに言われる前に起きて♡",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "scenarioId": "daily_014",
-      "scenarioType": "daily",
-      "nodes": [
-        {
-          "lineOrder": 1,
-          "nodeId": "daily_014_01",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "14日目じゃん。二週間続いたのは、まあ認めてあげる",
-          "enabled": true
-        },
-        {
-          "lineOrder": 2,
-          "nodeId": "daily_014_02",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "こういうとき、自分にご褒美あげるなら何にする？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "daily_014_03",
-          "speaker": "character",
-          "messageType": "choice",
-          "text": "食べるか、だらだらするか。ザコらしい二択ね〜",
-          "choiceId": "choice_reward",
-          "enabled": true
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "daily_014_food",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "食べる派ね。二週間分って言って食べすぎそう",
-          "nextNodeId": "daily_014_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "daily_014_rest",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "だらだら派か〜。ご褒美を言い訳に一日溶かすタイプ",
-          "nextNodeId": "daily_014_merge",
-          "enabled": true
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "daily_014_merge",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "でも、続けた自分をちゃんと労うのは悪くないんじゃない？",
-          "enabled": true
-        },
-        {
-          "lineOrder": 7,
-          "nodeId": "daily_014_07",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "べつに優しくしてないし。次も続けさせるための管理だから",
-          "enabled": true
-        },
-        {
-          "lineOrder": 8,
-          "nodeId": "daily_014_08",
-          "speaker": "character",
-          "messageType": "text",
-          "text": "じゃ、明日からもサボんなよ。二週間で満足したら普通にザコ♡",
-          "enabled": true
-        }
-      ]
-    },
-    {
       "scenarioId": "daily_q003",
       "scenarioType": "daily",
+      "title": "一人映画",
+      "displayOrder": 1,
+      "category": "質問系",
       "calendarMonthDay": "09-16",
+      "status": "公開可能",
+      "enabled": true,
       "nodes": [
         {
           "lineOrder": 1,
@@ -9797,6 +8904,482 @@
       ]
     },
     {
+      "scenarioId": "prologue_001",
+      "scenarioType": "prologue",
+      "nodes": [
+        {
+          "lineOrder": 1,
+          "nodeId": "prologue_001_001",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "background": "bg_protagonist_living_room",
+          "enabled": true,
+          "notes": "確定原稿: ユーザー提供 prologue_001",
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "scene_change",
+          "commandArgs": {
+            "scene_id": "prologue_match",
+            "screen": "adv",
+            "background": "bg_protagonist_living_room",
+            "transition": "fade",
+            "label": "主人公宅・リビング"
+          }
+        },
+        {
+          "lineOrder": 2,
+          "nodeId": "prologue_001_002",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ほらほらどうしたの〜？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 3,
+          "nodeId": "prologue_001_003",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あ、これいつも弱いよね♡",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 4,
+          "nodeId": "prologue_001_004",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ためてないで早く出しちゃいなよ〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 5,
+          "nodeId": "prologue_001_005",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ちょっと…そんな攻め方…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 6,
+          "nodeId": "prologue_001_006",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "なんかボソボソいってる〜w",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 7,
+          "nodeId": "prologue_001_007",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ねえねえほんとは莉央ちゃんに負けたいの？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 8,
+          "nodeId": "prologue_001_008",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "そんなことは…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 9,
+          "nodeId": "prologue_001_009",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "はい、３…２…１…",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 10,
+          "nodeId": "prologue_001_010",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おわり〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 11,
+          "nodeId": "prologue_001_011",
+          "speaker": "system",
+          "messageType": "text",
+          "text": "LOSE",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "title_card"
+        },
+        {
+          "lineOrder": 12,
+          "nodeId": "prologue_001_012",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 13,
+          "nodeId": "prologue_001_013",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あははっ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 14,
+          "nodeId": "prologue_001_014",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "今日も負けちゃったね♡",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 15,
+          "nodeId": "prologue_001_015",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "俺はコントローラーを置いて顔をしかめた。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 16,
+          "nodeId": "prologue_001_016",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "結局ためていたウルトも使いどころを見失った。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 17,
+          "nodeId": "prologue_001_017",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "こいつの戦法はわかっていた。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 18,
+          "nodeId": "prologue_001_018",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "対策を練って、動画を見て、特訓をして",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 19,
+          "nodeId": "prologue_001_019",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "そして負けた。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 20,
+          "nodeId": "prologue_001_020",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 21,
+          "nodeId": "prologue_001_021",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "もう一回",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 22,
+          "nodeId": "prologue_001_022",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "やだ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 23,
+          "nodeId": "prologue_001_023",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "次は勝てるから",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 24,
+          "nodeId": "prologue_001_024",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "前も言ってたじゃんそれ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 25,
+          "nodeId": "prologue_001_025",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ねえやっぱり悔しい感じ？w",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 26,
+          "nodeId": "prologue_001_026",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "くっ…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 27,
+          "nodeId": "prologue_001_027",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あ、悔しくて言葉もでないんだ〜w",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 28,
+          "nodeId": "prologue_001_028",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "かわいそ〜w",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 29,
+          "nodeId": "prologue_001_029",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央は勝ち誇った顔で、一冊のノートをひらひらと振った。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 30,
+          "nodeId": "prologue_001_030",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあ『あのノート』は今日も莉央ちゃんが預かりまーす",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 31,
+          "nodeId": "prologue_001_031",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…本当に返す気あるの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 32,
+          "nodeId": "prologue_001_032",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あるよ？ 勝ったら返すって言ってるじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 33,
+          "nodeId": "prologue_001_033",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "今日はおしまい。また暇だったら遊んであげる〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 34,
+          "nodeId": "prologue_001_034",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "…またこうなった。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 35,
+          "nodeId": "prologue_001_035",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "この子は俺をからかうのが楽しくてしょうがないらしい。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 36,
+          "nodeId": "prologue_001_036",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "数週間前。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 37,
+          "nodeId": "prologue_001_037",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "俺はこの子に『あるノート』を発見された。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 38,
+          "nodeId": "prologue_001_038",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "あれ以来、完全に弱みを握られている。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 39,
+          "nodeId": "prologue_001_039",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "でも、負けっぱなしでいるつもりはない。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 40,
+          "nodeId": "prologue_001_040",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "いつか絶対、こいつに「負けました」と言わせる。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 41,
+          "nodeId": "prologue_001_041",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "そして――",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 42,
+          "nodeId": "prologue_001_042",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "『あのノート』を取り返す。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        }
+      ]
+    },
+    {
       "scenarioId": "small_001",
       "scenarioType": "small_event",
       "nodes": [
@@ -14178,174 +13761,6 @@
   ],
   "choiceGroups": [
     {
-      "choiceId": "choice_active_time",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "朝のほうが強い",
-          "nextNodeId": "daily_003_morning",
-          "saveKey": "preferredTime",
-          "saveValue": "朝型",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "夜のほうが元気",
-          "nextNodeId": "daily_003_night",
-          "saveKey": "preferredTime",
-          "saveValue": "夜型",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_bath",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "湯船まで入る",
-          "nextNodeId": "daily_012_tub",
-          "saveKey": "bathStyle",
-          "saveValue": "湯船",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "シャワーで済ませる",
-          "nextNodeId": "daily_012_shower",
-          "saveKey": "bathStyle",
-          "saveValue": "シャワー",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_dayoff",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "外に出たい",
-          "nextNodeId": "daily_008_out",
-          "saveKey": "dayOffStyle",
-          "saveValue": "外出",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "家にいたい",
-          "nextNodeId": "daily_008_home",
-          "saveKey": "dayOffStyle",
-          "saveValue": "家",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_reward",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "好きなものを食べる",
-          "nextNodeId": "daily_014_food",
-          "saveKey": "rewardStyle",
-          "saveValue": "食べる",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "何もせずだらだらする",
-          "nextNodeId": "daily_014_rest",
-          "saveKey": "rewardStyle",
-          "saveValue": "休む",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_room",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "片づいてる",
-          "nextNodeId": "daily_010_tidy",
-          "saveKey": "roomStyle",
-          "saveValue": "片づいている",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "散らかってる",
-          "nextNodeId": "daily_010_messy",
-          "saveKey": "roomStyle",
-          "saveValue": "散らかっている",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_routine_audio",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "音楽を流す",
-          "nextNodeId": "daily_006_music",
-          "saveKey": "routineAudio",
-          "saveValue": "音楽",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "無音でやる",
-          "nextNodeId": "daily_006_silence",
-          "saveKey": "routineAudio",
-          "saveValue": "無音",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_siblings",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "いる",
-          "nextNodeId": "daily_002_has_sib",
-          "saveKey": "hasSiblings",
-          "saveValue": "いる",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "いない(一人っ子)",
-          "nextNodeId": "daily_002_no_sib",
-          "saveKey": "hasSiblings",
-          "saveValue": "いない",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_snack",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "甘いもの",
-          "nextNodeId": "daily_004_sweet",
-          "saveKey": "snackPreference",
-          "saveValue": "甘い",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "しょっぱいもの",
-          "nextNodeId": "daily_004_salty",
-          "saveKey": "snackPreference",
-          "saveValue": "しょっぱい",
-          "enabled": true
-        }
-      ]
-    },
-    {
       "choiceId": "choice_solo_movie",
       "choices": [
         {
@@ -14362,40 +13777,6 @@
           "nextNodeId": "daily_q003_cannot_001",
           "saveKey": "soloMovie",
           "saveValue": "cannot",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "choice_yoshiyoshi",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "いいんですか！",
-          "nextNodeId": "daily_002_05",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "そういうのいいんで",
-          "nextNodeId": "daily_002_06",
-          "enabled": true
-        }
-      ]
-    },
-    {
-      "choiceId": "first_day_can_do",
-      "choices": [
-        {
-          "choiceOrder": 1,
-          "label": "大丈夫！",
-          "nextNodeId": "daily_001_07",
-          "enabled": true
-        },
-        {
-          "choiceOrder": 2,
-          "label": "自信ないかも",
-          "nextNodeId": "daily_001_06",
           "enabled": true
         }
       ]
@@ -14720,6 +14101,29 @@
   ],
   "events": [
     {
+      "eventId": "event_prologue_001",
+      "eventType": "prologue",
+      "title": "プロローグ",
+      "entryScenarioId": "prologue_001",
+      "priority": 99,
+      "repeatable": false,
+      "cooldownDays": 0,
+      "background": "bg_protagonist_living_room",
+      "enabled": true,
+      "notes": "確定原稿: ユーザー提供 prologue_001",
+      "chapterId": "chapter_01",
+      "episodeOrder": 0,
+      "storyCategory": "main",
+      "conditions": [
+        {
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
+          "threshold": "0"
+        }
+      ]
+    },
+    {
       "eventId": "event_middle_001",
       "eventType": "middle_event",
       "title": "Day first",
@@ -14734,9 +14138,9 @@
       "storyCategory": "main",
       "conditions": [
         {
-          "conditionType": "streak",
-          "conditionKey": "continuous_days",
-          "operator": "eq",
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
           "threshold": "1"
         }
       ]
@@ -14756,9 +14160,9 @@
       "storyCategory": "main",
       "conditions": [
         {
-          "conditionType": "streak",
-          "conditionKey": "continuous_days",
-          "operator": "eq",
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
           "threshold": "2"
         }
       ]
@@ -14778,9 +14182,9 @@
       "storyCategory": "main",
       "conditions": [
         {
-          "conditionType": "streak",
-          "conditionKey": "continuous_days",
-          "operator": "eq",
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
           "threshold": "3"
         }
       ]
@@ -14800,9 +14204,9 @@
       "storyCategory": "main",
       "conditions": [
         {
-          "conditionType": "streak",
-          "conditionKey": "continuous_days",
-          "operator": "eq",
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
           "threshold": "4"
         }
       ]
@@ -14823,9 +14227,9 @@
       "storyCategory": "main",
       "conditions": [
         {
-          "conditionType": "streak",
-          "conditionKey": "continuous_days",
-          "operator": "eq",
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
           "threshold": "5"
         }
       ]
@@ -14845,9 +14249,9 @@
       "storyCategory": "main",
       "conditions": [
         {
-          "conditionType": "streak",
-          "conditionKey": "continuous_days",
-          "operator": "eq",
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
           "threshold": "6"
         }
       ]
@@ -14868,9 +14272,9 @@
       "storyCategory": "main",
       "conditions": [
         {
-          "conditionType": "streak",
-          "conditionKey": "continuous_days",
-          "operator": "eq",
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
           "threshold": "7"
         }
       ]

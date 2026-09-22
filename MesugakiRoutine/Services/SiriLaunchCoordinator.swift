@@ -1,6 +1,6 @@
 import Foundation
 
-/// App Intent(「Hey Siri、小悪魔コーチで今日のルーティンを開く」)経由でアプリが開かれたことを
+/// App Intent(「Hey Siri、ざこルーティンで今日のルーティンを開く」)経由でアプリが開かれたことを
 /// UI側(HomeView)に伝えるための小さな状態保持クラス。
 ///
 /// `AppIntent.perform()` は SwiftUI の環境値にアクセスできないため、App全体で1つだけの `shared`

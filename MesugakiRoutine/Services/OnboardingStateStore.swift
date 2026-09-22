@@ -313,6 +313,9 @@ final class OnboardingStateStore {
     private(set) var pendingNotificationSetup: OnboardingNotificationSetup? {
         didSet { persistIfNeeded() }
     }
+    private(set) var isPrologueAutoplayPending: Bool {
+        didSet { persistIfNeeded() }
+    }
     private(set) var isCompleted: Bool {
         didSet { persistIfNeeded() }
     }
@@ -365,6 +368,7 @@ final class OnboardingStateStore {
         notificationRoutineID = snapshot.notificationRoutineID
         notificationNotBefore = snapshot.notificationNotBefore
         pendingNotificationSetup = snapshot.pendingNotificationSetup
+        isPrologueAutoplayPending = snapshot.isPrologueAutoplayPending ?? false
 
         // 完了状態とphaseの片方だけが保存された瞬間に終了しても、再起動時に完了を維持する。
         let restoredAsCompleted = snapshot.isCompleted || snapshot.phase == .completed
@@ -940,9 +944,16 @@ final class OnboardingStateStore {
                 notificationRoutineID = nil
                 notificationNotBefore = nil
             }
+            isPrologueAutoplayPending = true
             isCompleted = true
             phase = .completed
         }
+    }
+
+    /// プロローグの自動再生開始後に呼び、次回起動での重複起動を防ぐ。
+    func markPrologueAutoplayStarted() {
+        guard isPrologueAutoplayPending else { return }
+        isPrologueAutoplayPending = false
     }
 
     /// デバッグ・テスト・将来の「オンボーディングを再確認」に使える初期化。
@@ -966,6 +977,7 @@ final class OnboardingStateStore {
             notificationRoutineID = nil
             notificationNotBefore = nil
             pendingNotificationSetup = nil
+            isPrologueAutoplayPending = false
             isCompleted = false
         }
     }
@@ -1002,6 +1014,7 @@ final class OnboardingStateStore {
             notificationRoutineID: notificationRoutineID,
             notificationNotBefore: notificationNotBefore,
             pendingNotificationSetup: pendingNotificationSetup,
+            isPrologueAutoplayPending: isPrologueAutoplayPending,
             isCompleted: isCompleted
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
@@ -1099,6 +1112,8 @@ final class OnboardingStateStore {
         var notificationRoutineID: UUID?
         var notificationNotBefore: Date?
         var pendingNotificationSetup: OnboardingNotificationSetup?
+        // 追加前の完了済みユーザーへ突然プロローグを出さないよう、欠落時はfalseとして復元する。
+        var isPrologueAutoplayPending: Bool?
         var isCompleted: Bool
 
         static let initial = Snapshot(
@@ -1120,6 +1135,7 @@ final class OnboardingStateStore {
             notificationRoutineID: nil,
             notificationNotBefore: nil,
             pendingNotificationSetup: nil,
+            isPrologueAutoplayPending: false,
             isCompleted: false
         )
     }

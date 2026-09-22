@@ -47,7 +47,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        CFBundleDisplayName: 小悪魔コーチ
+        CFBundleDisplayName: ざこルーティン
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zakozako.mesugakiroutine

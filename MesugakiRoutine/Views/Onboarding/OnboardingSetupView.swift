@@ -636,51 +636,106 @@ struct OnboardingSetupView: View {
     }
 
     private var confirmationPage: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            onboardingTitle("最初の約束を確認しましょう")
+        VStack(spacing: 24) {
+            VStack(spacing: 10) {
+                Text("準備が完了しました！")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(AppColor.text)
 
-            OnboardingPromiseTaskCard(
-                cueText: stateStore.draft.trimmedCueText,
-                routineTitle: stateStore.draft.trimmedRoutineTitle,
-                iconName: stateStore.draft.habitIconName ?? "checklist",
-                isChecked: false
+                Text("このままはじめましょう")
+                    .font(.title3)
+                    .foregroundStyle(AppColor.text)
+                    .lineSpacing(5)
+            }
+
+            confirmationSummaryCard
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: 430)
+        .frame(maxWidth: .infinity)
+        .containerRelativeFrame(.vertical, alignment: .center)
+    }
+
+    private var confirmationSummaryCard: some View {
+        VStack(spacing: 0) {
+            confirmationSummaryRow(
+                label: "やること",
+                labelIcon: "checkmark.circle.fill",
+                itemIcon: stateStore.draft.habitIconName ?? "checklist",
+                title: stateStore.draft.trimmedRoutineTitle,
+                detail: "\(stateStore.draft.trimmedCueText)に"
             )
 
-            if let blockedBehavior = stateStore.draft.blockedBehavior {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("やめたい習慣")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(AppColor.primary)
+            Divider()
+                .padding(.leading, 68)
 
-                    if blockedBehavior.isNone {
-                        Label("特にない", systemImage: "minus.circle")
-                    } else {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Label(
-                                blockedBehavior.trimmedTitle,
-                                systemImage: blockedBehavior.iconName ?? "hand.raised"
-                            )
-                            if blockedBehavior.usesScreenTime {
-                                Text(
-                                    "対象\(blockedBehavior.screenTimeTargetCount)項目・1日\(formattedScreenTimeDuration(blockedBehavior.effectiveScreenTimeLimitMinutes))まで"
-                                )
-                                .font(.caption)
-                                .foregroundStyle(AppColor.muted)
-                            }
-                        }
-                    }
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppColor.text)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(AppColor.border, lineWidth: 1)
-                }
+            if let blockedBehavior = stateStore.draft.blockedBehavior,
+               !blockedBehavior.isNone {
+                confirmationSummaryRow(
+                    label: "やめること",
+                    labelIcon: "nosign",
+                    itemIcon: blockedBehavior.iconName ?? "hand.raised",
+                    title: blockedBehavior.trimmedTitle,
+                    detail: blockedBehavior.usesScreenTime
+                        ? "対象\(blockedBehavior.screenTimeTargetCount)項目・1日\(formattedScreenTimeDuration(blockedBehavior.effectiveScreenTimeLimitMinutes))まで"
+                        : nil
+                )
+            } else {
+                confirmationSummaryRow(
+                    label: "やめること",
+                    labelIcon: "nosign",
+                    itemIcon: "minus.circle",
+                    title: "特にない",
+                    detail: nil
+                )
             }
         }
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(AppColor.border.opacity(0.65), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("onboarding.confirmation.summary")
+    }
+
+    private func confirmationSummaryRow(
+        label: String,
+        labelIcon: String,
+        itemIcon: String,
+        title: String,
+        detail: String?
+    ) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: itemIcon)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(AppColor.primary)
+                .frame(width: 44, height: 44)
+                .background(AppColor.primarySoft, in: Circle())
+
+            VStack(alignment: .leading, spacing: 5) {
+                Label(label, systemImage: labelIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppColor.primary)
+
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let detail, !detail.isEmpty {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(AppColor.muted)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var bottomActions: some View {
@@ -1733,8 +1788,7 @@ private struct OnboardingConfirmationGuidanceView: View {
                                         routineTitle: routineTitle,
                                         iconName: iconName
                                     ),
-                                    title: "準備が完了しました！",
-                                    message: "このままはじめましょう"
+                                    message: "休んだ日があっても、達成済みの記録や物語の進行は消えません。"
                                 )
                                 .accessibilityFocused($focusedContent, equals: .explanation)
                                 .accessibilityIdentifier("onboarding.confirmation.explanation")

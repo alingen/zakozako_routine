@@ -1,6 +1,7 @@
 import type {
   JsonValue,
   NormalizedChoiceRow,
+  NormalizedDailyCatalogRow,
   NormalizedEventRow,
   NormalizedInteractionRow,
   NormalizedScenarioRow,
@@ -11,10 +12,12 @@ import type {
 import { IssueBag } from './issues.js';
 import {
   CHOICE_COLUMNS,
+  DAILY_CATALOG_COLUMNS,
   DAILY_COLUMNS,
   EVENT_COLUMNS,
   INTERACTION_COLUMNS,
   REQUIRED_CHOICE_COLUMNS,
+  REQUIRED_DAILY_CATALOG_COLUMNS,
   REQUIRED_DAILY_COLUMNS,
   REQUIRED_EVENT_COLUMNS,
   REQUIRED_INTERACTION_COLUMNS,
@@ -214,8 +217,6 @@ function normalizeScenarioRows(
       sourceSheet: sheet,
       scenarioId,
       scenarioType,
-      calendarDate: isDaily ? optionalString(row, 'calendar_date') : undefined,
-      calendarMonthDay: isDaily ? optionalString(row, 'calendar_month_day') : undefined,
       lineOrder,
       nodeId,
       speaker,
@@ -239,6 +240,46 @@ function normalizeScenarioRows(
       uiVariant: optionalString(row, 'ui_variant'),
       command: optionalString(row, 'command'),
       commandArgs,
+    });
+  }
+  return normalized;
+}
+
+function isBlankCatalogPlaceholder(row: RawRow): boolean {
+  const contentColumns = DAILY_CATALOG_COLUMNS.filter((column) => column !== 'enabled');
+  if (contentColumns.some((column) => !isBlank(row[column]))) return false;
+
+  const enabled = trimmed(row, 'enabled').toLowerCase();
+  return enabled === '' || ['false', '0', 'no'].includes(enabled);
+}
+
+function normalizeDailyCatalog(bag: IssueBag, rows: RawRow[]): NormalizedDailyCatalogRow[] {
+  const sheet = 'daily_catalog';
+  checkColumns(bag, sheet, rows, DAILY_CATALOG_COLUMNS, REQUIRED_DAILY_CATALOG_COLUMNS);
+  const normalized: NormalizedDailyCatalogRow[] = [];
+
+  for (const row of rows) {
+    // Google Sheets checkbox validation can materialize otherwise blank rows as
+    // enabled=FALSE. They are formatting placeholders, not authored catalog rows.
+    if (isBlankCatalogPlaceholder(row)) continue;
+
+    const scenarioId = requiredString(bag, sheet, row, 'scenario_id');
+    const title = requiredString(bag, sheet, row, 'title');
+    const displayOrder = integer(bag, sheet, row, 'display_order', false);
+    const status = requiredString(bag, sheet, row, 'status');
+    const enabled = booleanValue(bag, sheet, row, 'enabled', true);
+
+    if (!scenarioId || !title || !status) continue;
+    normalized.push({
+      __row: row.__row,
+      scenarioId,
+      title,
+      displayOrder,
+      category: optionalString(row, 'category'),
+      calendarDate: optionalString(row, 'calendar_date'),
+      calendarMonthDay: optionalString(row, 'calendar_month_day'),
+      status,
+      enabled,
     });
   }
   return normalized;
@@ -370,6 +411,7 @@ export function normalize(raw: RawSheets): NormalizeResult {
   return {
     data: {
       daily: normalizeScenarioRows(issues, raw.daily, 'daily'),
+      dailyCatalog: normalizeDailyCatalog(issues, raw.dailyCatalog),
       choices: normalizeChoices(issues, raw.choices),
       interactions: normalizeInteractions(issues, raw.interactions),
       scenarios: normalizeScenarioRows(issues, raw.scenarios, 'senarios'),

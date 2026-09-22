@@ -11,9 +11,10 @@ export interface RawRow {
   [column: string]: RawCell | number;
 }
 
-/** Editing-oriented five-tab CMS, normalized into one app-facing bundle later. */
+/** Editing-oriented six-tab CMS, normalized into one app-facing bundle later. */
 export interface RawSheets {
   daily: RawRow[];
+  dailyCatalog: RawRow[];
   choices: RawRow[];
   interactions: RawRow[];
   /** Event scenario lines from the intentionally named `senarios` tab. */
@@ -27,6 +28,7 @@ export interface SheetSnapshot {
   source: 'api' | 'public-xlsx' | 'snapshot';
   tabs: {
     daily: string[][];
+    daily_catalog: string[][];
     choices: string[][];
     interactions: string[][];
     senarios: string[][];
@@ -45,8 +47,6 @@ export interface NormalizedScenarioRow {
   sourceSheet: 'daily' | 'senarios';
   scenarioId: string;
   scenarioType: string;
-  calendarDate?: string;
-  calendarMonthDay?: string;
   lineOrder: number;
   nodeId: string;
   speaker: string;
@@ -70,6 +70,18 @@ export interface NormalizedScenarioRow {
   uiVariant?: string;
   command?: string;
   commandArgs?: JsonValue;
+}
+
+export interface NormalizedDailyCatalogRow {
+  __row: number;
+  scenarioId: string;
+  title: string;
+  displayOrder?: number;
+  category?: string;
+  calendarDate?: string;
+  calendarMonthDay?: string;
+  status: string;
+  enabled: boolean;
 }
 
 export interface NormalizedChoiceRow {
@@ -120,6 +132,7 @@ export interface NormalizedEventRow {
 
 export interface NormalizedSheets {
   daily: NormalizedScenarioRow[];
+  dailyCatalog: NormalizedDailyCatalogRow[];
   choices: NormalizedChoiceRow[];
   interactions: NormalizedInteractionRow[];
   scenarios: NormalizedScenarioRow[];
@@ -138,14 +151,19 @@ export function allScenarioRows(data: NormalizedSheets): NormalizedScenarioRow[]
 
 export type StoryNode = Omit<
   NormalizedScenarioRow,
-  '__row' | 'sourceSheet' | 'scenarioId' | 'scenarioType' | 'calendarDate' | 'calendarMonthDay'
+  '__row' | 'sourceSheet' | 'scenarioId' | 'scenarioType'
 >;
 
 export interface StoryScenario {
   scenarioId: string;
   scenarioType: string;
+  title?: string;
+  displayOrder?: number;
+  category?: string;
   calendarDate?: string;
   calendarMonthDay?: string;
+  status?: string;
+  enabled?: boolean;
   nodes: StoryNode[];
 }
 

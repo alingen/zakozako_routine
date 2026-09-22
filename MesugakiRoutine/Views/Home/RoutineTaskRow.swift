@@ -110,7 +110,10 @@ struct RoutineTaskRow: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let cueText, !cueText.isEmpty {
-                    Label(cueText, systemImage: "clock")
+                    HStack(spacing: 3) {
+                        Image(systemName: "clock")
+                        Text(cueText)
+                    }
                         .font(.caption2)
                         .foregroundStyle(AppColor.muted)
                         .lineLimit(1)

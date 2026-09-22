@@ -70,16 +70,93 @@ final class DailyConversationScheduleTests: XCTestCase {
         )
     }
 
+    func testLegacyScenarioWithoutCatalogMetadataDefaultsToEnabled() throws {
+        let json =
+            """
+            {
+              "scenarioId": "legacy_daily",
+              "scenarioType": "daily",
+              "calendarMonthDay": "09-02",
+              "nodes": []
+            }
+            """
+
+        let decoded = try JSONDecoder().decode(StoryScenario.self, from: Data(json.utf8))
+
+        XCTAssertTrue(decoded.enabled)
+        XCTAssertNil(decoded.title)
+        XCTAssertNil(decoded.displayOrder)
+        XCTAssertNil(decoded.category)
+        XCTAssertNil(decoded.status)
+    }
+
+    func testDecodesDailyCatalogMetadata() throws {
+        let json =
+            """
+            {
+              "scenarioId": "daily_catalog_entry",
+              "scenarioType": "daily",
+              "title": "一人映画",
+              "displayOrder": 3,
+              "category": "質問系",
+              "calendarDate": "2026-09-16",
+              "status": "公開可能",
+              "enabled": false,
+              "nodes": []
+            }
+            """
+
+        let decoded = try JSONDecoder().decode(StoryScenario.self, from: Data(json.utf8))
+
+        XCTAssertEqual(decoded.title, "一人映画")
+        XCTAssertEqual(decoded.displayOrder, 3)
+        XCTAssertEqual(decoded.category, "質問系")
+        XCTAssertEqual(decoded.calendarDate, "2026-09-16")
+        XCTAssertEqual(decoded.status, "公開可能")
+        XCTAssertFalse(decoded.enabled)
+    }
+
+    func testRepositoryFiltersDisabledDailyAndUsesCatalogDisplayOrder() throws {
+        let repository = try StoryContentRepository(
+            content: StoryContentBundle(
+                scenarios: [
+                    scenario(id: "daily_without_order"),
+                    scenario(id: "daily_second", displayOrder: 2),
+                    scenario(id: "daily_first_b", displayOrder: 1),
+                    scenario(id: "daily_disabled", displayOrder: 0, enabled: false),
+                    scenario(id: "daily_first_a", displayOrder: 1),
+                    StoryScenario(
+                        scenarioId: "event_scenario",
+                        scenarioType: .smallEvent,
+                        displayOrder: 0,
+                        nodes: []
+                    ),
+                ],
+                choiceGroups: [],
+                events: []
+            )
+        )
+
+        XCTAssertEqual(
+            repository.dailyScenarios.map(\.scenarioId),
+            ["daily_first_a", "daily_first_b", "daily_second", "daily_without_order"]
+        )
+    }
+
     private func scenario(
         id: String,
+        displayOrder: Int? = nil,
         calendarDate: String? = nil,
-        calendarMonthDay: String? = nil
+        calendarMonthDay: String? = nil,
+        enabled: Bool = true
     ) -> StoryScenario {
         StoryScenario(
             scenarioId: id,
             scenarioType: .daily,
+            displayOrder: displayOrder,
             calendarDate: calendarDate,
             calendarMonthDay: calendarMonthDay,
+            enabled: enabled,
             nodes: []
         )
     }
@@ -277,8 +354,8 @@ final class InteractionViewModelOnboardingConversationTests: XCTestCase {
         XCTAssertFalse(viewModel.todayConversationIsAvailable)
 
         let identity = OnboardingConversationIdentity(
-            scenarioID: "daily_001",
-            playbackKey: "daily:onboarding:daily_001"
+            scenarioID: "daily_q003",
+            playbackKey: "daily:onboarding:daily_q003"
         )
         viewModel.offerDeferredOnboardingConversationIfNeeded(
             identity: identity,
@@ -294,8 +371,8 @@ final class InteractionViewModelOnboardingConversationTests: XCTestCase {
                 calendar: calendar
             )
         )
-        XCTAssertEqual(viewModel.activeLaunch?.scenario.scenarioId, "daily_001")
-        XCTAssertEqual(viewModel.activeLaunch?.playbackKey, "daily:onboarding:daily_001")
+        XCTAssertEqual(viewModel.activeLaunch?.scenario.scenarioId, "daily_q003")
+        XCTAssertEqual(viewModel.activeLaunch?.playbackKey, "daily:onboarding:daily_q003")
     }
 
     func testDateSpecificIdentityOpensOriginalPlaybackKeyFromNextDayCard() throws {
@@ -311,7 +388,7 @@ final class InteractionViewModelOnboardingConversationTests: XCTestCase {
         self.container = container
         let nextDay = try date(2026, 9, 21, 12, 0)
         let identity = OnboardingConversationIdentity(
-            scenarioID: "daily_001",
+            scenarioID: "daily_q003",
             playbackKey: "daily:2026-09-20"
         )
         let viewModel = InteractionViewModel()
@@ -330,7 +407,7 @@ final class InteractionViewModelOnboardingConversationTests: XCTestCase {
                 calendar: calendar
             )
         )
-        XCTAssertEqual(viewModel.activeLaunch?.scenario.scenarioId, "daily_001")
+        XCTAssertEqual(viewModel.activeLaunch?.scenario.scenarioId, "daily_q003")
         XCTAssertEqual(viewModel.activeLaunch?.playbackKey, "daily:2026-09-20")
     }
 

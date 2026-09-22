@@ -13,6 +13,7 @@ import {
 } from './schema.js';
 import type {
   NormalizedChoiceRow,
+  NormalizedDailyCatalogRow,
   NormalizedEventRow,
   NormalizedInteractionRow,
   NormalizedScenarioRow,
@@ -31,8 +32,8 @@ export function validate(data: NormalizedSheets): ValidateResult {
   const scenarios = groupScenarios(scenarioRows);
   const choices = groupChoices(data.choices);
 
+  validateDailyCatalog(data.dailyCatalog, data.daily, issues);
   validateScenarioRows(scenarioRows, scenarios, choices, issues);
-  validateDailySchedule(data.daily, issues);
   validateChoiceRows(data.choices, data.daily, choices, issues);
   validateInteractions(data.interactions, issues);
   validateEventRows(data.events, scenarios, issues);
@@ -41,73 +42,100 @@ export function validate(data: NormalizedSheets): ValidateResult {
   return { issues };
 }
 
-function validateDailySchedule(rows: NormalizedScenarioRow[], issues: IssueBag): void {
+function validateDailyCatalog(
+  rows: NormalizedDailyCatalogRow[],
+  dailyRows: NormalizedScenarioRow[],
+  issues: IssueBag,
+): void {
+  const catalogRows = new Map<string, NormalizedDailyCatalogRow>();
+  const daily = groupScenarios(dailyRows);
   const exactDates = new Map<string, string>();
   const recurringDates = new Map<string, string>();
+  const displayOrders = new Map<number, string>();
 
-  for (const [scenarioId, scenarioRows] of groupScenarios(rows)) {
-    const calendarDates = distinctMetadata(scenarioRows, (row) => row.calendarDate);
-    const calendarMonthDays = distinctMetadata(scenarioRows, (row) => row.calendarMonthDay);
-    const firstRow = [...scenarioRows].sort((left, right) => left.lineOrder - right.lineOrder)[0]!;
-
-    if (calendarDates.length > 1) {
-      issues.error('daily_calendar_date_mismatch', `calendar_date differs within ${scenarioId}`, {
-        at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
-        value: calendarDates.join(', '),
-        fix: 'Use one calendar_date on the scenario head row',
+  for (const row of rows) {
+    const previousCatalogRow = catalogRows.get(row.scenarioId);
+    if (previousCatalogRow) {
+      issues.error('duplicate_daily_catalog_id', `scenario_id ${row.scenarioId} must be unique`, {
+        at: { sheet: 'daily_catalog', row: row.__row, column: 'scenario_id' },
+        value: row.scenarioId,
+        fix: `Also used by daily_catalog row ${previousCatalogRow.__row}`,
       });
+    } else {
+      catalogRows.set(row.scenarioId, row);
     }
-    if (calendarMonthDays.length > 1) {
+
+    if (!daily.has(row.scenarioId)) {
       issues.error(
-        'daily_calendar_month_day_mismatch',
-        `calendar_month_day differs within ${scenarioId}`,
+        'dangling_daily_catalog_id',
+        `scenario_id ${row.scenarioId} does not exist in daily`,
         {
-          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_month_day' },
-          value: calendarMonthDays.join(', '),
-          fix: 'Use one calendar_month_day on the scenario head row',
+          at: { sheet: 'daily_catalog', row: row.__row, column: 'scenario_id' },
+          value: row.scenarioId,
         },
       );
     }
 
-    const calendarDate = calendarDates[0];
-    const calendarMonthDay = calendarMonthDays[0];
+    const calendarDate = row.calendarDate;
+    const calendarMonthDay = row.calendarMonthDay;
     if (calendarDate && calendarMonthDay) {
       issues.error(
         'daily_schedule_conflict',
-        `${scenarioId} cannot use calendar_date and calendar_month_day together`,
+        `${row.scenarioId} cannot use calendar_date and calendar_month_day together`,
         {
-          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
+          at: { sheet: 'daily_catalog', row: row.__row, column: 'calendar_date' },
           value: `${calendarDate} / ${calendarMonthDay}`,
           fix: 'Keep only one date field',
         },
       );
-      continue;
     }
 
-    if (!calendarDate && !calendarMonthDay) {
-      issues.warning(
-        'unscheduled_daily',
-        `${scenarioId} has no calendar date and will not appear in the app`,
+    if (row.displayOrder !== undefined && row.displayOrder <= 0) {
+      issues.error('invalid_display_order', 'display_order must be greater than zero', {
+        at: { sheet: 'daily_catalog', row: row.__row, column: 'display_order' },
+        value: String(row.displayOrder),
+      });
+    }
+
+    const isUnscheduled = !calendarDate && !calendarMonthDay;
+    if (row.enabled && isUnscheduled && row.displayOrder === undefined) {
+      issues.error(
+        'missing_daily_display_order',
+        'Enabled daily without a calendar date requires display_order',
         {
-          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
-          fix: 'Set calendar_date (YYYY-MM-DD) or calendar_month_day (MM-DD)',
+          at: { sheet: 'daily_catalog', row: row.__row, column: 'display_order' },
         },
       );
-      continue;
+    }
+    if (row.enabled && isUnscheduled && row.displayOrder !== undefined) {
+      const previousScenario = displayOrders.get(row.displayOrder);
+      if (previousScenario && previousScenario !== row.scenarioId) {
+        issues.error(
+          'duplicate_daily_display_order',
+          `display_order ${row.displayOrder} is assigned more than once`,
+          {
+            at: { sheet: 'daily_catalog', row: row.__row, column: 'display_order' },
+            value: String(row.displayOrder),
+            fix: `Also used by ${previousScenario}`,
+          },
+        );
+      } else {
+        displayOrders.set(row.displayOrder, row.scenarioId);
+      }
     }
 
     if (calendarDate) {
       if (!isValidCalendarDate(calendarDate)) {
         issues.error('invalid_calendar_date', 'calendar_date must be a real YYYY-MM-DD date', {
-          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_date' },
+          at: { sheet: 'daily_catalog', row: row.__row, column: 'calendar_date' },
           value: calendarDate,
         });
       } else {
         reportDuplicateSchedule(
           exactDates,
           calendarDate,
-          scenarioId,
-          firstRow,
+          row.scenarioId,
+          row,
           'calendar_date',
           issues,
         );
@@ -117,42 +145,45 @@ function validateDailySchedule(rows: NormalizedScenarioRow[], issues: IssueBag):
     if (calendarMonthDay) {
       if (!isValidCalendarMonthDay(calendarMonthDay)) {
         issues.error('invalid_calendar_month_day', 'calendar_month_day must be a real MM-DD date', {
-          at: { sheet: 'daily', row: firstRow.__row, column: 'calendar_month_day' },
+          at: { sheet: 'daily_catalog', row: row.__row, column: 'calendar_month_day' },
           value: calendarMonthDay,
         });
       } else {
         reportDuplicateSchedule(
           recurringDates,
           calendarMonthDay,
-          scenarioId,
-          firstRow,
+          row.scenarioId,
+          row,
           'calendar_month_day',
           issues,
         );
       }
     }
   }
-}
 
-function distinctMetadata(
-  rows: NormalizedScenarioRow[],
-  select: (row: NormalizedScenarioRow) => string | undefined,
-): string[] {
-  return [...new Set(rows.map(select).filter((value): value is string => value !== undefined))];
+  for (const [scenarioId, scenarioRows] of daily) {
+    if (catalogRows.has(scenarioId)) continue;
+    const firstRow = [...scenarioRows].sort((left, right) => left.lineOrder - right.lineOrder)[0]!;
+    issues.error('missing_daily_catalog', `daily scenario ${scenarioId} has no catalog row`, {
+      at: { sheet: 'daily', row: firstRow.__row, column: 'scenario_id' },
+      value: scenarioId,
+      fix: 'Add exactly one matching daily_catalog row',
+    });
+  }
 }
 
 function reportDuplicateSchedule(
   seen: Map<string, string>,
   key: string,
   scenarioId: string,
-  row: NormalizedScenarioRow,
+  row: NormalizedDailyCatalogRow,
   column: 'calendar_date' | 'calendar_month_day',
   issues: IssueBag,
 ): void {
   const previous = seen.get(key);
   if (previous && previous !== scenarioId) {
     issues.error('duplicate_daily_schedule', `${column} ${key} is assigned more than once`, {
-      at: { sheet: 'daily', row: row.__row, column },
+      at: { sheet: 'daily_catalog', row: row.__row, column },
       value: key,
       fix: `Also used by ${previous}`,
     });
@@ -507,6 +538,15 @@ function validateEventRows(
             },
           );
         }
+      }
+    }
+
+    for (const row of eventRows) {
+      if (row.episodeOrder !== undefined && row.episodeOrder < 0) {
+        issues.error('invalid_episode_order', 'episode_order must be zero or greater', {
+          at: { sheet: 'events', row: row.__row, column: 'episode_order' },
+          value: String(row.episodeOrder),
+        });
       }
     }
 

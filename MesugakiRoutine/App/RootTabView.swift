@@ -50,12 +50,15 @@ private enum RootTab: Hashable {
 
 /// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
+    private static let prologueEventID = "event_prologue_001"
+
     @Environment(\.modelContext) private var modelContext
     @State private var appDialog: AppDialogRequest?
     @State private var blockedBehaviorTaunt: BlockedBehaviorTauntRequest?
     @State private var onboardingState = OnboardingStateStore()
     @State private var selectedTab: RootTab = .home
     @State private var openTodayConversationRequest = false
+    @State private var openStoryEventRequest: String?
     @State private var isOnboardingConversationPlaying = false
     @State private var isOnboardingConversationDialog = false
     @State private var onboardingHasUnlockedStory = false
@@ -152,9 +155,11 @@ struct RootTabView: View {
                 NavigationStack {
                     InteractionView(
                         openTodayConversationRequest: $openTodayConversationRequest,
+                        openStoryEventRequest: $openStoryEventRequest,
                         onboardingConversationIdentity: onboardingState.conversationIdentity,
                         onOnboardingConversationPlaybackEnded: finishOnboardingConversation,
-                        onOnboardingConversationUnavailable: finishUnavailableOnboardingConversation
+                        onOnboardingConversationUnavailable: finishUnavailableOnboardingConversation,
+                        onStoryEventAutoPlayStarted: finishStoryEventAutoPlay
                     )
                 }
                 .tabItem {
@@ -518,6 +523,7 @@ struct RootTabView: View {
                     notificationChoice: .enabled,
                     reminderMinuteOfDay: minute
                 )
+                presentPendingPrologueIfNeeded()
             } catch {
                 presentOnboardingError("通知設定を保存できませんでした。\n\(error.localizedDescription)")
             }
@@ -574,6 +580,7 @@ struct RootTabView: View {
         }
 
         onboardingState.completeOnboarding(notificationChoice: .notNow)
+        presentPendingPrologueIfNeeded()
         if let message {
             onboardingAlertTitle = "通知は設定されませんでした"
             onboardingErrorMessage = message
@@ -601,7 +608,10 @@ struct RootTabView: View {
     private func resumeOnboardingIfNeeded() {
         migrateExistingInstallationIfNeeded()
         clearCompletedOnboardingConversationIdentityIfNeeded()
-        guard !onboardingState.isCompleted else { return }
+        guard !onboardingState.isCompleted else {
+            presentPendingPrologueIfNeeded()
+            return
+        }
 
         if onboardingState.phase != .dedicatedSetup,
            onboardingRoutine() == nil {
@@ -627,6 +637,18 @@ struct RootTabView: View {
         case .tomorrowPromise, .completed:
             break
         }
+    }
+
+    private func presentPendingPrologueIfNeeded() {
+        guard onboardingState.isPrologueAutoplayPending,
+              openStoryEventRequest == nil else { return }
+        selectedTab = .interaction
+        openStoryEventRequest = Self.prologueEventID
+    }
+
+    private func finishStoryEventAutoPlay(eventID: String) {
+        guard eventID == Self.prologueEventID else { return }
+        onboardingState.markPrologueAutoplayStarted()
     }
 
     /// オンボーディング導入前からデータがある端末は、既存ユーザーとして通常画面を維持する。

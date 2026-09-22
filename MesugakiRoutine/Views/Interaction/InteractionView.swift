@@ -9,20 +9,26 @@ struct InteractionView: View {
     @State private var onboardingPlaybackKeyInPlayer: String?
 
     @Binding private var openTodayConversationRequest: Bool
+    @Binding private var openStoryEventRequest: String?
     private let onboardingConversationIdentity: OnboardingConversationIdentity?
     private let onOnboardingConversationPlaybackEnded: (Bool) -> Void
     private let onOnboardingConversationUnavailable: () -> Void
+    private let onStoryEventAutoPlayStarted: (String) -> Void
 
     init(
         openTodayConversationRequest: Binding<Bool> = .constant(false),
+        openStoryEventRequest: Binding<String?> = .constant(nil),
         onboardingConversationIdentity: OnboardingConversationIdentity? = nil,
         onOnboardingConversationPlaybackEnded: @escaping (Bool) -> Void = { _ in },
-        onOnboardingConversationUnavailable: @escaping () -> Void = {}
+        onOnboardingConversationUnavailable: @escaping () -> Void = {},
+        onStoryEventAutoPlayStarted: @escaping (String) -> Void = { _ in }
     ) {
         _openTodayConversationRequest = openTodayConversationRequest
+        _openStoryEventRequest = openStoryEventRequest
         self.onboardingConversationIdentity = onboardingConversationIdentity
         self.onOnboardingConversationPlaybackEnded = onOnboardingConversationPlaybackEnded
         self.onOnboardingConversationUnavailable = onOnboardingConversationUnavailable
+        self.onStoryEventAutoPlayStarted = onStoryEventAutoPlayStarted
     }
 
     private var homeDialogue: String? {
@@ -150,6 +156,7 @@ struct InteractionView: View {
             viewModel.configure(context: modelContext)
             offerDeferredConversationIfNeeded()
             openRequestedTodayConversationIfNeeded()
+            openRequestedStoryEventIfNeeded()
         }
         .onAppear {
             viewModel.reload()
@@ -161,6 +168,9 @@ struct InteractionView: View {
         }
         .onChange(of: openTodayConversationRequest) { _, requested in
             if requested { openRequestedTodayConversationIfNeeded() }
+        }
+        .onChange(of: openStoryEventRequest) { _, eventID in
+            if eventID != nil { openRequestedStoryEventIfNeeded() }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -215,13 +225,14 @@ struct InteractionView: View {
             StoryCatalogView(
                 mainChapters: viewModel.mainChapters,
                 subChapters: viewModel.subChapters,
-                onOpen: viewModel.openEvent
+                onOpen: { _ = viewModel.openEvent(id: $0) }
             )
         } label: {
             InteractionHomeFeatureCard(
                 kind: .story,
                 title: "ストーリー",
                 detail: "莉央との物語を読む",
+                showsUnreadDot: viewModel.hasUnreadStories,
                 height: height
             )
         }
@@ -280,6 +291,14 @@ struct InteractionView: View {
     private func offerDeferredConversationIfNeeded() {
         guard let identity = onboardingConversationIdentity else { return }
         viewModel.offerDeferredOnboardingConversationIfNeeded(identity: identity)
+    }
+
+    private func openRequestedStoryEventIfNeeded() {
+        guard let eventID = openStoryEventRequest else { return }
+        viewModel.configure(context: modelContext)
+        guard viewModel.openEvent(id: eventID) else { return }
+        openStoryEventRequest = nil
+        onStoryEventAutoPlayStarted(eventID)
     }
 }
 

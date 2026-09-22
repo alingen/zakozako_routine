@@ -1,8 +1,8 @@
-# ザコルーティン（MesugakiRoutine）
+# ざこざこルーティン（MesugakiRoutine）
 
 毎日の「やること」と「やらないこと」を記録し、キャラクターとの会話やストーリーを習慣の継続につなげるiOSアプリです。SwiftUIとSwiftDataで実装しており、対応OSはiOS 17以降です。
 
-App Store向けの表示名は「小悪魔コーチ」です。`MesugakiRoutine` はXcode targetやコード上の内部名として使用しています。
+正式名称は「ざこざこルーティン」です。ホーム画面など端末内では短縮名の「ざこルーティン」を表示します。`MesugakiRoutine` はXcode targetやコード上の内部名として使用しています。
 
 ## 現在の画面
 
@@ -31,7 +31,7 @@ App Store向けの表示名は「小悪魔コーチ」です。`MesugakiRoutine`
 
 ホームではカード本体から内容を編集し、右端の完了ボタンで現在期間の達成状態を切り替えます。タイマー対象は独立した時計ボタンから開始でき、完走ごとに実行時刻を1件追加します。期間内の件数から進捗率と達成を計算し、`RoutineStreak` は各約束の連続達成期間数（日／週／月）と、「いずれかの約束を達成した日」の全体連続日数を保存値ではなくログから算出します。
 
-実行ログは年ごとの達成率、最高連続、曜日別・時間帯別の傾向を算出できるよう保持します。Home の完了ボタンを解除した場合は、そのボタンが自動補完したログだけを取り除いてタップ前の回数へ戻します。タイマー等で達成した記録の解除では、現在期間の最新ログだけを未達成になる件数まで戻します。曜日は朝4時の日付境界、時間帯は実際の時計時刻から算出します。回数・期間・対象曜日を変更する際は旧ルールの結果を確定保存するため、過去の統計は書き換わりません。CMSの継続条件には現在の連続日数 `continuous_days` を使用します。
+実行ログは年ごとの達成率、最高連続、曜日別・時間帯別の傾向を算出できるよう保持します。Home の完了ボタンを解除した場合は、そのボタンが自動補完したログだけを取り除いてタップ前の回数へ戻します。タイマー等で達成した記録の解除では、現在期間の最新ログだけを未達成になる件数まで戻します。曜日は朝4時の日付境界、時間帯は実際の時計時刻から算出します。回数・期間・対象曜日を変更する際は旧ルールの結果を確定保存するため、過去の統計は書き換わりません。CMSのストーリー解放条件には、1つでも約束を達成した日を1日として数える累積達成日数 `achievement / cumulative_days` を使用します。
 
 ### BlockedBehavior
 
@@ -62,7 +62,7 @@ App Store向けの表示名は「小悪魔コーチ」です。`MesugakiRoutine`
 
 ### Content
 
-Google Sheetsは編集用途ごとに `daily`、`choices`、`interactions`、`senarios`、`events` の5シートへ分けています。`senarios` は小・中・大イベントの本文を共通管理し、`scenario_type` で区別します。生成時には編集構造をアプリ向けへ統合し、`StoryContentBundle` の `scenarios`、`choiceGroups`、`interactions`、`events` の4配列へ変換します。`StoryContentRepository` がアプリbundle内の `Resources/GeneratedScenarios/story_content.generated.json` を読み込み、scenario／choice／interaction／eventの検索、daily scenarioの整列、CGカタログの生成を担います。
+Google Sheetsは編集用途ごとに `daily`、`daily_catalog`、`choices`、`interactions`、`senarios`、`events` の6シートへ分けています。`daily` は日常会話の本文だけを持ち、題名、表示順、分類、日付指定、制作状態、配信可否は `daily_catalog` が `scenario_id` 単位で管理します。`senarios` は小・中・大イベントの本文を共通管理し、`scenario_type` で区別します。生成時には編集構造をアプリ向けへ統合し、`StoryContentBundle` の `scenarios`、`choiceGroups`、`interactions`、`events` の4配列へ変換します。`StoryContentRepository` がアプリbundle内の `Resources/GeneratedScenarios/story_content.generated.json` を読み込み、scenario／choice／interaction／eventの検索、daily scenarioの整列、CGカタログの生成を担います。
 
 `StoryScenarioGraph` はscenario内だけで遷移を解決します。次ノードの優先順位は次の通りです。
 
@@ -97,7 +97,7 @@ Premiumを表すCMS列、StoreKit entitlement、課金画面は現在いずれ�
 
 交流トップには現在のキャラクター、今日の会話、ストーリー、思い出を表示します。
 
-- 今日の会話: daily scenarioの `calendar_date`（`YYYY-MM-DD`）を優先し、一致がなければ `calendar_month_day`（`MM-DD`）でアプリ日ごとに1話選択します。継続日数や初回利用日には依存しません。未読時だけ交流トップに表示し、読了後は非表示になります。playback keyは `daily:yyyy-MM-dd` です。Debugビルドでは設定から当日分を未読へ戻せます。
+- 今日の会話: `daily_catalog` の `calendar_date`（`YYYY-MM-DD`）を優先し、一致がなければ `calendar_month_day`（`MM-DD`）でアプリ日ごとに1話選択します。`enabled=false` の話と選択肢は配信データから除外し、候補の基準順には `display_order` を使います。継続日数や初回利用日には依存しません。playback keyは `daily:yyyy-MM-dd` です。Debugビルドでは設定から当日分を未読へ戻せます。
 - 交流コメント: `interactions` のうちタッチ箇所、時間帯、プロフィール条件に合う有効行から `weight` に応じて抽選します。同じコメントが連続しないよう、候補が複数ある場合は直前のIDを除外します。
 - ストーリー一覧: `storyCategory` の `main`／`sub` だけで分類し、chapterと `episodeOrder` 順に表示します。未解放話も隠さず、lock、NEW、既読、条件の達成状況を表示します。
 - 思い出: CGカタログ全体を並べ、未解放項目は伏せて表示します。ストーリー完了時に解放されたCGだけを全画面表示できます。
@@ -167,9 +167,11 @@ xcodebuild \
 
 ```text
 Google Sheets（SSOT、scenario-syncはread-onlyで取得）
-  ├─ scenarios: 1行 = 1 node
-  ├─ choices:   1行 = 1 choice option
-  └─ events:    1行 = 1 AND condition
+  ├─ daily:        1行 = 1 daily node
+  ├─ daily_catalog: 1行 = 1 daily scenarioの配信metadata
+  ├─ senarios:     1行 = 1 event node
+  ├─ choices:      1行 = 1 choice option
+  └─ events:       1行 = 1 AND condition
        ↓ scenario-syncで取得・正規化・検証・安定ソート
 StoryContentBundle
        ↓ atomic write
@@ -206,12 +208,9 @@ npm --prefix tools/scenario-sync run sync:check -- --snapshot
 
 ### 現行シートの既知warning
 
-現行Google Sheetsには、生成を止めない既知warningが合計5件あります。
-
-- `daily_001` のchoice group `first_day_can_do` から参照する `daily_001_09` と `daily_001_10` が存在しない: 2件
-- 上記の参照切れの影響で `daily_001_06`、`daily_001_07`、`daily_001_08` の本来の到達経路を確定できない: 3件
-
-参照切れchoiceは特定IDの例外ではなく、全scenario共通でwarningにしてPlayerが `line_order` へ復旧します。
+現行Google Sheetsのwarningは、`senarios` で使用中の拡張用 `ui_variant`／`command`
+（`state`、`wait`、`silence`、`premium_gate`、`set_state`）に対するものです。同期処理は
+未知値を削除せず生成物へ保持します。errorは0件で、日常会話の参照切れはありません。
 node自身の参照切れやscenario外へのchoice参照、その他の必須値、型、重複、metadata不一致、
-終了不能cycleなどの構造破損はerrorとなります。3タブのどれかが空、または有効行が0件の場合も、
+終了不能cycleなどの構造破損はerrorとなります。6シートのどれかが空、または有効行が0件の場合も、
 取得失敗を全削除と誤認しないよう生成物を書き換えず停止します。

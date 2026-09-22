@@ -1,8 +1,6 @@
-/** Exact column vocabulary of the five CMS tabs. */
+/** Exact column vocabulary of the six CMS tabs. */
 export const DAILY_COLUMNS = [
   'scenario_id',
-  'calendar_date',
-  'calendar_month_day',
   'line_order',
   'node_id',
   'speaker',
@@ -17,15 +15,23 @@ export const DAILY_COLUMNS = [
   'max_phase',
   'speaker_name',
   'typing_duration_ms',
-  'background',
-  'portrait',
-  'cg',
   'enabled',
   'notes',
   'screen_mode',
   'ui_variant',
   'command',
   'command_args',
+] as const;
+
+export const DAILY_CATALOG_COLUMNS = [
+  'scenario_id',
+  'title',
+  'display_order',
+  'category',
+  'calendar_date',
+  'calendar_month_day',
+  'status',
+  'enabled',
 ] as const;
 
 export const SCENARIO_COLUMNS = [
@@ -109,6 +115,8 @@ export const REQUIRED_DAILY_COLUMNS = [
   'enabled',
 ] as const;
 
+export const REQUIRED_DAILY_CATALOG_COLUMNS = DAILY_CATALOG_COLUMNS;
+
 export const REQUIRED_SCENARIO_COLUMNS = [
   'scenario_id',
   'scenario_type',
@@ -145,8 +153,18 @@ export const REQUIRED_EVENT_COLUMNS = [
 
 // These sets are diagnostics only. Normalization never rejects a non-empty
 // value merely because it is not listed here.
-export const KNOWN_SCENARIO_TYPES = new Set(['small_event', 'middle_event', 'large_event']);
-export const KNOWN_EVENT_TYPES = new Set(['small_event', 'middle_event', 'large_event']);
+export const KNOWN_SCENARIO_TYPES = new Set([
+  'prologue',
+  'small_event',
+  'middle_event',
+  'large_event',
+]);
+export const KNOWN_EVENT_TYPES = new Set([
+  'prologue',
+  'small_event',
+  'middle_event',
+  'large_event',
+]);
 export const KNOWN_MESSAGE_TYPES = new Set(['text', 'choice', 'image', 'action']);
 export const KNOWN_SCREEN_MODES = new Set(['adv', 'chat', 'call']);
 export const KNOWN_UI_VARIANTS = new Set([

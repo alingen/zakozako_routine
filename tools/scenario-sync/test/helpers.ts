@@ -1,6 +1,7 @@
 import { gridToRows } from '../src/fetch.js';
 import {
   CHOICE_COLUMNS,
+  DAILY_CATALOG_COLUMNS,
   DAILY_COLUMNS,
   EVENT_COLUMNS,
   INTERACTION_COLUMNS,
@@ -12,6 +13,7 @@ type Values = Record<string, string | number | boolean | undefined>;
 
 export function sheets(options: {
   scenarios?: Values[];
+  catalogs?: Values[];
   choices?: Values[];
   interactions?: Values[];
   events?: Values[];
@@ -22,8 +24,26 @@ export function sheets(options: {
   const eventScenarioRows = scenarioRows.filter(
     (row) => (row.scenario_type ?? 'daily') !== 'daily',
   );
+  const defaultCatalogs = [...new Set(dailyRows.map((row) => String(row.scenario_id)))].map(
+    (scenarioId, index) => {
+      const rows = dailyRows.filter((row) => String(row.scenario_id) === scenarioId);
+      const metadata = rows.find(
+        (row) => row.calendar_date !== undefined || row.calendar_month_day !== undefined,
+      );
+      return dailyCatalog({
+        scenario_id: scenarioId,
+        display_order: index + 1,
+        calendar_date: metadata?.calendar_date,
+        calendar_month_day: metadata?.calendar_month_day,
+      });
+    },
+  );
   return {
     daily: gridToRows(grid(DAILY_COLUMNS, dailyRows, options.titleRows ?? 0), 'scenario_id'),
+    dailyCatalog: gridToRows(
+      grid(DAILY_CATALOG_COLUMNS, options.catalogs ?? defaultCatalogs, options.titleRows ?? 0),
+      'scenario_id',
+    ),
     scenarios: gridToRows(
       grid(SCENARIO_COLUMNS, eventScenarioRows, options.titleRows ?? 0),
       'scenario_id',
@@ -60,6 +80,18 @@ export function scenario(values: Values = {}): Values {
     speaker: 'character',
     message_type: 'text',
     text: 'test',
+    ...values,
+  };
+}
+
+export function dailyCatalog(values: Values = {}): Values {
+  return {
+    scenario_id: 'daily_test',
+    title: 'Test daily',
+    display_order: 1,
+    category: 'test',
+    status: '公開可能',
+    enabled: true,
     ...values,
   };
 }

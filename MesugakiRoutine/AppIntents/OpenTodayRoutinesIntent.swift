@@ -7,7 +7,7 @@ import AppIntents
 /// `HomeView` が行う(通常のルーティン開始経路と同じ)。
 struct OpenTodayRoutinesIntent: AppIntent {
     static var title: LocalizedStringResource = "今日の約束を開く"
-    static var description = IntentDescription("小悪魔コーチを開いて、今日の約束を表示します。")
+    static var description = IntentDescription("ざこルーティンを開いて、今日の約束を表示します。")
     static var openAppWhenRun: Bool = true
 
     @MainActor

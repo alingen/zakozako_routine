@@ -139,6 +139,35 @@ final class StoryConditionEvaluatorTests: XCTestCase {
         )
     }
 
+    func testCumulativeAchievementDaysUsesRoutineMetric() throws {
+        let condition = try decodeCondition(
+            type: "achievement",
+            key: "cumulative_days",
+            operatorName: "gte",
+            threshold: "7"
+        )
+        let evaluator = StoryConditionEvaluator()
+
+        XCTAssertFalse(
+            evaluator.evaluate(
+                condition: condition,
+                metrics: StoryProgressMetrics(
+                    continuousDays: 99,
+                    cumulativeAchievementDays: 6
+                )
+            ).satisfied
+        )
+        XCTAssertTrue(
+            evaluator.evaluate(
+                condition: condition,
+                metrics: StoryProgressMetrics(
+                    continuousDays: 0,
+                    cumulativeAchievementDays: 7
+                )
+            ).satisfied
+        )
+    }
+
     func testRelationshipTrustUsesStoryMetric() throws {
         let condition = try decodeCondition(
             type: "relationship",
@@ -339,6 +368,22 @@ private final class MutableStoryMetricsProvider: StoryProgressMetricsProviding {
 }
 
 final class InteractionStoryProgressPresentationTests: XCTestCase {
+    func testEpisodeZeroUsesPrologueLabel() {
+        let item = StoryListItemPresentation(
+            id: "prologue",
+            title: "プロローグ",
+            chapterId: "chapter_01",
+            episodeOrder: 0,
+            backgroundAssetId: nil,
+            isUnlocked: true,
+            isNew: true,
+            isRead: false,
+            conditions: []
+        )
+
+        XCTAssertEqual(item.episodeLabel, "プロローグ")
+    }
+
     func testEmptyChaptersHaveZeroProgress() {
         let progress = InteractionStoryProgressPresentation.make(chapters: [], evaluations: [])
         XCTAssertEqual(progress, .empty)

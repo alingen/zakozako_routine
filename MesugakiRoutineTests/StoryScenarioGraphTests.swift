@@ -2,6 +2,13 @@ import XCTest
 @testable import MesugakiRoutine
 
 final class StoryScenarioGraphTests: XCTestCase {
+    func testPrologueIsDecodedAsAFirstClassScenarioAndEventType() {
+        XCTAssertEqual(StoryScenarioType(rawValue: "prologue"), .prologue)
+        XCTAssertEqual(StoryScenarioType.prologue.rawValue, "prologue")
+        XCTAssertEqual(StoryEventType(rawValue: "prologue"), .prologue)
+        XCTAssertEqual(StoryEventType.prologue.rawValue, "prologue")
+    }
+
     func testSuccessorPrefersChoiceThenNodeLinkThenLineOrder() throws {
         let scenario = try decodeScenario(
             """
@@ -167,7 +174,7 @@ final class StoryScenarioGraphTests: XCTestCase {
         }
     }
 
-    func testOnlyMiddleAndLargeStillFramesUseLandscapePresentation() {
+    func testPrologueMiddleAndLargeStillFramesUseLandscapePresentation() {
         XCTAssertFalse(
             StoryPresentationOrientationPolicy.usesLandscape(
                 scenarioType: .daily,
@@ -179,6 +186,13 @@ final class StoryScenarioGraphTests: XCTestCase {
             StoryPresentationOrientationPolicy.usesLandscape(
                 scenarioType: .middleEvent,
                 cgAssetID: nil,
+                isCompleted: false
+            )
+        )
+        XCTAssertTrue(
+            StoryPresentationOrientationPolicy.usesLandscape(
+                scenarioType: .prologue,
+                cgAssetID: "cg_test",
                 isCompleted: false
             )
         )
@@ -212,12 +226,15 @@ final class StoryScenarioGraphTests: XCTestCase {
         )
     }
 
-    func testOnlyMiddleAndLargeEventsReturnToMenuAutomaticallyAfterCompletion() {
+    func testPrologueMiddleAndLargeEventsReturnToMenuAutomaticallyAfterCompletion() {
         XCTAssertFalse(
             StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .daily)
         )
         XCTAssertFalse(
             StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .smallEvent)
+        )
+        XCTAssertTrue(
+            StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .prologue)
         )
         XCTAssertTrue(
             StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: .middleEvent)
@@ -291,9 +308,10 @@ final class StoryScenarioGraphTests: XCTestCase {
         XCTAssertFalse(ChatStoryPresentationPolicy.isChoicePlaceholder(node: placeholder, scenarioType: .smallEvent))
     }
 
-    func testLogIsAvailableOnlyForMiddleAndLargeEvents() {
+    func testLogIsAvailableForPrologueMiddleAndLargeEvents() {
         XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .daily))
         XCTAssertFalse(StoryLogPresentationPolicy.isAvailable(for: .smallEvent))
+        XCTAssertTrue(StoryLogPresentationPolicy.isAvailable(for: .prologue))
         XCTAssertTrue(StoryLogPresentationPolicy.isAvailable(for: .middleEvent))
         XCTAssertTrue(StoryLogPresentationPolicy.isAvailable(for: .largeEvent))
         XCTAssertFalse(
@@ -358,6 +376,15 @@ final class StoryScenarioGraphTests: XCTestCase {
     }
 
     func testMiddleAndLargeEventsRequireExplicitChatEntry() {
+        XCTAssertEqual(
+            StoryScreenModeTransitionPolicy.resolveRowMode(
+                .chat,
+                currentMode: .adv,
+                scenarioType: .prologue,
+                hasExplicitTransition: false
+            ),
+            .adv
+        )
         XCTAssertEqual(
             StoryScreenModeTransitionPolicy.resolveRowMode(
                 .chat,

@@ -343,7 +343,7 @@ private struct StoryEventTitleIntroView: View {
 extension StoryScenarioType {
     var supportsLandscapeStillPresentation: Bool {
         switch self {
-        case .middleEvent, .largeEvent:
+        case .prologue, .middleEvent, .largeEvent:
             return true
         case .daily, .smallEvent, .unknown:
             return false
@@ -370,7 +370,7 @@ enum StoryPresentationOrientationPolicy {
 enum StoryCompletionPresentationPolicy {
     static func returnsToMenuAutomatically(after scenarioType: StoryScenarioType) -> Bool {
         switch scenarioType {
-        case .middleEvent, .largeEvent:
+        case .prologue, .middleEvent, .largeEvent:
             return true
         case .daily, .smallEvent, .unknown:
             return false
@@ -381,7 +381,7 @@ enum StoryCompletionPresentationPolicy {
 enum StoryLogPresentationPolicy {
     static func isAvailable(for scenarioType: StoryScenarioType) -> Bool {
         switch scenarioType {
-        case .middleEvent, .largeEvent:
+        case .prologue, .middleEvent, .largeEvent:
             return true
         case .daily, .smallEvent, .unknown:
             return false

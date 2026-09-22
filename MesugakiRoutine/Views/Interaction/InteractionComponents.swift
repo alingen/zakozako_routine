@@ -173,6 +173,7 @@ struct InteractionHomeFeatureCard: View {
     let title: String
     let detail: String
     var badge: String? = nil
+    var showsUnreadDot = false
     var height: CGFloat = 130
 
     private var isFreeTalk: Bool { kind == .freeTalk }
@@ -252,6 +253,17 @@ struct InteractionHomeFeatureCard: View {
                         .background(AppColor.primary, in: Capsule())
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                         .padding(9)
+                } else if showsUnreadDot {
+                    Circle()
+                        .fill(AppColor.primary)
+                        .frame(width: 12, height: 12)
+                        .overlay {
+                            Circle()
+                                .stroke(.white, lineWidth: 2)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .padding(12)
+                        .accessibilityHidden(true)
                 }
             }
             .frame(width: proxy.size.width, height: height)
@@ -265,7 +277,12 @@ struct InteractionHomeFeatureCard: View {
         .frame(height: height)
         .contentShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isFreeTalk ? "\(title)、開発中" : "\(title)、\(detail)")
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        if isFreeTalk { return "\(title)、開発中" }
+        return showsUnreadDot ? "\(title)、\(detail)、未読あり" : "\(title)、\(detail)"
     }
 
     private func portraitAccent(width: CGFloat) -> some View {

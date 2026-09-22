@@ -25,7 +25,7 @@ struct ChatStoryRenderer: View {
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented && !isTyping }
     private var usesEventChatFlow: Bool {
         switch scenarioType {
-        case .smallEvent, .middleEvent, .largeEvent:
+        case .prologue, .smallEvent, .middleEvent, .largeEvent:
             return true
         case .daily, .unknown:
             return false
@@ -392,7 +392,7 @@ enum ChatStoryPresentationPolicy {
 
     static func usesFixedActionArea(for scenarioType: StoryScenarioType) -> Bool {
         switch scenarioType {
-        case .daily, .smallEvent, .middleEvent, .largeEvent:
+        case .daily, .prologue, .smallEvent, .middleEvent, .largeEvent:
             return true
         case .unknown:
             return false
@@ -418,7 +418,7 @@ enum ChatStoryPresentationPolicy {
     ) -> String {
         guard node.isPlayerSpeaker else { return "次へ" }
         switch scenarioType {
-        case .smallEvent, .middleEvent, .largeEvent:
+        case .prologue, .smallEvent, .middleEvent, .largeEvent:
             if let replyText = node.text?.trimmingCharacters(in: .whitespacesAndNewlines),
                !replyText.isEmpty {
                 return replyText
@@ -455,7 +455,7 @@ enum EventChatSystemPresentationPolicy {
         _ scenarioType: StoryScenarioType
     ) -> Bool {
         switch scenarioType {
-        case .middleEvent, .largeEvent:
+        case .prologue, .middleEvent, .largeEvent:
             return true
         case .daily, .smallEvent, .unknown:
             return false

@@ -35,6 +35,7 @@ export function gridToRows(grid: string[][], firstColumnName: string): RawRow[] 
 export function snapshotToRawSheets(snapshot: SheetSnapshot): RawSheets {
   return {
     daily: gridToRows(snapshot.tabs.daily, 'scenario_id'),
+    dailyCatalog: gridToRows(snapshot.tabs.daily_catalog, 'scenario_id'),
     choices: gridToRows(snapshot.tabs.choices, 'choice_id'),
     interactions: gridToRows(snapshot.tabs.interactions, 'id'),
     scenarios: gridToRows(snapshot.tabs.senarios, 'scenario_id'),
@@ -50,6 +51,7 @@ export function loadSnapshot(path = SNAPSHOT_PATH): SheetSnapshot {
   if (
     !parsed.sheetId ||
     !parsed.tabs?.daily ||
+    !parsed.tabs.daily_catalog ||
     !parsed.tabs.choices ||
     !parsed.tabs.interactions ||
     !parsed.tabs.senarios ||
@@ -89,6 +91,7 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
     spreadsheetId: config.sheetId,
     ranges: [
       config.tabs.daily,
+      config.tabs.dailyCatalog,
       config.tabs.choices,
       config.tabs.interactions,
       config.tabs.scenarios,
@@ -106,10 +109,11 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
     source: 'api',
     tabs: {
       daily: grid(0),
-      choices: grid(1),
-      interactions: grid(2),
-      senarios: grid(3),
-      events: grid(4),
+      daily_catalog: grid(1),
+      choices: grid(2),
+      interactions: grid(3),
+      senarios: grid(4),
+      events: grid(5),
     },
   };
 }
@@ -146,6 +150,7 @@ async function fetchViaPublicXlsx(config: SyncConfig): Promise<SheetSnapshot> {
     source: 'public-xlsx',
     tabs: {
       daily: readTab(config.tabs.daily),
+      daily_catalog: readTab(config.tabs.dailyCatalog),
       choices: readTab(config.tabs.choices),
       interactions: readTab(config.tabs.interactions),
       senarios: readTab(config.tabs.scenarios),

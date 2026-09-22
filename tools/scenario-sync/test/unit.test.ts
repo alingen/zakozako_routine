@@ -4,7 +4,7 @@ import { generate, serialize } from '../src/generate.js';
 import { normalize } from '../src/normalize.js';
 import { runPipeline } from '../src/pipeline.js';
 import { validate } from '../src/validate.js';
-import { choice, event, interaction, scenario, sheets } from './helpers.js';
+import { choice, dailyCatalog, event, interaction, scenario, sheets } from './helpers.js';
 
 function process(raw: ReturnType<typeof sheets>) {
   const normalized = normalize(raw);
@@ -22,8 +22,11 @@ describe('source normalization', () => {
     const result = process(raw);
 
     expect(raw.daily[0]?.__row).toBe(4);
+    expect(raw.dailyCatalog).toHaveLength(1);
+    expect(raw.dailyCatalog[0]?.__row).toBe(4);
     expect(result.errors).toEqual([]);
     expect(result.data.daily[0]?.enabled).toBe(true);
+    expect(result.data.dailyCatalog[0]?.scenarioId).toBe('daily_test');
   });
 
   it('keeps nested command_args and open string values while warning on unknown UI values', () => {
@@ -68,10 +71,24 @@ describe('source normalization', () => {
     const result = process(
       sheets({
         scenarios: [
-          scenario({ calendar_date: '2026-09-13' }),
+          scenario(),
           scenario({
             scenario_id: 'daily_recurring',
             node_id: 'recurring_01',
+          }),
+        ],
+        catalogs: [
+          dailyCatalog({
+            title: 'Exact daily',
+            display_order: 7,
+            category: 'question',
+            calendar_date: '2026-09-13',
+            status: 'ready',
+          }),
+          dailyCatalog({
+            scenario_id: 'daily_recurring',
+            title: 'Recurring daily',
+            display_order: '',
             calendar_month_day: '12-24',
           }),
         ],
@@ -81,7 +98,12 @@ describe('source normalization', () => {
 
     expect(result.errors).toEqual([]);
     expect(generated.find((item) => item.scenarioId === 'daily_test')).toMatchObject({
+      title: 'Exact daily',
+      displayOrder: 7,
+      category: 'question',
       calendarDate: '2026-09-13',
+      status: 'ready',
+      enabled: true,
     });
     expect(generated.find((item) => item.scenarioId === 'daily_recurring')).toMatchObject({
       calendarMonthDay: '12-24',
@@ -98,22 +120,36 @@ describe('source normalization', () => {
           scenario({
             scenario_id: 'daily_invalid',
             node_id: 'invalid_01',
-            calendar_date: '2026-02-30',
           }),
           scenario({
             scenario_id: 'daily_conflict',
             node_id: 'conflict_01',
-            calendar_date: '2026-09-13',
-            calendar_month_day: '09-13',
           }),
           scenario({
             scenario_id: 'daily_duplicate_a',
             node_id: 'duplicate_a_01',
-            calendar_month_day: '12-24',
           }),
           scenario({
             scenario_id: 'daily_duplicate_b',
             node_id: 'duplicate_b_01',
+          }),
+        ],
+        catalogs: [
+          dailyCatalog({
+            scenario_id: 'daily_invalid',
+            calendar_date: '2026-02-30',
+          }),
+          dailyCatalog({
+            scenario_id: 'daily_conflict',
+            calendar_date: '2026-09-13',
+            calendar_month_day: '09-13',
+          }),
+          dailyCatalog({
+            scenario_id: 'daily_duplicate_a',
+            calendar_month_day: '12-24',
+          }),
+          dailyCatalog({
+            scenario_id: 'daily_duplicate_b',
             calendar_month_day: '12-24',
           }),
         ],
@@ -127,6 +163,102 @@ describe('source normalization', () => {
         'duplicate_daily_schedule',
       ]),
     );
+  });
+
+  it('ignores unchecked checkbox-only catalog rows', () => {
+    const result = process(
+      sheets({
+        scenarios: [scenario()],
+        catalogs: [dailyCatalog(), { enabled: false }],
+      }),
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.data.dailyCatalog).toHaveLength(1);
+    expect(result.data.dailyCatalog[0]?.scenarioId).toBe('daily_test');
+  });
+
+  it('requires a one-to-one relationship between daily and daily_catalog', () => {
+    const missingCatalog = process(sheets({ scenarios: [scenario()], catalogs: [] }));
+    const missingDaily = process(
+      sheets({
+        scenarios: [scenario()],
+        catalogs: [dailyCatalog(), dailyCatalog({ scenario_id: 'daily_orphan' })],
+      }),
+    );
+    const duplicateCatalog = process(
+      sheets({
+        scenarios: [scenario()],
+        catalogs: [dailyCatalog(), dailyCatalog({ title: 'Duplicate' })],
+      }),
+    );
+
+    expect(missingCatalog.errors.map((issue) => issue.code)).toContain('missing_daily_catalog');
+    expect(missingDaily.errors.map((issue) => issue.code)).toContain('dangling_daily_catalog_id');
+    expect(duplicateCatalog.errors.map((issue) => issue.code)).toContain(
+      'duplicate_daily_catalog_id',
+    );
+  });
+
+  it('requires unique positive display_order for enabled unscheduled daily entries', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({ scenario_id: 'daily_missing', node_id: 'missing' }),
+          scenario({ scenario_id: 'daily_invalid', node_id: 'invalid' }),
+          scenario({ scenario_id: 'daily_duplicate', node_id: 'duplicate' }),
+        ],
+        catalogs: [
+          dailyCatalog({ scenario_id: 'daily_missing', display_order: '' }),
+          dailyCatalog({ scenario_id: 'daily_invalid', display_order: 0 }),
+          dailyCatalog({ scenario_id: 'daily_duplicate', display_order: 0 }),
+        ],
+      }),
+    );
+
+    expect(result.errors.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining([
+        'missing_daily_display_order',
+        'invalid_display_order',
+        'duplicate_daily_display_order',
+      ]),
+    );
+  });
+
+  it('filters a disabled daily scenario and all of its choices from generated content', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({ scenario_id: 'daily_enabled', node_id: 'enabled' }),
+          scenario({
+            scenario_id: 'daily_disabled',
+            node_id: 'disabled',
+            message_type: 'choice',
+            choice_id: 'disabled_choice',
+          }),
+        ],
+        catalogs: [
+          dailyCatalog({ scenario_id: 'daily_enabled' }),
+          dailyCatalog({
+            scenario_id: 'daily_disabled',
+            display_order: '',
+            enabled: false,
+          }),
+        ],
+        choices: [
+          choice({
+            daily_id: 'daily_disabled',
+            choice_id: 'disabled_choice',
+          }),
+        ],
+      }),
+    );
+    const generated = generate(result.data);
+
+    expect(result.errors).toEqual([]);
+    expect(generated.scenarios.map((item) => item.scenarioId)).toContain('daily_enabled');
+    expect(generated.scenarios.map((item) => item.scenarioId)).not.toContain('daily_disabled');
+    expect(generated.choiceGroups).toEqual([]);
   });
 
   it('rejects a typing duration outside the supported range', () => {
@@ -177,6 +309,55 @@ describe('source normalization', () => {
 });
 
 describe('event condition grouping', () => {
+  it('accepts prologue metadata with episode_order zero', () => {
+    const result = process(
+      sheets({
+        scenarios: [scenario({ scenario_id: 'prologue_001', scenario_type: 'prologue' })],
+        events: [
+          event({
+            event_id: 'event_prologue_001',
+            event_type: 'prologue',
+            title: 'プロローグ',
+            entry_scenario_id: 'prologue_001',
+            episode_order: 0,
+          }),
+        ],
+      }),
+    );
+    const generated = generate(result.data).events[0]!;
+
+    expect(result.errors).toEqual([]);
+    expect(
+      result.warnings.filter(
+        (issue) =>
+          issue.code === 'unknown_value' &&
+          (issue.at?.column === 'scenario_type' || issue.at?.column === 'event_type'),
+      ),
+    ).toEqual([]);
+    expect(generated).toMatchObject({
+      eventId: 'event_prologue_001',
+      eventType: 'prologue',
+      entryScenarioId: 'prologue_001',
+      episodeOrder: 0,
+    });
+  });
+
+  it('rejects a negative episode_order', () => {
+    const result = process(
+      sheets({
+        scenarios: [scenario({ scenario_id: 'small_test', scenario_type: 'small_event' })],
+        events: [event({ episode_order: -1 })],
+      }),
+    );
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        code: 'invalid_episode_order',
+        value: '-1',
+      }),
+    );
+  });
+
   it('groups same-event condition rows as a deterministic AND array', () => {
     const raw = sheets({
       scenarios: [scenario({ scenario_id: 'small_test', scenario_type: 'small_event' })],
@@ -437,14 +618,57 @@ describe('transition graph', () => {
 });
 
 describe('destructive sync guards', () => {
+  it('compiles a complete six-tab source with one authored catalog row', () => {
+    const result = runPipeline(
+      sheets({
+        scenarios: [
+          scenario(),
+          scenario({ scenario_id: 'small_test', scenario_type: 'small_event' }),
+        ],
+        choices: [choice()],
+        interactions: [interaction()],
+        events: [event()],
+      }),
+    );
+
+    expect(result.issues.errors).toEqual([]);
+    expect(
+      result.artifact?.scenarios.find((item) => item.scenarioId === 'daily_test'),
+    ).toMatchObject({
+      title: 'Test daily',
+      displayOrder: 1,
+      status: '公開可能',
+      enabled: true,
+    });
+  });
+
   it('refuses to generate when source tabs contain no rows', () => {
     const result = runPipeline(sheets({}));
 
     expect(result.artifact).toBeNull();
     expect(result.plans).toEqual([]);
     expect(result.issues.errors.filter((issue) => issue.code === 'empty_source_tab')).toHaveLength(
-      5,
+      6,
     );
+  });
+
+  it('does not count checkbox-only FALSE catalog rows as source content', () => {
+    const raw = sheets({
+      scenarios: [scenario()],
+      catalogs: [{ enabled: false }],
+    });
+    const result = runPipeline(raw);
+
+    expect(
+      result.issues.errors.some(
+        (issue) => issue.code === 'empty_source_tab' && issue.at?.sheet === 'daily_catalog',
+      ),
+    ).toBe(true);
+    expect(
+      result.issues.errors.some(
+        (issue) => issue.code === 'no_enabled_rows' && issue.at?.sheet === 'daily_catalog',
+      ),
+    ).toBe(false);
   });
 
   it('refuses to generate when every row in a source tab is disabled', () => {
@@ -480,6 +704,7 @@ describe('deterministic generation and CLI contracts', () => {
     ).data;
     const reversed = {
       daily: [...normalized.daily].reverse(),
+      dailyCatalog: [...normalized.dailyCatalog].reverse(),
       scenarios: [...normalized.scenarios].reverse(),
       choices: [...normalized.choices].reverse(),
       interactions: [...normalized.interactions].reverse(),

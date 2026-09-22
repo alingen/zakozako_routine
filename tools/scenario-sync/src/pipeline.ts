@@ -26,18 +26,33 @@ export function runPipeline(raw: RawSheets, outputPath = OUTPUT_PATH): PipelineR
   // deletion and overwrite the bundled catalog with an empty artifact.
   const identityColumn = {
     daily: 'scenario_id',
+    dailyCatalog: 'scenario_id',
     interactions: 'id',
     scenarios: 'scenario_id',
     choices: 'choice_id',
     events: 'event_id',
   } as const;
-  for (const tab of ['daily', 'choices', 'interactions', 'scenarios', 'events'] as const) {
-    const sheetName = tab === 'scenarios' ? 'senarios' : tab;
-    if (raw[tab].length === 0) {
+  for (const tab of [
+    'daily',
+    'dailyCatalog',
+    'choices',
+    'interactions',
+    'scenarios',
+    'events',
+  ] as const) {
+    const sheetName =
+      tab === 'scenarios' ? 'senarios' : tab === 'dailyCatalog' ? 'daily_catalog' : tab;
+    const sourceRowCount =
+      tab === 'dailyCatalog' ? normalized.data.dailyCatalog.length : raw[tab].length;
+    const enabledRowCount =
+      tab === 'dailyCatalog'
+        ? normalized.data.dailyCatalog.filter((row) => row.enabled).length
+        : normalized.data[tab].length;
+    if (sourceRowCount === 0) {
       issues.error('empty_source_tab', `${tab} has no source rows; refusing to generate`, {
         at: { sheet: sheetName, row: 1, column: identityColumn[tab] },
       });
-    } else if (normalized.data[tab].length === 0) {
+    } else if (enabledRowCount === 0) {
       issues.error('no_enabled_rows', `${tab} has no valid enabled rows; refusing to generate`, {
         at: { sheet: sheetName, row: 1, column: tab === 'interactions' ? 'active' : 'enabled' },
       });

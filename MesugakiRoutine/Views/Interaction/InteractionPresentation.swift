@@ -108,6 +108,11 @@ struct StoryListItemPresentation: Identifiable, Hashable {
     let isNew: Bool
     let isRead: Bool
     let conditions: [StoryConditionPresentation]
+
+    var episodeLabel: String? {
+        guard let episodeOrder else { return nil }
+        return episodeOrder == 0 ? "プロローグ" : "第\(episodeOrder)話"
+    }
 }
 
 struct StoryChapterPresentation: Identifiable, Hashable {

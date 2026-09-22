@@ -69,8 +69,8 @@ private struct StoryListRow: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 7) {
-                        if let episodeOrder = item.episodeOrder {
-                            Text("第\(episodeOrder)話")
+                        if let episodeLabel = item.episodeLabel {
+                            Text(episodeLabel)
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(AppColor.muted)
                         }

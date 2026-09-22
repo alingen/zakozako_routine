@@ -860,7 +860,7 @@ enum StoryScreenModeTransitionPolicy {
             return requestedMode
         }
 
-        // Middle and large events use scene_change to enter a chat section.
+        // Prologue, middle, and large events use scene_change to enter a chat section.
         // Its dispatch effect may already have changed currentMode before
         // this resolver runs. A lone row-level `chat` value must not flash
         // the chat UI for a single quoted line.
@@ -871,7 +871,7 @@ enum StoryScreenModeTransitionPolicy {
         _ scenarioType: StoryScenarioType
     ) -> Bool {
         switch scenarioType {
-        case .middleEvent, .largeEvent:
+        case .prologue, .middleEvent, .largeEvent:
             return true
         case .daily, .smallEvent, .unknown:
             return false
@@ -957,7 +957,7 @@ private extension StoryPlayer {
 
     func appendVisibleLogNodeIfNeeded(_ node: StoryNode) {
         switch scenario.scenarioType {
-        case .middleEvent, .largeEvent:
+        case .prologue, .middleEvent, .largeEvent:
             break
         case .daily, .smallEvent, .unknown:
             return

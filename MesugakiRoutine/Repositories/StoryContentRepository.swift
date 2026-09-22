@@ -97,10 +97,8 @@ final class StoryContentRepository {
         choiceGroupsById = choiceIndex
         events = content.events.sorted(by: Self.eventOrdering)
         dailyScenarios = content.scenarios
-            .filter { $0.scenarioType == .daily }
-            .sorted {
-                $0.scenarioId.localizedStandardCompare($1.scenarioId) == .orderedAscending
-            }
+            .filter { $0.scenarioType == .daily && $0.enabled }
+            .sorted(by: Self.dailyScenarioOrdering)
         interactions = content.interactions
             .filter { $0.active && $0.weight > 0 }
             .sorted {
@@ -161,6 +159,13 @@ final class StoryContentRepository {
         if lhsEpisode != rhsEpisode { return lhsEpisode < rhsEpisode }
         if lhs.priority != rhs.priority { return lhs.priority < rhs.priority }
         return lhs.eventId.localizedStandardCompare(rhs.eventId) == .orderedAscending
+    }
+
+    private static func dailyScenarioOrdering(_ lhs: StoryScenario, _ rhs: StoryScenario) -> Bool {
+        let lhsOrder = lhs.displayOrder ?? Int.max
+        let rhsOrder = rhs.displayOrder ?? Int.max
+        if lhsOrder != rhsOrder { return lhsOrder < rhsOrder }
+        return lhs.scenarioId.localizedStandardCompare(rhs.scenarioId) == .orderedAscending
     }
 
     private static func categoryRank(_ category: StoryCategory?) -> Int {

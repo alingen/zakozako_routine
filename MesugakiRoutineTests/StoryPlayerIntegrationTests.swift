@@ -213,73 +213,47 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         )
     }
 
-    func testRealDailyChoiceTargetsExistingBranchAndAnotherChoicePersistsValue() async throws {
+    func testRealDailyChoiceTargetsExistingBranchAndPersistsValue() async throws {
         let contentRepository = try makeGeneratedContentRepository()
         let stateRepository = try makeStateRepository()
 
-        let branchingScenario = try XCTUnwrap(contentRepository.scenario(id: "daily_001"))
+        let branchingScenario = try XCTUnwrap(contentRepository.scenario(id: "daily_q003"))
         let branchingPlayer = makePlayer(
             scenario: branchingScenario,
-            playbackKey: "integration:daily:001",
+            playbackKey: "integration:daily:q003",
             contentRepository: contentRepository,
             stateRepository: stateRepository
         )
         await branchingPlayer.start()
         try await advanceUntilChoice(
-            "first_day_can_do",
+            "choice_solo_movie",
             player: branchingPlayer,
             safetyLimit: branchingScenario.nodes.count * 2
         )
         let branchingChoice = try XCTUnwrap(branchingPlayer.availableChoices.first)
-        XCTAssertEqual(branchingChoice.nextNodeId, "daily_001_07")
+        XCTAssertEqual(branchingChoice.nextNodeId, "daily_q003_can_001")
 
         await branchingPlayer.selectChoice(branchingChoice)
 
-        XCTAssertEqual(branchingPlayer.currentNode?.nodeId, "daily_001_07")
+        XCTAssertEqual(branchingPlayer.currentNode?.nodeId, "daily_q003_can_001")
+        XCTAssertEqual(branchingChoice.saveKey, "soloMovie")
+        XCTAssertEqual(try stateRepository.profileValue(for: "soloMovie"), "can")
         XCTAssertNil(branchingPlayer.recoverableError)
         try await driveStartedPlayerToCompletion(
             branchingPlayer,
             safetyLimit: branchingScenario.nodes.count * 2
         )
         let branchingCheckpoint = try XCTUnwrap(
-            stateRepository.checkpoint(for: "integration:daily:001")
+            stateRepository.checkpoint(for: "integration:daily:q003")
         )
         XCTAssertTrue(branchingCheckpoint.isCompleted)
-        XCTAssertFalse(branchingCheckpoint.visitedNodeIds.contains("daily_001_06"))
-        XCTAssertTrue(branchingCheckpoint.visitedNodeIds.contains("daily_001_07"))
-
-        let savingScenario = try XCTUnwrap(contentRepository.scenario(id: "daily_002"))
-        let savingPlayer = makePlayer(
-            scenario: savingScenario,
-            playbackKey: "integration:daily:002",
-            contentRepository: contentRepository,
-            stateRepository: stateRepository
-        )
-        await savingPlayer.start()
-        try await advanceUntilChoice(
-            "choice_siblings",
-            player: savingPlayer,
-            safetyLimit: savingScenario.nodes.count * 2
-        )
-        let savingChoice = try XCTUnwrap(savingPlayer.availableChoices.first)
-
-        await savingPlayer.selectChoice(savingChoice)
-
-        XCTAssertEqual(savingChoice.saveKey, "hasSiblings")
-        XCTAssertEqual(try stateRepository.profileValue(for: "hasSiblings"), savingChoice.saveValue)
-        let choiceCheckpoint = try XCTUnwrap(
-            stateRepository.checkpoint(for: "integration:daily:002")
-        )
-        XCTAssertEqual(choiceCheckpoint.choiceHistory.last?.nodeId, "daily_002_03")
-        XCTAssertEqual(choiceCheckpoint.choiceHistory.last?.choiceId, "choice_siblings")
-        XCTAssertEqual(choiceCheckpoint.choiceHistory.last?.choiceOrder, savingChoice.choiceOrder)
-
-        try await driveStartedPlayerToCompletion(
-            savingPlayer,
-            safetyLimit: savingScenario.nodes.count * 2
-        )
-        XCTAssertTrue(
-            try XCTUnwrap(stateRepository.checkpoint(for: "integration:daily:002")).isCompleted
+        XCTAssertFalse(branchingCheckpoint.visitedNodeIds.contains("daily_q003_cannot_001"))
+        XCTAssertTrue(branchingCheckpoint.visitedNodeIds.contains("daily_q003_can_001"))
+        XCTAssertEqual(branchingCheckpoint.choiceHistory.last?.nodeId, "daily_q003_001")
+        XCTAssertEqual(branchingCheckpoint.choiceHistory.last?.choiceId, "choice_solo_movie")
+        XCTAssertEqual(
+            branchingCheckpoint.choiceHistory.last?.choiceOrder,
+            branchingChoice.choiceOrder
         )
     }
 
@@ -390,10 +364,167 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         )
     }
 
-    func testDailySelectedRepliesAppearInOrderAndSurviveResumeAndCompletion() async throws {
-        let contentRepository = try makeGeneratedContentRepository()
+    func testCompletedPrologueOpenedFromCatalogStartsFromBeginning() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "prologue_test",
+            scenarioType: .prologue,
+            nodes: [
+                StoryNode(
+                    nodeId: "prologue_test_001",
+                    lineOrder: 1,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "ほらほらどうしたの〜？",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+            ]
+        )
+        let event = StoryEvent(
+            eventId: "event_prologue_test",
+            eventType: .prologue,
+            title: "プロローグ",
+            entryScenarioId: scenario.scenarioId,
+            priority: 0,
+            repeatable: false,
+            cooldownDays: 0,
+            background: "bg_protagonist_living_room",
+            advancesToPhase: nil,
+            chapterId: "chapter_01",
+            episodeOrder: 0,
+            storyCategory: .main,
+            conditions: [],
+            notes: nil
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(
+                scenarios: [scenario],
+                choiceGroups: [],
+                events: [event]
+            )
+        )
         let stateRepository = try makeStateRepository()
-        let scenario = try XCTUnwrap(contentRepository.scenario(id: "daily_002"))
+        let playbackKey = "event:\(event.eventId)"
+        try stateRepository.markUnlocked(eventId: event.eventId, at: fixedNow)
+
+        let firstPlayer = makePlayer(
+            scenario: scenario,
+            event: event,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await firstPlayer.start()
+        await firstPlayer.advance()
+        XCTAssertTrue(firstPlayer.isCompleted)
+
+        let rereadPlayer = makePlayer(
+            scenario: scenario,
+            event: event,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await rereadPlayer.start()
+
+        XCTAssertFalse(rereadPlayer.isCompleted)
+        XCTAssertEqual(rereadPlayer.currentNode?.nodeId, "prologue_test_001")
+        XCTAssertEqual(
+            try XCTUnwrap(stateRepository.checkpoint(for: playbackKey)).visitedNodeIds,
+            ["prologue_test_001"]
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(stateRepository.eventProgress(for: event.eventId)).completionCount,
+            1
+        )
+    }
+
+    func testDailySelectedRepliesAppearInOrderAndSurviveResumeAndCompletion() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "daily_reply_history",
+            scenarioType: .daily,
+            nodes: [
+                StoryNode(
+                    nodeId: "first_prompt",
+                    lineOrder: 1,
+                    speaker: "character",
+                    messageType: .choice,
+                    text: "最初の質問",
+                    choiceId: "first_replies"
+                ),
+                StoryNode(
+                    nodeId: "first_yes",
+                    lineOrder: 2,
+                    speaker: "character",
+                    messageType: .text,
+                    text: "最初の返事",
+                    nextNodeId: "first_merge"
+                ),
+                StoryNode(
+                    nodeId: "first_no",
+                    lineOrder: 3,
+                    speaker: "character",
+                    messageType: .text,
+                    text: "別の返事",
+                    nextNodeId: "first_merge"
+                ),
+                StoryNode(
+                    nodeId: "first_merge",
+                    lineOrder: 4,
+                    speaker: "character",
+                    messageType: .text,
+                    text: "合流"
+                ),
+                StoryNode(
+                    nodeId: "second_prompt",
+                    lineOrder: 5,
+                    speaker: "character",
+                    messageType: .choice,
+                    text: "次の質問",
+                    choiceId: "second_replies"
+                ),
+                StoryNode(
+                    nodeId: "second_yes",
+                    lineOrder: 6,
+                    speaker: "character",
+                    messageType: .text,
+                    text: "二つ目の返事",
+                    nextNodeId: "reply_end"
+                ),
+                StoryNode(
+                    nodeId: "second_no",
+                    lineOrder: 7,
+                    speaker: "character",
+                    messageType: .text,
+                    text: "二つ目の別返事",
+                    nextNodeId: "reply_end"
+                ),
+                StoryNode(
+                    nodeId: "reply_end",
+                    lineOrder: 8,
+                    speaker: "character",
+                    messageType: .text,
+                    text: "おしまい"
+                ),
+            ]
+        )
+        let firstChoices = [
+            StoryChoice(choiceOrder: 1, label: "最初の回答", nextNodeId: "first_yes"),
+            StoryChoice(choiceOrder: 2, label: "別の回答", nextNodeId: "first_no"),
+        ]
+        let secondChoices = [
+            StoryChoice(choiceOrder: 1, label: "次の回答", nextNodeId: "second_yes"),
+            StoryChoice(choiceOrder: 2, label: "次の別回答", nextNodeId: "second_no"),
+        ]
+        let contentRepository = try StoryContentRepository(content: StoryContentBundle(
+            scenarios: [scenario],
+            choiceGroups: [
+                StoryChoiceGroup(choiceId: "first_replies", choices: firstChoices),
+                StoryChoiceGroup(choiceId: "second_replies", choices: secondChoices),
+            ],
+            events: []
+        ))
+        let stateRepository = try makeStateRepository()
         let playbackKey = "integration:daily:reply-history"
         let player = makePlayer(
             scenario: scenario,
@@ -402,7 +533,7 @@ final class StoryPlayerIntegrationTests: XCTestCase {
             stateRepository: stateRepository
         )
         await player.start()
-        try await advanceUntilChoice("choice_siblings", player: player, safetyLimit: 20)
+        try await advanceUntilChoice("first_replies", player: player, safetyLimit: 20)
         XCTAssertFalse(player.visibleChatNodes.contains(where: \.isPlayerSpeaker))
 
         let firstChoice = try XCTUnwrap(player.availableChoices.last)
@@ -412,7 +543,7 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertEqual(firstReply.text, firstChoice.label)
         XCTAssertEqual(
             Array(player.visibleChatNodes.suffix(3)).map(\.nodeId),
-            ["daily_002_03", firstReply.nodeId, try XCTUnwrap(player.currentNode?.nodeId)]
+            ["first_prompt", firstReply.nodeId, try XCTUnwrap(player.currentNode?.nodeId)]
         )
         let beforeResume = player.visibleChatNodes
         player.close()
@@ -426,7 +557,7 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         await resumed.start()
         XCTAssertEqual(resumed.visibleChatNodes, beforeResume)
         XCTAssertEqual(resumed.visibleChatNodes.filter { $0.nodeId == firstReply.nodeId }.count, 1)
-        try await advanceUntilChoice("choice_yoshiyoshi", player: resumed, safetyLimit: 20)
+        try await advanceUntilChoice("second_replies", player: resumed, safetyLimit: 20)
         let secondChoice = try XCTUnwrap(resumed.availableChoices.first)
         await resumed.selectChoice(secondChoice)
         XCTAssertEqual(

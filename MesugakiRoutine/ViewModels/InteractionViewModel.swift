@@ -27,6 +27,12 @@ final class InteractionViewModel {
     private(set) var loadError: String?
     private(set) var activeLaunch: StoryLaunchRequest?
 
+    var hasUnreadStories: Bool {
+        (mainChapters + subChapters).contains { chapter in
+            chapter.stories.contains { $0.isUnlocked && !$0.isRead }
+        }
+    }
+
     private var dependencies: AppDependencies?
     private var todayScenario: StoryScenario?
     private var todayPlaybackKey: String?
@@ -264,7 +270,8 @@ final class InteractionViewModel {
         )
     }
 
-    func openEvent(id: String) {
+    @discardableResult
+    func openEvent(id: String) -> Bool {
         guard let dependencies,
               let content = dependencies.storyContentRepository,
               let unlockService = dependencies.storyUnlockService,
@@ -272,7 +279,7 @@ final class InteractionViewModel {
               let scenario = content.scenario(id: event.entryScenarioId),
               let evaluations = try? unlockService.evaluations(),
               evaluations.first(where: { $0.event.eventId == id })?.canPlay == true else {
-            return
+            return false
         }
         activeLaunch = StoryLaunchRequest(
             title: event.title,
@@ -280,6 +287,7 @@ final class InteractionViewModel {
             scenario: scenario,
             event: event
         )
+        return true
     }
 
     func closePlayer(now: Date = .now, calendar: Calendar = .current) {

@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { dirname } from 'node:path';
 import type {
   NormalizedChoiceRow,
+  NormalizedDailyCatalogRow,
   NormalizedEventRow,
   NormalizedInteractionRow,
   NormalizedScenarioRow,
@@ -21,24 +22,42 @@ export type GeneratedArtifacts = StoryContentBundle;
 
 /** Convert normalized CMS data into the sole app-facing content bundle. */
 export function generate(data: NormalizedSheets): StoryContentBundle {
+  const enabledCatalog = data.dailyCatalog.filter((row) => row.enabled);
+  const enabledDailyIds = new Set(enabledCatalog.map((row) => row.scenarioId));
+  const dailyCatalogById = new Map(enabledCatalog.map((row) => [row.scenarioId, row]));
+
   return {
     _generated: GENERATED_MARKER,
-    scenarios: generateScenarios([...data.daily, ...data.scenarios]),
-    choiceGroups: generateChoiceGroups(data.choices),
+    scenarios: generateScenarios(
+      [...data.daily.filter((row) => enabledDailyIds.has(row.scenarioId)), ...data.scenarios],
+      dailyCatalogById,
+    ),
+    choiceGroups: generateChoiceGroups(
+      data.choices.filter((row) => enabledDailyIds.has(row.dailyId)),
+    ),
     interactions: generateInteractions(data.interactions),
     events: generateEvents(data.events),
   };
 }
 
-function generateScenarios(rows: NormalizedScenarioRow[]): StoryScenario[] {
+function generateScenarios(
+  rows: NormalizedScenarioRow[],
+  dailyCatalogById: ReadonlyMap<string, NormalizedDailyCatalogRow>,
+): StoryScenario[] {
   return [...groupBy(rows, (row) => row.scenarioId)]
     .map(([scenarioId, scenarioRows]) => {
       const ordered = [...scenarioRows].sort(compareScenarioRows);
+      const catalog = dailyCatalogById.get(scenarioId);
       return {
         scenarioId,
         scenarioType: ordered[0]!.scenarioType,
-        calendarDate: ordered.find((row) => row.calendarDate)?.calendarDate,
-        calendarMonthDay: ordered.find((row) => row.calendarMonthDay)?.calendarMonthDay,
+        title: catalog?.title,
+        displayOrder: catalog?.displayOrder,
+        category: catalog?.category,
+        calendarDate: catalog?.calendarDate,
+        calendarMonthDay: catalog?.calendarMonthDay,
+        status: catalog?.status,
+        enabled: catalog?.enabled,
         nodes: ordered.map(mapNode),
       };
     })
