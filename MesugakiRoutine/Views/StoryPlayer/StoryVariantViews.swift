@@ -5,11 +5,11 @@ import SwiftUI
 extension StoryNode {
     var storyDisplayText: String {
         let direct = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !direct.isEmpty { return direct.replacingStoryBreakMarkers() }
+        if !direct.isEmpty { return direct.replacingStoryTextMarkers() }
         let commandText = commandArgs?["text"]?.stringValue
         return commandText?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingStoryBreakMarkers() ?? ""
+            .replacingStoryTextMarkers() ?? ""
     }
 
     var storyDisplaySpeakerName: String? {
@@ -21,8 +21,9 @@ extension StoryNode {
 }
 
 private extension String {
-    func replacingStoryBreakMarkers() -> String {
+    func replacingStoryTextMarkers() -> String {
         replacingOccurrences(of: "[br]", with: "\n")
+            .replacingOccurrences(of: "[sp]", with: " ")
     }
 }
 

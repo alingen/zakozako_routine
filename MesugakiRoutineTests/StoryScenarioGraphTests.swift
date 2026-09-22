@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import MesugakiRoutine
 
@@ -12,6 +13,19 @@ final class ADVTextLayoutTests: XCTestCase {
         )
 
         XCTAssertEqual(node.storyDisplayText, "前半\n後半")
+    }
+
+    func testStoryDisplayTextConvertsSPForADVChatAndLogs() {
+        let node = StoryNode(
+            nodeId: "space-marker",
+            lineOrder: 1,
+            speaker: "rio",
+            messageType: .text,
+            text: "前半[sp]後半"
+        )
+
+        XCTAssertEqual(node.storyDisplayText, "前半 後半")
+        XCTAssertEqual(ADVTextLayout.formatted("前半[sp]後半"), "前半 後半")
     }
 
     func testFormatsBRAsAnExplicitLineBreak() {
@@ -52,6 +66,142 @@ final class ADVTextLayoutTests: XCTestCase {
         XCTAssertEqual(compact, 13, accuracy: 0.01)
         XCTAssertEqual(wide, 22, accuracy: 0.01)
         XCTAssertEqual(ADVTextLayout.maximumLines, 3)
+    }
+
+    func testLongDialogueIsPagedWithoutDroppingText() {
+        let source = String(repeating: "あ", count: 55)
+        let pages = ADVTextLayout.pages(source)
+
+        XCTAssertEqual(pages.count, 2)
+        XCTAssertTrue(
+            pages.allSatisfy {
+                $0.split(separator: "\n", omittingEmptySubsequences: false).count <= 3
+            }
+        )
+        XCTAssertEqual(pages.joined().replacingOccurrences(of: "\n", with: ""), source)
+    }
+
+    func testAutoAdvanceDelayGrowsWithDialogueAndIsCapped() {
+        let shortDelay = ADVPlaybackTiming.autoAdvanceDelayNanoseconds(characterCount: 4)
+        let longDelay = ADVPlaybackTiming.autoAdvanceDelayNanoseconds(characterCount: 40)
+        let cappedDelay = ADVPlaybackTiming.autoAdvanceDelayNanoseconds(characterCount: 1_000)
+
+        XCTAssertLessThan(shortDelay, longDelay)
+        XCTAssertLessThanOrEqual(longDelay, cappedDelay)
+        XCTAssertEqual(cappedDelay, 2_790_000_000)
+    }
+
+    func testFastForwardClipsCommandWaitWithoutChangingNormalPlayback() {
+        XCTAssertEqual(
+            StoryPlaybackTiming.commandWaitMilliseconds(1_200, pace: .normal),
+            1_200
+        )
+        XCTAssertEqual(
+            StoryPlaybackTiming.commandWaitMilliseconds(1_200, pace: .fastForward),
+            60
+        )
+        XCTAssertEqual(
+            StoryPlaybackTiming.commandWaitMilliseconds(40, pace: .fastForward),
+            40
+        )
+    }
+}
+
+final class ADVOpeningRevealTimingTests: XCTestCase {
+    func testPhaseBoundariesMatchTheADVOpeningTimeline() {
+        let cases: [(UInt64, ADVOpeningRevealPhase)] = [
+            (0, .blackout),
+            (299_999_999, .blackout),
+            (300_000_000, .scene),
+            (599_999_999, .scene),
+            (600_000_000, .textBox),
+            (799_999_999, .textBox),
+            (800_000_000, .text),
+            (1_000_000_000, .text),
+        ]
+
+        for (elapsed, expected) in cases {
+            XCTAssertEqual(
+                ADVOpeningRevealTiming.phase(atElapsedNanoseconds: elapsed),
+                expected,
+                "Unexpected phase at \(elapsed) ns"
+            )
+        }
+    }
+
+    func testPhaseVisibilityIsStaged() {
+        XCTAssertFalse(ADVOpeningRevealPhase.blackout.showsScene)
+        XCTAssertFalse(ADVOpeningRevealPhase.blackout.showsTextBox)
+        XCTAssertFalse(ADVOpeningRevealPhase.blackout.startsTextReveal)
+
+        XCTAssertTrue(ADVOpeningRevealPhase.scene.showsScene)
+        XCTAssertFalse(ADVOpeningRevealPhase.scene.showsTextBox)
+        XCTAssertFalse(ADVOpeningRevealPhase.scene.startsTextReveal)
+
+        XCTAssertTrue(ADVOpeningRevealPhase.textBox.showsScene)
+        XCTAssertTrue(ADVOpeningRevealPhase.textBox.showsTextBox)
+        XCTAssertFalse(ADVOpeningRevealPhase.textBox.startsTextReveal)
+
+        XCTAssertTrue(ADVOpeningRevealPhase.text.showsScene)
+        XCTAssertTrue(ADVOpeningRevealPhase.text.showsTextBox)
+        XCTAssertTrue(ADVOpeningRevealPhase.text.startsTextReveal)
+    }
+
+    func testAStoryWithoutAnEventTitleStartsReady() {
+        XCTAssertEqual(
+            ADVOpeningRevealTiming.initialPhase(hasEventTitle: false),
+            .text
+        )
+        XCTAssertEqual(
+            ADVOpeningRevealTiming.initialPhase(hasEventTitle: true),
+            .blackout
+        )
+    }
+}
+
+@MainActor
+final class ADVStoryRendererRenderingTests: XCTestCase {
+    func testDialogueAndPlaybackControlsRenderAtCompactAndRegularWidths() throws {
+        let node = StoryNode(
+            nodeId: "adv-preview",
+            lineOrder: 1,
+            speaker: "rio",
+            messageType: .text,
+            text: "今日はここから始めるよ。[br]まだ諦めてないよね？[br]ちゃんとついてきてね。",
+            screenMode: .adv,
+            uiVariant: .dialogue
+        )
+
+        for size in [CGSize(width: 320, height: 568), CGSize(width: 390, height: 844)] {
+            let content = ADVStoryRenderer(
+                node: node,
+                scenarioType: .middleEvent,
+                playbackMode: .fastForward,
+                isLogAvailable: true,
+                onAdvance: { _ in },
+                onSelectChoice: { _ in },
+                onDismissModal: {}
+            )
+            .frame(width: size.width, height: size.height)
+            .environment(\.colorScheme, .light)
+
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = 1
+            let image = try XCTUnwrap(renderer.uiImage)
+            XCTAssertEqual(image.size.width, size.width, accuracy: 0.5)
+            XCTAssertEqual(image.size.height, size.height, accuracy: 0.5)
+
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "ADV controls \(Int(size.width))x\(Int(size.height))"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            let pngData = try XCTUnwrap(image.pngData())
+            try pngData.write(
+                to: URL(
+                    fileURLWithPath: "/tmp/zakozako_adv_controls_\(Int(size.width)).png"
+                )
+            )
+        }
     }
 }
 
@@ -329,6 +479,21 @@ final class StoryScenarioGraphTests: XCTestCase {
         XCTAssertEqual(
             ChatStoryPresentationPolicy.manualAdvanceLabel(node: reply, scenarioType: .smallEvent),
             reply.text
+        )
+
+        let spacedReply = StoryNode(
+            nodeId: "spaced-reply",
+            lineOrder: 2,
+            speaker: "user",
+            messageType: .text,
+            text: "そうだね[sp]やってみる"
+        )
+        XCTAssertEqual(
+            ChatStoryPresentationPolicy.manualAdvanceLabel(
+                node: spacedReply,
+                scenarioType: .smallEvent
+            ),
+            "そうだね やってみる"
         )
     }
 

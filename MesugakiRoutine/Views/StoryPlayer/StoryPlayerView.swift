@@ -77,16 +77,16 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
 /// シナリオ進行や永続化は行わず、すべてcallbackを通じてCoreへ委譲する。
 struct StoryPlayerView: View {
     let input: any StoryPlayerViewInput
-    let onAdvance: () -> Void
+    var advOpeningRevealPhase: ADVOpeningRevealPhase = .text
+    let onAdvance: (StoryAdvancePace) -> Void
     let onChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
     let onPresentNode: () -> Void
-    let onRestart: () -> Void
     let onSkip: () -> Void
     let onClose: () -> Void
 
-    @State private var isShowingRestartConfirmation = false
     @State private var isShowingLog = false
+    @State private var advPlaybackMode: ADVPlaybackMode = .manual
 
     private var isAutomaticallyReturningCompletedEvent: Bool {
         input.isCompleted
@@ -106,6 +106,24 @@ struct StoryPlayerView: View {
 
     var body: some View {
         ZStack {
+            playerContent
+                .ignoresSafeArea(edges: ignoredSafeAreaEdges)
+                .allowsHitTesting(!isShowingLog)
+
+            if !isAutomaticallyReturningCompletedEvent, !isShowingLog {
+                VStack(spacing: 10) {
+                    topBar
+
+                    if let error = input.recoverableError, !error.isEmpty {
+                        recoverableErrorBanner(error)
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+            }
+
             if isShowingLog {
                 StoryLogView(
                     title: input.title,
@@ -117,37 +135,41 @@ struct StoryPlayerView: View {
                     }
                 )
                 .transition(.move(edge: .trailing).combined(with: .opacity))
-            } else {
-                playerContent
-                    .ignoresSafeArea(
-                        edges: input.currentMode == .chat ? [.horizontal, .bottom] : .all
-                    )
-
-                if !isAutomaticallyReturningCompletedEvent {
-                    VStack(spacing: 10) {
-                        topBar
-
-                        if let error = input.recoverableError, !error.isEmpty {
-                            recoverableErrorBanner(error)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                }
+                .zIndex(20)
             }
         }
         .background(AppColor.background.ignoresSafeArea())
-        .confirmationDialog(
-            input.isCompleted ? "このストーリーをもう一度読みますか？" : "最初から読み直しますか？",
-            isPresented: $isShowingRestartConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("最初から読む") { onRestart() }
-            Button("キャンセル", role: .cancel) {}
-        } message: {
-            Text("保存済みの途中位置はリセットされます。読了状態と思い出は保持されます。")
+        .onChange(of: input.currentMode.rawValue) { _, mode in
+            if mode != StoryScreenMode.adv.rawValue {
+                stopADVPlaybackModes()
+            }
+        }
+        .onChange(of: input.availableChoices.count) { _, choiceCount in
+            if choiceCount > 0, advPlaybackMode == .fastForward {
+                advPlaybackMode = .manual
+            }
+        }
+        .onChange(of: input.isModalPresented) { _, isPresented in
+            if isPresented, advPlaybackMode == .fastForward {
+                advPlaybackMode = .manual
+            }
+        }
+        .onChange(of: input.recoverableError ?? "") { _, message in
+            if !message.isEmpty {
+                stopADVPlaybackModes()
+            }
+        }
+    }
+
+    private var ignoredSafeAreaEdges: Edge.Set {
+        switch input.currentMode {
+        case .adv:
+            // 背景はrenderer内で全面表示し、下部操作バーだけhome indicatorを避ける。
+            return [.horizontal, .top]
+        case .chat:
+            return [.horizontal, .bottom]
+        case .call, .unknown:
+            return .all
         }
     }
 
@@ -177,9 +199,24 @@ struct StoryPlayerView: View {
                     cgAssetID: input.cgAssetID,
                     choices: input.availableChoices,
                     isModalPresented: input.isModalPresented,
+                    openingRevealPhase: advOpeningRevealPhase,
+                    playbackMode: advPlaybackMode,
+                    isPlaybackPaused: isShowingLog
+                        || !advOpeningRevealPhase.startsTextReveal,
+                    isAutomationAvailable: input.recoverableError?.isEmpty != false,
+                    isLogAvailable: StoryLogPresentationPolicy.isAvailable(
+                        for: input.scenarioType
+                    ),
                     onAdvance: onAdvance,
                     onSelectChoice: onChoice,
-                    onDismissModal: onDismissModal
+                    onDismissModal: onDismissModal,
+                    onSkip: {
+                        stopADVPlaybackModes()
+                        onSkip()
+                    },
+                    onShowLog: showLog,
+                    onToggleAuto: toggleADVAuto,
+                    onToggleFastForward: toggleADVFastForward
                 )
             case .chat:
                 ChatStoryRenderer(
@@ -192,7 +229,7 @@ struct StoryPlayerView: View {
                     choices: input.availableChoices,
                     isTyping: input.isTyping,
                     isModalPresented: input.isModalPresented,
-                    onAdvance: onAdvance,
+                    onAdvance: { onAdvance(.normal) },
                     onPresentNode: onPresentNode,
                     onSelectChoice: onChoice,
                     onDismissModal: onDismissModal
@@ -205,7 +242,7 @@ struct StoryPlayerView: View {
                     cgAssetID: input.cgAssetID,
                     choices: input.availableChoices,
                     isModalPresented: input.isModalPresented,
-                    onAdvance: onAdvance,
+                    onAdvance: { onAdvance(.normal) },
                     onSelectChoice: onChoice,
                     onDismissModal: onDismissModal
                 )
@@ -241,42 +278,55 @@ struct StoryPlayerView: View {
 
             Spacer(minLength: 0)
 
-            Menu {
-                if StoryLogPresentationPolicy.isAvailable(for: input.scenarioType) {
-                    Button {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            isShowingLog = true
+            if input.currentMode != .adv {
+                Menu {
+                    if StoryLogPresentationPolicy.isAvailable(for: input.scenarioType) {
+                        Button {
+                            showLog()
+                        } label: {
+                            Label("ログ", systemImage: "list.bullet.rectangle")
                         }
-                    } label: {
-                        Label("ログ", systemImage: "list.bullet.rectangle")
                     }
+                    if usesSkipOnlyDismissal, !input.isCompleted {
+                        Button(action: onSkip) {
+                            Label("スキップ", systemImage: "forward.end.fill")
+                        }
+                    } else {
+                        Button(action: onClose) {
+                            Label("閉じる", systemImage: "xmark")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.body.bold())
+                        .frame(width: 40, height: 40)
+                        .background(.ultraThinMaterial, in: Circle())
                 }
-                if !input.isCompleted
-                    || !ChatStoryPresentationPolicy.usesChatCompletion(for: input.scenarioType) {
-                    Button {
-                        isShowingRestartConfirmation = true
-                    } label: {
-                        Label(input.isCompleted ? "もう一度読む" : "最初から読み直す", systemImage: "arrow.counterclockwise")
-                    }
-                }
-                if usesSkipOnlyDismissal, !input.isCompleted {
-                    Button(action: onSkip) {
-                        Label("スキップ", systemImage: "forward.end.fill")
-                    }
-                } else {
-                    Button(action: onClose) {
-                        Label("閉じる", systemImage: "xmark")
-                    }
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.body.bold())
-                    .frame(width: 40, height: 40)
-                    .background(.ultraThinMaterial, in: Circle())
+                .foregroundStyle(AppColor.text)
+                .accessibilityLabel("ストーリーメニュー")
             }
-            .foregroundStyle(AppColor.text)
-            .accessibilityLabel("ストーリーメニュー")
         }
+    }
+
+    private func showLog() {
+        if advPlaybackMode == .fastForward {
+            advPlaybackMode = .manual
+        }
+        withAnimation(.easeOut(duration: 0.2)) {
+            isShowingLog = true
+        }
+    }
+
+    private func toggleADVAuto() {
+        advPlaybackMode = advPlaybackMode == .auto ? .manual : .auto
+    }
+
+    private func toggleADVFastForward() {
+        advPlaybackMode = advPlaybackMode == .fastForward ? .manual : .fastForward
+    }
+
+    private func stopADVPlaybackModes() {
+        advPlaybackMode = .manual
     }
 
     private func recoverableErrorBanner(_ message: String) -> some View {
@@ -321,15 +371,6 @@ struct StoryPlayerView: View {
 
             Spacer()
 
-            Button {
-                isShowingRestartConfirmation = true
-            } label: {
-                Label("もう一度読む", systemImage: "arrow.counterclockwise")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .tint(AppColor.primary)
-
             Button("閉じる", action: onClose)
                 .buttonStyle(.borderedProminent)
                 .tint(AppColor.primary)
@@ -350,6 +391,7 @@ struct StoryPlayerView: View {
                 cgAssetID: input.cgAssetID,
                 choices: input.availableChoices,
                 isModalPresented: input.isModalPresented,
+                showsPlaybackControls: false,
                 onAdvance: onAdvance,
                 onSelectChoice: onChoice,
                 onDismissModal: onDismissModal
@@ -381,9 +423,7 @@ struct StoryPlayerView: View {
                     .foregroundStyle(AppColor.muted)
                     .multilineTextAlignment(.center)
             }
-            Button("最初から読み直す") {
-                isShowingRestartConfirmation = true
-            }
+            Button("閉じる", action: onClose)
             .buttonStyle(.bordered)
             .tint(AppColor.primary)
         }

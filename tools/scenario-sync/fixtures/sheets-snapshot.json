@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-22T14:48:50.129Z",
+  "fetchedAt": "2026-09-22T17:00:58.806Z",
   "sheetId": "1Ifkw0X4TIOxe0f9EpZpZEGIexLg-xoXG8c-ro4I5MBM",
   "source": "public-xlsx",
   "tabs": {
@@ -10233,27 +10233,27 @@
         "background",
         "主人公宅・玄関",
         "bg_protagonist_entrance",
-        "未収録",
+        "公開可能",
         "true",
-        "シナリオで参照中。素材未収録。"
+        "Assets.xcassetsに収録済み。941×1672px、9:16。"
       ],
       [
         "bg_protagonist_entrance_evening",
         "background",
         "主人公宅・玄関前（夕方）",
         "bg_protagonist_entrance_evening",
-        "未収録",
+        "公開可能",
         "true",
-        "シナリオで参照中。素材未収録。"
+        "Assets.xcassetsに収録済み。941×1672px、9:16。夕方差分。"
       ],
       [
         "bg_protagonist_living_room",
         "background",
         "主人公宅・リビング",
         "bg_protagonist_living_room",
-        "未収録",
+        "公開可能",
         "true",
-        "プロローグで参照中。素材未収録。"
+        "Assets.xcassetsに収録済み。941×1672px、9:16。プロローグ等で参照中。"
       ],
       [
         "bg_rio_entrance",
@@ -10326,6 +10326,33 @@
         "ランタイム",
         "true",
         "ユーザー録音の保存スロット。静的音声素材ではありません。"
+      ],
+      [
+        "bg_protagonist_my_room",
+        "background",
+        "主人公宅・部屋",
+        "bg_protagonist_my_room",
+        "公開可能",
+        "true",
+        "Assets.xcassetsに収録済み。941×1672px、9:16。"
+      ],
+      [
+        "bg_protagonist_living_room_evening",
+        "background",
+        "主人公宅・リビング（夕方）",
+        "bg_protagonist_living_room_evening",
+        "公開可能",
+        "true",
+        "Assets.xcassetsに収録済み。941×1672px、9:16。夕方差分。"
+      ],
+      [
+        "bgm_usually",
+        "bgm",
+        "生意気な指先",
+        "bgm_usually.m4a",
+        "公開可能",
+        "true",
+        "通常使い。迷ったらこれ。2分02秒、44.1kHz・ステレオ。アプリ収録は192kbps AAC（M4A）。"
       ]
     ],
     "choices": [

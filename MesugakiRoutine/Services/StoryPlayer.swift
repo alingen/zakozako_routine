@@ -5,6 +5,27 @@ typealias StoryPlayerSleep = (UInt64) async throws -> Void
 typealias StoryPlayerLogger = (String) -> Void
 typealias StoryPlayerNow = () -> Date
 
+enum StoryAdvancePace: Equatable {
+    case normal
+    case fastForward
+}
+
+enum StoryPlaybackTiming {
+    static let fastForwardMaximumCommandWaitMilliseconds: UInt64 = 60
+
+    static func commandWaitMilliseconds(
+        _ milliseconds: UInt64,
+        pace: StoryAdvancePace
+    ) -> UInt64 {
+        switch pace {
+        case .normal:
+            return milliseconds
+        case .fastForward:
+            return min(milliseconds, fastForwardMaximumCommandWaitMilliseconds)
+        }
+    }
+}
+
 enum StoryPlayerError: LocalizedError, Equatable {
     case invalidScenario(String)
     case invalidCheckpoint(String)
@@ -259,7 +280,10 @@ final class StoryPlayer {
     }
 
     /// Advances a user-paused text/image/audio node.
-    func advance(expectedNodeId: String? = nil) async {
+    func advance(
+        expectedNodeId: String? = nil,
+        pace: StoryAdvancePace = .normal
+    ) async {
         guard expectedNodeId == nil || currentNode?.nodeId == expectedNodeId else { return }
         guard !isCompleted, !isClosed, let token = beginOperation() else { return }
         defer { endOperation(token) }
@@ -279,7 +303,12 @@ final class StoryPlayer {
             let next = try persistTransition(after: node, selectedChoice: nil)
             guard operationGeneration == token else { return }
             if let next {
-                try await drive(from: next, firstNodeWasReplayed: false, token: token)
+                try await drive(
+                    from: next,
+                    firstNodeWasReplayed: false,
+                    token: token,
+                    skipsCommandWaits: pace == .fastForward
+                )
             } else if let checkpoint {
                 try complete(checkpoint: checkpoint)
             }
@@ -441,7 +470,8 @@ private extension StoryPlayer {
     func drive(
         from firstNode: StoryNode,
         firstNodeWasReplayed: Bool,
-        token: UInt64
+        token: UInt64,
+        skipsCommandWaits: Bool = false
     ) async throws {
         guard let graph else { return }
         var cursor: StoryNode? = firstNode
@@ -506,7 +536,11 @@ private extension StoryPlayer {
             if pausesForUser { return }
 
             if !replayed, let waitMilliseconds = waitMilliseconds(in: dispatch) {
-                try await sleep(waitMilliseconds)
+                let effectiveWait = StoryPlaybackTiming.commandWaitMilliseconds(
+                    waitMilliseconds,
+                    pace: skipsCommandWaits ? .fastForward : .normal
+                )
+                try await sleep(effectiveWait)
                 guard operationGeneration == token, !isClosed else { return }
             }
 

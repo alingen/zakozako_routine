@@ -1,6 +1,40 @@
 import SwiftData
 import SwiftUI
 
+enum ADVOpeningRevealPhase: Int, Equatable {
+    case blackout
+    case scene
+    case textBox
+    case text
+
+    var showsScene: Bool { rawValue >= Self.scene.rawValue }
+    var showsTextBox: Bool { rawValue >= Self.textBox.rawValue }
+    var startsTextReveal: Bool { rawValue >= Self.text.rawValue }
+}
+
+enum ADVOpeningRevealTiming {
+    static let blackoutNanoseconds: UInt64 = 300_000_000
+    static let sceneToTextBoxNanoseconds: UInt64 = 300_000_000
+    static let textBoxToTextNanoseconds: UInt64 = 200_000_000
+
+    static let sceneStartNanoseconds = blackoutNanoseconds
+    static let textBoxStartNanoseconds = sceneStartNanoseconds
+        + sceneToTextBoxNanoseconds
+    static let textStartNanoseconds = textBoxStartNanoseconds
+        + textBoxToTextNanoseconds
+
+    static func initialPhase(hasEventTitle: Bool) -> ADVOpeningRevealPhase {
+        hasEventTitle ? .blackout : .text
+    }
+
+    static func phase(atElapsedNanoseconds elapsed: UInt64) -> ADVOpeningRevealPhase {
+        if elapsed < sceneStartNanoseconds { return .blackout }
+        if elapsed < textBoxStartNanoseconds { return .scene }
+        if elapsed < textStartNanoseconds { return .textBox }
+        return .text
+    }
+}
+
 /// SwiftUIのライフサイクルとUI非依存の`StoryPlayer`を接続する薄いcontainer。
 @MainActor
 struct StoryPlaybackContainerView: View {
@@ -13,6 +47,7 @@ struct StoryPlaybackContainerView: View {
     @State private var preparationError: String?
     @State private var isShowingEventTitleIntro = false
     @State private var isEventTitleIntroVisible = false
+    @State private var advOpeningRevealPhase: ADVOpeningRevealPhase = .text
     @State private var lastActiveSnapshot: StoryPlayerViewSnapshot?
     @State private var isCompletionFadeVisible = false
 
@@ -24,10 +59,12 @@ struct StoryPlaybackContainerView: View {
                     let renderedInput = displayedSnapshot(from: liveInput)
                     StoryPlayerView(
                         input: renderedInput,
-                        onAdvance: {
+                        advOpeningRevealPhase: advOpeningRevealPhase,
+                        onAdvance: { pace in
                             Task {
                                 await player.advance(
-                                    expectedNodeId: liveInput.currentNode?.nodeId
+                                    expectedNodeId: liveInput.currentNode?.nodeId,
+                                    pace: pace
                                 )
                             }
                         },
@@ -50,9 +87,6 @@ struct StoryPlaybackContainerView: View {
                             player.markCurrentNodePresented(
                                 expectedNodeId: liveInput.currentNode?.nodeId
                             )
-                        },
-                        onRestart: {
-                            Task { await player.restart() }
                         },
                         onSkip: {
                             Task {
@@ -80,6 +114,14 @@ struct StoryPlaybackContainerView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(AppColor.background)
                 }
+            }
+
+            if advOpeningRevealPhase == .blackout {
+                Color.black
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .zIndex(9)
+                    .accessibilityHidden(true)
             }
 
             if isShowingEventTitleIntro {
@@ -142,6 +184,9 @@ struct StoryPlaybackContainerView: View {
         preparationError = nil
         isShowingEventTitleIntro = false
         isEventTitleIntroVisible = false
+        advOpeningRevealPhase = ADVOpeningRevealTiming.initialPhase(
+            hasEventTitle: launch.event != nil
+        )
         lastActiveSnapshot = nil
         isCompletionFadeVisible = false
 
@@ -156,21 +201,21 @@ struct StoryPlaybackContainerView: View {
                 stateRepository: state
             )
             player = created
-            let startTask = Task { await created.start() }
 
             if launch.event != nil {
-                await presentEventTitleIntro()
+                await presentEventTitleIntro(starting: created)
+            } else {
+                await created.start()
             }
-
-            await startTask.value
         } catch {
             preparationError = error.localizedDescription
         }
     }
 
-    private func presentEventTitleIntro() async {
+    private func presentEventTitleIntro(starting player: StoryPlayer) async {
         isShowingEventTitleIntro = true
         isEventTitleIntroVisible = false
+        async let playerStart: Void = player.start()
 
         try? await Task<Never, Never>.sleep(nanoseconds: 180_000_000)
         guard !Task.isCancelled else { return }
@@ -182,13 +227,62 @@ struct StoryPlaybackContainerView: View {
         try? await Task<Never, Never>.sleep(nanoseconds: 1_200_000_000)
         guard !Task.isCancelled else { return }
 
+        // The title stays on an opaque black screen until the first story node
+        // is ready. This prevents a slow restore or an opening wait command
+        // from leaving the staged ADV reveal without scene content.
+        await playerStart
+        guard !Task.isCancelled else { return }
+
         withAnimation(.easeIn(duration: 0.3)) {
             isEventTitleIntroVisible = false
         }
 
-        try? await Task<Never, Never>.sleep(nanoseconds: 320_000_000)
+        try? await Task<Never, Never>.sleep(nanoseconds: 300_000_000)
         guard !Task.isCancelled else { return }
+
+        let shouldStageADVReveal = player.currentMode == .adv
+        if !shouldStageADVReveal {
+            // Chat/call events keep their existing immediate presentation once
+            // the opaque title screen is gone. The staged reveal is ADV-only.
+            advOpeningRevealPhase = .text
+        }
         isShowingEventTitleIntro = false
+
+        if shouldStageADVReveal {
+            await revealADVAfterEventTitle()
+        }
+    }
+
+    private func revealADVAfterEventTitle() async {
+        do {
+            try await Task<Never, Never>.sleep(
+                nanoseconds: ADVOpeningRevealTiming.blackoutNanoseconds
+            )
+        } catch {
+            return
+        }
+        guard !Task.isCancelled else { return }
+        advOpeningRevealPhase = .scene
+
+        do {
+            try await Task<Never, Never>.sleep(
+                nanoseconds: ADVOpeningRevealTiming.sceneToTextBoxNanoseconds
+            )
+        } catch {
+            return
+        }
+        guard !Task.isCancelled else { return }
+        advOpeningRevealPhase = .textBox
+
+        do {
+            try await Task<Never, Never>.sleep(
+                nanoseconds: ADVOpeningRevealTiming.textBoxToTextNanoseconds
+            )
+        } catch {
+            return
+        }
+        guard !Task.isCancelled else { return }
+        advOpeningRevealPhase = .text
     }
 
     private func snapshot(of player: StoryPlayer) -> StoryPlayerViewSnapshot {
@@ -296,7 +390,6 @@ private struct StoryEventTitleIntroView: View {
     var body: some View {
         ZStack {
             Color.black
-                .opacity(isVisible ? 0.58 : 0)
                 .ignoresSafeArea()
 
             ZStack {

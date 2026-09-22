@@ -206,7 +206,7 @@ struct ChatStoryRenderer: View {
                         node: activeEventSystemNode,
                         maxWidth: .infinity,
                         horizontalPadding: 32,
-                        onAdvance: canAdvance ? advanceFromEventSystemText : nil,
+                        onAdvance: canAdvance ? { _ in advanceFromEventSystemText() } : nil,
                         backgroundStyle: .baseColor
                     )
                     .padding(.horizontal, 10)
@@ -419,9 +419,8 @@ enum ChatStoryPresentationPolicy {
         guard node.isPlayerSpeaker else { return "次へ" }
         switch scenarioType {
         case .prologue, .smallEvent, .middleEvent, .largeEvent:
-            if let replyText = node.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !replyText.isEmpty {
-                return replyText
+            if !node.storyDisplayText.isEmpty {
+                return node.storyDisplayText
             }
             return isInitialEventPlayerMessage ? "送信する" : "返信する"
         case .daily, .unknown:
@@ -611,7 +610,7 @@ private struct StoryChatBubble: View {
     }
 
     private var chatSystemMessage: some View {
-        ChatSystemMessageView(text: node.text ?? "")
+        ChatSystemMessageView(text: node.storyDisplayText)
     }
 
     @ViewBuilder
@@ -682,7 +681,7 @@ private struct StoryChatBubble: View {
                         .font(.caption2.bold())
                         .foregroundStyle(AppColor.primary)
                 }
-                Text(node.text ?? "")
+                Text(node.storyDisplayText)
                     .font(.body)
                     .foregroundStyle(AppColor.text)
             }
