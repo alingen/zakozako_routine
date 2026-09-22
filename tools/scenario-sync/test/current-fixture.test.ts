@@ -146,7 +146,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       scenarioId: 'prologue_001',
       scenarioType: 'prologue',
     });
-    expect(prologueScenario?.nodes).toHaveLength(52);
+    expect(prologueScenario?.nodes).toHaveLength(53);
     expect(prologueScenario?.nodes[0]).toMatchObject({
       nodeId: 'prologue_001_001',
       screenMode: 'adv',
@@ -171,6 +171,15 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(prologueScenario?.nodes).toContainEqual(
       expect.objectContaining({ command: 'clear_background' }),
     );
+    expect(prologueScenario?.nodes.slice(44, 47)).toMatchObject([
+      { lineOrder: 45, command: 'clear_background' },
+      {
+        lineOrder: 46,
+        command: 'hide_portrait',
+        commandArgs: { action: 'hide', transition: 'fade' },
+      },
+      { lineOrder: 47, text: '数週間前。' },
+    ]);
     expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     for (const event of [prologueEvent!, ...chapterOneEpisodes]) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);
