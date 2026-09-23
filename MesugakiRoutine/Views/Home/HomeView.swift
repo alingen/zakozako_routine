@@ -22,6 +22,7 @@ struct HomeView: View {
 
     @Binding private var appDialog: AppDialogRequest?
     private let onboardingRoutineID: UUID?
+    private let highlightsDeferredReport: Bool
     private let onboardingReportActionTrigger: Int
     private let onOnboardingRoutineCompleted: () -> Void
     private let onOnboardingReportTargetFrameChange: (CGRect?) -> Void
@@ -29,12 +30,14 @@ struct HomeView: View {
     init(
         appDialog: Binding<AppDialogRequest?> = .constant(nil),
         onboardingRoutineID: UUID? = nil,
+        highlightsDeferredReport: Bool = false,
         onboardingReportActionTrigger: Int = 0,
         onOnboardingRoutineCompleted: @escaping () -> Void = {},
         onOnboardingReportTargetFrameChange: @escaping (CGRect?) -> Void = { _ in }
     ) {
         _appDialog = appDialog
         self.onboardingRoutineID = onboardingRoutineID
+        self.highlightsDeferredReport = highlightsDeferredReport
         self.onboardingReportActionTrigger = onboardingReportActionTrigger
         self.onOnboardingRoutineCompleted = onOnboardingRoutineCompleted
         self.onOnboardingReportTargetFrameChange = onOnboardingReportTargetFrameChange
@@ -296,11 +299,13 @@ struct HomeView: View {
             isCompleted: progress.isCompletedToday,
             isEditing: isEditingRoutines,
             isHighlighted: false,
-            allowsEditing: routine.id != onboardingRoutineID,
+            allowsEditing: routine.id != onboardingRoutineID || highlightsDeferredReport,
+            highlightsDeferredReport: highlightsDeferredReport && routine.id == onboardingRoutineID,
             completionActionTrigger: routine.id == onboardingRoutineID
                 ? onboardingReportActionTrigger
                 : 0,
-            reportsCompletionButtonFrame: routine.id == onboardingRoutineID,
+            reportsCompletionButtonFrame: routine.id == onboardingRoutineID
+                && !highlightsDeferredReport,
             onEdit: { requestRoutineEdit(routine) },
             onStartTimer: { openTimer(for: routine) },
             onAdvance: {
@@ -541,11 +546,17 @@ struct HomeView: View {
 
     private func recordPendingTimerCompletion() {
         guard let pendingTimerCompletion else { return }
+        let routine = pendingTimerCompletion.routine
+        let progress = viewModel.todayProgress(for: routine)
+        let completesTarget = progress.done + 1 >= progress.target
         if viewModel.advanceRoutine(
-            pendingTimerCompletion.routine,
+            routine,
             now: pendingTimerCompletion.completedAt
         ) {
             self.pendingTimerCompletion = nil
+            if completesTarget, routine.id == onboardingRoutineID {
+                onOnboardingRoutineCompleted()
+            }
         }
     }
 

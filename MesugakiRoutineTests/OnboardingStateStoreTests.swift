@@ -814,11 +814,13 @@ final class OnboardingStateStoreTests: XCTestCase {
             first.completePrologueMessage()
             XCTAssertEqual(first.phase, .firstReport)
             first.completeFirstReport(with: .deferred)
+            XCTAssertEqual(first.phase, .firstReport)
+            first.completeFirstReport(with: .completed)
             first.completeConversationPrompt(with: .later)
 
             let beforeStoryPresentation = OnboardingStateStore(defaults: defaults)
             XCTAssertEqual(beforeStoryPresentation.createdRoutineID, routineID)
-            XCTAssertEqual(beforeStoryPresentation.firstReportOutcome, .deferred)
+            XCTAssertEqual(beforeStoryPresentation.firstReportOutcome, .completed)
             XCTAssertEqual(beforeStoryPresentation.conversationChoice, .later)
             XCTAssertEqual(beforeStoryPresentation.phase, .storyUnlockPresentation)
             XCTAssertTrue(beforeStoryPresentation.isRunningInAppTutorial)
@@ -878,6 +880,49 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(completed.phase, .completed)
             XCTAssertTrue(completed.isCompleted)
             XCTAssertEqual(completed.notificationChoice, .notNow)
+        }
+    }
+
+    func testTomorrowRioMessageWaitsForNextBeforeCompletingOnboarding() {
+        withDefaults { defaults in
+            let store = makeTomorrowPromiseStore(defaults: defaults, routineID: UUID())
+
+            store.completeTomorrowRioMessage()
+            XCTAssertEqual(store.phase, .tomorrowPromise)
+
+            store.presentTomorrowRioMessage(notificationChoice: .notNow)
+            XCTAssertEqual(store.phase, .tomorrowRioMessage)
+            XCTAssertEqual(store.notificationChoice, .notNow)
+            XCTAssertFalse(store.isCompleted)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.phase, .tomorrowRioMessage)
+            XCTAssertFalse(restored.isCompleted)
+
+            restored.completeTomorrowRioMessage()
+            let completed = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(completed.phase, .completed)
+            XCTAssertTrue(completed.isCompleted)
+            XCTAssertEqual(completed.notificationChoice, .notNow)
+        }
+    }
+
+    func testTomorrowRioMessageKeepsEnabledNotificationTime() {
+        withDefaults { defaults in
+            let store = makeTomorrowPromiseStore(defaults: defaults, routineID: UUID())
+            store.presentTomorrowRioMessage(
+                notificationChoice: .enabled,
+                reminderMinuteOfDay: 21 * 60 + 30
+            )
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.phase, .tomorrowRioMessage)
+            XCTAssertEqual(restored.notificationChoice, .enabled)
+            XCTAssertEqual(restored.draft.reminderMinuteOfDay, 21 * 60 + 30)
+            XCTAssertFalse(restored.isCompleted)
+
+            restored.completeTomorrowRioMessage()
+            XCTAssertEqual(OnboardingStateStore(defaults: defaults).phase, .completed)
         }
     }
 
@@ -974,6 +1019,28 @@ final class OnboardingStateStoreTests: XCTestCase {
         }
     }
 
+    func testSecondPrologueMessageIsAddedBeforeFirstReportAndSurvivesRestart() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+
+            XCTAssertEqual(store.phase, .prologueMessage)
+            XCTAssertFalse(store.prologueMessageSecondLineShown)
+
+            store.showSecondPrologueMessage()
+            XCTAssertEqual(store.phase, .prologueMessage)
+            XCTAssertTrue(store.prologueMessageSecondLineShown)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.phase, .prologueMessage)
+            XCTAssertTrue(restored.prologueMessageSecondLineShown)
+
+            restored.completePrologueMessage()
+            XCTAssertEqual(OnboardingStateStore(defaults: defaults).phase, .firstReport)
+        }
+    }
+
     func testReportTutorialShownPersistsAndIsPresentedAgainUntilCompleted() {
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
@@ -1012,15 +1079,79 @@ final class OnboardingStateStoreTests: XCTestCase {
                 XCTAssertTrue(store.tutorialReportCompleted)
                 XCTAssertFalse(store.shouldPresentReportTutorial)
                 XCTAssertEqual(store.firstReportOutcome, outcome)
-                XCTAssertEqual(store.phase, .conversationPrompt)
+                XCTAssertEqual(
+                    store.phase,
+                    outcome == .completed ? .conversationPrompt : .firstReport
+                )
 
                 let restored = OnboardingStateStore(defaults: defaults)
                 XCTAssertTrue(restored.tutorialReportShown)
                 XCTAssertTrue(restored.tutorialReportCompleted)
                 XCTAssertFalse(restored.shouldPresentReportTutorial)
                 XCTAssertEqual(restored.firstReportOutcome, outcome)
-                XCTAssertEqual(restored.phase, .conversationPrompt)
+                XCTAssertEqual(
+                    restored.phase,
+                    outcome == .completed ? .conversationPrompt : .firstReport
+                )
             }
+        }
+    }
+
+    func testDeferredFirstReportWaitsForActualCompletionAfterRestart() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
+            store.completeFirstReport(with: .deferred)
+
+            XCTAssertEqual(store.phase, .firstReport)
+            XCTAssertEqual(store.firstReportOutcome, .deferred)
+            XCTAssertFalse(store.shouldPresentReportTutorial)
+            store.completeConversationPrompt(with: .later)
+            XCTAssertNil(store.conversationChoice)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.phase, .firstReport)
+            XCTAssertEqual(restored.firstReportOutcome, .deferred)
+            XCTAssertFalse(restored.shouldPresentReportTutorial)
+
+            restored.reconcileFirstReportIfNeeded(isRoutineComplete: false)
+            XCTAssertEqual(restored.phase, .firstReport)
+            restored.reconcileFirstReportIfNeeded(isRoutineComplete: true)
+            XCTAssertEqual(restored.phase, .conversationPrompt)
+            XCTAssertEqual(restored.firstReportOutcome, .completed)
+            XCTAssertEqual(
+                OnboardingStateStore(defaults: defaults).phase,
+                .conversationPrompt
+            )
+        }
+    }
+
+    func testLegacyDeferredConversationPromptResumesAtFirstReport() throws {
+        try withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
+            store.completeFirstReport(with: .deferred)
+
+            let data = try XCTUnwrap(
+                defaults.data(forKey: OnboardingStateStore.defaultStorageKey)
+            )
+            var legacySnapshot = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: data) as? [String: Any]
+            )
+            legacySnapshot["phase"] = OnboardingPhase.conversationPrompt.rawValue
+            defaults.set(
+                try JSONSerialization.data(withJSONObject: legacySnapshot),
+                forKey: OnboardingStateStore.defaultStorageKey
+            )
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(restored.phase, .firstReport)
+            XCTAssertEqual(restored.firstReportOutcome, .deferred)
+            XCTAssertFalse(restored.shouldPresentReportTutorial)
         }
     }
 
@@ -1046,7 +1177,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertTrue(completed.tutorialReportCompleted)
             XCTAssertFalse(completed.shouldPresentReportTutorial)
             XCTAssertEqual(completed.firstReportOutcome, .deferred)
-            XCTAssertEqual(completed.phase, .conversationPrompt)
+            XCTAssertEqual(completed.phase, .firstReport)
         }
     }
 
@@ -1372,6 +1503,7 @@ final class OnboardingStateStoreTests: XCTestCase {
         store.completePrologue()
         store.completePrologueMessage()
         store.completeFirstReport(with: .deferred)
+        store.completeFirstReport(with: .completed)
         store.completeConversationPrompt(with: .later)
         store.completeStoryUnlockPresentation()
         return store

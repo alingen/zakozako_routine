@@ -84,6 +84,7 @@ final class RoutineNotificationSchedulerTests: XCTestCase {
         store.completePrologue()
         store.completePrologueMessage()
         store.completeFirstReport(with: .deferred)
+        store.completeFirstReport(with: .completed)
         store.completeConversationPrompt(with: .later)
         store.completeStoryUnlockPresentation()
         let tomorrow = try date(2026, 9, 21, 0, 0)

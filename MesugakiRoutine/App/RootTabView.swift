@@ -111,7 +111,8 @@ struct RootTabView: View {
                     OnboardingPostPrologueMessageView(
                         routineTitle: onboardingRoutine()?.title
                             ?? onboardingState.draft.trimmedRoutineTitle,
-                        onContinue: completePostPrologueMessage
+                        showsSecondMessage: onboardingState.prologueMessageSecondLineShown,
+                        onContinue: advancePostPrologueMessage
                     )
                     .transition(.opacity)
                     .zIndex(9)
@@ -134,10 +135,21 @@ struct RootTabView: View {
                     .zIndex(10)
                 }
 
-                if onboardingState.phase == .tomorrowPromise {
+                if onboardingState.phase == .tomorrowPromise
+                    || onboardingState.phase == .tomorrowRioMessage {
                     tomorrowPromiseView
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                         .zIndex(20)
+                        .allowsHitTesting(onboardingState.phase == .tomorrowPromise)
+                        .accessibilityHidden(onboardingState.phase == .tomorrowRioMessage)
+                }
+
+                if onboardingState.phase == .tomorrowRioMessage {
+                    OnboardingTomorrowRioMessageView(
+                        onContinue: onboardingState.completeTomorrowRioMessage
+                    )
+                    .transition(.opacity)
+                    .zIndex(21)
                 }
             }
         }
@@ -175,9 +187,11 @@ struct RootTabView: View {
                 NavigationStack {
                     HomeView(
                         appDialog: $appDialog,
-                        onboardingRoutineID: onboardingState.shouldPresentReportTutorial
+                        onboardingRoutineID: onboardingState.phase == .firstReport
                             ? onboardingState.createdRoutineID
                             : nil,
+                        highlightsDeferredReport: onboardingState.firstReportOutcome == .deferred
+                            && onboardingState.phase == .firstReport,
                         onboardingReportActionTrigger: onboardingReportActionTrigger,
                         onOnboardingRoutineCompleted: completeFirstReport,
                         onOnboardingReportTargetFrameChange: updateOnboardingReportTargetFrame
@@ -413,9 +427,7 @@ struct RootTabView: View {
             completeFirstReport()
             return
         }
-        onboardingReportTargetFrame = nil
         onboardingState.completeFirstReport(with: .deferred)
-        presentConversationPromptIfNeeded()
     }
 
     private func requestOnboardingReport() {
@@ -656,7 +668,7 @@ struct RootTabView: View {
                     calendar: calendar,
                     notBefore: startOfTomorrow
                 )
-                onboardingState.completeOnboarding(
+                onboardingState.presentTomorrowRioMessage(
                     notificationChoice: .enabled,
                     reminderMinuteOfDay: minute
                 )
@@ -715,7 +727,7 @@ struct RootTabView: View {
             }
         }
 
-        onboardingState.completeOnboarding(notificationChoice: .notNow)
+        onboardingState.presentTomorrowRioMessage(notificationChoice: .notNow)
         if let message {
             onboardingAlertTitle = "通知は設定されませんでした"
             onboardingErrorMessage = message
@@ -780,7 +792,7 @@ struct RootTabView: View {
             presentPendingFirstStoryIfNeeded()
         case .firstStoryReadConfirmation:
             selectedTab = .interaction
-        case .tomorrowPromise, .completed:
+        case .tomorrowPromise, .tomorrowRioMessage, .completed:
             break
         }
     }
@@ -833,8 +845,12 @@ struct RootTabView: View {
         }
     }
 
-    private func completePostPrologueMessage() {
+    private func advancePostPrologueMessage() {
         guard onboardingState.phase == .prologueMessage else { return }
+        guard onboardingState.prologueMessageSecondLineShown else {
+            onboardingState.showSecondPrologueMessage()
+            return
+        }
         selectedTab = .home
         onboardingState.completePrologueMessage()
     }
@@ -990,7 +1006,7 @@ struct RootTabView: View {
     private func dismissPresentedOverlay() {
         if isOnboardingConversationDialog { return }
         if onboardingState.phase == .prologueMessage {
-            completePostPrologueMessage()
+            advancePostPrologueMessage()
         } else if blockedBehaviorTaunt != nil {
             dismissBlockedBehaviorTaunt()
         } else {
@@ -1245,7 +1261,11 @@ private struct OnboardingReportCalloutSizePreferenceKey: PreferenceKey {
 /// プロローグ直後、初回報告へ移る前にHome上へ重ねる莉央の一言。
 private struct OnboardingPostPrologueMessageView: View {
     let routineTitle: String
+    let showsSecondMessage: Bool
     let onContinue: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var todayMessage: String {
         "今日は「\(routineTitle)」だよ"
@@ -1256,12 +1276,31 @@ private struct OnboardingPostPrologueMessageView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     RioSpeechRow {
-                        VStack(alignment: .leading, spacing: 10) {
-                            OnboardingRioBubble(text: todayMessage)
-                            OnboardingRioBubble(text: "できたら報告してね〜")
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 10) {
+                                OnboardingRioBubble(text: todayMessage)
+
+                                if showsSecondMessage {
+                                    OnboardingRioBubble(text: "できたら報告してね〜")
+                                        .transition(
+                                            reduceMotion
+                                                ? .opacity
+                                                : .offset(y: 8).combined(with: .opacity)
+                                        )
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
+                        .scrollBounceBehavior(.basedOnSize)
                     }
-                    .frame(maxWidth: 520)
+                    .frame(
+                        maxWidth: 520,
+                        minHeight: dynamicTypeSize.isAccessibilitySize ? 210 : 150,
+                        maxHeight: dynamicTypeSize.isAccessibilitySize ? 210 : 150,
+                        alignment: .top
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onContinue)
 
                     Button("次へ", action: onContinue)
                         .font(.footnote.weight(.semibold))
@@ -1279,8 +1318,13 @@ private struct OnboardingPostPrologueMessageView: View {
             }
             .scrollBounceBehavior(.basedOnSize)
         }
+        .animation(.easeOut(duration: reduceMotion ? 0.1 : 0.22), value: showsSecondMessage)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("莉央、\(todayMessage)。できたら報告してね〜")
+        .accessibilityLabel(
+            showsSecondMessage
+                ? "莉央、\(todayMessage)。できたら報告してね〜"
+                : "莉央、\(todayMessage)"
+        )
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape, onContinue)
     }

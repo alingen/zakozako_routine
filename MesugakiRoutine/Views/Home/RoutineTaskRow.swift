@@ -21,6 +21,7 @@ struct RoutineTaskRow: View {
     let isEditing: Bool
     let isHighlighted: Bool
     let allowsEditing: Bool
+    let highlightsDeferredReport: Bool
     let completionActionTrigger: Int
     let reportsCompletionButtonFrame: Bool
     let onEdit: () -> Void
@@ -206,6 +207,7 @@ struct RoutineTaskRow: View {
                     isCompleted: isCompleted,
                     progressCount: progressCount,
                     progressTarget: progressTarget,
+                    highlightsDeferredReport: highlightsDeferredReport,
                     externalActionTrigger: completionActionTrigger,
                     reportsFrame: reportsCompletionButtonFrame,
                     onAdvance: onAdvance,
@@ -378,6 +380,7 @@ private struct RoutineCompletionButton: View {
     let isCompleted: Bool
     let progressCount: Int
     let progressTarget: Int
+    let highlightsDeferredReport: Bool
     let externalActionTrigger: Int
     let reportsFrame: Bool
     let onAdvance: () -> Bool
@@ -432,6 +435,12 @@ private struct RoutineCompletionButton: View {
             }
             .frame(width: 50, height: 50)
             .contentShape(Circle())
+            .overlay {
+                if highlightsDeferredReport && !isCompleted {
+                    DeferredReportRing()
+                        .allowsHitTesting(false)
+                }
+            }
         }
         .buttonStyle(RoutineCompletionPressStyle())
         .disabled(isAnimating)
@@ -532,6 +541,25 @@ private struct RoutineCompletionButton: View {
             isAnimating = false
             completionTask = nil
         }
+    }
+}
+
+/// 「あとでやる」の後も、実際の報告ボタンだけを静かに示す。
+private struct DeferredReportRing: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isDimmed = false
+
+    var body: some View {
+        Circle()
+            .stroke(AppColor.primary, lineWidth: 3)
+            .frame(width: 58, height: 58)
+            .opacity(reduceMotion || !isDimmed ? 1 : 0.28)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+                    isDimmed = true
+                }
+            }
     }
 }
 
@@ -668,6 +696,7 @@ extension View {
             isEditing: false,
             isHighlighted: false,
             allowsEditing: true,
+            highlightsDeferredReport: false,
             completionActionTrigger: 0,
             reportsCompletionButtonFrame: false,
             onEdit: {},
@@ -693,6 +722,7 @@ extension View {
             isEditing: false,
             isHighlighted: false,
             allowsEditing: true,
+            highlightsDeferredReport: false,
             completionActionTrigger: 0,
             reportsCompletionButtonFrame: false,
             onEdit: {},

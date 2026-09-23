@@ -180,8 +180,6 @@ struct OnboardingTomorrowView: View {
 
                     promiseCard
 
-                    rioMessage
-
                     VStack(alignment: .leading, spacing: 12) {
                         Text("この約束を思い出せるように、お知らせしますか？")
                             .font(.headline)
@@ -266,33 +264,60 @@ struct OnboardingTomorrowView: View {
         }
     }
 
-    private var rioMessage: some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            Image("rio_blocked_behavior_taunt")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 100, height: 100, alignment: .top)
-                .clipped()
-                .background(AppColor.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .accessibilityHidden(true)
-
-            Text("さすがに2日くらいはできるよね〜？w")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppColor.text)
-                .padding(15)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AppColor.primarySoft, in: RoundedRectangle(cornerRadius: 18))
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("莉央、さすがに2日くらいはできるよね〜？w")
-    }
-
     private var cueLeadText: String {
         let cue = cueText.trimmingCharacters(in: .whitespacesAndNewlines)
         if cue.hasSuffix("に") || cue.hasSuffix("すぐ") || cue.hasSuffix("たら") {
             return cue
         }
         return "\(cue)に"
+    }
+}
+
+/// 通知の選択後、設定画面の上に重ねる最後の莉央の一言。
+struct OnboardingTomorrowRioMessageView: View {
+    let onContinue: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isVisible = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Color.black.opacity(0.26)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+
+                ScrollView {
+                    VStack(spacing: 22) {
+                        RioSpeechRow {
+                            OnboardingRioBubble(text: "さすがに2日くらいはできるよね〜？w")
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("莉央、さすがに2日くらいはできるよね〜？w")
+
+                        Button("次へ", action: onContinue)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(AppColor.text)
+                            .padding(.horizontal, 20)
+                            .frame(minHeight: 44)
+                            .background(AppColor.surface.opacity(0.95), in: Capsule())
+                            .buttonStyle(.plain)
+                    }
+                    .frame(maxWidth: 520)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: proxy.size.height, alignment: .center)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            }
+        }
+        .opacity(isVisible ? 1 : 0)
+        .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape, onContinue)
+        .onAppear {
+            withAnimation(.easeOut(duration: reduceMotion ? 0.01 : 0.2)) {
+                isVisible = true
+            }
+        }
     }
 }

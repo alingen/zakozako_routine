@@ -86,6 +86,7 @@ enum OnboardingPhase: String, Codable, Sendable {
     case firstStoryPlayback
     case firstStoryReadConfirmation
     case tomorrowPromise
+    case tomorrowRioMessage
     case completed
 }
 
@@ -287,6 +288,9 @@ final class OnboardingStateStore {
     private(set) var confirmationGuidanceStage: OnboardingConfirmationGuidanceStage {
         didSet { persistIfNeeded() }
     }
+    private(set) var prologueMessageSecondLineShown: Bool {
+        didSet { persistIfNeeded() }
+    }
     private(set) var phase: OnboardingPhase {
         didSet { persistIfNeeded() }
     }
@@ -371,7 +375,15 @@ final class OnboardingStateStore {
             ?? Self.restoredBlockedBehaviorStage(from: snapshot)
         confirmationGuidanceStage = snapshot.confirmationGuidanceStage
             ?? Self.restoredConfirmationGuidanceStage(from: snapshot)
-        phase = snapshot.phase
+        prologueMessageSecondLineShown = snapshot.prologueMessageSecondLineShown ?? false
+        // 旧版では「あとでやる」だけで会話案内へ進んでいた。まだ選択していない場合は
+        // 初回報告へ戻し、実際の達成を待つ。
+        phase = !restoredAsCompleted
+            && snapshot.phase == .conversationPrompt
+            && snapshot.firstReportOutcome == .deferred
+            && snapshot.conversationChoice == nil
+            ? .firstReport
+            : snapshot.phase
         draft = snapshot.draft
         createdRoutineID = snapshot.createdRoutineID
         firstReportOutcome = snapshot.firstReportOutcome
@@ -840,6 +852,7 @@ final class OnboardingStateStore {
         performBatchUpdate {
             self.createdRoutineID = createdRoutineID
             isPrologueAutoplayPending = true
+            prologueMessageSecondLineShown = false
             tutorialReportShown = false
             tutorialReportCompleted = false
             phase = .prologue
@@ -851,8 +864,17 @@ final class OnboardingStateStore {
         guard !isCompleted, phase == .prologue else { return }
         performBatchUpdate {
             isPrologueAutoplayPending = false
+            prologueMessageSecondLineShown = false
             phase = .prologueMessage
         }
+    }
+
+    /// 最初のセリフを見た後、莉央の位置を変えずに2つ目のセリフを追加する。
+    func showSecondPrologueMessage() {
+        guard !isCompleted,
+              phase == .prologueMessage,
+              !prologueMessageSecondLineShown else { return }
+        prologueMessageSecondLineShown = true
     }
 
     /// 莉央の一言を確認した後、通常Home上の初回報告チュートリアルへ移る。
@@ -895,14 +917,16 @@ final class OnboardingStateStore {
         completeFirstReport(with: .completed)
     }
 
-    /// 通常の達成処理を実行したか、達成せず「あとで」を選んだかを記録する。
+    /// 達成時は会話案内へ進む。「あとで」は操作説明だけを終了し、達成を待つ。
     func completeFirstReport(with outcome: OnboardingFirstReportOutcome) {
         guard !isCompleted, phase == .firstReport else { return }
         performBatchUpdate {
             tutorialReportShown = true
             tutorialReportCompleted = true
             firstReportOutcome = outcome
-            phase = .conversationPrompt
+            if outcome == .completed {
+                phase = .conversationPrompt
+            }
         }
     }
 
@@ -1025,6 +1049,37 @@ final class OnboardingStateStore {
         }
     }
 
+    /// 通知の選択を保存し、最後の莉央の一言を表示する。まだ完了扱いにはしない。
+    func presentTomorrowRioMessage(
+        notificationChoice: OnboardingNotificationChoice,
+        reminderMinuteOfDay: Int? = nil
+    ) {
+        guard !isCompleted, phase == .tomorrowPromise else { return }
+        performBatchUpdate {
+            self.notificationChoice = notificationChoice
+            draft.setReminderMinuteOfDay(reminderMinuteOfDay)
+            pendingNotificationSetup = nil
+            if notificationChoice == .notNow {
+                notificationRoutineID = nil
+                notificationNotBefore = nil
+            }
+            phase = .tomorrowRioMessage
+        }
+    }
+
+    /// 莉央の一言を見終えたタイミングでオンボーディングを完了する。
+    func completeTomorrowRioMessage() {
+        guard !isCompleted,
+              phase == .tomorrowRioMessage,
+              notificationChoice != nil else { return }
+        performBatchUpdate {
+            tutorialReportShown = true
+            tutorialReportCompleted = true
+            isCompleted = true
+            phase = .completed
+        }
+    }
+
     /// デバッグ・テスト・将来の「オンボーディングを再確認」に使える初期化。
     func reset() {
         let initial = Snapshot.initial
@@ -1036,6 +1091,7 @@ final class OnboardingStateStore {
             cueSelectionGuidanceStage = .waitingToPresent
             blockedBehaviorStage = .waitingToPresent
             confirmationGuidanceStage = .waitingToPresent
+            prologueMessageSecondLineShown = false
             phase = initial.phase
             draft = initial.draft
             createdRoutineID = nil
@@ -1075,6 +1131,7 @@ final class OnboardingStateStore {
             cueSelectionGuidanceStage: cueSelectionGuidanceStage,
             blockedBehaviorStage: blockedBehaviorStage,
             confirmationGuidanceStage: confirmationGuidanceStage,
+            prologueMessageSecondLineShown: prologueMessageSecondLineShown,
             phase: phase,
             draft: draft,
             createdRoutineID: createdRoutineID,
@@ -1175,6 +1232,7 @@ final class OnboardingStateStore {
         var cueSelectionGuidanceStage: OnboardingDelayedGuidanceStage?
         var blockedBehaviorStage: OnboardingBlockedBehaviorStage?
         var confirmationGuidanceStage: OnboardingConfirmationGuidanceStage?
+        var prologueMessageSecondLineShown: Bool?
         var phase: OnboardingPhase
         var draft: OnboardingDraft
         var createdRoutineID: UUID?
@@ -1201,6 +1259,7 @@ final class OnboardingStateStore {
             cueSelectionGuidanceStage: .waitingToPresent,
             blockedBehaviorStage: .waitingToPresent,
             confirmationGuidanceStage: .waitingToPresent,
+            prologueMessageSecondLineShown: false,
             phase: .dedicatedSetup,
             draft: OnboardingDraft(),
             createdRoutineID: nil,
