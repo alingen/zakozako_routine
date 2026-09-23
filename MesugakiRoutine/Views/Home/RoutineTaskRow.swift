@@ -21,10 +21,13 @@ struct RoutineTaskRow: View {
     let isEditing: Bool
     let isHighlighted: Bool
     let allowsEditing: Bool
+    let completionActionTrigger: Int
+    let reportsCompletionButtonFrame: Bool
     let onEdit: () -> Void
     let onStartTimer: () -> Void
     let onAdvance: () -> Bool
     let onUndoCompletion: () -> Bool
+    let onCompletionButtonFrameChange: (CGRect?) -> Void
 
     var body: some View {
         Group {
@@ -52,6 +55,14 @@ struct RoutineTaskRow: View {
         )
         .animation(.easeInOut(duration: 0.2), value: isCompleted)
         .accessibilityElement(children: .contain)
+        .onPreferenceChange(RoutineCompletionButtonFramePreferenceKey.self) { frame in
+            guard reportsCompletionButtonFrame else { return }
+            onCompletionButtonFrameChange(frame)
+        }
+        .onDisappear {
+            guard reportsCompletionButtonFrame else { return }
+            onCompletionButtonFrameChange(nil)
+        }
     }
 
     private var regularLayout: some View {
@@ -195,6 +206,8 @@ struct RoutineTaskRow: View {
                     isCompleted: isCompleted,
                     progressCount: progressCount,
                     progressTarget: progressTarget,
+                    externalActionTrigger: completionActionTrigger,
+                    reportsFrame: reportsCompletionButtonFrame,
                     onAdvance: onAdvance,
                     onUndoCompletion: onUndoCompletion
                 )
@@ -365,6 +378,8 @@ private struct RoutineCompletionButton: View {
     let isCompleted: Bool
     let progressCount: Int
     let progressTarget: Int
+    let externalActionTrigger: Int
+    let reportsFrame: Bool
     let onAdvance: () -> Bool
     let onUndoCompletion: () -> Bool
 
@@ -420,6 +435,16 @@ private struct RoutineCompletionButton: View {
         }
         .buttonStyle(RoutineCompletionPressStyle())
         .disabled(isAnimating)
+        .background {
+            if reportsFrame {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: RoutineCompletionButtonFramePreferenceKey.self,
+                        value: proxy.frame(in: .global)
+                    )
+                }
+            }
+        }
         .accessibilityLabel(isCompleted ? "\(title)を未完了に戻す" : "\(title)を1回報告")
         .accessibilityValue(
             isCompleted
@@ -439,6 +464,10 @@ private struct RoutineCompletionButton: View {
             withAnimation(.easeOut(duration: reduceMotion ? 0.1 : 0.2)) {
                 fillProgress = newValue ? 1 : 0
             }
+        }
+        .onChange(of: externalActionTrigger) { oldValue, newValue in
+            guard reportsFrame, newValue != oldValue else { return }
+            toggleCompletion()
         }
         .onDisappear {
             completionTask?.cancel()
@@ -502,6 +531,16 @@ private struct RoutineCompletionButton: View {
             }
             isAnimating = false
             completionTask = nil
+        }
+    }
+}
+
+private struct RoutineCompletionButtonFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect?
+
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        if let next = nextValue() {
+            value = next
         }
     }
 }
@@ -629,10 +668,13 @@ extension View {
             isEditing: false,
             isHighlighted: false,
             allowsEditing: true,
+            completionActionTrigger: 0,
+            reportsCompletionButtonFrame: false,
             onEdit: {},
             onStartTimer: {},
             onAdvance: { true },
-            onUndoCompletion: { true }
+            onUndoCompletion: { true },
+            onCompletionButtonFrameChange: { _ in }
         )
         RoutineTaskRow(
             title: "散歩する",
@@ -651,10 +693,13 @@ extension View {
             isEditing: false,
             isHighlighted: false,
             allowsEditing: true,
+            completionActionTrigger: 0,
+            reportsCompletionButtonFrame: false,
             onEdit: {},
             onStartTimer: {},
             onAdvance: { true },
-            onUndoCompletion: { true }
+            onUndoCompletion: { true },
+            onCompletionButtonFrameChange: { _ in }
         )
     }
     .padding()

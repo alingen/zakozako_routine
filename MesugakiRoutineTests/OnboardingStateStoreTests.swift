@@ -20,6 +20,9 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertNil(store.createdRoutineID)
             XCTAssertFalse(store.isCompleted)
             XCTAssertFalse(store.isPrologueAutoplayPending)
+            XCTAssertFalse(store.tutorialReportShown)
+            XCTAssertFalse(store.tutorialReportCompleted)
+            XCTAssertFalse(store.shouldPresentReportTutorial)
             XCTAssertTrue(store.shouldPresentDedicatedSetup)
             XCTAssertFalse(store.isRunningInAppTutorial)
         }
@@ -863,6 +866,85 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(firstReport.createdRoutineID, routineID)
             XCTAssertEqual(firstReport.phase, .firstReport)
             XCTAssertFalse(firstReport.isPrologueAutoplayPending)
+            XCTAssertFalse(firstReport.tutorialReportShown)
+            XCTAssertFalse(firstReport.tutorialReportCompleted)
+            XCTAssertTrue(firstReport.shouldPresentReportTutorial)
+        }
+    }
+
+    func testReportTutorialShownPersistsAndIsPresentedAgainUntilCompleted() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
+
+            store.markReportTutorialShown()
+
+            XCTAssertTrue(store.tutorialReportShown)
+            XCTAssertFalse(store.tutorialReportCompleted)
+            XCTAssertTrue(store.shouldPresentReportTutorial)
+            XCTAssertNil(store.firstReportOutcome)
+            XCTAssertEqual(store.phase, .firstReport)
+
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertTrue(restored.tutorialReportShown)
+            XCTAssertFalse(restored.tutorialReportCompleted)
+            XCTAssertTrue(restored.shouldPresentReportTutorial)
+            XCTAssertNil(restored.firstReportOutcome)
+            XCTAssertEqual(restored.phase, .firstReport)
+        }
+    }
+
+    func testCompletingFirstReportPersistsTutorialCompletionForBothOutcomes() {
+        for outcome in [OnboardingFirstReportOutcome.completed, .deferred] {
+            withDefaults { defaults in
+                let store = OnboardingStateStore(defaults: defaults)
+                store.beginInAppTutorial(createdRoutineID: UUID())
+                store.completePrologue()
+                store.completePrologueMessage()
+
+                store.completeFirstReport(with: outcome)
+
+                XCTAssertTrue(store.tutorialReportShown)
+                XCTAssertTrue(store.tutorialReportCompleted)
+                XCTAssertFalse(store.shouldPresentReportTutorial)
+                XCTAssertEqual(store.firstReportOutcome, outcome)
+                XCTAssertEqual(store.phase, .conversationPrompt)
+
+                let restored = OnboardingStateStore(defaults: defaults)
+                XCTAssertTrue(restored.tutorialReportShown)
+                XCTAssertTrue(restored.tutorialReportCompleted)
+                XCTAssertFalse(restored.shouldPresentReportTutorial)
+                XCTAssertEqual(restored.firstReportOutcome, outcome)
+                XCTAssertEqual(restored.phase, .conversationPrompt)
+            }
+        }
+    }
+
+    func testLegacyReportTutorialFieldsAreRestoredFromFirstReportOutcome() throws {
+        try withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
+
+            try removeReportTutorialFields(from: defaults)
+
+            let pending = OnboardingStateStore(defaults: defaults)
+            XCTAssertFalse(pending.tutorialReportShown)
+            XCTAssertFalse(pending.tutorialReportCompleted)
+            XCTAssertTrue(pending.shouldPresentReportTutorial)
+
+            pending.completeFirstReport(with: .deferred)
+            try removeReportTutorialFields(from: defaults)
+
+            let completed = OnboardingStateStore(defaults: defaults)
+            XCTAssertTrue(completed.tutorialReportShown)
+            XCTAssertTrue(completed.tutorialReportCompleted)
+            XCTAssertFalse(completed.shouldPresentReportTutorial)
+            XCTAssertEqual(completed.firstReportOutcome, .deferred)
+            XCTAssertEqual(completed.phase, .conversationPrompt)
         }
     }
 
@@ -901,6 +983,8 @@ final class OnboardingStateStoreTests: XCTestCase {
             store.completeOnboarding(notificationChoice: .notNow)
 
             XCTAssertEqual(store.phase, .dedicatedSetup)
+            XCTAssertFalse(store.tutorialReportShown)
+            XCTAssertFalse(store.tutorialReportCompleted)
             XCTAssertNil(store.firstReportOutcome)
             XCTAssertNil(store.conversationChoice)
             XCTAssertNil(store.notificationChoice)
@@ -912,15 +996,20 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             XCTAssertEqual(store.phase, .prologue)
             XCTAssertTrue(store.isPrologueAutoplayPending)
+            XCTAssertFalse(store.tutorialReportShown)
+            XCTAssertFalse(store.tutorialReportCompleted)
             XCTAssertNil(store.notificationChoice)
 
             store.completePrologue()
             store.completePrologue()
+            store.markReportTutorialShown()
             store.completeFirstReport(with: .completed)
             store.completeOnboarding(notificationChoice: .notNow)
 
             XCTAssertEqual(store.phase, .prologueMessage)
             XCTAssertFalse(store.isPrologueAutoplayPending)
+            XCTAssertFalse(store.tutorialReportShown)
+            XCTAssertFalse(store.tutorialReportCompleted)
             XCTAssertNil(store.firstReportOutcome)
             XCTAssertNil(store.notificationChoice)
             XCTAssertFalse(store.isCompleted)
@@ -930,6 +1019,9 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             XCTAssertEqual(store.phase, .firstReport)
             XCTAssertFalse(store.isPrologueAutoplayPending)
+            XCTAssertFalse(store.tutorialReportShown)
+            XCTAssertFalse(store.tutorialReportCompleted)
+            XCTAssertTrue(store.shouldPresentReportTutorial)
         }
     }
 
@@ -941,6 +1033,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             store.beginInAppTutorial(createdRoutineID: UUID())
             store.completePrologue()
             store.completePrologueMessage()
+            store.markReportTutorialShown()
             store.completeFirstReport(with: .completed)
 
             store.reset()
@@ -957,6 +1050,9 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertEqual(restored.draft, OnboardingDraft())
             XCTAssertNil(restored.createdRoutineID)
             XCTAssertNil(restored.firstReportOutcome)
+            XCTAssertFalse(restored.tutorialReportShown)
+            XCTAssertFalse(restored.tutorialReportCompleted)
+            XCTAssertFalse(restored.shouldPresentReportTutorial)
             XCTAssertFalse(restored.isCompleted)
         }
     }
@@ -1011,11 +1107,15 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             XCTAssertTrue(store.isCompleted)
             XCTAssertFalse(store.isPrologueAutoplayPending)
+            XCTAssertTrue(store.tutorialReportShown)
+            XCTAssertTrue(store.tutorialReportCompleted)
             XCTAssertEqual(store.phase, .completed)
 
             let restored = OnboardingStateStore(defaults: defaults)
             XCTAssertFalse(restored.startedWithoutSavedState)
             XCTAssertTrue(restored.isCompleted)
+            XCTAssertTrue(restored.tutorialReportShown)
+            XCTAssertTrue(restored.tutorialReportCompleted)
         }
     }
 
@@ -1042,10 +1142,16 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             XCTAssertEqual(store.firstReportOutcome, .completed)
             XCTAssertEqual(store.phase, .conversationPrompt)
+            XCTAssertTrue(store.tutorialReportShown)
+            XCTAssertTrue(store.tutorialReportCompleted)
+            XCTAssertFalse(store.shouldPresentReportTutorial)
 
             let restored = OnboardingStateStore(defaults: defaults)
             XCTAssertEqual(restored.firstReportOutcome, .completed)
             XCTAssertEqual(restored.phase, .conversationPrompt)
+            XCTAssertTrue(restored.tutorialReportShown)
+            XCTAssertTrue(restored.tutorialReportCompleted)
+            XCTAssertFalse(restored.shouldPresentReportTutorial)
         }
     }
 
@@ -1060,6 +1166,9 @@ final class OnboardingStateStoreTests: XCTestCase {
 
             XCTAssertNil(store.firstReportOutcome)
             XCTAssertEqual(store.phase, .firstReport)
+            XCTAssertFalse(store.tutorialReportShown)
+            XCTAssertFalse(store.tutorialReportCompleted)
+            XCTAssertTrue(store.shouldPresentReportTutorial)
         }
     }
 
@@ -1260,6 +1369,21 @@ final class OnboardingStateStoreTests: XCTestCase {
         )
         XCTAssertEqual(selection.applicationTokens.count, 1)
         return try JSONEncoder().encode(selection)
+    }
+
+    private func removeReportTutorialFields(from defaults: UserDefaults) throws {
+        let data = try XCTUnwrap(
+            defaults.data(forKey: OnboardingStateStore.defaultStorageKey)
+        )
+        var snapshot = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        snapshot.removeValue(forKey: "tutorialReportShown")
+        snapshot.removeValue(forKey: "tutorialReportCompleted")
+        defaults.set(
+            try JSONSerialization.data(withJSONObject: snapshot),
+            forKey: OnboardingStateStore.defaultStorageKey
+        )
     }
 
     private func withDefaults(_ body: (UserDefaults) throws -> Void) rethrows {

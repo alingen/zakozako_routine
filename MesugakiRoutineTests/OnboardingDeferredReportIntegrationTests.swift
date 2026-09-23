@@ -35,6 +35,9 @@ final class OnboardingDeferredReportIntegrationTests: XCTestCase {
 
         XCTAssertEqual(onboarding.firstReportOutcome, .deferred)
         XCTAssertEqual(onboarding.phase, .conversationPrompt)
+        XCTAssertTrue(onboarding.tutorialReportShown)
+        XCTAssertTrue(onboarding.tutorialReportCompleted)
+        XCTAssertFalse(onboarding.shouldPresentReportTutorial)
         XCTAssertTrue(routine.progressEvents.isEmpty)
         XCTAssertEqual(routine.progressCount(now: now), 0)
         XCTAssertFalse(routine.isComplete(now: now))

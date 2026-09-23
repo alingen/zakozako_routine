@@ -414,7 +414,7 @@ struct OnboardingSetupView: View {
                     .font(.headline)
                     .foregroundStyle(AppColor.text)
 
-                ForEach(goalOptions) { option in
+                ForEach(OnboardingGoalPreset.options(for: stateStore.draft.selectedHabitID)) { option in
                     OnboardingSelectionRow(
                         title: option.label,
                         isSelected: stateStore.draft.selectedGoalID == option.id
@@ -443,7 +443,7 @@ struct OnboardingSetupView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("できたと判断できる、具体的な約束")
                         .font(.subheadline.weight(.semibold))
-                    TextField("例：筋トレを5分する", text: customGoalBinding)
+                    TextField("例：筋トレを10分する", text: customGoalBinding)
                         .focused($focusedField, equals: .customGoal)
                         .submitLabel(.done)
                         .onSubmit { focusedField = nil }
@@ -452,6 +452,7 @@ struct OnboardingSetupView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .onAppear(perform: clearObsoleteGoalSelection)
     }
 
     private var cueSelectionPage: some View {
@@ -804,57 +805,6 @@ struct OnboardingSetupView: View {
         }
     }
 
-    private var goalOptions: [OnboardingGoalOption] {
-        switch stateStore.draft.selectedHabitID {
-        case "onboarding-strength-training":
-            return durationOptions { minutes in
-                "筋トレを\(minutes)分する"
-            }
-        case "onboarding-walk":
-            return durationOptions { minutes in
-                "\(minutes)分散歩をする"
-            }
-        case "onboarding-study":
-            return [
-                .init(id: "problem-1", label: "1問", routineTitle: "問題を1問解く"),
-                .init(id: "minutes-5", label: "5分", routineTitle: "5分勉強する"),
-                .init(id: "minutes-10", label: "10分", routineTitle: "10分勉強する"),
-            ]
-        case "onboarding-journal":
-            return [1, 3, 5].map { lines in
-                OnboardingGoalOption(
-                    id: "lines-\(lines)",
-                    label: "\(lines)行",
-                    routineTitle: "日記を\(lines)行書く"
-                )
-            }
-        case "onboarding-read-book":
-            return [
-                .init(id: "page-1", label: "1ページ", routineTitle: "本を1ページ読む"),
-                .init(id: "page-5", label: "5ページ", routineTitle: "本を5ページ読む"),
-                .init(id: "page-10", label: "10ページ", routineTitle: "本を10ページ読む"),
-            ]
-        case "onboarding-tidy-up":
-            return durationOptions { minutes in
-                "\(minutes)分部屋を片付ける"
-            }
-        default:
-            return []
-        }
-    }
-
-    private func durationOptions(
-        routineTitle: (Int) -> String
-    ) -> [OnboardingGoalOption] {
-        [1, 5, 10].map { minutes in
-            OnboardingGoalOption(
-                id: "minutes-\(minutes)",
-                label: "\(minutes)分",
-                routineTitle: routineTitle(minutes)
-            )
-        }
-    }
-
     private var cueOptions: [OnboardingCueOption] {
         [
             .init(id: "after-waking", title: "起きた後"),
@@ -1062,6 +1012,17 @@ struct OnboardingSetupView: View {
         stateStore.draft.routineTitle = ""
         stateStore.draft.selectedCueID = nil
         stateStore.draft.cueText = ""
+    }
+
+    /// 更新前の量プリセットが保存されていた場合、見えない選択肢のまま次へ進ませない。
+    private func clearObsoleteGoalSelection() {
+        guard let selectedGoalID = stateStore.draft.selectedGoalID,
+              selectedGoalID != "custom",
+              !OnboardingGoalPreset.options(for: stateStore.draft.selectedHabitID)
+                .contains(where: { $0.id == selectedGoalID }) else { return }
+        stateStore.draft.selectedGoalID = nil
+        stateStore.draft.goalText = ""
+        stateStore.draft.routineTitle = ""
     }
 
     private func chooseBlockedBehavior(_ preset: BlockedBehaviorPreset) {
@@ -2152,12 +2113,6 @@ struct OnboardingRioBubble: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AppColor.primarySoft, in: RoundedRectangle(cornerRadius: 18))
     }
-}
-
-private struct OnboardingGoalOption: Identifiable {
-    let id: String
-    let label: String
-    let routineTitle: String
 }
 
 private struct OnboardingCueOption: Identifiable {

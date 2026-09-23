@@ -71,6 +71,64 @@ final class RoutinePresetTests: XCTestCase {
         )
     }
 
+    func testOnboardingGoalOptionsMatchEachHabit() {
+        let expected: [(
+            habitID: String,
+            ids: [String],
+            labels: [String],
+            routineTitles: [String]
+        )] = [
+            (
+                "onboarding-strength-training",
+                ["minutes-1", "minutes-10", "minutes-30"],
+                ["1分", "10分", "30分"],
+                ["筋トレを1分する", "筋トレを10分する", "筋トレを30分する"]
+            ),
+            (
+                "onboarding-walk",
+                ["minutes-10", "minutes-20", "minutes-30"],
+                ["10分", "20分", "30分"],
+                ["10分散歩をする", "20分散歩をする", "30分散歩をする"]
+            ),
+            (
+                "onboarding-study",
+                ["minutes-10", "minutes-20", "minutes-30"],
+                ["10分", "20分", "30分"],
+                ["10分勉強する", "20分勉強する", "30分勉強する"]
+            ),
+            (
+                "onboarding-journal",
+                ["lines-1", "lines-3", "lines-5"],
+                ["1行", "3行", "5行"],
+                ["日記を1行書く", "日記を3行書く", "日記を5行書く"]
+            ),
+            (
+                "onboarding-read-book",
+                ["minutes-5", "minutes-15", "minutes-30"],
+                ["5分", "15分", "30分"],
+                ["本を5分読む", "本を15分読む", "本を30分読む"]
+            ),
+            (
+                "onboarding-tidy-up",
+                ["minutes-1", "minutes-5", "minutes-10"],
+                ["1分", "5分", "10分"],
+                ["1分部屋を片付ける", "5分部屋を片付ける", "10分部屋を片付ける"]
+            ),
+        ]
+
+        for habit in expected {
+            let options = OnboardingGoalPreset.options(for: habit.habitID)
+            XCTAssertEqual(options.map(\.id), habit.ids, habit.habitID)
+            XCTAssertEqual(options.map(\.label), habit.labels, habit.habitID)
+            XCTAssertEqual(options.map(\.routineTitle), habit.routineTitles, habit.habitID)
+        }
+    }
+
+    func testOnboardingGoalOptionsAreEmptyForCustomHabit() {
+        XCTAssertTrue(OnboardingGoalPreset.options(for: "custom").isEmpty)
+        XCTAssertTrue(OnboardingGoalPreset.options(for: nil).isEmpty)
+    }
+
     func testApplyingPresetFillsNewRoutineDraftAndRestoresSafeDefaults() {
         let preset = RoutinePreset(
             id: "test",

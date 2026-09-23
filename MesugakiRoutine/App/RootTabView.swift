@@ -65,12 +65,18 @@ struct RootTabView: View {
     @State private var onboardingAlertTitle = "オンボーディングを完了できませんでした"
     @State private var onboardingErrorMessage: String?
     @State private var isSavingNotification = false
+    @State private var onboardingReportTargetFrame: CGRect?
+    @State private var onboardingReportActionTrigger = 0
 
     private var isPresentingOverlay: Bool {
         appDialog != nil
             || blockedBehaviorTaunt != nil
             || onboardingState.phase == .prologueMessage
             || onboardingState.phase == .storyUnlockPresentation
+    }
+
+    private var isPresentingReportSpotlight: Bool {
+        onboardingState.shouldPresentReportTutorial
     }
 
     var body: some View {
@@ -88,6 +94,16 @@ struct RootTabView: View {
                 .transition(.opacity)
             } else {
                 appShell
+
+                if isPresentingReportSpotlight {
+                    OnboardingFirstReportSpotlightView(
+                        targetFrame: onboardingReportTargetFrame,
+                        onReport: requestOnboardingReport,
+                        onDefer: deferFirstReport
+                    )
+                    .transition(.opacity)
+                    .zIndex(8)
+                }
 
                 if onboardingState.phase == .prologueMessage {
                     OnboardingPostPrologueMessageView(
@@ -117,8 +133,14 @@ struct RootTabView: View {
         .animation(.easeInOut(duration: 0.18), value: appDialog?.id)
         .animation(.easeOut(duration: 0.28), value: blockedBehaviorTaunt?.id)
         .animation(.easeInOut(duration: 0.24), value: onboardingState.phase)
+        .animation(.easeInOut(duration: 0.2), value: isPresentingReportSpotlight)
         .task {
             resumeOnboardingIfNeeded()
+        }
+        .onChange(of: onboardingState.shouldPresentReportTutorial) { _, shouldPresent in
+            if !shouldPresent {
+                onboardingReportTargetFrame = nil
+            }
         }
         .alert(
             onboardingAlertTitle,
@@ -141,11 +163,12 @@ struct RootTabView: View {
                 NavigationStack {
                     HomeView(
                         appDialog: $appDialog,
-                        onboardingRoutineID: onboardingState.phase == .firstReport
+                        onboardingRoutineID: onboardingState.shouldPresentReportTutorial
                             ? onboardingState.createdRoutineID
                             : nil,
+                        onboardingReportActionTrigger: onboardingReportActionTrigger,
                         onOnboardingRoutineCompleted: completeFirstReport,
-                        onOnboardingDeferred: deferFirstReport
+                        onOnboardingReportTargetFrameChange: updateOnboardingReportTargetFrame
                     )
                 }
                 .tabItem {
@@ -185,8 +208,8 @@ struct RootTabView: View {
                 .tag(RootTab.settings)
             }
             .tint(AppColor.primary)
-            .allowsHitTesting(!isPresentingOverlay)
-            .accessibilityHidden(isPresentingOverlay)
+            .allowsHitTesting(!isPresentingOverlay && !isPresentingReportSpotlight)
+            .accessibilityHidden(isPresentingOverlay || isPresentingReportSpotlight)
 
             if isPresentingOverlay,
                onboardingState.phase != .storyUnlockPresentation {
@@ -364,14 +387,52 @@ struct RootTabView: View {
 
     private func completeFirstReport() {
         guard onboardingState.phase == .firstReport else { return }
+        onboardingReportTargetFrame = nil
         onboardingState.completeFirstReport(with: .completed)
         blockedBehaviorTaunt = BlockedBehaviorTauntRequest(text: "ざこなのに頑張ったね♡")
     }
 
     private func deferFirstReport() {
         guard onboardingState.phase == .firstReport else { return }
+        // Routineの達成記録だけが先に保存されていた場合は、
+        // 「あとでやる」で実際の達成結果を上書きせず成功として復旧する。
+        if onboardingRoutine()?.isComplete() == true {
+            completeFirstReport()
+            return
+        }
+        onboardingReportTargetFrame = nil
         onboardingState.completeFirstReport(with: .deferred)
         presentConversationPromptIfNeeded()
+    }
+
+    private func requestOnboardingReport() {
+        guard onboardingState.shouldPresentReportTutorial else { return }
+        // Routineの記録だけが先に保存された直後にアプリが終了しても、
+        // 再表示されたボタンで達成を取り消さない。
+        if onboardingRoutine()?.isComplete() == true {
+            completeFirstReport()
+            return
+        }
+        onboardingReportActionTrigger &+= 1
+    }
+
+    private func updateOnboardingReportTargetFrame(_ frame: CGRect?) {
+        guard onboardingState.shouldPresentReportTutorial else {
+            if onboardingReportTargetFrame != nil {
+                onboardingReportTargetFrame = nil
+            }
+            return
+        }
+
+        let validFrame = frame.flatMap { candidate in
+            candidate.width > 0 && candidate.height > 0 ? candidate : nil
+        }
+        guard onboardingReportTargetFrame != validFrame else { return }
+
+        onboardingReportTargetFrame = validFrame
+        if validFrame != nil {
+            onboardingState.markReportTutorialShown()
+        }
     }
 
     private func presentConversationPromptIfNeeded() {
@@ -878,6 +939,249 @@ struct RootTabView: View {
             dismissBlockedBehaviorTaunt()
         } else {
             appDialog = nil
+        }
+    }
+}
+
+/// 通常のHomeレイアウトを動かさず、最初の達成報告先だけを案内するCoach Mark。
+private struct OnboardingFirstReportSpotlightView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let targetFrame: CGRect?
+    let onReport: () -> Void
+    let onDefer: () -> Void
+
+    @State private var isPulseExpanded = false
+    @State private var isSubmitting = false
+    @State private var reportCalloutSize: CGSize = .zero
+
+    var body: some View {
+        GeometryReader { proxy in
+            let overlayFrame = proxy.frame(in: .global)
+            let localizedTarget = targetFrame.map { target in
+                CGRect(
+                    x: target.minX - overlayFrame.minX,
+                    y: target.minY - overlayFrame.minY,
+                    width: target.width,
+                    height: target.height
+                )
+            }
+            let visibleTarget = localizedTarget.flatMap { target in
+                target.intersects(CGRect(origin: .zero, size: proxy.size)) ? target : nil
+            }
+            let spotlightRect = visibleTarget.map {
+                $0.insetBy(dx: -9, dy: -9)
+            }
+
+            ZStack {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {}
+                    .accessibilityHidden(true)
+
+                OnboardingSpotlightMask(targetRect: spotlightRect)
+                    .fill(
+                        Color.black.opacity(0.56),
+                        style: FillStyle(eoFill: true)
+                    )
+                    .allowsHitTesting(false)
+
+                if let target = visibleTarget {
+                    spotlightRing(for: target)
+                    reportButton(for: target)
+                    reportCallout(
+                        for: target,
+                        in: proxy.size,
+                        safeAreaInsets: proxy.safeAreaInsets
+                    )
+                }
+
+                VStack(spacing: 10) {
+                    Spacer(minLength: 0)
+
+                    Text("まだできていない？")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+
+                    Button(action: deferTutorial) {
+                        Text("あとでやる")
+                            .font(.headline)
+                            .foregroundStyle(AppColor.primary)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                            .background(AppColor.surface, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSubmitting)
+                    .frame(maxWidth: 260)
+                    .accessibilityHint("達成を記録せず、操作説明を終了します")
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, max(74, proxy.safeAreaInsets.bottom + 56))
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .onPreferenceChange(OnboardingReportCalloutSizePreferenceKey.self) { size in
+                guard size.width > 0, size.height > 0, reportCalloutSize != size else { return }
+                reportCalloutSize = size
+            }
+        }
+        .ignoresSafeArea()
+        .onAppear(perform: startPulseAnimation)
+        .onChange(of: reduceMotion) { _, _ in
+            startPulseAnimation()
+        }
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private func spotlightRing(for target: CGRect) -> some View {
+        let diameter = max(target.width, target.height) + 18
+
+        return Circle()
+            .stroke(AppColor.primary, lineWidth: 3)
+            .frame(width: diameter, height: diameter)
+            .scaleEffect(reduceMotion ? 1 : (isPulseExpanded ? 1.13 : 0.96))
+            .opacity(reduceMotion ? 1 : (isPulseExpanded ? 0.38 : 1))
+            .position(x: target.midX, y: target.midY)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func reportButton(for target: CGRect) -> some View {
+        Button(action: requestReport) {
+            Circle()
+                .fill(Color.white.opacity(0.001))
+                .frame(width: target.width, height: target.height)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isSubmitting)
+        .contentShape(Circle())
+        .position(x: target.midX, y: target.midY)
+        .accessibilityLabel("最初の約束を報告")
+        .accessibilityHint("実行できたらタップして達成を記録します")
+    }
+
+    private func reportCallout(
+        for target: CGRect,
+        in size: CGSize,
+        safeAreaInsets: EdgeInsets
+    ) -> some View {
+        let width = min(310, max(220, size.width - 40))
+        let horizontalMargin: CGFloat = 16
+        let preferredCenterX = target.midX - width * 0.28
+        let centerX = min(
+            max(preferredCenterX, horizontalMargin + width / 2),
+            size.width - horizontalMargin - width / 2
+        )
+        let calloutHeight = reportCalloutSize.height > 0 ? reportCalloutSize.height : 74
+        let bottomPadding = max(74, safeAreaInsets.bottom + 56)
+        let bottomControlsTop = size.height - bottomPadding - 84
+        let safeTop = max(16, safeAreaInsets.top + 12)
+        let shouldPlaceBelow = target.maxY + calloutHeight + 30 < bottomControlsTop
+        let desiredCenterY = shouldPlaceBelow
+            ? target.maxY + calloutHeight / 2 + 18
+            : target.minY - calloutHeight / 2 - 18
+        let minimumCenterY = safeTop + calloutHeight / 2
+        let maximumCenterY = max(
+            minimumCenterY,
+            bottomControlsTop - calloutHeight / 2 - 12
+        )
+        let centerY = min(max(desiredCenterY, minimumCenterY), maximumCenterY)
+
+        return VStack(alignment: .trailing, spacing: 5) {
+            if shouldPlaceBelow {
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(AppColor.primary)
+                    .padding(.trailing, 16)
+            }
+
+            Text("実行できたら、ここをタップして報告")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppColor.text)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(AppColor.primary.opacity(0.45), lineWidth: 1)
+                }
+                .shadow(color: Color.black.opacity(0.18), radius: 10, y: 4)
+
+            if !shouldPlaceBelow {
+                Image(systemName: "arrow.down.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(AppColor.primary)
+                    .padding(.trailing, 16)
+            }
+        }
+        .frame(width: width)
+        .background {
+            GeometryReader { calloutProxy in
+                Color.clear.preference(
+                    key: OnboardingReportCalloutSizePreferenceKey.self,
+                    value: calloutProxy.size
+                )
+            }
+        }
+        .position(x: centerX, y: centerY)
+        .allowsHitTesting(false)
+    }
+
+    private func startPulseAnimation() {
+        isPulseExpanded = false
+        guard !reduceMotion else { return }
+        withAnimation(.easeInOut(duration: 1.25).repeatForever(autoreverses: true)) {
+            isPulseExpanded = true
+        }
+    }
+
+    private func requestReport() {
+        guard !isSubmitting else { return }
+        isSubmitting = true
+        onReport()
+        releaseSubmissionLockIfStillPresented()
+    }
+
+    private func deferTutorial() {
+        guard !isSubmitting else { return }
+        isSubmitting = true
+        onDefer()
+    }
+
+    private func releaseSubmissionLockIfStillPresented() {
+        Task { @MainActor in
+            do {
+                try await Task.sleep(for: .milliseconds(900))
+            } catch {
+                return
+            }
+            isSubmitting = false
+        }
+    }
+}
+
+private struct OnboardingSpotlightMask: Shape {
+    let targetRect: CGRect?
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addRect(rect)
+        if let targetRect {
+            path.addEllipse(in: targetRect)
+        }
+        return path
+    }
+}
+
+private struct OnboardingReportCalloutSizePreferenceKey: PreferenceKey {
+    static var defaultValue = CGSize.zero
+
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let next = nextValue()
+        if next.width > 0, next.height > 0 {
+            value = next
         }
     }
 }

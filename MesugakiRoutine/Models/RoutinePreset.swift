@@ -132,3 +132,48 @@ struct RoutinePreset: Identifiable {
 
     static let all: [RoutinePreset] = recommended + timer
 }
+
+/// 最初の約束を具体化するときに選ぶ量。選択後は既存の下書きへ表示名とタイトルを保存する。
+struct OnboardingGoalPreset: Identifiable, Equatable {
+    let id: String
+    let label: String
+    let routineTitle: String
+
+    static func options(for habitID: String?) -> [Self] {
+        switch habitID {
+        case "onboarding-strength-training":
+            return durationOptions([1, 10, 30]) { "筋トレを\($0)分する" }
+        case "onboarding-walk":
+            return durationOptions([10, 20, 30]) { "\($0)分散歩をする" }
+        case "onboarding-study":
+            return durationOptions([10, 20, 30]) { "\($0)分勉強する" }
+        case "onboarding-journal":
+            return [1, 3, 5].map { lines in
+                Self(
+                    id: "lines-\(lines)",
+                    label: "\(lines)行",
+                    routineTitle: "日記を\(lines)行書く"
+                )
+            }
+        case "onboarding-read-book":
+            return durationOptions([5, 15, 30]) { "本を\($0)分読む" }
+        case "onboarding-tidy-up":
+            return durationOptions([1, 5, 10]) { "\($0)分部屋を片付ける" }
+        default:
+            return []
+        }
+    }
+
+    private static func durationOptions(
+        _ minutes: [Int],
+        routineTitle: (Int) -> String
+    ) -> [Self] {
+        minutes.map { minutes in
+            Self(
+                id: "minutes-\(minutes)",
+                label: "\(minutes)分",
+                routineTitle: routineTitle(minutes)
+            )
+        }
+    }
+}

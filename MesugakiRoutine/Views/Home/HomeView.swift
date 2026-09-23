@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
     @Environment(SiriLaunchCoordinator.self) private var siriLaunchCoordinator
     @Environment(\.scenePhase) private var scenePhase
@@ -20,23 +19,25 @@ struct HomeView: View {
     @State private var isShowingBlockedBehaviorDeleteError = false
     @State private var nextStrugglingTauntIndex = 0
     @State private var nextDefeatedTauntIndex = 0
-    @State private var isOnboardingTapIconFaded = false
 
     @Binding private var appDialog: AppDialogRequest?
     private let onboardingRoutineID: UUID?
+    private let onboardingReportActionTrigger: Int
     private let onOnboardingRoutineCompleted: () -> Void
-    private let onOnboardingDeferred: () -> Void
+    private let onOnboardingReportTargetFrameChange: (CGRect?) -> Void
 
     init(
         appDialog: Binding<AppDialogRequest?> = .constant(nil),
         onboardingRoutineID: UUID? = nil,
+        onboardingReportActionTrigger: Int = 0,
         onOnboardingRoutineCompleted: @escaping () -> Void = {},
-        onOnboardingDeferred: @escaping () -> Void = {}
+        onOnboardingReportTargetFrameChange: @escaping (CGRect?) -> Void = { _ in }
     ) {
         _appDialog = appDialog
         self.onboardingRoutineID = onboardingRoutineID
+        self.onboardingReportActionTrigger = onboardingReportActionTrigger
         self.onOnboardingRoutineCompleted = onOnboardingRoutineCompleted
-        self.onOnboardingDeferred = onOnboardingDeferred
+        self.onOnboardingReportTargetFrameChange = onOnboardingReportTargetFrameChange
     }
 
     private var hiddenTimerWatcherID: UUID? {
@@ -230,12 +231,6 @@ struct HomeView: View {
             ForEach(viewModel.todayRoutines) { routine in
                 routineListRow(routine)
                     .routineListRowStyle()
-
-                if routine.id == onboardingRoutineID {
-                    onboardingReportGuide
-                        .routineListRowStyle()
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
             }
 
             if isEditingRoutines {
@@ -254,20 +249,18 @@ struct HomeView: View {
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(AppColor.muted)
-                if onboardingRoutineID == nil {
-                    Button {
-                        isEditingRoutines.toggle()
-                    } label: {
-                        Image(systemName: isEditingRoutines ? "checkmark" : "square.and.pencil")
-                            .font(.title3.weight(.semibold))
-                            // グリフごとの高さ差でヘッダーがガタつかないよう、表示枠を固定する。
-                            .frame(width: 28, height: 28)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(AppColor.primary)
-                    .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
+                Button {
+                    isEditingRoutines.toggle()
+                } label: {
+                    Image(systemName: isEditingRoutines ? "checkmark" : "square.and.pencil")
+                        .font(.title3.weight(.semibold))
+                        // グリフごとの高さ差でヘッダーがガタつかないよう、表示枠を固定する。
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.borderless)
+                .foregroundStyle(AppColor.primary)
+                .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
             }
             .textCase(nil)
         }
@@ -302,8 +295,12 @@ struct HomeView: View {
             isTimerActive: activeTimerForRoutine != nil,
             isCompleted: progress.isCompletedToday,
             isEditing: isEditingRoutines,
-            isHighlighted: routine.id == onboardingRoutineID,
+            isHighlighted: false,
             allowsEditing: routine.id != onboardingRoutineID,
+            completionActionTrigger: routine.id == onboardingRoutineID
+                ? onboardingReportActionTrigger
+                : 0,
+            reportsCompletionButtonFrame: routine.id == onboardingRoutineID,
             onEdit: { requestRoutineEdit(routine) },
             onStartTimer: { openTimer(for: routine) },
             onAdvance: {
@@ -316,59 +313,12 @@ struct HomeView: View {
             },
             onUndoCompletion: {
                 updateRoutineCompletion(routine, completed: false)
+            },
+            onCompletionButtonFrameChange: { frame in
+                guard routine.id == onboardingRoutineID else { return }
+                onOnboardingReportTargetFrameChange(frame)
             }
         )
-    }
-
-    private var onboardingReportGuide: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 7) {
-                Image(systemName: "hand.tap.fill")
-                    .foregroundStyle(AppColor.primary)
-                    .opacity(reduceMotion ? 1 : (isOnboardingTapIconFaded ? 0.28 : 1))
-                    .scaleEffect(reduceMotion ? 1 : (isOnboardingTapIconFaded ? 0.94 : 1.04))
-                    .animation(
-                        reduceMotion
-                            ? nil
-                            : .easeInOut(duration: 0.72).repeatForever(autoreverses: true),
-                        value: isOnboardingTapIconFaded
-                    )
-
-                Text("実行したら、右の丸をタップして報告")
-            }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppColor.text)
-                .accessibilityElement(children: .combine)
-
-            Text("今すぐできなくても大丈夫。約束はこの画面に残ります。")
-                .font(.caption)
-                .foregroundStyle(AppColor.muted)
-
-            Button("あとでやる") {
-                onOnboardingDeferred()
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppColor.primary)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .buttonStyle(.plain)
-            .accessibilityHint("達成を記録せずにチュートリアルを進めます")
-        }
-        .padding(16)
-        .background(AppColor.primarySoft.opacity(0.72), in: RoundedRectangle(cornerRadius: 18))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(AppColor.primary.opacity(0.35), lineWidth: 1)
-        }
-        .onAppear {
-            isOnboardingTapIconFaded = !reduceMotion
-        }
-        .onDisappear {
-            isOnboardingTapIconFaded = false
-        }
-        .onChange(of: reduceMotion) { _, shouldReduceMotion in
-            isOnboardingTapIconFaded = !shouldReduceMotion
-        }
-        .accessibilityElement(children: .contain)
     }
 
     // MARK: - 2. やらないこと

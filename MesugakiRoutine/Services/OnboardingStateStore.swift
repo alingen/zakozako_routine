@@ -171,9 +171,9 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
 
     /// 条件プリセットまたは `custom` を識別するID。
     var selectedGoalID: String?
-    /// 画面表示用の達成条件（例: 「1ページ」）。
+    /// 画面表示用の達成条件（例: 「5分」）。
     var goalText: String
-    /// Routine.title に保存する具体化済みタイトル（例: 「本を1ページ読む」）。
+    /// Routine.title に保存する具体化済みタイトル（例: 「本を5分読む」）。
     var routineTitle: String
 
     /// タイミングプリセットまたは `custom` を識別するID。
@@ -318,6 +318,14 @@ final class OnboardingStateStore {
     private(set) var isPrologueAutoplayPending: Bool {
         didSet { persistIfNeeded() }
     }
+    /// 初回報告のCoach Markが、実際に画面へ表示されたことがあるか。
+    private(set) var tutorialReportShown: Bool {
+        didSet { persistIfNeeded() }
+    }
+    /// 達成または「あとでやる」により、初回報告の操作説明を終えたか。
+    private(set) var tutorialReportCompleted: Bool {
+        didSet { persistIfNeeded() }
+    }
     private(set) var isCompleted: Bool {
         didSet { persistIfNeeded() }
     }
@@ -342,6 +350,7 @@ final class OnboardingStateStore {
         let restoredSnapshot = Self.loadSnapshot(defaults: defaults, storageKey: storageKey)
         startedWithoutSavedState = restoredSnapshot == nil
         let snapshot = restoredSnapshot ?? .initial
+        let restoredAsCompleted = snapshot.isCompleted || snapshot.phase == .completed
         setupStep = snapshot.setupStep
         introductionStage = snapshot.introductionStage ?? .nameEntry
         habitSelectionStage = snapshot.habitSelectionStage
@@ -371,9 +380,14 @@ final class OnboardingStateStore {
         notificationNotBefore = snapshot.notificationNotBefore
         pendingNotificationSetup = snapshot.pendingNotificationSetup
         isPrologueAutoplayPending = snapshot.isPrologueAutoplayPending ?? false
+        let restoredReportTutorialCompleted = (
+            snapshot.tutorialReportCompleted ?? (snapshot.firstReportOutcome != nil)
+        ) || restoredAsCompleted
+        tutorialReportCompleted = restoredReportTutorialCompleted
+        tutorialReportShown = (snapshot.tutorialReportShown
+            ?? restoredReportTutorialCompleted) || restoredReportTutorialCompleted
 
         // 完了状態とphaseの片方だけが保存された瞬間に終了しても、再起動時に完了を維持する。
-        let restoredAsCompleted = snapshot.isCompleted || snapshot.phase == .completed
         isCompleted = restoredAsCompleted
         if restoredAsCompleted {
             phase = .completed
@@ -386,6 +400,10 @@ final class OnboardingStateStore {
 
     var isRunningInAppTutorial: Bool {
         !isCompleted && phase != .dedicatedSetup
+    }
+
+    var shouldPresentReportTutorial: Bool {
+        !isCompleted && phase == .firstReport && !tutorialReportCompleted
     }
 
     func canContinue(from step: OnboardingSetupStep? = nil) -> Bool {
@@ -820,6 +838,8 @@ final class OnboardingStateStore {
         performBatchUpdate {
             self.createdRoutineID = createdRoutineID
             isPrologueAutoplayPending = true
+            tutorialReportShown = false
+            tutorialReportCompleted = false
             phase = .prologue
         }
     }
@@ -851,9 +871,17 @@ final class OnboardingStateStore {
 
         performBatchUpdate {
             notificationChoice = .notNow
+            tutorialReportShown = true
+            tutorialReportCompleted = true
             isCompleted = true
             phase = .completed
         }
+    }
+
+    /// Coach Markが画面へ載った時点だけを記録する。途中終了時は次回も表示する。
+    func markReportTutorialShown() {
+        guard shouldPresentReportTutorial, !tutorialReportShown else { return }
+        tutorialReportShown = true
     }
 
     /// Routine の保存とフェーズ保存の間でアプリが終了した場合の自己修復。
@@ -869,6 +897,8 @@ final class OnboardingStateStore {
     func completeFirstReport(with outcome: OnboardingFirstReportOutcome) {
         guard !isCompleted, phase == .firstReport else { return }
         performBatchUpdate {
+            tutorialReportShown = true
+            tutorialReportCompleted = true
             firstReportOutcome = outcome
             phase = .conversationPrompt
         }
@@ -962,6 +992,8 @@ final class OnboardingStateStore {
                 notificationRoutineID = nil
                 notificationNotBefore = nil
             }
+            tutorialReportShown = true
+            tutorialReportCompleted = true
             isCompleted = true
             phase = .completed
         }
@@ -989,6 +1021,8 @@ final class OnboardingStateStore {
             notificationNotBefore = nil
             pendingNotificationSetup = nil
             isPrologueAutoplayPending = false
+            tutorialReportShown = false
+            tutorialReportCompleted = false
             isCompleted = false
         }
     }
@@ -1026,6 +1060,8 @@ final class OnboardingStateStore {
             notificationNotBefore: notificationNotBefore,
             pendingNotificationSetup: pendingNotificationSetup,
             isPrologueAutoplayPending: isPrologueAutoplayPending,
+            tutorialReportShown: tutorialReportShown,
+            tutorialReportCompleted: tutorialReportCompleted,
             isCompleted: isCompleted
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
@@ -1125,6 +1161,9 @@ final class OnboardingStateStore {
         var pendingNotificationSetup: OnboardingNotificationSetup?
         // 追加前の完了済みユーザーへ突然プロローグを出さないよう、欠落時はfalseとして復元する。
         var isPrologueAutoplayPending: Bool?
+        // 追加前の保存データはfirstReportOutcomeから安全に補完する。
+        var tutorialReportShown: Bool?
+        var tutorialReportCompleted: Bool?
         var isCompleted: Bool
 
         static let initial = Snapshot(
@@ -1147,6 +1186,8 @@ final class OnboardingStateStore {
             notificationNotBefore: nil,
             pendingNotificationSetup: nil,
             isPrologueAutoplayPending: false,
+            tutorialReportShown: false,
+            tutorialReportCompleted: false,
             isCompleted: false
         )
     }
