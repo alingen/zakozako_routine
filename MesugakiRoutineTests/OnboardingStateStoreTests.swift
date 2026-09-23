@@ -926,7 +926,7 @@ final class OnboardingStateStoreTests: XCTestCase {
         }
     }
 
-    func testPausedFirstStoryReturnsToUnlockPresentationAfterRestart() {
+    func testFirstStoryOpenFailureReturnsToUnlockPresentationAfterRestart() {
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
             store.beginInAppTutorial(createdRoutineID: UUID())
@@ -945,6 +945,26 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertFalse(resumed.isCompleted)
             resumed.beginFirstStoryPlayback()
             XCTAssertEqual(OnboardingStateStore(defaults: defaults).phase, .firstStoryPlayback)
+        }
+    }
+
+    func testLeavingOpenedFirstStoryDoesNotShowUnlockPresentationAgain() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
+            store.completeFirstReport(with: .completed)
+            store.completeConversationPrompt(with: .later)
+            store.beginFirstStoryPlayback()
+
+            store.leaveFirstStoryPlayback()
+
+            let resumed = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(resumed.phase, .tomorrowPromise)
+            XCTAssertFalse(resumed.isCompleted)
+            resumed.beginFirstStoryPlayback()
+            XCTAssertEqual(resumed.phase, .tomorrowPromise)
         }
     }
 

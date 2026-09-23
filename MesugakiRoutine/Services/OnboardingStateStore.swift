@@ -955,10 +955,17 @@ final class OnboardingStateStore {
         phase = .firstStoryPlayback
     }
 
-    /// 読了前に閉じた場合は解禁案内へ戻し、同じ第一話から再開できるようにする。
+    /// 第一話をまだ開けていない場合は、解禁案内から再試行できるようにする。
     func pauseFirstStoryPlayback() {
         guard !isCompleted, phase == .firstStoryPlayback else { return }
         phase = .storyUnlockPresentation
+    }
+
+    /// 一度開いた第一話を途中で閉じても、解禁案内は繰り返さない。
+    /// 再開位置は通常のストーリー記録に残したまま、オンボーディングを先へ進める。
+    func leaveFirstStoryPlayback() {
+        guard !isCompleted, phase == .firstStoryPlayback else { return }
+        phase = .tomorrowPromise
     }
 
     /// 第一話の読了が永続化された後だけ、読了案内へ進める。

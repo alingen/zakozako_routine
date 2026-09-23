@@ -579,6 +579,13 @@ struct RootTabView: View {
         ))?.isCompleted == true
     }
 
+    private var hasOpenedFirstStory: Bool {
+        let progress = try? AppDependencies(context: modelContext)
+            .storyStateRepository
+            .eventProgress(for: Self.firstStoryEventID)
+        return progress?.firstOpenedAt != nil
+    }
+
     private func presentPendingFirstStoryIfNeeded() {
         guard onboardingState.phase == .firstStoryPlayback,
               openStoryEventRequest == nil else { return }
@@ -596,20 +603,28 @@ struct RootTabView: View {
             guard refresh?.events.first(where: {
                 $0.event.eventId == Self.firstStoryEventID
             })?.canPlay == true else {
-                onboardingState.pauseFirstStoryPlayback()
-                prepareStoryUnlockPresentation()
-                presentOnboardingError("第一話を開けませんでした。時間をおいて、もう一度お試しください。")
+                handleUnavailableFirstStory(
+                    "第一話を開けませんでした。時間をおいて、もう一度お試しください。"
+                )
                 return
             }
         } catch {
-            onboardingState.pauseFirstStoryPlayback()
-            prepareStoryUnlockPresentation()
-            presentOnboardingError("第一話を開けませんでした。\n\(error.localizedDescription)")
+            handleUnavailableFirstStory("第一話を開けませんでした。\n\(error.localizedDescription)")
             return
         }
 
         selectedTab = .interaction
         openStoryEventRequest = Self.firstStoryEventID
+    }
+
+    private func handleUnavailableFirstStory(_ message: String) {
+        if hasOpenedFirstStory {
+            onboardingState.leaveFirstStoryPlayback()
+        } else {
+            onboardingState.pauseFirstStoryPlayback()
+            prepareStoryUnlockPresentation()
+            presentOnboardingError(message)
+        }
     }
 
     private func enableOnboardingNotification(at time: Date) {
@@ -834,10 +849,12 @@ struct RootTabView: View {
         case Self.firstStoryEventID where onboardingState.phase == .firstStoryPlayback:
             if didComplete || isFirstStoryRead {
                 onboardingState.completeFirstStoryPlayback()
+            } else if hasOpenedFirstStory {
+                onboardingState.leaveFirstStoryPlayback()
             } else {
-                // 途中で閉じてもチェックポイントを残し、解禁案内から再開できる。
-                onboardingState.pauseFirstStoryPlayback()
-                prepareStoryUnlockPresentation()
+                handleUnavailableFirstStory(
+                    "第一話を開けませんでした。時間をおいて、もう一度お試しください。"
+                )
             }
 
         default:
