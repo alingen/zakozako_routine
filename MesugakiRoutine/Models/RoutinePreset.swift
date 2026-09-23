@@ -30,14 +30,19 @@ struct RoutinePreset: Identifiable {
     /// よく始められる約束。タイトルとアイコンは選択後の確認画面で変更できる。
     static let recommended: [RoutinePreset] = [
         RoutinePreset(
-            id: "healthy-meal",
-            title: "健康的な食事をとる",
-            iconName: "carrot"
+            id: "strength-training",
+            title: "筋トレをする",
+            iconName: "figure.strengthtraining.traditional"
         ),
         RoutinePreset(
-            id: "find-good-things",
-            title: "いいことを3つ見つける",
-            iconName: "heart"
+            id: "walk",
+            title: "散歩をする",
+            iconName: "figure.walk"
+        ),
+        RoutinePreset(
+            id: "stretch",
+            title: "ストレッチをする",
+            iconName: "figure.cooldown"
         ),
         RoutinePreset(
             id: "journal",
@@ -47,47 +52,17 @@ struct RoutinePreset: Identifiable {
         RoutinePreset(
             id: "study",
             title: "勉強する",
-            iconName: "book"
+            iconName: "graduationcap"
         ),
         RoutinePreset(
-            id: "walk-dog",
-            title: "犬を散歩させる",
-            iconName: "dog"
-        ),
-        RoutinePreset(
-            id: "drink-water",
-            title: "水を飲む",
-            iconName: "drop"
+            id: "tidy-up",
+            title: "片づける",
+            iconName: "sparkles"
         ),
         RoutinePreset(
             id: "take-vitamins",
             title: "ビタミンを飲む",
             iconName: "pills"
-        ),
-        RoutinePreset(
-            id: "take-photo",
-            title: "写真を撮る",
-            iconName: "camera"
-        ),
-        RoutinePreset(
-            id: "walk",
-            title: "散歩する",
-            iconName: "figure.walk"
-        ),
-        RoutinePreset(
-            id: "stretch",
-            title: "ストレッチする",
-            iconName: "figure.cooldown"
-        ),
-        RoutinePreset(
-            id: "strength-training",
-            title: "筋トレする",
-            iconName: "figure.strengthtraining.traditional"
-        ),
-        RoutinePreset(
-            id: "sleep-early",
-            title: "早く寝る",
-            iconName: "bed.double"
         ),
     ]
 

@@ -34,13 +34,6 @@ struct RoutinePresetSelectionView: View {
 
     var body: some View {
         List {
-            Section {
-                Text("続けたいことを選ぶと、タイトルとアイコンを自動で入力します。内容は保存前に変更できます。")
-                    .font(.subheadline)
-                    .foregroundStyle(AppColor.muted)
-            }
-            .listRowBackground(Color.clear)
-
             Section("自由に作る") {
                 selectionButton(
                     title: "カスタム",

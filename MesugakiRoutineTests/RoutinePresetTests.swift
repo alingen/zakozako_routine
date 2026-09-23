@@ -29,6 +29,21 @@ final class RoutinePresetTests: XCTestCase {
         XCTAssertTrue(RoutinePreset.timer.allSatisfy { $0.targetDurationMinutes == 10 })
     }
 
+    func testRecommendedCatalogContainsOnlyRequestedPresetsInDisplayOrder() {
+        XCTAssertEqual(
+            RoutinePreset.recommended.map(\.title),
+            [
+                "筋トレをする",
+                "散歩をする",
+                "ストレッチをする",
+                "日記を書く",
+                "勉強する",
+                "片づける",
+                "ビタミンを飲む",
+            ]
+        )
+    }
+
     func testOnboardingCatalogIsSeparateAndContainsRequestedPresets() {
         XCTAssertEqual(
             RoutinePreset.onboarding.map(\.title),
