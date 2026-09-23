@@ -22,11 +22,13 @@ struct ADVStoryRenderer: View {
     var isAutomationAvailable = true
     var isLogAvailable = false
     var showsPlaybackControls = true
+    var allowsSkip = true
     let onAdvance: (StoryAdvancePace) -> Void
     let onSelectChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
     var onTextWindowTap: () -> Void = {}
     var onSkip: () -> Void = {}
+    var onClose: () -> Void = {}
     var onShowLog: () -> Void = {}
     var onToggleAuto: () -> Void = {}
     var onToggleFastForward: () -> Void = {}
@@ -177,7 +179,9 @@ struct ADVStoryRenderer: View {
                         isLogAvailable: isLogAvailable,
                         isAutomationAvailable: isAutomationAvailable,
                         isFastForwardEnabled: choices.isEmpty && !isModalPresented,
+                        allowsSkip: allowsSkip,
                         onSkip: onSkip,
+                        onClose: onClose,
                         onShowLog: onShowLog,
                         onToggleAuto: onToggleAuto,
                         onToggleFastForward: onToggleFastForward
@@ -403,7 +407,9 @@ private struct ADVPlaybackControlBar: View {
     let isLogAvailable: Bool
     let isAutomationAvailable: Bool
     let isFastForwardEnabled: Bool
+    let allowsSkip: Bool
     let onSkip: () -> Void
+    let onClose: () -> Void
     let onShowLog: () -> Void
     let onToggleAuto: () -> Void
     let onToggleFastForward: () -> Void
@@ -411,9 +417,9 @@ private struct ADVPlaybackControlBar: View {
     var body: some View {
         HStack(spacing: 2) {
             controlButton(
-                title: "スキップ",
-                symbol: "forward.end.fill",
-                action: onSkip
+                title: allowsSkip ? "スキップ" : "閉じる",
+                symbol: allowsSkip ? "forward.end.fill" : "xmark",
+                action: allowsSkip ? onSkip : onClose
             )
             controlButton(
                 title: "ログ",

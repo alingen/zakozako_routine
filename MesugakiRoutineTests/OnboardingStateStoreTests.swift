@@ -841,6 +841,108 @@ final class OnboardingStateStoreTests: XCTestCase {
         }
     }
 
+    func testFirstStoryPlaybackAndReadConfirmationPersistUntilTomorrowPromise() {
+        withDefaults { defaults in
+            let routineID = UUID()
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: routineID)
+            store.completePrologue()
+            store.completePrologueMessage()
+            store.completeFirstReport(with: .completed)
+            store.completeConversationPrompt(with: .started)
+            XCTAssertEqual(store.phase, .storyUnlockPresentation)
+
+            store.beginFirstStoryPlayback()
+            let playing = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(playing.phase, .firstStoryPlayback)
+            XCTAssertEqual(playing.createdRoutineID, routineID)
+            XCTAssertFalse(playing.isCompleted)
+
+            playing.completeFirstStoryPlayback()
+            let readConfirmation = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(readConfirmation.phase, .firstStoryReadConfirmation)
+            XCTAssertFalse(readConfirmation.isCompleted)
+            XCTAssertNil(readConfirmation.notificationChoice)
+
+            readConfirmation.completeOnboarding(notificationChoice: .notNow)
+            XCTAssertEqual(readConfirmation.phase, .firstStoryReadConfirmation)
+            XCTAssertFalse(readConfirmation.isCompleted)
+
+            readConfirmation.continueAfterFirstStoryRead()
+            let tomorrowPromise = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(tomorrowPromise.phase, .tomorrowPromise)
+            XCTAssertFalse(tomorrowPromise.isCompleted)
+
+            tomorrowPromise.completeOnboarding(notificationChoice: .notNow)
+            let completed = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(completed.phase, .completed)
+            XCTAssertTrue(completed.isCompleted)
+            XCTAssertEqual(completed.notificationChoice, .notNow)
+        }
+    }
+
+    func testPausedFirstStoryReturnsToUnlockPresentationAfterRestart() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
+            store.completeFirstReport(with: .completed)
+            store.completeConversationPrompt(with: .later)
+            store.beginFirstStoryPlayback()
+
+            let playing = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(playing.phase, .firstStoryPlayback)
+            playing.pauseFirstStoryPlayback()
+
+            let resumed = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(resumed.phase, .storyUnlockPresentation)
+            XCTAssertFalse(resumed.isCompleted)
+            resumed.beginFirstStoryPlayback()
+            XCTAssertEqual(OnboardingStateStore(defaults: defaults).phase, .firstStoryPlayback)
+        }
+    }
+
+    func testFirstStoryPhaseMutationsDoNotSkipReadingOrNotificationChoice() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.beginFirstStoryPlayback()
+            store.pauseFirstStoryPlayback()
+            store.completeFirstStoryPlayback()
+            store.continueAfterFirstStoryRead()
+            XCTAssertEqual(store.phase, .dedicatedSetup)
+
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            store.completePrologue()
+            store.completePrologueMessage()
+            store.completeFirstReport(with: .completed)
+            store.completeConversationPrompt(with: .started)
+
+            store.pauseFirstStoryPlayback()
+            store.completeFirstStoryPlayback()
+            store.continueAfterFirstStoryRead()
+            XCTAssertEqual(store.phase, .storyUnlockPresentation)
+
+            store.beginFirstStoryPlayback()
+            store.beginFirstStoryPlayback()
+            store.completeStoryUnlockPresentation()
+            store.continueAfterFirstStoryRead()
+            store.completeOnboarding(notificationChoice: .notNow)
+            XCTAssertEqual(store.phase, .firstStoryPlayback)
+            XCTAssertFalse(store.isCompleted)
+            XCTAssertNil(store.notificationChoice)
+
+            store.completeFirstStoryPlayback()
+            store.pauseFirstStoryPlayback()
+            store.completeFirstStoryPlayback()
+            store.beginFirstStoryPlayback()
+            store.completeOnboarding(notificationChoice: .notNow)
+            XCTAssertEqual(store.phase, .firstStoryReadConfirmation)
+            XCTAssertFalse(store.isCompleted)
+            XCTAssertNil(store.notificationChoice)
+        }
+    }
+
     func testProloguePhasesPersistAcrossRestarts() {
         withDefaults { defaults in
             let routineID = UUID()

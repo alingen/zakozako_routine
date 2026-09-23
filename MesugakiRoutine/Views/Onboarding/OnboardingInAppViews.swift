@@ -4,6 +4,7 @@ struct OnboardingStoryUnlockView: View {
     let didCompleteFirstPromise: Bool
     let hasUnlockedStory: Bool
     let onContinue: () -> Void
+    let onReadLater: () -> Void
 
     @State private var isVisible = false
 
@@ -36,6 +37,83 @@ struct OnboardingStoryUnlockView: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
+                Button(
+                    hasUnlockedStory
+                        ? "第一話を読む"
+                        : (didCompleteFirstPromise
+                            ? "もう一度確認する"
+                            : "明日の約束を確認する"),
+                    action: onContinue
+                )
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(AppColor.primary, in: Capsule())
+                    .buttonStyle(.plain)
+
+                if hasUnlockedStory || didCompleteFirstPromise {
+                    Button("あとで読む", action: onReadLater)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(AppColor.muted)
+                        .frame(minHeight: 44)
+                        .buttonStyle(.plain)
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: 390)
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 26))
+            .padding(.horizontal, 28)
+            .scaleEffect(isVisible ? 1 : 0.94)
+            .opacity(isVisible ? 1 : 0)
+        }
+        .accessibilityAddTraits(.isModal)
+        .onAppear {
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
+                isVisible = true
+            }
+        }
+    }
+
+    private var title: String {
+        if hasUnlockedStory { return "新しいストーリーが解禁されました" }
+        return didCompleteFirstPromise
+            ? "第一話を確認できませんでした"
+            : "莉央との物語はここから"
+    }
+
+    private var message: String {
+        if hasUnlockedStory {
+            return "莉央との最初の物語が読めるようになりました"
+        }
+        if didCompleteFirstPromise {
+            return "第一話の解禁状態を確認できませんでした。もう一度お試しください。"
+        }
+        return "今日はまだ達成にしていません。あとで約束を実行すると、物語の進行にも反映されます。"
+    }
+}
+
+struct OnboardingFirstStoryReadView: View {
+    let onContinue: () -> Void
+
+    @State private var isVisible = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(isVisible ? 0.48 : 0)
+                .ignoresSafeArea()
+
+            VStack(spacing: 20) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 72))
+                    .foregroundStyle(AppColor.primary)
+                    .accessibilityHidden(true)
+
+                Text("第一話を読み終わりました")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(AppColor.text)
+                    .multilineTextAlignment(.center)
+
                 Button("明日の約束を確認する", action: onContinue)
                     .font(.headline)
                     .foregroundStyle(.white)
@@ -57,21 +135,6 @@ struct OnboardingStoryUnlockView: View {
                 isVisible = true
             }
         }
-    }
-
-    private var title: String {
-        if hasUnlockedStory { return "新しいストーリーが解禁されました" }
-        return didCompleteFirstPromise ? "物語が動きはじめました" : "莉央との物語はここから"
-    }
-
-    private var message: String {
-        if hasUnlockedStory {
-            return "達成した記録は、そのまま莉央との物語につながっていきます。"
-        }
-        if didCompleteFirstPromise {
-            return "約束を続けると、新しい会話やストーリーが少しずつ解禁されます。"
-        }
-        return "今日はまだ達成にしていません。あとで約束を実行すると、物語の進行にも反映されます。"
     }
 }
 

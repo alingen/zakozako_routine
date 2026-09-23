@@ -82,6 +82,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
 struct StoryPlayerView: View {
     let input: any StoryPlayerViewInput
     var advOpeningRevealPhase: ADVOpeningRevealPhase = .text
+    var allowsSkip = true
     let onAdvance: (StoryAdvancePace) -> Void
     let onChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
@@ -213,6 +214,7 @@ struct StoryPlayerView: View {
                     isLogAvailable: StoryLogPresentationPolicy.isAvailable(
                         for: input.scenarioType
                     ),
+                    allowsSkip: allowsSkip,
                     onAdvance: onAdvance,
                     onSelectChoice: onChoice,
                     onDismissModal: onDismissModal,
@@ -220,6 +222,10 @@ struct StoryPlayerView: View {
                     onSkip: {
                         stopADVPlaybackModes()
                         onSkip()
+                    },
+                    onClose: {
+                        stopADVPlaybackModes()
+                        onClose()
                     },
                     onShowLog: showLog,
                     onToggleAuto: toggleADVAuto,
@@ -264,7 +270,7 @@ struct StoryPlayerView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            if !usesSkipOnlyDismissal {
+            if !usesSkipOnlyDismissal || !allowsSkip {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.body.bold())
@@ -295,7 +301,7 @@ struct StoryPlayerView: View {
                             Label("ログ", systemImage: "list.bullet.rectangle")
                         }
                     }
-                    if usesSkipOnlyDismissal, !input.isCompleted {
+                    if usesSkipOnlyDismissal, allowsSkip, !input.isCompleted {
                         Button(action: onSkip) {
                             Label("スキップ", systemImage: "forward.end.fill")
                         }

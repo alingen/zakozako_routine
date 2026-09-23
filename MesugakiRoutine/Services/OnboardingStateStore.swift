@@ -83,6 +83,8 @@ enum OnboardingPhase: String, Codable, Sendable {
     case firstReport
     case conversationPrompt
     case storyUnlockPresentation
+    case firstStoryPlayback
+    case firstStoryReadConfirmation
     case tomorrowPromise
     case completed
 }
@@ -923,6 +925,30 @@ final class OnboardingStateStore {
         conversationIdentity = nil
     }
 
+    /// 第一話を開く直前に保存し、アプリ終了後も再生待ちへ戻れるようにする。
+    func beginFirstStoryPlayback() {
+        guard !isCompleted, phase == .storyUnlockPresentation else { return }
+        phase = .firstStoryPlayback
+    }
+
+    /// 読了前に閉じた場合は解禁案内へ戻し、同じ第一話から再開できるようにする。
+    func pauseFirstStoryPlayback() {
+        guard !isCompleted, phase == .firstStoryPlayback else { return }
+        phase = .storyUnlockPresentation
+    }
+
+    /// 第一話の読了が永続化された後だけ、読了案内へ進める。
+    func completeFirstStoryPlayback() {
+        guard !isCompleted, phase == .firstStoryPlayback else { return }
+        phase = .firstStoryReadConfirmation
+    }
+
+    func continueAfterFirstStoryRead() {
+        guard !isCompleted, phase == .firstStoryReadConfirmation else { return }
+        phase = .tomorrowPromise
+    }
+
+    /// 第一話が未解禁、または「あとで読む」を選んだ場合の導線。
     func completeStoryUnlockPresentation() {
         guard !isCompleted, phase == .storyUnlockPresentation else { return }
         phase = .tomorrowPromise

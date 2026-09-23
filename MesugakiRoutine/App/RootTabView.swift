@@ -51,6 +51,7 @@ private enum RootTab: Hashable {
 /// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
     private static let prologueEventID = "event_prologue_001"
+    private static let firstStoryEventID = "event_middle_001"
 
     @Environment(\.modelContext) private var modelContext
     @State private var appDialog: AppDialogRequest?
@@ -61,7 +62,7 @@ struct RootTabView: View {
     @State private var openStoryEventRequest: String?
     @State private var isOnboardingConversationPlaying = false
     @State private var isOnboardingConversationDialog = false
-    @State private var onboardingHasUnlockedStory = false
+    @State private var onboardingFirstStoryAvailable = false
     @State private var onboardingAlertTitle = "オンボーディングを完了できませんでした"
     @State private var onboardingErrorMessage: String?
     @State private var isSavingNotification = false
@@ -73,6 +74,7 @@ struct RootTabView: View {
             || blockedBehaviorTaunt != nil
             || onboardingState.phase == .prologueMessage
             || onboardingState.phase == .storyUnlockPresentation
+            || onboardingState.phase == .firstStoryReadConfirmation
     }
 
     private var isPresentingReportSpotlight: Bool {
@@ -107,6 +109,8 @@ struct RootTabView: View {
 
                 if onboardingState.phase == .prologueMessage {
                     OnboardingPostPrologueMessageView(
+                        routineTitle: onboardingRoutine()?.title
+                            ?? onboardingState.draft.trimmedRoutineTitle,
                         onContinue: completePostPrologueMessage
                     )
                     .transition(.opacity)
@@ -116,8 +120,16 @@ struct RootTabView: View {
                 if onboardingState.phase == .storyUnlockPresentation {
                     OnboardingStoryUnlockView(
                         didCompleteFirstPromise: onboardingState.firstReportOutcome == .completed,
-                        hasUnlockedStory: onboardingHasUnlockedStory,
-                        onContinue: onboardingState.completeStoryUnlockPresentation
+                        hasUnlockedStory: onboardingFirstStoryAvailable,
+                        onContinue: continueFromStoryUnlockPresentation,
+                        onReadLater: onboardingState.completeStoryUnlockPresentation
+                    )
+                    .zIndex(10)
+                }
+
+                if onboardingState.phase == .firstStoryReadConfirmation {
+                    OnboardingFirstStoryReadView(
+                        onContinue: onboardingState.continueAfterFirstStoryRead
                     )
                     .zIndex(10)
                 }
@@ -212,7 +224,8 @@ struct RootTabView: View {
             .accessibilityHidden(isPresentingOverlay || isPresentingReportSpotlight)
 
             if isPresentingOverlay,
-               onboardingState.phase != .storyUnlockPresentation {
+               onboardingState.phase != .storyUnlockPresentation,
+               onboardingState.phase != .firstStoryReadConfirmation {
                 Color.black.opacity(0.48)
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
@@ -515,22 +528,76 @@ struct RootTabView: View {
         let dependencies = AppDependencies(context: modelContext)
         do {
             let refresh = try dependencies.storyUnlockService?.refreshUnlocks()
-            let firstCompletionAt = onboardingState.firstReportOutcome == .completed
-                ? onboardingRoutine()?.progressEvents.min()
-                : nil
-            let unlockedDuringOnboarding = try dependencies.storyStateRepository
-                .eventProgresses()
-                .contains { progress in
-                    guard let unlockedAt = progress.unlockedAt,
-                          let firstCompletionAt else { return false }
-                    return unlockedAt >= firstCompletionAt
-                }
-            onboardingHasUnlockedStory = refresh?.newlyUnlockedEventIds.isEmpty == false
-                || unlockedDuringOnboarding
+            onboardingFirstStoryAvailable = refresh?.events.first(where: {
+                $0.event.eventId == Self.firstStoryEventID
+            })?.canPlay == true
         } catch {
-            // 演出の表示は続けるが、未確認の状態を「解禁」とは表示しない。
-            onboardingHasUnlockedStory = false
+            // 未確認の状態を「第一話が解禁された」とは表示しない。
+            onboardingFirstStoryAvailable = false
         }
+    }
+
+    private func continueFromStoryUnlockPresentation() {
+        guard onboardingState.phase == .storyUnlockPresentation else { return }
+        if !onboardingFirstStoryAvailable {
+            prepareStoryUnlockPresentation()
+        }
+        guard onboardingFirstStoryAvailable else {
+            if onboardingState.firstReportOutcome == .deferred {
+                // 「あとでやる」だけでは第一話を強制解禁しない。
+                onboardingState.completeStoryUnlockPresentation()
+            } else {
+                presentOnboardingError("第一話の解禁状態を確認できませんでした。もう一度お試しください。")
+            }
+            return
+        }
+
+        onboardingState.beginFirstStoryPlayback()
+        presentPendingFirstStoryIfNeeded()
+    }
+
+    private var isFirstStoryRead: Bool {
+        let dependencies = AppDependencies(context: modelContext)
+        let progress = try? dependencies.storyStateRepository.eventProgress(
+            for: Self.firstStoryEventID
+        )
+        if progress?.isRead == true { return true }
+        return (try? dependencies.storyStateRepository.checkpoint(
+            for: "event:\(Self.firstStoryEventID)"
+        ))?.isCompleted == true
+    }
+
+    private func presentPendingFirstStoryIfNeeded() {
+        guard onboardingState.phase == .firstStoryPlayback,
+              openStoryEventRequest == nil else { return }
+
+        // 読了保存と画面終了通知の間で終了しても、第一話を二重再生しない。
+        if isFirstStoryRead {
+            selectedTab = .interaction
+            onboardingState.completeFirstStoryPlayback()
+            return
+        }
+
+        let dependencies = AppDependencies(context: modelContext)
+        do {
+            let refresh = try dependencies.storyUnlockService?.refreshUnlocks()
+            guard refresh?.events.first(where: {
+                $0.event.eventId == Self.firstStoryEventID
+            })?.canPlay == true else {
+                onboardingState.pauseFirstStoryPlayback()
+                prepareStoryUnlockPresentation()
+                presentOnboardingError("第一話を開けませんでした。時間をおいて、もう一度お試しください。")
+                return
+            }
+        } catch {
+            onboardingState.pauseFirstStoryPlayback()
+            prepareStoryUnlockPresentation()
+            presentOnboardingError("第一話を開けませんでした。\n\(error.localizedDescription)")
+            return
+        }
+
+        selectedTab = .interaction
+        openStoryEventRequest = Self.firstStoryEventID
     }
 
     private func enableOnboardingNotification(at time: Date) {
@@ -709,6 +776,10 @@ struct RootTabView: View {
             presentConversationPromptIfNeeded()
         case .storyUnlockPresentation:
             prepareStoryUnlockPresentation()
+        case .firstStoryPlayback:
+            presentPendingFirstStoryIfNeeded()
+        case .firstStoryReadConfirmation:
+            selectedTab = .interaction
         case .tomorrowPromise, .completed:
             break
         }
@@ -739,16 +810,27 @@ struct RootTabView: View {
     }
 
     private func finishStoryEventAutoPlay(eventID: String, didComplete: Bool) {
-        guard eventID == Self.prologueEventID,
-              onboardingState.phase == .prologue else { return }
+        switch eventID {
+        case Self.prologueEventID where onboardingState.phase == .prologue:
+            guard didComplete else {
+                presentOnboardingError("プロローグが完了していません。もう一度お試しください。")
+                return
+            }
+            selectedTab = .home
+            onboardingState.completePrologue()
 
-        guard didComplete else {
-            presentOnboardingError("プロローグが完了していません。もう一度お試しください。")
-            return
+        case Self.firstStoryEventID where onboardingState.phase == .firstStoryPlayback:
+            if didComplete || isFirstStoryRead {
+                onboardingState.completeFirstStoryPlayback()
+            } else {
+                // 途中で閉じてもチェックポイントを残し、解禁案内から再開できる。
+                onboardingState.pauseFirstStoryPlayback()
+                prepareStoryUnlockPresentation()
+            }
+
+        default:
+            break
         }
-
-        selectedTab = .home
-        onboardingState.completePrologue()
     }
 
     private func completePostPrologueMessage() {
@@ -874,25 +956,16 @@ struct RootTabView: View {
     }
 
     private func blockedBehaviorTauntOverlay(_ request: BlockedBehaviorTauntRequest) -> some View {
-        GeometryReader { proxy in
-            let artworkWidth = min(
-                280,
-                min(proxy.size.width * 0.54, proxy.size.height * 0.33)
-            )
-            let bubbleWidth = min(312, proxy.size.width - 40)
-
+        GeometryReader { _ in
             ZStack {
                 Color.clear
                     .contentShape(Rectangle())
 
-                VStack(spacing: 12) {
-                    blockedBehaviorPortrait(width: artworkWidth)
-                        .accessibilityHidden(true)
-
-                    InteractionCharacterSpeechBubble(text: request.text)
-                        .frame(width: bubbleWidth)
-                        .allowsHitTesting(false)
+                RioSpeechRow {
+                    OnboardingRioBubble(text: request.text)
                 }
+                .frame(maxWidth: 520)
+                .padding(.horizontal, 20)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
@@ -902,23 +975,6 @@ struct RootTabView: View {
         .accessibilityHint("タップして閉じる")
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(.escape, dismissBlockedBehaviorTaunt)
-    }
-
-    private func blockedBehaviorPortrait(width: CGFloat) -> some View {
-        let cornerRadius = min(24, width * 0.12)
-
-        return Image("rio_blocked_behavior_taunt")
-            .resizable()
-            .scaledToFill()
-            .frame(width: width, height: width, alignment: .top)
-            .clipped()
-            .background(AppColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(AppColor.primary.opacity(0.55), lineWidth: 2)
-            }
-            .shadow(color: AppColor.text.opacity(0.20), radius: 12, y: 6)
     }
 
     private func dismissBlockedBehaviorTaunt() {
@@ -1188,31 +1244,43 @@ private struct OnboardingReportCalloutSizePreferenceKey: PreferenceKey {
 
 /// プロローグ直後、初回報告へ移る前にHome上へ重ねる莉央の一言。
 private struct OnboardingPostPrologueMessageView: View {
+    let routineTitle: String
     let onContinue: () -> Void
 
-    var body: some View {
-        GeometryReader { _ in
-            VStack(spacing: 22) {
-                HStack(alignment: .top, spacing: 10) {
-                    OnboardingRioPortrait()
-                    OnboardingRioBubble(text: "できたら報告してね〜")
-                }
-                .frame(maxWidth: 520)
+    private var todayMessage: String {
+        "今日は「\(routineTitle)」だよ"
+    }
 
-                Button("次へ", action: onContinue)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(AppColor.text)
-                    .padding(.horizontal, 20)
-                    .frame(minHeight: 44)
-                    .background(AppColor.surface.opacity(0.95), in: Capsule())
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("onboarding.prologueMessage.continue")
+    var body: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 22) {
+                    RioSpeechRow {
+                        VStack(alignment: .leading, spacing: 10) {
+                            OnboardingRioBubble(text: todayMessage)
+                            OnboardingRioBubble(text: "できたら報告してね〜")
+                        }
+                    }
+                    .frame(maxWidth: 520)
+
+                    Button("次へ", action: onContinue)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(AppColor.text)
+                        .padding(.horizontal, 20)
+                        .frame(minHeight: 44)
+                        .background(AppColor.surface.opacity(0.95), in: Capsule())
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("onboarding.prologueMessage.continue")
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: proxy.size.height, alignment: .center)
             }
-            .padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .scrollBounceBehavior(.basedOnSize)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("莉央、できたら報告してね〜")
+        .accessibilityLabel("莉央、\(todayMessage)。できたら報告してね〜")
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape, onContinue)
     }

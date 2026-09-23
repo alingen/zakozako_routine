@@ -505,7 +505,7 @@ struct OnboardingSetupView: View {
                 .transition(.move(edge: .trailing).combined(with: .opacity))
         } else {
             blockedBehaviorPresetPage
-                .transition(.move(edge: .leading).combined(with: .opacity))
+                .transition(.opacity)
         }
     }
 
@@ -1200,9 +1200,7 @@ private struct OnboardingRioIntroductionView: View {
                     }
 
                     VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
-                        HStack(alignment: .top, spacing: 10) {
-                            OnboardingRioPortrait()
-
+                        RioSpeechRow {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
@@ -1356,9 +1354,7 @@ private struct OnboardingHabitSelectionIntroductionView: View {
                     }
 
                     VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
-                        HStack(alignment: .top, spacing: 10) {
-                            OnboardingRioPortrait()
-
+                        RioSpeechRow {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
@@ -1545,9 +1541,7 @@ private struct OnboardingBlockedBehaviorGuidanceView: View {
                     }
 
                     VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
-                        HStack(alignment: .top, spacing: 10) {
-                            OnboardingRioPortrait()
-
+                        RioSpeechRow {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
@@ -1718,9 +1712,7 @@ private struct OnboardingConfirmationGuidanceView: View {
                     }
 
                     VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
-                        HStack(alignment: .top, spacing: 10) {
-                            OnboardingRioPortrait()
-
+                        RioSpeechRow {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
@@ -1891,9 +1883,7 @@ private struct OnboardingDelayedGuidanceView: View {
                     }
 
                     VStack(spacing: OnboardingExplanationLayout.conversationToPanelSpacing(in: proxy.size)) {
-                        HStack(alignment: .top, spacing: 10) {
-                            OnboardingRioPortrait()
-
+                        RioSpeechRow {
                             ScrollView {
                                 OnboardingRioBubble(text: message)
                                     .accessibilityLabel("莉央、\(message)")
@@ -2081,6 +2071,22 @@ private struct OnboardingExplanationPanel: View {
         }
         .padding(16)
         .contentShape(Rectangle())
+    }
+}
+
+/// 莉央を左、セリフ領域を右に固定する共通レイアウト。
+struct RioSpeechRow<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            OnboardingRioPortrait()
+            content
+        }
     }
 }
 

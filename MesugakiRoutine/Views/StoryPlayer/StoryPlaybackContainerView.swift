@@ -151,6 +151,7 @@ struct StoryPlaybackContainerView: View {
     @Environment(\.modelContext) private var modelContext
 
     let launch: StoryLaunchRequest
+    var allowsSkip = true
     let onClose: () -> Void
 
     @State private var player: StoryPlayer?
@@ -172,6 +173,7 @@ struct StoryPlaybackContainerView: View {
                     StoryPlayerView(
                         input: renderedInput,
                         advOpeningRevealPhase: advOpeningRevealPhase,
+                        allowsSkip: allowsSkip,
                         onAdvance: { pace in
                             Task {
                                 await player.advance(
@@ -201,6 +203,7 @@ struct StoryPlaybackContainerView: View {
                             )
                         },
                         onSkip: {
+                            guard allowsSkip else { return }
                             Task {
                                 if await player.skip() {
                                     onClose()

@@ -208,7 +208,10 @@ struct InteractionView: View {
                 }
             }
         ) { launch in
-            StoryPlaybackContainerView(launch: launch) {
+            StoryPlaybackContainerView(
+                launch: launch,
+                allowsSkip: autoPlayedStoryEventID != "event_middle_001"
+            ) {
                 viewModel.closePlayer()
             }
         }
@@ -308,12 +311,13 @@ struct InteractionView: View {
     private func openRequestedStoryEventIfNeeded() {
         guard let eventID = openStoryEventRequest else { return }
         viewModel.configure(context: modelContext)
+        autoPlayedStoryEventID = eventID
         guard viewModel.openEvent(id: eventID) else {
+            autoPlayedStoryEventID = nil
             openStoryEventRequest = nil
             onStoryEventAutoPlayEnded(eventID, false)
             return
         }
-        autoPlayedStoryEventID = eventID
         openStoryEventRequest = nil
     }
 }
