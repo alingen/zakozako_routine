@@ -12,6 +12,7 @@ protocol StoryPlayerViewInput {
     var backgroundAssetID: String? { get }
     var portraitAssetID: String? { get }
     var cgAssetID: String? { get }
+    var shouldDelayCurrentADVText: Bool { get }
     var availableChoices: [StoryChoice] { get }
     var isTyping: Bool { get }
     var isModalPresented: Bool { get }
@@ -31,6 +32,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
     let backgroundAssetID: String?
     let portraitAssetID: String?
     let cgAssetID: String?
+    let shouldDelayCurrentADVText: Bool
     let availableChoices: [StoryChoice]
     let isTyping: Bool
     let isModalPresented: Bool
@@ -48,6 +50,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         backgroundAssetID: String? = nil,
         portraitAssetID: String? = nil,
         cgAssetID: String? = nil,
+        shouldDelayCurrentADVText: Bool = false,
         availableChoices: [StoryChoice] = [],
         isTyping: Bool = false,
         isModalPresented: Bool = false,
@@ -64,6 +67,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         self.backgroundAssetID = backgroundAssetID
         self.portraitAssetID = portraitAssetID
         self.cgAssetID = cgAssetID
+        self.shouldDelayCurrentADVText = shouldDelayCurrentADVText
         self.availableChoices = availableChoices
         self.isTyping = isTyping
         self.isModalPresented = isModalPresented
@@ -200,6 +204,7 @@ struct StoryPlayerView: View {
                     choices: input.availableChoices,
                     isModalPresented: input.isModalPresented,
                     openingRevealPhase: advOpeningRevealPhase,
+                    delaysTextAfterBlackout: input.shouldDelayCurrentADVText,
                     playbackMode: advPlaybackMode,
                     isPlaybackPaused: isShowingLog
                         || !advOpeningRevealPhase.startsTextReveal,

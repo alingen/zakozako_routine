@@ -110,13 +110,11 @@ final class ADVTextLayoutTests: XCTestCase {
 final class ADVOpeningRevealTimingTests: XCTestCase {
     func testPhaseBoundariesMatchTheADVOpeningTimeline() {
         let cases: [(UInt64, ADVOpeningRevealPhase)] = [
-            (0, .blackout),
-            (299_999_999, .blackout),
-            (300_000_000, .scene),
-            (599_999_999, .scene),
-            (600_000_000, .textBox),
-            (799_999_999, .textBox),
-            (800_000_000, .text),
+            (0, .scene),
+            (299_999_999, .scene),
+            (300_000_000, .textBox),
+            (499_999_999, .textBox),
+            (500_000_000, .text),
             (1_000_000_000, .text),
         ]
 
@@ -208,6 +206,99 @@ final class ADVStoryRendererRenderingTests: XCTestCase {
         XCTAssertLessThanOrEqual(rgba[1], 2)
         XCTAssertLessThanOrEqual(rgba[2], 2)
         XCTAssertGreaterThanOrEqual(rgba[3], 253)
+    }
+
+    func testEnlargedPortraitDoesNotShiftTheBackgroundLayer() throws {
+        let node = StoryNode(
+            nodeId: "portrait-layout",
+            lineOrder: 1,
+            speaker: "rio",
+            messageType: .text,
+            text: "レイアウト確認",
+            screenMode: .adv,
+            uiVariant: .dialogue
+        )
+
+        func renderedImage(
+            size: CGSize,
+            portraitAssetID: String?
+        ) throws -> UIImage {
+            let content = ADVStoryRenderer(
+                node: node,
+                scenarioType: .prologue,
+                backgroundAssetID: "bg_protagonist_living_room",
+                portraitAssetID: portraitAssetID,
+                showsPlaybackControls: true,
+                onAdvance: { _ in },
+                onSelectChoice: { _ in },
+                onDismissModal: {}
+            )
+            .frame(width: size.width, height: size.height)
+            .environment(\.colorScheme, .light)
+
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = 1
+            return try XCTUnwrap(renderer.uiImage)
+        }
+
+        func rgba(in image: UIImage, x: Int, y: Int) throws -> [UInt8] {
+            let cgImage = try XCTUnwrap(image.cgImage)
+            let sample = try XCTUnwrap(
+                cgImage.cropping(
+                    to: CGRect(x: x, y: y, width: 1, height: 1)
+                )
+            )
+            var rgba = [UInt8](repeating: 0, count: 4)
+            try rgba.withUnsafeMutableBytes { bytes in
+                let context = try XCTUnwrap(CGContext(
+                    data: bytes.baseAddress,
+                    width: 1,
+                    height: 1,
+                    bitsPerComponent: 8,
+                    bytesPerRow: 4,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                ))
+                context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            }
+            return rgba
+        }
+
+        let sizes = [
+            CGSize(width: 320, height: 568),
+            CGSize(width: 390, height: 844),
+            CGSize(width: 428, height: 926)
+        ]
+
+        for size in sizes {
+            let backgroundOnly = try renderedImage(
+                size: size,
+                portraitAssetID: nil
+            )
+            let withEnlargedPortrait = try renderedImage(
+                size: size,
+                portraitAssetID: "portrait_rio_neutral"
+            )
+            XCTAssertEqual(backgroundOnly.size.width, size.width, accuracy: 0.5)
+            XCTAssertEqual(backgroundOnly.size.height, size.height, accuracy: 0.5)
+            XCTAssertEqual(withEnlargedPortrait.size.width, size.width, accuracy: 0.5)
+            XCTAssertEqual(withEnlargedPortrait.size.height, size.height, accuracy: 0.5)
+            let backgroundPixel = try rgba(in: backgroundOnly, x: 2, y: 40)
+            let portraitPixel = try rgba(in: withEnlargedPortrait, x: 2, y: 40)
+
+            XCTAssertGreaterThan(
+                Int(backgroundPixel[0]) + Int(backgroundPixel[1]) + Int(backgroundPixel[2]),
+                30,
+                "The assertion point must contain the scene background, not the black base."
+            )
+            for channel in 0..<4 {
+                XCTAssertLessThanOrEqual(
+                    abs(Int(portraitPixel[channel]) - Int(backgroundPixel[channel])),
+                    2,
+                    "The enlarged portrait must not move the background layer at width \(size.width)."
+                )
+            }
+        }
     }
 
     func testDialogueAndPlaybackControlsRenderAtCompactAndRegularWidths() throws {

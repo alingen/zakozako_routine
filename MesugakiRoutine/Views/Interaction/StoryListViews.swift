@@ -81,10 +81,6 @@ private struct StoryListRow: View {
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 2)
                                 .background(AppColor.primary, in: Capsule())
-                        } else if item.isRead {
-                            Label("既読", systemImage: "checkmark")
-                                .font(.caption2)
-                                .foregroundStyle(AppColor.success)
                         }
                     }
 

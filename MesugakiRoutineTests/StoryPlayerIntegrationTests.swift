@@ -247,11 +247,29 @@ final class StoryPlayerIntegrationTests: XCTestCase {
                     command: "clear_background"
                 ),
                 StoryNode(
-                    nodeId: "after_clear",
+                    nodeId: "hide_portrait",
                     lineOrder: 4,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "hide_portrait"
+                ),
+                StoryNode(
+                    nodeId: "after_clear",
+                    lineOrder: 5,
                     speaker: "narrator",
                     messageType: .text,
                     text: "黒背景",
+                    screenMode: .adv,
+                    uiVariant: .narration
+                ),
+                StoryNode(
+                    nodeId: "next_black_line",
+                    lineOrder: 6,
+                    speaker: "narrator",
+                    messageType: .text,
+                    text: "次の行",
                     screenMode: .adv,
                     uiVariant: .narration
                 ),
@@ -282,10 +300,29 @@ final class StoryPlayerIntegrationTests: XCTestCase {
 
         XCTAssertEqual(player.currentNode?.nodeId, "after_clear")
         XCTAssertNil(player.backgroundAssetID)
+        XCTAssertTrue(player.shouldDelayCurrentADVText)
         XCTAssertEqual(
             try stateRepository.checkpoint(for: playbackKey)?.visitedNodeIds,
-            ["set_background", "before_clear", "clear_background", "after_clear"]
+            ["set_background", "before_clear", "clear_background", "hide_portrait", "after_clear"]
         )
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "next_black_line")
+        XCTAssertFalse(player.shouldDelayCurrentADVText)
+    }
+
+    func testGeneratedPrologueHidesPortraitImmediatelyAfterClearingBackground() throws {
+        let contentRepository = try makeGeneratedContentRepository()
+        let scenario = try XCTUnwrap(contentRepository.scenario(id: "prologue_001"))
+        let nodes = scenario.nodes.sorted { $0.lineOrder < $1.lineOrder }
+
+        XCTAssertEqual(nodes.count, 53)
+        XCTAssertEqual(nodes[44].nodeId, "prologue_001_045")
+        XCTAssertEqual(nodes[44].command, "clear_background")
+        XCTAssertEqual(nodes[45].nodeId, "prologue_001_046")
+        XCTAssertEqual(nodes[45].command, "hide_portrait")
+        XCTAssertEqual(nodes[46].nodeId, "prologue_001_047")
+        XCTAssertEqual(nodes[46].text, "数週間前。")
     }
 
     func testPortraitAndBGMCommandsPersistUntilExplicitlyHiddenOrStopped() async throws {

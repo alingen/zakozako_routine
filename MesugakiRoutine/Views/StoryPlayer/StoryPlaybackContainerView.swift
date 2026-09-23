@@ -64,13 +64,11 @@ enum ADVOpeningRevealPhase: Int, Equatable {
 }
 
 enum ADVOpeningRevealTiming {
-    static let blackoutNanoseconds: UInt64 = 300_000_000
+    static let sceneFadeSeconds = 0.25
     static let sceneToTextBoxNanoseconds: UInt64 = 300_000_000
     static let textBoxToTextNanoseconds: UInt64 = 200_000_000
 
-    static let sceneStartNanoseconds = blackoutNanoseconds
-    static let textBoxStartNanoseconds = sceneStartNanoseconds
-        + sceneToTextBoxNanoseconds
+    static let textBoxStartNanoseconds = sceneToTextBoxNanoseconds
     static let textStartNanoseconds = textBoxStartNanoseconds
         + textBoxToTextNanoseconds
 
@@ -79,7 +77,6 @@ enum ADVOpeningRevealTiming {
     }
 
     static func phase(atElapsedNanoseconds elapsed: UInt64) -> ADVOpeningRevealPhase {
-        if elapsed < sceneStartNanoseconds { return .blackout }
         if elapsed < textBoxStartNanoseconds { return .scene }
         if elapsed < textStartNanoseconds { return .textBox }
         return .text
@@ -168,19 +165,19 @@ struct StoryPlaybackContainerView: View {
                 }
             }
 
-            if advOpeningRevealPhase == .blackout {
-                Color.black
-                    .ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .zIndex(9)
-                    .accessibilityHidden(true)
-            }
+            Color.black
+                .opacity(advOpeningRevealPhase == .blackout ? 1 : 0)
+                .ignoresSafeArea()
+                .allowsHitTesting(advOpeningRevealPhase == .blackout)
+                .zIndex(9)
+                .accessibilityHidden(true)
 
             if isShowingEventTitleIntro {
                 StoryEventTitleIntroView(
                     title: launch.title,
                     isVisible: isEventTitleIntroVisible
                 )
+                .transition(.identity)
                 .zIndex(10)
             }
 
@@ -298,29 +295,19 @@ struct StoryPlaybackContainerView: View {
         guard !Task.isCancelled else { return }
 
         let shouldStageADVReveal = player.currentMode == .adv
-        if !shouldStageADVReveal {
-            // Chat/call events keep their existing immediate presentation once
-            // the opaque title screen is gone. The staged reveal is ADV-only.
-            advOpeningRevealPhase = .text
-        }
-        isShowingEventTitleIntro = false
-
         if shouldStageADVReveal {
+            withAnimation(.easeOut(duration: ADVOpeningRevealTiming.sceneFadeSeconds)) {
+                isShowingEventTitleIntro = false
+                advOpeningRevealPhase = .scene
+            }
             await revealADVAfterEventTitle()
+        } else {
+            isShowingEventTitleIntro = false
+            advOpeningRevealPhase = .text
         }
     }
 
     private func revealADVAfterEventTitle() async {
-        do {
-            try await Task<Never, Never>.sleep(
-                nanoseconds: ADVOpeningRevealTiming.blackoutNanoseconds
-            )
-        } catch {
-            return
-        }
-        guard !Task.isCancelled else { return }
-        advOpeningRevealPhase = .scene
-
         do {
             try await Task<Never, Never>.sleep(
                 nanoseconds: ADVOpeningRevealTiming.sceneToTextBoxNanoseconds
@@ -353,6 +340,7 @@ struct StoryPlaybackContainerView: View {
             backgroundAssetID: player.backgroundAssetID,
             portraitAssetID: player.portraitAssetID,
             cgAssetID: player.cgAssetID,
+            shouldDelayCurrentADVText: player.shouldDelayCurrentADVText,
             availableChoices: player.availableChoices,
             isTyping: player.isTyping,
             isModalPresented: player.isModalPresented,

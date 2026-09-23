@@ -66,6 +66,7 @@ final class StoryPlayer {
     private(set) var backgroundAssetID: String?
     private(set) var portraitAssetID: String?
     private(set) var cgAssetID: String?
+    private(set) var shouldDelayCurrentADVText = false
     private(set) var availableChoices: [StoryChoice] = []
     private(set) var isTyping = false
     private(set) var isModalPresented = false
@@ -115,6 +116,7 @@ final class StoryPlayer {
     @ObservationIgnored private var operationGeneration: UInt64 = 0
     @ObservationIgnored private var isProcessing = false
     @ObservationIgnored private var isClosed = false
+    @ObservationIgnored private var awaitsTextAfterClearBackground = false
 
     init(
         scenario: StoryScenario,
@@ -639,6 +641,8 @@ private extension StoryPlayer {
         availableChoices = []
         isModalPresented = false
         isTyping = false
+        shouldDelayCurrentADVText = false
+        awaitsTextAfterClearBackground = false
         isCompleted = true
     }
 }
@@ -706,6 +710,7 @@ private extension StoryPlayer {
 
         if let background = normalized(node.background) {
             backgroundAssetID = background
+            awaitsTextAfterClearBackground = false
         }
         if let portrait = normalized(node.portrait) {
             portraitAssetID = portrait
@@ -725,8 +730,10 @@ private extension StoryPlayer {
             switch effect {
             case .setBackground(let assetID):
                 backgroundAssetID = assetID
+                awaitsTextAfterClearBackground = false
             case .clearBackground:
                 backgroundAssetID = nil
+                awaitsTextAfterClearBackground = true
             case .setPortrait(let assetID):
                 portraitAssetID = assetID
             case .clearPortrait:
@@ -762,6 +769,14 @@ private extension StoryPlayer {
                 scenarioType: scenario.scenarioType,
                 hasExplicitTransition: normalized(node.command)?.lowercased() == "scene_change"
             )
+        }
+        shouldDelayCurrentADVText = node.messageType == .text
+            && currentMode == .adv
+            && backgroundAssetID == nil
+            && portraitAssetID == nil
+            && awaitsTextAfterClearBackground
+        if node.messageType == .text {
+            awaitsTextAfterClearBackground = false
         }
         return encounteredCGs
     }
@@ -1026,6 +1041,8 @@ private extension StoryPlayer {
         backgroundAssetID = event?.background
         portraitAssetID = nil
         cgAssetID = nil
+        shouldDelayCurrentADVText = false
+        awaitsTextAfterClearBackground = false
         availableChoices = []
         isTyping = false
         isModalPresented = false

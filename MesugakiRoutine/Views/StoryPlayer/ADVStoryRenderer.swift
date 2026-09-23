@@ -10,6 +10,7 @@ struct ADVStoryRenderer: View {
     var choices: [StoryChoice] = []
     var isModalPresented = false
     var openingRevealPhase: ADVOpeningRevealPhase = .text
+    var delaysTextAfterBlackout = false
     var playbackMode: ADVPlaybackMode = .manual
     var isPlaybackPaused = false
     var isAutomationAvailable = true
@@ -23,11 +24,19 @@ struct ADVStoryRenderer: View {
     var onToggleAuto: () -> Void = {}
     var onToggleFastForward: () -> Void = {}
 
+    @State private var revealedBlackoutNodeID: String?
+
     private var effectiveBackground: String? { backgroundAssetID ?? node.background }
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented }
     private var reservedControlBarHeight: CGFloat { showsPlaybackControls ? 68 : 0 }
+    private var isBlackoutTextReady: Bool {
+        !delaysTextAfterBlackout || revealedBlackoutNodeID == node.nodeId
+    }
+    private var blackoutTextRevealTaskID: String {
+        "\(node.nodeId)|\(delaysTextAfterBlackout)"
+    }
 
     private var allowsAutomaticNonTextAdvance: Bool {
         switch node.uiVariant ?? .dialogue {
@@ -78,14 +87,41 @@ struct ADVStoryRenderer: View {
                         StoryAssetView(assetID: effectiveCG, purpose: .cg, contentMode: .fit)
                             .frame(maxWidth: proxy.size.width, maxHeight: proxy.size.height)
                             .transition(.opacity)
-                    } else if let effectivePortrait {
-                        StoryAssetView(assetID: effectivePortrait, purpose: .image, contentMode: .fit)
-                            .frame(
-                                width: proxy.size.width * 1.15,
-                                height: proxy.size.height * 0.82,
-                                alignment: .bottom
-                            )
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    } else {
+                        ZStack {
+                            if let effectivePortrait {
+                                StoryAssetView(
+                                    assetID: effectivePortrait,
+                                    purpose: .image,
+                                    contentMode: .fit
+                                )
+                                .frame(
+                                    width: max(
+                                        proxy.size.width * 1.4,
+                                        proxy.size.height * 0.97 * 2 / 3
+                                    ),
+                                    height: proxy.size.height * 0.97,
+                                    alignment: .bottom
+                                )
+                                // Place the head below the top UI and crop the
+                                // legs around the knees at the bottom edge.
+                                .offset(y: proxy.size.height * 0.19)
+                                // Keep the oversized portrait from widening
+                                // the background and dialogue layout.
+                                .frame(
+                                    width: proxy.size.width,
+                                    height: proxy.size.height,
+                                    alignment: .bottom
+                                )
+                                // Fade an entrance; keep the same view identity
+                                // so expression changes replace the image at once.
+                                .transition(
+                                    .asymmetric(insertion: .opacity, removal: .identity)
+                                )
+                            }
+                        }
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .animation(.easeInOut(duration: 0.125), value: effectivePortrait != nil)
                     }
                 }
 
@@ -103,7 +139,7 @@ struct ADVStoryRenderer: View {
                         .accessibilityAddTraits(.isButton)
                 }
 
-                if openingRevealPhase.showsTextBox {
+                if openingRevealPhase.showsTextBox, isBlackoutTextReady {
                     VStack(spacing: 14) {
                         if advancesFromTextWindow || openingRevealPhase.startsTextReveal {
                             variantContent(
@@ -125,7 +161,9 @@ struct ADVStoryRenderer: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: variantAlignment)
                 }
 
-                if showsPlaybackControls, openingRevealPhase.showsTextBox {
+                if showsPlaybackControls,
+                   openingRevealPhase.showsTextBox,
+                   isBlackoutTextReady {
                     ADVPlaybackControlBar(
                         playbackMode: playbackMode,
                         isLogAvailable: isLogAvailable,
@@ -153,6 +191,16 @@ struct ADVStoryRenderer: View {
             .clipped()
         }
         .background(AppColor.background)
+        .task(id: blackoutTextRevealTaskID) {
+            guard delaysTextAfterBlackout else { return }
+            do {
+                try await Task<Never, Never>.sleep(nanoseconds: 300_000_000)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            revealedBlackoutNodeID = node.nodeId
+        }
         .task(id: automaticNonTextAdvanceTaskID) {
             await automaticallyAdvanceNonTextNodeIfNeeded()
         }
