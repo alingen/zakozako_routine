@@ -88,6 +88,7 @@ struct StoryPlayerView: View {
     let onPresentNode: () -> Void
     let onSkip: () -> Void
     let onClose: () -> Void
+    var onTextWindowTap: () -> Void = {}
 
     @State private var isShowingLog = false
     @State private var advPlaybackMode: ADVPlaybackMode = .manual
@@ -215,6 +216,7 @@ struct StoryPlayerView: View {
                     onAdvance: onAdvance,
                     onSelectChoice: onChoice,
                     onDismissModal: onDismissModal,
+                    onTextWindowTap: onTextWindowTap,
                     onSkip: {
                         stopADVPlaybackModes()
                         onSkip()
@@ -237,7 +239,8 @@ struct StoryPlayerView: View {
                     onAdvance: { onAdvance(.normal) },
                     onPresentNode: onPresentNode,
                     onSelectChoice: onChoice,
-                    onDismissModal: onDismissModal
+                    onDismissModal: onDismissModal,
+                    onTextWindowTap: onTextWindowTap
                 )
             case .call:
                 CallStoryRenderer(
@@ -399,7 +402,8 @@ struct StoryPlayerView: View {
                 showsPlaybackControls: false,
                 onAdvance: onAdvance,
                 onSelectChoice: onChoice,
-                onDismissModal: onDismissModal
+                onDismissModal: onDismissModal,
+                onTextWindowTap: onTextWindowTap
             )
 
             Text("未対応の画面モード: \(modeName)")

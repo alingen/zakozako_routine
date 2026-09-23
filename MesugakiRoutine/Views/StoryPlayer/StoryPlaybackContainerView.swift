@@ -10,7 +10,7 @@ private final class StoryBGMPlaybackController: ObservableObject {
     func synchronize(with state: StoryBGMPlaybackState?) {
         guard state != currentState else { return }
         stop()
-        guard let state, let url = audioURL(for: state.assetID) else { return }
+        guard let state, let url = storyAudioURL(for: state.assetID) else { return }
 
         do {
             try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
@@ -38,18 +38,80 @@ private final class StoryBGMPlaybackController: ObservableObject {
         player = nil
         currentState = nil
     }
+}
 
-    private func audioURL(for assetID: String) -> URL? {
-        if let exact = Bundle.main.url(forResource: assetID, withExtension: nil) {
-            return exact
+@MainActor
+private final class StorySoundEffectPlaybackController: NSObject, ObservableObject, AVAudioPlayerDelegate {
+    private var players: [AVAudioPlayer] = []
+    private var textWindowClickPlayer: AVAudioPlayer?
+
+    func playTextWindowClick() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+            if textWindowClickPlayer == nil {
+                guard let url = storyAudioURL(for: "se_click") else { return }
+                let player = try AVAudioPlayer(contentsOf: url)
+                player.volume = 0.22
+                player.prepareToPlay()
+                textWindowClickPlayer = player
+            }
+            // A second tap restarts the same sound instead of layering another copy.
+            textWindowClickPlayer?.stop()
+            textWindowClickPlayer?.currentTime = 0
+            textWindowClickPlayer?.play()
+        } catch {
+            textWindowClickPlayer = nil
         }
-        for fileExtension in ["m4a", "mp3", "wav", "caf", "aac"] {
-            if let matched = Bundle.main.url(forResource: assetID, withExtension: fileExtension) {
-                return matched
+    }
+
+    func play(_ effects: [StorySoundEffectPlayback]) {
+        guard !effects.isEmpty else { return }
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        } catch {
+            return
+        }
+
+        for effect in effects {
+            guard let url = storyAudioURL(for: effect.assetID) else { continue }
+            do {
+                let player = try AVAudioPlayer(contentsOf: url)
+                player.volume = effect.volume
+                player.delegate = self
+                player.prepareToPlay()
+                if player.play() {
+                    players.append(player)
+                }
+            } catch {
+                continue
             }
         }
-        return nil
     }
+
+    func stop() {
+        players.forEach { $0.stop() }
+        players = []
+        textWindowClickPlayer?.stop()
+        textWindowClickPlayer = nil
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor [weak self] in
+            self?.players.removeAll { $0 === player }
+        }
+    }
+}
+
+private func storyAudioURL(for assetID: String) -> URL? {
+    if let exact = Bundle.main.url(forResource: assetID, withExtension: nil) {
+        return exact
+    }
+    for fileExtension in ["m4a", "mp3", "wav", "caf", "aac"] {
+        if let matched = Bundle.main.url(forResource: assetID, withExtension: fileExtension) {
+            return matched
+        }
+    }
+    return nil
 }
 
 enum ADVOpeningRevealPhase: Int, Equatable {
@@ -99,6 +161,7 @@ struct StoryPlaybackContainerView: View {
     @State private var lastActiveSnapshot: StoryPlayerViewSnapshot?
     @State private var isCompletionFadeVisible = false
     @StateObject private var bgmPlayback = StoryBGMPlaybackController()
+    @StateObject private var soundEffectPlayback = StorySoundEffectPlaybackController()
 
     var body: some View {
         ZStack {
@@ -147,6 +210,9 @@ struct StoryPlaybackContainerView: View {
                         onClose: {
                             player.close()
                             onClose()
+                        },
+                        onTextWindowTap: {
+                            soundEffectPlayback.playTextWindowClick()
                         }
                     )
                     .onAppear {
@@ -205,9 +271,15 @@ struct StoryPlaybackContainerView: View {
         .onChange(of: player?.bgmPlaybackState) { _, state in
             bgmPlayback.synchronize(with: state)
         }
+        .onChange(of: player?.pendingSoundEffects, initial: true) { _, _ in
+            if let player {
+                soundEffectPlayback.play(player.consumePendingSoundEffects())
+            }
+        }
         .onDisappear {
             player?.close()
             bgmPlayback.stop()
+            soundEffectPlayback.stop()
             AppOrientationController.set(.portrait)
         }
     }
@@ -234,6 +306,7 @@ struct StoryPlaybackContainerView: View {
     private func prepare() async {
         player?.close()
         bgmPlayback.stop()
+        soundEffectPlayback.stop()
         player = nil
         preparationError = nil
         isShowingEventTitleIntro = false

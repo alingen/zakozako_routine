@@ -138,7 +138,11 @@ story_content.generated.json
   `ランタイム` を使用します。
 - `enabled=FALSE` の素材は参照できません。素材IDの重複、参照切れ、用途と種別の不一致は
   同期時にエラーになります。
-- `bgm` は素材台帳として登録できますが、ループ再生・停止などのBGM制御は別途アプリ実装が必要です。
+- 効果音を鳴らす行は `message_type=action`、`command=play_se`、
+  `command_args={"asset_id":"se_defeat","volume":0.8}` とします。参照する素材は
+  `asset_catalog` に `asset_type=se` で登録します。`asset_id` はBundle内のファイル名から
+  拡張子を除いた名前と一致させてください（例：`se_defeat.mp3`）。`volume` は省略時1です。
+- BGMは `play_bgm`／`stop_bgm` で制御します。`play_se` はループせず、行に到達するたび一度だけ再生します。
 
 ### interactions（7列）
 

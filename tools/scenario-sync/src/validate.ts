@@ -127,6 +127,12 @@ function validateAssetReferences(
 
     const args = jsonObject(row.commandArgs);
     const commandAsset = jsonString(args?.asset_id);
+    if (row.command === 'play_se' && !row.assetId && !commandAsset) {
+      issues.error('missing_command_asset_id', 'play_se requires an asset_id', {
+        at: { sheet: row.sourceSheet, row: row.__row, column: 'command_args' },
+        fix: 'Set command_args.asset_id or the row asset_id to a se asset',
+      });
+    }
     if (commandAsset) {
       references.push({
         id: commandAsset,
@@ -140,9 +146,11 @@ function validateAssetReferences(
               ? one('portrait')
               : row.command === 'play_bgm'
                 ? one('bgm')
-                : row.command === 'play_audio' || row.command === 'record_audio'
-                  ? audioTypes
-                  : undefined,
+                : row.command === 'play_se'
+                  ? one('se')
+                  : row.command === 'play_audio' || row.command === 'record_audio'
+                    ? audioTypes
+                    : undefined,
       });
     }
     const commandBackground = jsonString(args?.background);
@@ -218,6 +226,9 @@ function inferredAssetTypes(
   }
   if (row.command === 'play_bgm') {
     return new Set(['bgm']);
+  }
+  if (row.command === 'play_se') {
+    return new Set(['se']);
   }
   if (
     row.command === 'play_audio' ||

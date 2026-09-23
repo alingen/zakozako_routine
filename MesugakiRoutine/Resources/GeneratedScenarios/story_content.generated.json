@@ -8915,7 +8915,7 @@
           "text": "",
           "background": "bg_protagonist_living_room",
           "enabled": true,
-          "notes": "確定原稿: ユーザー提供 prologue_001（演出更新）",
+          "notes": "確定原稿: ユーザー提供 prologue_001（SE・待機更新）",
           "screenMode": "adv",
           "uiVariant": "scene_transition",
           "command": "scene_change",
@@ -8929,25 +8929,6 @@
         },
         {
           "lineOrder": 2,
-          "nodeId": "prologue_001_002",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "bgm_usually",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "play_bgm",
-          "commandArgs": {
-            "action": "play",
-            "asset_id": "bgm_usually",
-            "loop": true,
-            "fade_ms": 1000,
-            "volume": 0.8
-          }
-        },
-        {
-          "lineOrder": 3,
           "nodeId": "prologue_001_003",
           "speaker": "system",
           "messageType": "action",
@@ -8962,7 +8943,7 @@
           }
         },
         {
-          "lineOrder": 4,
+          "lineOrder": 3,
           "nodeId": "prologue_001_004",
           "speaker": "rio",
           "messageType": "text",
@@ -8973,7 +8954,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 5,
+          "lineOrder": 4,
           "nodeId": "prologue_001_005",
           "speaker": "rio",
           "messageType": "text",
@@ -8984,7 +8965,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 6,
+          "lineOrder": 5,
           "nodeId": "prologue_001_006",
           "speaker": "rio",
           "messageType": "text",
@@ -8995,7 +8976,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 7,
+          "lineOrder": 6,
           "nodeId": "prologue_001_007",
           "speaker": "protagonist",
           "messageType": "text",
@@ -9006,7 +8987,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 8,
+          "lineOrder": 7,
           "nodeId": "prologue_001_008",
           "speaker": "rio",
           "messageType": "text",
@@ -9017,7 +8998,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 9,
+          "lineOrder": 8,
           "nodeId": "prologue_001_009",
           "speaker": "rio",
           "messageType": "text",
@@ -9028,7 +9009,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 10,
+          "lineOrder": 9,
           "nodeId": "prologue_001_010",
           "speaker": "protagonist",
           "messageType": "text",
@@ -9039,7 +9020,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 11,
+          "lineOrder": 10,
           "nodeId": "prologue_001_011",
           "speaker": "rio",
           "messageType": "text",
@@ -9050,7 +9031,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 12,
+          "lineOrder": 11,
           "nodeId": "prologue_001_012",
           "speaker": "rio",
           "messageType": "text",
@@ -9059,6 +9040,22 @@
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 12,
+          "nodeId": "prologue_001_055",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_defeat",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_defeat",
+            "volume": 1
+          }
         },
         {
           "lineOrder": 13,
@@ -9101,6 +9098,25 @@
         },
         {
           "lineOrder": 16,
+          "nodeId": "prologue_001_002",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_usually",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
+        },
+        {
+          "lineOrder": 17,
           "nodeId": "prologue_001_016",
           "speaker": "rio",
           "messageType": "text",
@@ -9111,7 +9127,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 17,
+          "lineOrder": 18,
           "nodeId": "prologue_001_017",
           "speaker": "system",
           "messageType": "action",
@@ -9129,7 +9145,7 @@
           }
         },
         {
-          "lineOrder": 18,
+          "lineOrder": 19,
           "nodeId": "prologue_001_018",
           "speaker": "rio",
           "messageType": "text",
@@ -9140,7 +9156,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 19,
+          "lineOrder": 20,
           "nodeId": "prologue_001_019",
           "speaker": "narrator",
           "messageType": "text",
@@ -9151,7 +9167,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 20,
+          "lineOrder": 21,
           "nodeId": "prologue_001_020",
           "speaker": "narrator",
           "messageType": "text",
@@ -9162,7 +9178,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 21,
+          "lineOrder": 22,
           "nodeId": "prologue_001_021",
           "speaker": "narrator",
           "messageType": "text",
@@ -9173,18 +9189,18 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 22,
+          "lineOrder": 23,
           "nodeId": "prologue_001_022",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "対策を練って、動画を見て、特訓をして",
+          "text": "だから[br]対策を練って、動画を見て、特訓をして",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 23,
+          "lineOrder": 24,
           "nodeId": "prologue_001_023",
           "speaker": "narrator",
           "messageType": "text",
@@ -9195,7 +9211,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 24,
+          "lineOrder": 25,
           "nodeId": "prologue_001_024",
           "speaker": "protagonist",
           "messageType": "text",
@@ -9206,7 +9222,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 25,
+          "lineOrder": 26,
           "nodeId": "prologue_001_025",
           "speaker": "protagonist",
           "messageType": "text",
@@ -9217,7 +9233,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 26,
+          "lineOrder": 27,
           "nodeId": "prologue_001_026",
           "speaker": "system",
           "messageType": "action",
@@ -9235,7 +9251,7 @@
           }
         },
         {
-          "lineOrder": 27,
+          "lineOrder": 28,
           "nodeId": "prologue_001_027",
           "speaker": "rio",
           "messageType": "text",
@@ -9246,7 +9262,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 28,
+          "lineOrder": 29,
           "nodeId": "prologue_001_028",
           "speaker": "protagonist",
           "messageType": "text",
@@ -9257,7 +9273,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 29,
+          "lineOrder": 30,
           "nodeId": "prologue_001_029",
           "speaker": "rio",
           "messageType": "text",
@@ -9268,7 +9284,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 30,
+          "lineOrder": 31,
           "nodeId": "prologue_001_030",
           "speaker": "rio",
           "messageType": "text",
@@ -9279,29 +9295,29 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 31,
+          "lineOrder": 32,
           "nodeId": "prologue_001_031",
           "speaker": "protagonist",
           "messageType": "text",
-          "text": "くっ…",
+          "text": "……くっ",
           "speakerName": "主人公",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 32,
+          "lineOrder": 33,
           "nodeId": "prologue_001_032",
           "speaker": "rio",
           "messageType": "text",
-          "text": "あ、悔しくて言葉もでないんだ〜w",
+          "text": "あ、悔しすぎて言葉もでないんだ〜w",
           "speakerName": "莉央",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 33,
+          "lineOrder": 34,
           "nodeId": "prologue_001_033",
           "speaker": "system",
           "messageType": "action",
@@ -9319,7 +9335,7 @@
           }
         },
         {
-          "lineOrder": 34,
+          "lineOrder": 35,
           "nodeId": "prologue_001_034",
           "speaker": "rio",
           "messageType": "text",
@@ -9330,7 +9346,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 35,
+          "lineOrder": 36,
           "nodeId": "prologue_001_035",
           "speaker": "narrator",
           "messageType": "text",
@@ -9341,7 +9357,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 36,
+          "lineOrder": 37,
           "nodeId": "prologue_001_036",
           "speaker": "system",
           "messageType": "action",
@@ -9359,7 +9375,7 @@
           }
         },
         {
-          "lineOrder": 37,
+          "lineOrder": 38,
           "nodeId": "prologue_001_037",
           "speaker": "rio",
           "messageType": "text",
@@ -9370,7 +9386,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 38,
+          "lineOrder": 39,
           "nodeId": "prologue_001_038",
           "speaker": "protagonist",
           "messageType": "text",
@@ -9381,7 +9397,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 39,
+          "lineOrder": 40,
           "nodeId": "prologue_001_039",
           "speaker": "system",
           "messageType": "action",
@@ -9399,18 +9415,18 @@
           }
         },
         {
-          "lineOrder": 40,
+          "lineOrder": 41,
           "nodeId": "prologue_001_040",
           "speaker": "rio",
           "messageType": "text",
-          "text": "あるよ？[br] 勝ったら返すって言ってるじゃん",
+          "text": "あるよ？[br]勝ったら返すって言ってるじゃん",
           "speakerName": "莉央",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 41,
+          "lineOrder": 42,
           "nodeId": "prologue_001_041",
           "speaker": "system",
           "messageType": "action",
@@ -9428,7 +9444,7 @@
           }
         },
         {
-          "lineOrder": 42,
+          "lineOrder": 43,
           "nodeId": "prologue_001_042",
           "speaker": "rio",
           "messageType": "text",
@@ -9439,7 +9455,7 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 43,
+          "lineOrder": 44,
           "nodeId": "prologue_001_043",
           "speaker": "narrator",
           "messageType": "text",
@@ -9450,7 +9466,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 44,
+          "lineOrder": 45,
           "nodeId": "prologue_001_044",
           "speaker": "narrator",
           "messageType": "text",
@@ -9461,7 +9477,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 45,
+          "lineOrder": 46,
           "nodeId": "prologue_001_045",
           "speaker": "system",
           "messageType": "action",
@@ -9479,7 +9495,7 @@
           }
         },
         {
-          "lineOrder": 46,
+          "lineOrder": 47,
           "nodeId": "prologue_001_046",
           "speaker": "system",
           "messageType": "action",
@@ -9494,7 +9510,21 @@
           }
         },
         {
-          "lineOrder": 47,
+          "lineOrder": 48,
+          "nodeId": "prologue_001_056",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 300
+          }
+        },
+        {
+          "lineOrder": 49,
           "nodeId": "prologue_001_047",
           "speaker": "narrator",
           "messageType": "text",
@@ -9505,18 +9535,18 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 48,
+          "lineOrder": 50,
           "nodeId": "prologue_001_048",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "俺はこの子に[br]『あるノート』を発見された。",
+          "text": "俺はこの子に[br]『あるノート』を奪われた。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 49,
+          "lineOrder": 51,
           "nodeId": "prologue_001_049",
           "speaker": "narrator",
           "messageType": "text",
@@ -9527,7 +9557,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 50,
+          "lineOrder": 52,
           "nodeId": "prologue_001_050",
           "speaker": "narrator",
           "messageType": "text",
@@ -9538,7 +9568,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 51,
+          "lineOrder": 53,
           "nodeId": "prologue_001_051",
           "speaker": "narrator",
           "messageType": "text",
@@ -9549,7 +9579,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 52,
+          "lineOrder": 54,
           "nodeId": "prologue_001_052",
           "speaker": "narrator",
           "messageType": "text",
@@ -9560,7 +9590,7 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 53,
+          "lineOrder": 55,
           "nodeId": "prologue_001_053",
           "speaker": "narrator",
           "messageType": "text",

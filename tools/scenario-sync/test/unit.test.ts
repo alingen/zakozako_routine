@@ -91,7 +91,7 @@ describe('source normalization', () => {
     expect(node.commandArgs).toBeUndefined();
   });
 
-  it.each(['show_portrait', 'hide_portrait', 'play_bgm', 'stop_bgm'])(
+  it.each(['show_portrait', 'hide_portrait', 'play_bgm', 'play_se', 'stop_bgm'])(
     'accepts %s as a known presentation command',
     (command) => {
       const result = process(
@@ -274,6 +274,62 @@ describe('source normalization', () => {
     expect(invalid.errors.map((issue) => issue.code)).toEqual(
       expect.arrayContaining(['duplicate_asset_id', 'dangling_asset_id', 'asset_type_mismatch']),
     );
+  });
+
+  it.each(['command_args', 'asset_id'] as const)(
+    'requires a play_se %s reference to use a se asset',
+    (column) => {
+      const reference =
+        column === 'command_args'
+          ? { command_args: '{"asset_id":"se_test","volume":0.8}' }
+          : { asset_id: 'se_test' };
+      const rawScenario = scenario({
+        scenario_id: 'small_test',
+        scenario_type: 'small_event',
+        message_type: 'action',
+        ui_variant: 'scene_transition',
+        command: 'play_se',
+        ...reference,
+      });
+      const valid = process(
+        sheets({
+          scenarios: [rawScenario],
+          assets: [assetCatalog({ asset_id: 'se_test', asset_type: 'se' })],
+        }),
+      );
+      const invalid = process(
+        sheets({
+          scenarios: [rawScenario],
+          assets: [assetCatalog({ asset_id: 'se_test', asset_type: 'bgm' })],
+        }),
+      );
+
+      expect(valid.errors).toEqual([]);
+      expect(generate(valid.data).scenarios[0]?.nodes[0]).toMatchObject({ command: 'play_se' });
+      expect(invalid.errors).toEqual([
+        expect.objectContaining({
+          code: 'asset_type_mismatch',
+          at: expect.objectContaining({ column }),
+        }),
+      ]);
+    },
+  );
+
+  it('rejects play_se without an asset reference', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_id: 'small_test',
+            scenario_type: 'small_event',
+            message_type: 'action',
+            command: 'play_se',
+          }),
+        ],
+      }),
+    );
+
+    expect(result.errors).toEqual([expect.objectContaining({ code: 'missing_command_asset_id' })]);
   });
 
   it('requires a one-to-one relationship between daily and daily_catalog', () => {

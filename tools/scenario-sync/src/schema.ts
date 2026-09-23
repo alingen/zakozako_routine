@@ -205,6 +205,7 @@ export const KNOWN_COMMANDS = new Set([
   'hide_cg',
   'hide_portrait',
   'play_bgm',
+  'play_se',
   'play_audio',
   'record_audio',
   'scene_change',

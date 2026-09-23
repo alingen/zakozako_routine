@@ -311,18 +311,94 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertFalse(player.shouldDelayCurrentADVText)
     }
 
+    func testExplicitWaitAfterBlackoutPreventsAnExtraTextDelay() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "blackout_with_wait",
+            scenarioType: .prologue,
+            nodes: [
+                StoryNode(
+                    nodeId: "opening",
+                    lineOrder: 1,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "おわり〜",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+                StoryNode(
+                    nodeId: "clear_background",
+                    lineOrder: 2,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "clear_background"
+                ),
+                StoryNode(
+                    nodeId: "hide_portrait",
+                    lineOrder: 3,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "hide_portrait"
+                ),
+                StoryNode(
+                    nodeId: "blackout_wait",
+                    lineOrder: 4,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "wait",
+                    commandArgs: .object(["duration_ms": .number(300)])
+                ),
+                StoryNode(
+                    nodeId: "after_wait",
+                    lineOrder: 5,
+                    speaker: "narrator",
+                    messageType: .text,
+                    text: "数週間前。",
+                    screenMode: .adv,
+                    uiVariant: .narration
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(scenarios: [scenario], choiceGroups: [], events: [])
+        )
+        let stateRepository = try makeStateRepository()
+        var waits: [UInt64] = []
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:blackout_with_wait",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository,
+            sleep: { waits.append($0) }
+        )
+
+        await player.start()
+        await player.advance()
+
+        XCTAssertEqual(waits, [300])
+        XCTAssertEqual(player.currentNode?.nodeId, "after_wait")
+        XCTAssertFalse(player.shouldDelayCurrentADVText)
+    }
+
     func testGeneratedPrologueHidesPortraitImmediatelyAfterClearingBackground() throws {
         let contentRepository = try makeGeneratedContentRepository()
         let scenario = try XCTUnwrap(contentRepository.scenario(id: "prologue_001"))
         let nodes = scenario.nodes.sorted { $0.lineOrder < $1.lineOrder }
 
-        XCTAssertEqual(nodes.count, 53)
-        XCTAssertEqual(nodes[44].nodeId, "prologue_001_045")
-        XCTAssertEqual(nodes[44].command, "clear_background")
-        XCTAssertEqual(nodes[45].nodeId, "prologue_001_046")
-        XCTAssertEqual(nodes[45].command, "hide_portrait")
-        XCTAssertEqual(nodes[46].nodeId, "prologue_001_047")
-        XCTAssertEqual(nodes[46].text, "数週間前。")
+        XCTAssertEqual(nodes.count, 55)
+        XCTAssertEqual(nodes[45].nodeId, "prologue_001_045")
+        XCTAssertEqual(nodes[45].command, "clear_background")
+        XCTAssertEqual(nodes[46].nodeId, "prologue_001_046")
+        XCTAssertEqual(nodes[46].command, "hide_portrait")
+        XCTAssertEqual(nodes[47].nodeId, "prologue_001_056")
+        XCTAssertEqual(nodes[47].command, "wait")
+        XCTAssertEqual(nodes[48].nodeId, "prologue_001_047")
+        XCTAssertEqual(nodes[48].text, "数週間前。")
     }
 
     func testPortraitAndBGMCommandsPersistUntilExplicitlyHiddenOrStopped() async throws {
@@ -427,6 +503,110 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertEqual(player.currentNode?.nodeId, "without_presentation")
         XCTAssertNil(player.portraitAssetID)
         XCTAssertNil(player.bgmPlaybackState)
+    }
+
+    func testSoundEffectsPlayOncePerVisitWithoutReplayingOnCheckpointRestore() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "sound_effect_commands",
+            scenarioType: .prologue,
+            nodes: [
+                StoryNode(
+                    nodeId: "bgm",
+                    lineOrder: 1,
+                    speaker: "system",
+                    messageType: .action,
+                    command: "play_bgm",
+                    commandArgs: .object(["asset_id": .string("bgm_usually")])
+                ),
+                StoryNode(
+                    nodeId: "first_se",
+                    lineOrder: 2,
+                    speaker: "system",
+                    messageType: .action,
+                    command: "play_se",
+                    commandArgs: .object(["asset_id": .string("se_defeat")])
+                ),
+                StoryNode(
+                    nodeId: "second_se",
+                    lineOrder: 3,
+                    speaker: "system",
+                    messageType: .action,
+                    command: "play_se",
+                    commandArgs: .object([
+                        "asset_id": .string("se_defeat"),
+                        "volume": .number(0.4),
+                    ])
+                ),
+                StoryNode(
+                    nodeId: "first_line",
+                    lineOrder: 4,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "まだ続くよ",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+                StoryNode(
+                    nodeId: "third_se",
+                    lineOrder: 5,
+                    speaker: "system",
+                    messageType: .action,
+                    command: "play_se",
+                    commandArgs: .object(["asset_id": .string("se_defeat")])
+                ),
+                StoryNode(
+                    nodeId: "second_line",
+                    lineOrder: 6,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "次の台詞",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(scenarios: [scenario], choiceGroups: [], events: [])
+        )
+        let stateRepository = try makeStateRepository()
+        let playbackKey = "integration:sound_effect_commands"
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "first_line")
+        XCTAssertEqual(player.bgmPlaybackState?.assetID, "bgm_usually")
+        XCTAssertEqual(
+            player.consumePendingSoundEffects(),
+            [
+                StorySoundEffectPlayback(assetID: "se_defeat", volume: 1),
+                StorySoundEffectPlayback(assetID: "se_defeat", volume: 0.4),
+            ]
+        )
+        XCTAssertTrue(player.consumePendingSoundEffects().isEmpty)
+
+        let resumedPlayer = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await resumedPlayer.start()
+        XCTAssertEqual(resumedPlayer.currentNode?.nodeId, "first_line")
+        XCTAssertEqual(resumedPlayer.bgmPlaybackState?.assetID, "bgm_usually")
+        XCTAssertTrue(resumedPlayer.consumePendingSoundEffects().isEmpty)
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "second_line")
+        XCTAssertEqual(
+            player.consumePendingSoundEffects(),
+            [StorySoundEffectPlayback(assetID: "se_defeat", volume: 1)]
+        )
     }
 
     func testRealDailyChoiceTargetsExistingBranchAndPersistsValue() async throws {

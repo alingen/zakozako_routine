@@ -2,6 +2,41 @@ import SwiftUI
 import XCTest
 @testable import MesugakiRoutine
 
+final class StorySoundEffectCommandTests: XCTestCase {
+    func testPlaySEUsesAssetIDAndClampsVolume() {
+        let node = StoryNode(
+            nodeId: "sound",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            command: "play_se",
+            commandArgs: .object([
+                "asset_id": .string("se_defeat"),
+                "volume": .number(1.5),
+            ])
+        )
+
+        XCTAssertEqual(
+            StoryCommandDispatcher().dispatch(node: node).effects,
+            [.playSoundEffect(StorySoundEffectPlayback(assetID: "se_defeat", volume: 1))]
+        )
+    }
+
+    func testPlaySERequiresAnAssetID() {
+        let node = StoryNode(
+            nodeId: "missing_sound",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            command: "play_se"
+        )
+
+        let result = StoryCommandDispatcher().dispatch(node: node)
+        XCTAssertTrue(result.effects.isEmpty)
+        XCTAssertNotNil(result.diagnostic)
+    }
+}
+
 final class ADVTextLayoutTests: XCTestCase {
     func testStoryDisplayTextConvertsBRForADVAndLogs() {
         let node = StoryNode(
@@ -159,6 +194,68 @@ final class ADVOpeningRevealTimingTests: XCTestCase {
 
 @MainActor
 final class ADVStoryRendererRenderingTests: XCTestCase {
+    func testEmptyWaitTransitionKeepsBlackoutFreeOfDialogueBox() throws {
+        let waitNode = StoryNode(
+            nodeId: "blackout_wait",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            text: "",
+            screenMode: .adv,
+            uiVariant: .sceneTransition,
+            command: "wait",
+            commandArgs: .object(["duration_ms": .number(300)])
+        )
+        let labelledNode = StoryNode(
+            nodeId: "labelled_transition",
+            lineOrder: 2,
+            speaker: "narrator",
+            messageType: .text,
+            text: "数週間前。",
+            screenMode: .adv,
+            uiVariant: .sceneTransition
+        )
+
+        XCTAssertFalse(ADVTextWindowPresentationPolicy.showsContent(for: waitNode))
+        XCTAssertTrue(ADVTextWindowPresentationPolicy.showsContent(for: labelledNode))
+
+        func sampledRed(for node: StoryNode) throws -> UInt8 {
+            let content = ADVStoryRenderer(
+                node: node,
+                scenarioType: .prologue,
+                showsPlaybackControls: false,
+                onAdvance: { _ in },
+                onSelectChoice: { _ in },
+                onDismissModal: {}
+            )
+            .frame(width: 320, height: 568)
+            .environment(\.colorScheme, .light)
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = 1
+            let image = try XCTUnwrap(renderer.uiImage?.cgImage)
+            let sample = try XCTUnwrap(
+                image.cropping(to: CGRect(x: 160, y: 450, width: 1, height: 1))
+            )
+            var rgba = [UInt8](repeating: 0, count: 4)
+            try rgba.withUnsafeMutableBytes { bytes in
+                let context = try XCTUnwrap(CGContext(
+                    data: bytes.baseAddress,
+                    width: 1,
+                    height: 1,
+                    bitsPerComponent: 8,
+                    bytesPerRow: 4,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                ))
+                context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            }
+            return rgba[0]
+        }
+
+        XCTAssertLessThanOrEqual(try sampledRed(for: waitNode), 2)
+        XCTAssertGreaterThan(try sampledRed(for: labelledNode), 100)
+    }
+
     func testMissingBackgroundRendersAsPureBlackInsteadOfAssetPlaceholder() throws {
         let node = StoryNode(
             nodeId: "black-background",

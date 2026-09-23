@@ -146,7 +146,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       scenarioId: 'prologue_001',
       scenarioType: 'prologue',
     });
-    expect(prologueScenario?.nodes).toHaveLength(53);
+    expect(prologueScenario?.nodes).toHaveLength(55);
     expect(prologueScenario?.nodes[0]).toMatchObject({
       nodeId: 'prologue_001_001',
       screenMode: 'adv',
@@ -157,6 +157,15 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(prologueScenario?.nodes).toContainEqual(
       expect.objectContaining({ text: 'LOSE', uiVariant: 'title_card' }),
     );
+    expect(prologueScenario?.nodes.slice(10, 13)).toMatchObject([
+      { text: 'おわり〜' },
+      {
+        command: 'play_se',
+        assetId: 'se_defeat',
+        commandArgs: { asset_id: 'se_defeat', volume: 1 },
+      },
+      { text: 'LOSE' },
+    ]);
     expect(prologueScenario?.nodes).toContainEqual(
       expect.objectContaining({
         command: 'play_bgm',
@@ -171,15 +180,22 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(prologueScenario?.nodes).toContainEqual(
       expect.objectContaining({ command: 'clear_background' }),
     );
-    expect(prologueScenario?.nodes.slice(44, 47)).toMatchObject([
-      { lineOrder: 45, command: 'clear_background' },
+    expect(prologueScenario?.nodes.slice(14, 17)).toMatchObject([
+      { command: 'show_portrait', assetId: 'portrait_rio_laugh' },
+      { command: 'play_bgm', assetId: 'bgm_usually' },
+      { text: 'あははっ' },
+    ]);
+    expect(prologueScenario?.nodes.slice(45, 49)).toMatchObject([
+      { lineOrder: 46, command: 'clear_background' },
       {
-        lineOrder: 46,
+        lineOrder: 47,
         command: 'hide_portrait',
         commandArgs: { action: 'hide', transition: 'fade' },
       },
-      { lineOrder: 47, text: '数週間前。' },
+      { lineOrder: 48, command: 'wait', commandArgs: { duration_ms: 300 } },
+      { lineOrder: 49, text: '数週間前。' },
     ]);
+    expect(prologueScenario?.nodes.some((node) => node.nodeId === 'prologue_001_054')).toBe(false);
     expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     for (const event of [prologueEvent!, ...chapterOneEpisodes]) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);

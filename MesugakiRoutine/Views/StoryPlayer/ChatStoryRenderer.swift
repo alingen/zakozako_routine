@@ -15,6 +15,7 @@ struct ChatStoryRenderer: View {
     let onPresentNode: () -> Void
     let onSelectChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
+    var onTextWindowTap: () -> Void = {}
 
     @State private var typingStartedRioNodeID: String?
     @State private var revealedRioNodeID: String?
@@ -207,6 +208,7 @@ struct ChatStoryRenderer: View {
                         maxWidth: .infinity,
                         horizontalPadding: 32,
                         onAdvance: canAdvance ? { _ in advanceFromEventSystemText() } : nil,
+                        onTextWindowTap: onTextWindowTap,
                         backgroundStyle: .baseColor
                     )
                     .padding(.horizontal, 10)

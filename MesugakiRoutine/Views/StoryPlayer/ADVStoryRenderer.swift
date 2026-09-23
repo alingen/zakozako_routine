@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum ADVTextWindowPresentationPolicy {
+    static func showsContent(for node: StoryNode) -> Bool {
+        node.uiVariant != .sceneTransition || !node.storyDisplayText.isEmpty
+    }
+}
+
 /// ADV表示専用のrenderer。シナリオ遷移は行わず、渡されたnodeと表示状態だけを描画する。
 struct ADVStoryRenderer: View {
     let node: StoryNode
@@ -19,6 +25,7 @@ struct ADVStoryRenderer: View {
     let onAdvance: (StoryAdvancePace) -> Void
     let onSelectChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
+    var onTextWindowTap: () -> Void = {}
     var onSkip: () -> Void = {}
     var onShowLog: () -> Void = {}
     var onToggleAuto: () -> Void = {}
@@ -141,7 +148,8 @@ struct ADVStoryRenderer: View {
 
                 if openingRevealPhase.showsTextBox, isBlackoutTextReady {
                     VStack(spacing: 14) {
-                        if advancesFromTextWindow || openingRevealPhase.startsTextReveal {
+                        if ADVTextWindowPresentationPolicy.showsContent(for: node),
+                           advancesFromTextWindow || openingRevealPhase.startsTextReveal {
                             variantContent(
                                 textWindowMaxWidth: textWindowMaxWidth(
                                     availableWidth: proxy.size.width
@@ -254,6 +262,7 @@ struct ADVStoryRenderer: View {
                 maxWidth: textWindowMaxWidth,
                 horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil,
+                onTextWindowTap: onTextWindowTap,
                 playbackMode: playbackMode,
                 isPlaybackPaused: isPlaybackPaused,
                 isAutomationAvailable: isAutomationAvailable,
@@ -281,6 +290,7 @@ struct ADVStoryRenderer: View {
                     maxWidth: textWindowMaxWidth,
                     horizontalPadding: textHorizontalPadding,
                     onAdvance: canAdvance ? onAdvance : nil,
+                    onTextWindowTap: onTextWindowTap,
                     playbackMode: playbackMode,
                     isPlaybackPaused: isPlaybackPaused,
                     isAutomationAvailable: isAutomationAvailable,
@@ -310,6 +320,7 @@ struct ADVStoryRenderer: View {
                 maxWidth: textWindowMaxWidth,
                 horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil,
+                onTextWindowTap: onTextWindowTap,
                 playbackMode: playbackMode,
                 isPlaybackPaused: isPlaybackPaused,
                 isAutomationAvailable: isAutomationAvailable,
@@ -323,6 +334,7 @@ struct ADVStoryRenderer: View {
                 maxWidth: textWindowMaxWidth,
                 horizontalPadding: textHorizontalPadding,
                 onAdvance: canAdvance ? onAdvance : nil,
+                onTextWindowTap: onTextWindowTap,
                 playbackMode: playbackMode,
                 isPlaybackPaused: isPlaybackPaused,
                 isAutomationAvailable: isAutomationAvailable,
@@ -501,6 +513,7 @@ struct ADVTextWindow: View {
     let maxWidth: CGFloat
     let horizontalPadding: CGFloat
     let onAdvance: ((StoryAdvancePace) -> Void)?
+    var onTextWindowTap: () -> Void = {}
     var backgroundStyle: ADVTextWindowBackgroundStyle = .material
     var playbackMode: ADVPlaybackMode = .manual
     var isPlaybackPaused = false
@@ -735,6 +748,7 @@ struct ADVTextWindow: View {
 
     private func handleTap() {
         guard canRespondToTap else { return }
+        onTextWindowTap()
         if !isPageFullyRevealed {
             revealedCharacterCount = currentPage.count
             return

@@ -97,6 +97,7 @@ final class StoryPlayer {
     private(set) var callState: StoryCallPresentationState?
     private(set) var activeAudioAssetID: String?
     private(set) var bgmPlaybackState: StoryBGMPlaybackState?
+    private(set) var pendingSoundEffects: [StorySoundEffectPlayback] = []
 
     @ObservationIgnored private let scenario: StoryScenario
     @ObservationIgnored private let event: StoryEvent?
@@ -467,6 +468,12 @@ final class StoryPlayer {
         isModalPresented = false
         availableChoices = []
     }
+
+    func consumePendingSoundEffects() -> [StorySoundEffectPlayback] {
+        let effects = pendingSoundEffects
+        pendingSoundEffects = []
+        return effects
+    }
 }
 
 private extension StoryPlayer {
@@ -527,6 +534,11 @@ private extension StoryPlayer {
                     dispatch: dispatch,
                     allowTransientEffects: true
                 )
+                for effect in dispatch.effects {
+                    if case .playSoundEffect(let sound) = effect {
+                        pendingSoundEffects.append(sound)
+                    }
+                }
                 appendVisibleChatNodeIfNeeded(displayedNode)
                 if currentMode != .chat {
                     appendVisibleLogNodeIfNeeded(displayedNode)
@@ -750,6 +762,9 @@ private extension StoryPlayer {
             case .presentModal:
                 if allowTransientEffects { isModalPresented = true }
             case .wait:
+                // A scripted pause already separates the blackout from the next line.
+                // Do not add the renderer's implicit 300 ms delay on top of it.
+                awaitsTextAfterClearBackground = false
                 break
             case .setCallState(let state):
                 callState = state
@@ -759,6 +774,8 @@ private extension StoryPlayer {
                 bgmPlaybackState = state
             case .stopBGM:
                 bgmPlaybackState = nil
+            case .playSoundEffect:
+                break
             }
         }
 
@@ -1050,6 +1067,7 @@ private extension StoryPlayer {
         callState = nil
         activeAudioAssetID = nil
         bgmPlaybackState = nil
+        pendingSoundEffects = []
         if clearError { recoverableError = nil }
     }
 
