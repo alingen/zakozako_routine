@@ -4,6 +4,14 @@
 
 ## シナリオから使う
 
+### 原稿の `@beat`
+
+原稿取り込み時の `@beat` は場面転換ではなく、600ミリ秒の待機として扱います。CMS では `message_type=action`、`ui_variant=scene_transition`、`command=wait`、`command_args={"duration_ms":600}` に対応させます。
+
+カラースライドが必要な箇所は `@beat` ではなく、原稿で `@scene` と `"transition":{"type":"colorSlide"}` を明示してください。
+
+### カラースライド
+
 `senarios` シートの対象行を `message_type=action`、`ui_variant=scene_transition`、`command=scene_change` にして、`command_args` セルに以下の JSON を指定します。
 
 ```json
@@ -31,6 +39,8 @@
 `coverDuration` と `revealDuration` は省略できます。指定した場合は配分比として扱い、合計が `duration` になるよう正規化します。標準では `0.28 + 0.08 + 0.34 = 0.70` 秒です。`duration` は0.15〜5秒、`minimumHold` は0〜`duration - 0.1`秒に制限します。
 
 面の色は `AppColor.primary`、中央の点は `AppColor.background` を参照します。色指定はシナリオに不要です。「視差効果を減らす」が有効なら、覆い0.10秒・展開0.12秒の短いフェードに切り替えます。
+
+`colorSlide` の開始時には `se_color_slide.mp3` を一度だけ再生します。シナリオに別の `play_se` 行を追加する必要はありません。`crossFade` や従来の場面転換では自動再生しません。
 
 ## 既存コンテンツとの互換性
 

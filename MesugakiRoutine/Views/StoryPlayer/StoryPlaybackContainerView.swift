@@ -43,6 +43,7 @@ private final class StoryBGMPlaybackController: ObservableObject {
 @MainActor
 private final class StorySoundEffectPlaybackController: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var players: [AVAudioPlayer] = []
+    private var loopingPlayers: [String: AVAudioPlayer] = [:]
     private var textWindowClickPlayer: AVAudioPlayer?
 
     func playTextWindowClick() {
@@ -88,9 +89,47 @@ private final class StorySoundEffectPlaybackController: NSObject, ObservableObje
         }
     }
 
+    func synchronizeLooping(with effects: [String: StorySoundEffectPlayback]) {
+        let staleAssetIDs = loopingPlayers.keys.filter { effects[$0] == nil }
+        for assetID in staleAssetIDs {
+            loopingPlayers.removeValue(forKey: assetID)?.stop()
+        }
+        guard !effects.isEmpty else { return }
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        } catch {
+            return
+        }
+
+        for (assetID, effect) in effects {
+            if let player = loopingPlayers[assetID] {
+                player.volume = effect.volume
+                if !player.isPlaying {
+                    player.currentTime = 0
+                    player.play()
+                }
+                continue
+            }
+            guard let url = storyAudioURL(for: assetID) else { continue }
+            do {
+                let player = try AVAudioPlayer(contentsOf: url)
+                player.numberOfLoops = -1
+                player.volume = effect.volume
+                player.prepareToPlay()
+                if player.play() {
+                    loopingPlayers[assetID] = player
+                }
+            } catch {
+                continue
+            }
+        }
+    }
+
     func stop() {
         players.forEach { $0.stop() }
         players = []
+        loopingPlayers.values.forEach { $0.stop() }
+        loopingPlayers = [:]
         textWindowClickPlayer?.stop()
         textWindowClickPlayer = nil
     }
@@ -289,6 +328,9 @@ struct StoryPlaybackContainerView: View {
         }
         .onChange(of: player?.bgmPlaybackState) { _, state in
             bgmPlayback.synchronize(with: state)
+        }
+        .onChange(of: player?.loopingSoundEffects, initial: true) { _, effects in
+            soundEffectPlayback.synchronizeLooping(with: effects ?? [:])
         }
         .onChange(of: player?.pendingSoundEffects, initial: true) { _, _ in
             if let player {

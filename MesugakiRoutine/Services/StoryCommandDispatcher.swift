@@ -16,6 +16,13 @@ struct StoryBGMPlaybackState: Equatable {
 struct StorySoundEffectPlayback: Equatable {
     let assetID: String
     let volume: Float
+    let loop: Bool
+
+    init(assetID: String, volume: Float, loop: Bool = false) {
+        self.assetID = assetID
+        self.volume = volume
+        self.loop = loop
+    }
 }
 
 /// A small, UI-independent vocabulary of effects produced by CMS commands.
@@ -37,6 +44,7 @@ enum StoryCommandEffect: Equatable {
     case playBGM(StoryBGMPlaybackState)
     case stopBGM
     case playSoundEffect(StorySoundEffectPlayback)
+    case stopSoundEffect(String)
 }
 
 struct StoryCommandDispatchResult: Equatable {
@@ -183,12 +191,17 @@ struct StoryCommandDispatcher {
             ) ?? normalized(node.assetId) else {
                 return missingArgument(command: command, argument: "asset_id")
             }
+            if firstString(in: node.commandArgs, keys: ["action"])?.lowercased() == "stop" {
+                return StoryCommandDispatchResult(effect: .stopSoundEffect(assetID))
+            }
             let rawVolume = node.commandArgs?["volume"].flatMap(number(from:)) ?? 1
+            let loop = boolean(from: node.commandArgs?["loop"]) ?? false
             return StoryCommandDispatchResult(
                 effect: .playSoundEffect(
                     StorySoundEffectPlayback(
                         assetID: assetID,
-                        volume: Float(max(0, min(rawVolume, 1)))
+                        volume: Float(max(0, min(rawVolume, 1))),
+                        loop: loop
                     )
                 )
             )

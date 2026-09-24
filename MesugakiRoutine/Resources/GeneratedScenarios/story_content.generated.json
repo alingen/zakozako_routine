@@ -127,17 +127,10 @@
           "messageType": "action",
           "text": "",
           "enabled": true,
-          "notes": "確定原稿: ユーザー提供 middle_001_1",
+          "notes": "確定原稿: ユーザー提供 middle_001_1（更新4）",
           "screenMode": "adv",
           "uiVariant": "scene_transition",
-          "command": "clear_background",
-          "commandArgs": {
-            "scene_id": "middle_001_1_opening",
-            "screen": "adv",
-            "transition": "fade",
-            "command": "clear_background",
-            "label": "Day first"
-          }
+          "command": "clear_background"
         },
         {
           "lineOrder": 2,
@@ -157,28 +150,20 @@
         {
           "lineOrder": 3,
           "nodeId": "middle_001_1_003",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "bgm_usually",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "人生はいつからでも[br]変えることができる。",
+          "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "play_bgm",
-          "commandArgs": {
-            "action": "play",
-            "asset_id": "bgm_usually",
-            "loop": true,
-            "fade_ms": 1000,
-            "volume": 0.8
-          }
+          "uiVariant": "narration"
         },
         {
           "lineOrder": 4,
           "nodeId": "middle_001_1_004",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "人生はいつからでも変えることができる。",
+          "text": "今日がその日だ。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -189,7 +174,7 @@
           "nodeId": "middle_001_1_005",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "今日がその日だ。",
+          "text": "1年後の俺は、年収1000万。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -200,7 +185,7 @@
           "nodeId": "middle_001_1_006",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "1年後の俺は、年収1000万。",
+          "text": "腹筋は8つに割れていて、[br]英語はペラペラ。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -211,7 +196,7 @@
           "nodeId": "middle_001_1_007",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "腹筋は8つに割れていて、英語はペラペラ。",
+          "text": "朝は5時に起きてジムへ行く。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -220,13 +205,16 @@
         {
           "lineOrder": 8,
           "nodeId": "middle_001_1_008",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "朝は5時に起きてジムへ行く。",
-          "speakerName": "地の文",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "narration"
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 500
+          }
         },
         {
           "lineOrder": 9,
@@ -255,7 +243,7 @@
           "nodeId": "middle_001_1_011",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "そもそもSNSなんて何も生み出さないし、[br]やめた方が人間として正解じゃないか。",
+          "text": "そもそもSNSなんて[br]何も生み出さないし、",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -266,7 +254,7 @@
           "nodeId": "middle_001_1_012",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "今までの俺とは訣別する。",
+          "text": "やめた方が人間として正解じゃないか。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -277,7 +265,7 @@
           "nodeId": "middle_001_1_013",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "――『人生再建プログラム』 Day first",
+          "text": "今までの俺とは訣別する。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -286,10 +274,35 @@
         {
           "lineOrder": 14,
           "nodeId": "middle_001_1_014",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "――『人生再建プログラム』[br]Day first",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 15,
+          "nodeId": "middle_001_1_015",
           "speaker": "system",
           "messageType": "action",
           "text": "",
-          "background": "bg_protagonist_living_room",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 800
+          }
+        },
+        {
+          "lineOrder": 16,
+          "nodeId": "middle_001_1_016",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "background": "bg_protagonist_my_room",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "scene_transition",
@@ -297,39 +310,17 @@
           "commandArgs": {
             "scene_id": "middle_001_1_three_days_later",
             "screen": "adv",
-            "background": "bg_protagonist_living_room",
+            "background": "bg_protagonist_my_room",
             "transition": "fade_black",
             "label": "3日後"
           }
-        },
-        {
-          "lineOrder": 15,
-          "nodeId": "middle_001_1_015",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "こうノートに書いた3日後、[br]俺は普通にSNSでレスバをしていた。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 16,
-          "nodeId": "middle_001_1_016",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "……",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
         },
         {
           "lineOrder": 17,
           "nodeId": "middle_001_1_017",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "まあ。",
+          "text": "こうノートに書いた3日後、[br]俺は普通にSNSでレスバをしていた。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -340,7 +331,7 @@
           "nodeId": "middle_001_1_018",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "こういうのって、みんなそんなもんだろ？",
+          "text": "……",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -349,64 +340,74 @@
         {
           "lineOrder": 19,
           "nodeId": "middle_001_1_019",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "まあ。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 20,
+          "nodeId": "middle_001_1_020",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "こういうのって、[br]みんなそんなもんだろ？",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 21,
+          "nodeId": "middle_001_1_021",
           "speaker": "system",
           "messageType": "action",
           "text": "",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "scene_transition",
-          "command": "wait"
-        },
-        {
-          "lineOrder": 20,
-          "nodeId": "middle_001_1_020",
-          "speaker": "opponent",
-          "messageType": "text",
-          "text": "目標ノートとか書いて[br]人生変わると思ってるやつ、予後悪そう",
-          "speakerName": "相手",
-          "enabled": true,
-          "screenMode": "chat",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 21,
-          "nodeId": "middle_001_1_021",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "何もせずに他人の挑戦笑ってる奴が[br]一番予後悪いけどな",
-          "speakerName": "主人公",
-          "enabled": true,
-          "screenMode": "chat",
-          "uiVariant": "dialogue"
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 500
+          }
         },
         {
           "lineOrder": 22,
           "nodeId": "middle_001_1_022",
-          "speaker": "opponent",
-          "messageType": "text",
-          "text": "挑戦てwww一生挑戦してろよwww",
-          "speakerName": "相手",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_keyboard_typing",
           "enabled": true,
           "screenMode": "chat",
-          "uiVariant": "dialogue"
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_keyboard_typing",
+            "loop": true,
+            "volume": 0.5
+          }
         },
         {
           "lineOrder": 23,
           "nodeId": "middle_001_1_023",
-          "speaker": "protagonist",
+          "speaker": "narrator",
           "messageType": "text",
-          "text": "実績ない奴が冷笑してるのやばいぞ",
-          "speakerName": "主人公",
+          "text": "カタカタカタ",
+          "speakerName": "地の文",
           "enabled": true,
           "screenMode": "chat",
-          "uiVariant": "dialogue"
+          "uiVariant": "narration"
         },
         {
           "lineOrder": 24,
           "nodeId": "middle_001_1_024",
           "speaker": "opponent",
           "messageType": "text",
-          "text": "実績あるならお前が晒せよ",
+          "text": "『目標ノートとか書いて[br]人生変わると思ってるやつ、[br]予後悪そう』",
           "speakerName": "相手",
           "enabled": true,
           "screenMode": "chat",
@@ -415,21 +416,24 @@
         {
           "lineOrder": 25,
           "nodeId": "middle_001_1_025",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "なんでお前に見せないといけないの？",
-          "speakerName": "主人公",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
           "enabled": true,
           "screenMode": "chat",
-          "uiVariant": "dialogue"
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 500
+          }
         },
         {
           "lineOrder": 26,
           "nodeId": "middle_001_1_026",
-          "speaker": "opponent",
+          "speaker": "protagonist",
           "messageType": "text",
-          "text": "実績ないのバレバレで草w",
-          "speakerName": "相手",
+          "text": "『何もせずに他人の挑戦笑ってる奴が[br]一番予後悪いけどな』",
+          "speakerName": "主人公",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -437,10 +441,10 @@
         {
           "lineOrder": 27,
           "nodeId": "middle_001_1_027",
-          "speaker": "enemy",
+          "speaker": "opponent",
           "messageType": "text",
-          "text": "あっ 孤高@考察垢 さんは[br]考察で忙しいかwww",
-          "speakerName": "敵",
+          "text": "『挑戦てwww[br]書くだけで挑戦とか言えちゃう[br]感性見習いたいわw』",
+          "speakerName": "相手",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -448,10 +452,10 @@
         {
           "lineOrder": 28,
           "nodeId": "middle_001_1_028",
-          "speaker": "enemy",
+          "speaker": "protagonist",
           "messageType": "text",
-          "text": "プロフも「考察」しか書いてないの[br]かっこい〜w",
-          "speakerName": "敵",
+          "text": "『実績ない奴が冷笑してるのやばいぞ』",
+          "speakerName": "主人公",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -459,10 +463,10 @@
         {
           "lineOrder": 29,
           "nodeId": "middle_001_1_029",
-          "speaker": "protagonist",
+          "speaker": "opponent",
           "messageType": "text",
-          "text": "そうだね[br]忙しいから君の相手をしている暇はないね",
-          "speakerName": "主人公（孤高@考察垢）",
+          "text": "『実績あるならお前が晒せよ』",
+          "speakerName": "相手",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -470,10 +474,10 @@
         {
           "lineOrder": 30,
           "nodeId": "middle_001_1_030",
-          "speaker": "enemy",
+          "speaker": "protagonist",
           "messageType": "text",
-          "text": "お前から絡んできた癖に[br]負けそうになった途端逃げ腰ですかw",
-          "speakerName": "敵",
+          "text": "『なんでお前に[br]見せないといけないの？』",
+          "speakerName": "主人公",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -481,10 +485,10 @@
         {
           "lineOrder": 31,
           "nodeId": "middle_001_1_031",
-          "speaker": "enemy",
+          "speaker": "opponent",
           "messageType": "text",
-          "text": "てかお前リプ見たら",
-          "speakerName": "敵",
+          "text": "『実績ないのバレバレで草w』",
+          "speakerName": "相手",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -494,7 +498,7 @@
           "nodeId": "middle_001_1_032",
           "speaker": "enemy",
           "messageType": "text",
-          "text": "『やさしい応援アカウント』っていうのに[br]よしよしされてるじゃんw",
+          "text": "『あっ「孤高@考察垢」さんは[br]考察で忙しいかwww』",
           "speakerName": "敵",
           "enabled": true,
           "screenMode": "chat",
@@ -503,10 +507,10 @@
         {
           "lineOrder": 33,
           "nodeId": "middle_001_1_033",
-          "speaker": "protagonist",
+          "speaker": "enemy",
           "messageType": "text",
-          "text": "リプまで見てくれたんだ、[br]俺のこと好きなんだね",
-          "speakerName": "主人公（孤高@考察垢）",
+          "text": "『プロフも「考察」しか書いてないの[br]かっこい〜w』",
+          "speakerName": "敵",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -514,10 +518,10 @@
         {
           "lineOrder": 34,
           "nodeId": "middle_001_1_034",
-          "speaker": "enemy",
+          "speaker": "protagonist",
           "messageType": "text",
-          "text": "きっつwww",
-          "speakerName": "敵",
+          "text": "『そうだね、忙しいから[br]君の相手をしている暇はないね』",
+          "speakerName": "主人公（孤高@考察垢）",
           "enabled": true,
           "screenMode": "chat",
           "uiVariant": "dialogue"
@@ -527,7 +531,7 @@
           "nodeId": "middle_001_1_035",
           "speaker": "enemy",
           "messageType": "text",
-          "text": "今日もレスバに負けて[br]よしよしされに行きます、かw",
+          "text": "『お前から絡んできた癖に[br]負けそうになった途端逃げ腰ですかw』",
           "speakerName": "敵",
           "enabled": true,
           "screenMode": "chat",
@@ -538,7 +542,7 @@
           "nodeId": "middle_001_1_036",
           "speaker": "enemy",
           "messageType": "text",
-          "text": "おーいw 孤高@考察垢 さーんw",
+          "text": "『てかお前リプ見たら』",
           "speakerName": "敵",
           "enabled": true,
           "screenMode": "chat",
@@ -547,6 +551,77 @@
         {
           "lineOrder": 37,
           "nodeId": "middle_001_1_037",
+          "speaker": "enemy",
+          "messageType": "text",
+          "text": "『『やさしい応援アカ』っていうのに[br]よしよしされてるじゃんw』",
+          "speakerName": "敵",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 38,
+          "nodeId": "middle_001_1_038",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "『リプまで見てくれたんだ、[br]俺のこと好きなんだね』",
+          "speakerName": "主人公（孤高@考察垢）",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 39,
+          "nodeId": "middle_001_1_039",
+          "speaker": "enemy",
+          "messageType": "text",
+          "text": "『きっち〜www』",
+          "speakerName": "敵",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 40,
+          "nodeId": "middle_001_1_040",
+          "speaker": "enemy",
+          "messageType": "text",
+          "text": "『今日もレスバに負けて[br]よしよしされに行きます、かw』",
+          "speakerName": "敵",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 41,
+          "nodeId": "middle_001_1_041",
+          "speaker": "enemy",
+          "messageType": "text",
+          "text": "『おーいw「孤高@考察垢」さーんw』",
+          "speakerName": "敵",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 42,
+          "nodeId": "middle_001_1_042",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_keyboard_typing",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "stop",
+            "asset_id": "se_keyboard_typing"
+          }
+        },
+        {
+          "lineOrder": 43,
+          "nodeId": "middle_001_1_043",
           "speaker": "narrator",
           "messageType": "text",
           "text": "俺はSNSをやめることにした。",
@@ -556,8 +631,22 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 38,
-          "nodeId": "middle_001_1_038",
+          "lineOrder": 44,
+          "nodeId": "middle_001_1_044",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 300
+          }
+        },
+        {
+          "lineOrder": 45,
+          "nodeId": "middle_001_1_045",
           "speaker": "narrator",
           "messageType": "text",
           "text": "だからゲームで紛らわせることにした。",
@@ -567,8 +656,33 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 39,
-          "nodeId": "middle_001_1_039",
+          "lineOrder": 46,
+          "nodeId": "middle_001_1_046",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "clear_background"
+        },
+        {
+          "lineOrder": 47,
+          "nodeId": "middle_001_1_047",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 1000
+          }
+        },
+        {
+          "lineOrder": 48,
+          "nodeId": "middle_001_1_048",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -587,8 +701,19 @@
           }
         },
         {
-          "lineOrder": 40,
-          "nodeId": "middle_001_1_040",
+          "lineOrder": 49,
+          "nodeId": "middle_001_1_049",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "――ある夏の日。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 50,
+          "nodeId": "middle_001_1_050",
           "speaker": "unknown",
           "messageType": "text",
           "text": "…",
@@ -598,8 +723,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 41,
-          "nodeId": "middle_001_1_041",
+          "lineOrder": 51,
+          "nodeId": "middle_001_1_051",
           "speaker": "unknown",
           "messageType": "text",
           "text": "…今の前に避ければ回避できるよ",
@@ -609,8 +734,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 42,
-          "nodeId": "middle_001_1_042",
+          "lineOrder": 52,
+          "nodeId": "middle_001_1_052",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "え？",
@@ -620,8 +745,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 43,
-          "nodeId": "middle_001_1_043",
+          "lineOrder": 53,
+          "nodeId": "middle_001_1_053",
           "speaker": "narrator",
           "messageType": "text",
           "text": "振り返ると、ソファに座った女の子が[br]話しかけてきた。",
@@ -631,139 +756,18 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 44,
-          "nodeId": "middle_001_1_044",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "portrait_rio_neutral",
-          "portrait": "portrait_rio_neutral",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "show_portrait",
-          "commandArgs": {
-            "action": "show",
-            "asset_id": "portrait_rio_neutral",
-            "transition": "fade"
-          }
-        },
-        {
-          "lineOrder": 45,
-          "nodeId": "middle_001_1_045",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "彼女は莉央、隣の家の子だ。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 46,
-          "nodeId": "middle_001_1_046",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "家の前で座って待っていたところを、[br]うちの母親が声をかけたらしい。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 47,
-          "nodeId": "middle_001_1_047",
-          "speaker": "mother",
-          "messageType": "text",
-          "text": "鍵持たないで出ちゃったんだって。",
-          "speakerName": "母",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 48,
-          "nodeId": "middle_001_1_048",
-          "speaker": "mother",
-          "messageType": "text",
-          "text": "ご両親今日遅いみたいだから、[br]帰ってくるまであずかることにしたから",
-          "speakerName": "母",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 49,
-          "nodeId": "middle_001_1_049",
-          "speaker": "mother",
-          "messageType": "text",
-          "text": "莉央ちゃん、自分の家だと思って[br]ゆっくりしていいからね〜",
-          "speakerName": "母",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 50,
-          "nodeId": "middle_001_1_050",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "portrait_rio_smile",
-          "portrait": "portrait_rio_smile",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "show_portrait",
-          "commandArgs": {
-            "action": "show",
-            "asset_id": "portrait_rio_smile",
-            "transition": "fade"
-          }
-        },
-        {
-          "lineOrder": 51,
-          "nodeId": "middle_001_1_051",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "ありがとうございます。お気遣いなく",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 52,
-          "nodeId": "middle_001_1_052",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "自分は「莉央」という名前さえ[br]今日初めて知った。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 53,
-          "nodeId": "middle_001_1_053",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "礼儀正しそうな子だ。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
           "lineOrder": 54,
           "nodeId": "middle_001_1_054",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "偏見だがあまりゲームには[br]興味があるタイプには見えない。",
-          "speakerName": "地の文",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "narration"
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 500
+          }
         },
         {
           "lineOrder": 55,
@@ -786,31 +790,39 @@
         {
           "lineOrder": 56,
           "nodeId": "middle_001_1_056",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "まあね、このゲーム知ってるの？",
-          "speakerName": "主人公",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "dialogue"
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_usually",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
         },
         {
           "lineOrder": 57,
           "nodeId": "middle_001_1_057",
-          "speaker": "rio",
+          "speaker": "narrator",
           "messageType": "text",
-          "text": "うん、たまにやってる",
-          "speakerName": "莉央",
+          "text": "彼女は莉央、隣の家の子だ。",
+          "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "dialogue"
+          "uiVariant": "narration"
         },
         {
           "lineOrder": 58,
           "nodeId": "middle_001_1_058",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "まあ大人も子供もやる[br]わりとメジャーなゲームだ。",
+          "text": "家の前で座って待っていたところを、[br]うちの母親が声をかけたらしい。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -819,21 +831,21 @@
         {
           "lineOrder": 59,
           "nodeId": "middle_001_1_059",
-          "speaker": "narrator",
+          "speaker": "mother",
           "messageType": "text",
-          "text": "おそらく友だちの家とかで[br]何回か触ったんだろう。",
-          "speakerName": "地の文",
+          "text": "鍵持たないで出ちゃったんだって。",
+          "speakerName": "母",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "narration"
+          "uiVariant": "dialogue"
         },
         {
           "lineOrder": 60,
           "nodeId": "middle_001_1_060",
-          "speaker": "protagonist",
+          "speaker": "mother",
           "messageType": "text",
-          "text": "じゃあちょっとやってみる？",
-          "speakerName": "主人公",
+          "text": "ご両親今日遅いみたいだから、[br]帰ってくるまであずかることにしたから",
+          "speakerName": "母",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
@@ -841,28 +853,17 @@
         {
           "lineOrder": 61,
           "nodeId": "middle_001_1_061",
-          "speaker": "narrator",
+          "speaker": "mother",
           "messageType": "text",
-          "text": "ちょうどいい練習台がほしかったところだ。",
-          "speakerName": "地の文",
+          "text": "莉央ちゃん、自分の家だと思って[br]ゆっくりしていいからね〜",
+          "speakerName": "母",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "narration"
+          "uiVariant": "dialogue"
         },
         {
           "lineOrder": 62,
           "nodeId": "middle_001_1_062",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "中学生くらいの女の子だ、さすがに勝てる。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 63,
-          "nodeId": "middle_001_1_063",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -879,33 +880,44 @@
           }
         },
         {
-          "lineOrder": 64,
-          "nodeId": "middle_001_1_064",
+          "lineOrder": 63,
+          "nodeId": "middle_001_1_063",
           "speaker": "rio",
           "messageType": "text",
-          "text": "いいの？",
+          "text": "ありがとうございます。お気遣いなく",
           "speakerName": "莉央",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 65,
-          "nodeId": "middle_001_1_065",
-          "speaker": "protagonist",
+          "lineOrder": 64,
+          "nodeId": "middle_001_1_064",
+          "speaker": "narrator",
           "messageType": "text",
-          "text": "いいよ、暇なんでしょ？",
-          "speakerName": "主人公",
+          "text": "自分は「莉央」という名前さえ[br]今日初めて知った。",
+          "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "dialogue"
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 65,
+          "nodeId": "middle_001_1_065",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "礼儀正しそうな子だ。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
         },
         {
           "lineOrder": 66,
           "nodeId": "middle_001_1_066",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "俺はコントローラを渡した。",
+          "text": "偏見だがあまりゲームには[br]興味があるタイプには見えない。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
@@ -914,237 +926,6 @@
         {
           "lineOrder": 67,
           "nodeId": "middle_001_1_067",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "portrait_rio_focused",
-          "portrait": "portrait_rio_focused",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "show_portrait",
-          "commandArgs": {
-            "action": "show",
-            "asset_id": "portrait_rio_focused",
-            "transition": "fade"
-          }
-        },
-        {
-          "lineOrder": 68,
-          "nodeId": "middle_001_1_068",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "莉央は意外と乗り気に見えた。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 69,
-          "nodeId": "middle_001_1_069",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "練習台とはいうものの、こういう時って[br]大人らしく手加減した方がいいものだろうか？",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 70,
-          "nodeId": "middle_001_1_070",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "まあそんなの気にしなくていいか。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 71,
-          "nodeId": "middle_001_1_071",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "hide_portrait",
-          "commandArgs": {
-            "action": "hide",
-            "transition": "fade"
-          }
-        },
-        {
-          "lineOrder": 72,
-          "nodeId": "middle_001_1_072",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "どうせならかっこよく[br]カウンターで決めてやろう。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 73,
-          "nodeId": "middle_001_1_073",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "などと考えているうちに[br]俺は弱攻撃でじわじわとダメージをもらい",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 74,
-          "nodeId": "middle_001_1_074",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "se_defeat",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "play_se",
-          "commandArgs": {
-            "asset_id": "se_defeat",
-            "volume": 1
-          }
-        },
-        {
-          "lineOrder": 75,
-          "nodeId": "middle_001_1_075",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "気づいたらKOになっていた。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 76,
-          "nodeId": "middle_001_1_076",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "wait",
-          "commandArgs": {
-            "duration_ms": 300
-          }
-        },
-        {
-          "lineOrder": 77,
-          "nodeId": "middle_001_1_077",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "あれ？KO？",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 78,
-          "nodeId": "middle_001_1_078",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "…",
-          "speakerName": "主人公",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 79,
-          "nodeId": "middle_001_1_079",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "portrait_rio_smile",
-          "portrait": "portrait_rio_smile",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "show_portrait",
-          "commandArgs": {
-            "action": "show",
-            "asset_id": "portrait_rio_smile",
-            "transition": "fade"
-          }
-        },
-        {
-          "lineOrder": 80,
-          "nodeId": "middle_001_1_080",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "私の勝ち？",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 81,
-          "nodeId": "middle_001_1_081",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "…お〜、なかなかやるね",
-          "speakerName": "主人公",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 82,
-          "nodeId": "middle_001_1_082",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "assetId": "portrait_rio_triumphant",
-          "portrait": "portrait_rio_triumphant",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "scene_transition",
-          "command": "show_portrait",
-          "commandArgs": {
-            "action": "show",
-            "asset_id": "portrait_rio_triumphant",
-            "transition": "fade"
-          }
-        },
-        {
-          "lineOrder": 83,
-          "nodeId": "middle_001_1_083",
-          "speaker": "narrator",
-          "messageType": "text",
-          "text": "莉央がふふんと勝ち誇った顔をする。",
-          "speakerName": "地の文",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "narration"
-        },
-        {
-          "lineOrder": 84,
-          "nodeId": "middle_001_1_084",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "…もう一回やっとく？",
-          "speakerName": "主人公",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 85,
-          "nodeId": "middle_001_1_085",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -1161,63 +942,85 @@
           }
         },
         {
-          "lineOrder": 86,
-          "nodeId": "middle_001_1_086",
+          "lineOrder": 68,
+          "nodeId": "middle_001_1_068",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "このゲーム知ってるの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 69,
+          "nodeId": "middle_001_1_069",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うん、たまにやってる",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 70,
+          "nodeId": "middle_001_1_070",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "莉央はこっちを見て一瞬迷った様子だった。",
+          "text": "まあ大人も子供もやる[br]わりとメジャーなゲームだ。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 87,
-          "nodeId": "middle_001_1_087",
-          "speaker": "rio",
+          "lineOrder": 71,
+          "nodeId": "middle_001_1_071",
+          "speaker": "narrator",
           "messageType": "text",
-          "text": "いい",
-          "speakerName": "莉央",
+          "text": "おそらく友だちの家とかで[br]何回か触ったんだろう。",
+          "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "dialogue"
+          "uiVariant": "narration"
         },
         {
-          "lineOrder": 88,
-          "nodeId": "middle_001_1_088",
+          "lineOrder": 72,
+          "nodeId": "middle_001_1_072",
           "speaker": "protagonist",
           "messageType": "text",
-          "text": "え",
+          "text": "じゃあちょっとやってみる？",
           "speakerName": "主人公",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 89,
-          "nodeId": "middle_001_1_089",
-          "speaker": "protagonist",
+          "lineOrder": 73,
+          "nodeId": "middle_001_1_073",
+          "speaker": "narrator",
           "messageType": "text",
-          "text": "もう飽きちゃった？",
-          "speakerName": "主人公",
+          "text": "ちょうどいい練習台が[br]ほしかったところだ。",
+          "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "dialogue"
+          "uiVariant": "narration"
         },
         {
-          "lineOrder": 90,
-          "nodeId": "middle_001_1_090",
-          "speaker": "rio",
+          "lineOrder": 74,
+          "nodeId": "middle_001_1_074",
+          "speaker": "narrator",
           "messageType": "text",
-          "text": "そうじゃないんだけど",
-          "speakerName": "莉央",
+          "text": "中学生くらいの女の子だ、[br]さすがに勝てる。",
+          "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "dialogue"
+          "uiVariant": "narration"
         },
         {
-          "lineOrder": 91,
-          "nodeId": "middle_001_1_091",
+          "lineOrder": 75,
+          "nodeId": "middle_001_1_075",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -1234,8 +1037,578 @@
           }
         },
         {
+          "lineOrder": 76,
+          "nodeId": "middle_001_1_076",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "いいの？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 77,
+          "nodeId": "middle_001_1_077",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "いいよ、暇なんでしょ？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 78,
+          "nodeId": "middle_001_1_078",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "俺はコントローラを渡した。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 79,
+          "nodeId": "middle_001_1_079",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "background": "bg_protagonist_living_room",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "scene_change",
+          "commandArgs": {
+            "scene_id": "prologue_entrance",
+            "screen": "adv",
+            "background": "bg_protagonist_living_room",
+            "transition": {
+              "type": "colorSlide"
+            },
+            "label": "リビング"
+          }
+        },
+        {
+          "lineOrder": 80,
+          "nodeId": "middle_001_1_080",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_focused",
+          "portrait": "portrait_rio_focused",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_focused",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 81,
+          "nodeId": "middle_001_1_081",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央は意外と乗り気に見えた。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 82,
+          "nodeId": "middle_001_1_082",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "練習台とはいうものの、[br]こういう時って大人らしく[br]手加減した方がいいものだろうか？",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 83,
+          "nodeId": "middle_001_1_083",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_small_punch",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_small_punch",
+            "volume": 1
+          }
+        },
+        {
+          "lineOrder": 84,
+          "nodeId": "middle_001_1_084",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 200
+          }
+        },
+        {
+          "lineOrder": 85,
+          "nodeId": "middle_001_1_085",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_small_kick",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_small_kick",
+            "volume": 1
+          }
+        },
+        {
+          "lineOrder": 86,
+          "nodeId": "middle_001_1_086",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 200
+          }
+        },
+        {
+          "lineOrder": 87,
+          "nodeId": "middle_001_1_087",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_middle_punch",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_middle_punch",
+            "volume": 1
+          }
+        },
+        {
+          "lineOrder": 88,
+          "nodeId": "middle_001_1_088",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "まあそんなの気にしなくていいか。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 89,
+          "nodeId": "middle_001_1_089",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "hide_portrait",
+          "commandArgs": {
+            "action": "hide",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 90,
+          "nodeId": "middle_001_1_090",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "どうせならかっこよく[br]カウンターで決めてやろう。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 91,
+          "nodeId": "middle_001_1_091",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_small_punch",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_small_punch",
+            "volume": 1
+          }
+        },
+        {
           "lineOrder": 92,
           "nodeId": "middle_001_1_092",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 200
+          }
+        },
+        {
+          "lineOrder": 93,
+          "nodeId": "middle_001_1_093",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_small_kick",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_small_kick",
+            "volume": 1
+          }
+        },
+        {
+          "lineOrder": 94,
+          "nodeId": "middle_001_1_094",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 200
+          }
+        },
+        {
+          "lineOrder": 95,
+          "nodeId": "middle_001_1_095",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_middle_punch",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_middle_punch",
+            "volume": 1
+          }
+        },
+        {
+          "lineOrder": 96,
+          "nodeId": "middle_001_1_096",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 1000
+          }
+        },
+        {
+          "lineOrder": 97,
+          "nodeId": "middle_001_1_097",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "などと考えているうちに",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 98,
+          "nodeId": "middle_001_1_098",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "俺は弱攻撃で[br]じわじわとダメージをもらい",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 99,
+          "nodeId": "middle_001_1_099",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_defeat",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "asset_id": "se_defeat",
+            "volume": 1
+          }
+        },
+        {
+          "lineOrder": 100,
+          "nodeId": "middle_001_1_100",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 500
+          }
+        },
+        {
+          "lineOrder": 101,
+          "nodeId": "middle_001_1_101",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "気づいたらKOになっていた。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 102,
+          "nodeId": "middle_001_1_102",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 300
+          }
+        },
+        {
+          "lineOrder": 103,
+          "nodeId": "middle_001_1_103",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "あれ？KO？",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 104,
+          "nodeId": "middle_001_1_104",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 105,
+          "nodeId": "middle_001_1_105",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_smile",
+          "portrait": "portrait_rio_smile",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_smile",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 106,
+          "nodeId": "middle_001_1_106",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "私の勝ち？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 107,
+          "nodeId": "middle_001_1_107",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 500
+          }
+        },
+        {
+          "lineOrder": 108,
+          "nodeId": "middle_001_1_108",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…お〜、なかなかやるね",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 109,
+          "nodeId": "middle_001_1_109",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_triumphant",
+          "portrait": "portrait_rio_triumphant",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_triumphant",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 110,
+          "nodeId": "middle_001_1_110",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央がふふんと勝ち誇った顔をする。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 111,
+          "nodeId": "middle_001_1_111",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…もう一回やっとく？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 112,
+          "nodeId": "middle_001_1_112",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_neutral",
+          "portrait": "portrait_rio_neutral",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_neutral",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 113,
+          "nodeId": "middle_001_1_113",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央はこっちを見て[br]一瞬迷った様子だった。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 114,
+          "nodeId": "middle_001_1_114",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "いい",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 115,
+          "nodeId": "middle_001_1_115",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "え、[br]もう飽きちゃった？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 116,
+          "nodeId": "middle_001_1_116",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "そうじゃないんだけど",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 117,
+          "nodeId": "middle_001_1_117",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_smile",
+          "portrait": "portrait_rio_smile",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_smile",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 118,
+          "nodeId": "middle_001_1_118",
           "speaker": "rio",
           "messageType": "text",
           "text": "…ふふっ",
@@ -1245,8 +1618,22 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 93,
-          "nodeId": "middle_001_1_093",
+          "lineOrder": 119,
+          "nodeId": "middle_001_1_119",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 1000
+          }
+        },
+        {
+          "lineOrder": 120,
+          "nodeId": "middle_001_1_120",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -1263,8 +1650,8 @@
           }
         },
         {
-          "lineOrder": 94,
-          "nodeId": "middle_001_1_094",
+          "lineOrder": 121,
+          "nodeId": "middle_001_1_121",
           "speaker": "rio",
           "messageType": "text",
           "text": "勝ったままの方がおもしろいからw",
@@ -1274,8 +1661,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 95,
-          "nodeId": "middle_001_1_095",
+          "lineOrder": 122,
+          "nodeId": "middle_001_1_122",
           "speaker": "narrator",
           "messageType": "text",
           "text": "…なんだこいつ。",
@@ -1285,8 +1672,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 96,
-          "nodeId": "middle_001_1_096",
+          "lineOrder": 123,
+          "nodeId": "middle_001_1_123",
           "speaker": "narrator",
           "messageType": "text",
           "text": "さっきの礼儀正しさはどこいったんだ。",
@@ -1296,8 +1683,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 97,
-          "nodeId": "middle_001_1_097",
+          "lineOrder": 124,
+          "nodeId": "middle_001_1_124",
           "speaker": "narrator",
           "messageType": "text",
           "text": "それにしても油断していたとはいえ[br]ゲームで女の子に負けるとは…",
@@ -1307,8 +1694,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 98,
-          "nodeId": "middle_001_1_098",
+          "lineOrder": 125,
+          "nodeId": "middle_001_1_125",
           "speaker": "narrator",
           "messageType": "text",
           "text": "まあ運が悪かったのかもしれない。",
@@ -1318,18 +1705,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 99,
-          "nodeId": "middle_001_1_099",
-          "speaker": "system",
-          "messageType": "action",
-          "text": "",
-          "enabled": true,
-          "screenMode": "adv",
-          "uiVariant": "beat"
-        },
-        {
-          "lineOrder": 100,
-          "nodeId": "middle_001_1_100",
+          "lineOrder": 126,
+          "nodeId": "middle_001_1_126",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -1343,8 +1720,8 @@
           }
         },
         {
-          "lineOrder": 101,
-          "nodeId": "middle_001_1_101",
+          "lineOrder": 127,
+          "nodeId": "middle_001_1_127",
           "speaker": "narrator",
           "messageType": "text",
           "text": "あまり考えないようにして[br]俺はレート戦へ戻った。",
@@ -1354,30 +1731,30 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 102,
-          "nodeId": "middle_001_1_102",
+          "lineOrder": 128,
+          "nodeId": "middle_001_1_128",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "ランクが上がったばかりで敵は強くなり、[br]俺はムキになってやり続けていた。",
+          "text": "ランクが上がったばかりで敵は強くなり[br]俺はムキになってやり続けていた。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 103,
-          "nodeId": "middle_001_1_103",
+          "lineOrder": 129,
+          "nodeId": "middle_001_1_129",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "その横で、莉央は暇そうに部屋を見回している。",
+          "text": "その横で、[br]莉央は暇そうに部屋を見回している。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 104,
-          "nodeId": "middle_001_1_104",
+          "lineOrder": 130,
+          "nodeId": "middle_001_1_130",
           "speaker": "narrator",
           "messageType": "text",
           "text": "…こいつ、家でも1人なんだろうか。",
@@ -1387,29 +1764,40 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 105,
-          "nodeId": "middle_001_1_105",
+          "lineOrder": 131,
+          "nodeId": "middle_001_1_131",
           "speaker": "system",
           "messageType": "action",
           "text": "",
+          "background": "bg_protagonist_living_room",
           "enabled": true,
           "screenMode": "adv",
-          "uiVariant": "beat"
+          "uiVariant": "scene_transition",
+          "command": "scene_change",
+          "commandArgs": {
+            "scene_id": "prologue_entrance",
+            "screen": "adv",
+            "background": "bg_protagonist_living_room",
+            "transition": {
+              "type": "colorSlide"
+            },
+            "label": "リビング"
+          }
         },
         {
-          "lineOrder": 106,
-          "nodeId": "middle_001_1_106",
+          "lineOrder": 132,
+          "nodeId": "middle_001_1_132",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "しばらくして。",
+          "text": "――しばらくして。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 107,
-          "nodeId": "middle_001_1_107",
+          "lineOrder": 133,
+          "nodeId": "middle_001_1_133",
           "speaker": "rio",
           "messageType": "text",
           "text": "ねえ",
@@ -1419,8 +1807,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 108,
-          "nodeId": "middle_001_1_108",
+          "lineOrder": 134,
+          "nodeId": "middle_001_1_134",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "んー？",
@@ -1430,8 +1818,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 109,
-          "nodeId": "middle_001_1_109",
+          "lineOrder": 135,
+          "nodeId": "middle_001_1_135",
           "speaker": "rio",
           "messageType": "text",
           "text": "これ見ていい？",
@@ -1441,8 +1829,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 110,
-          "nodeId": "middle_001_1_110",
+          "lineOrder": 136,
+          "nodeId": "middle_001_1_136",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "ああ",
@@ -1452,19 +1840,19 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 111,
-          "nodeId": "middle_001_1_111",
+          "lineOrder": 137,
+          "nodeId": "middle_001_1_137",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "画面から目を離さず、適当に返事をする。",
+          "text": "画面から目を離さず、[br]適当に返事をする。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 112,
-          "nodeId": "middle_001_1_112",
+          "lineOrder": 138,
+          "nodeId": "middle_001_1_138",
           "speaker": "narrator",
           "messageType": "text",
           "text": "ちょうどあと少しで負けそうな[br]ギリギリの場面だった。",
@@ -1474,8 +1862,8 @@
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 113,
-          "nodeId": "middle_001_1_113",
+          "lineOrder": 139,
+          "nodeId": "middle_001_1_139",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -1488,8 +1876,26 @@
           }
         },
         {
-          "lineOrder": 114,
-          "nodeId": "middle_001_1_114",
+          "lineOrder": 140,
+          "nodeId": "middle_001_1_140",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop",
+            "asset_id": "bgm_usually",
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
+        },
+        {
+          "lineOrder": 141,
+          "nodeId": "middle_001_1_141",
           "speaker": "rio",
           "messageType": "text",
           "text": "『人生再建プログラム』",
@@ -1499,8 +1905,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 115,
-          "nodeId": "middle_001_1_115",
+          "lineOrder": 142,
+          "nodeId": "middle_001_1_142",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "…",
@@ -1510,8 +1916,8 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 116,
-          "nodeId": "middle_001_1_116",
+          "lineOrder": 143,
+          "nodeId": "middle_001_1_143",
           "speaker": "rio",
           "messageType": "text",
           "text": "人生再建プログラムっておおげさ過ぎw",
@@ -1521,8 +1927,22 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 117,
-          "nodeId": "middle_001_1_117",
+          "lineOrder": 144,
+          "nodeId": "middle_001_1_144",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 1000
+          }
+        },
+        {
+          "lineOrder": 145,
+          "nodeId": "middle_001_1_145",
           "speaker": "protagonist",
           "messageType": "text",
           "text": "…ん？",
@@ -1532,37 +1952,30 @@
           "uiVariant": "dialogue"
         },
         {
-          "lineOrder": 118,
-          "nodeId": "middle_001_1_118",
+          "lineOrder": 146,
+          "nodeId": "middle_001_1_146",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "俺が負けたと同時に、[br]聞き覚えのある、嫌な単語が耳に入った。",
+          "text": "俺が負けたと同時に、[br]聞き覚えのある嫌な単語が耳に入った。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
         },
         {
-          "lineOrder": 119,
-          "nodeId": "middle_001_1_119",
+          "lineOrder": 147,
+          "nodeId": "middle_001_1_147",
           "speaker": "system",
           "messageType": "action",
           "text": "",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "scene_transition",
-          "command": "clear_background",
-          "commandArgs": {
-            "scene_id": "middle_001_1_notebook_reveal",
-            "screen": "adv",
-            "transition": "fade",
-            "command": "clear_background",
-            "label": "見られたくないノート"
-          }
+          "command": "clear_background"
         },
         {
-          "lineOrder": 120,
-          "nodeId": "middle_001_1_120",
+          "lineOrder": 148,
+          "nodeId": "middle_001_1_148",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -1575,15 +1988,2067 @@
           }
         },
         {
-          "lineOrder": 121,
-          "nodeId": "middle_001_1_121",
+          "lineOrder": 149,
+          "nodeId": "middle_001_1_149",
           "speaker": "narrator",
           "messageType": "text",
-          "text": "それは俺が一番見られたくないノートだった。",
+          "text": "それは[br]俺が一番見られたくないノートだった。",
           "speakerName": "地の文",
           "enabled": true,
           "screenMode": "adv",
           "uiVariant": "narration"
+        }
+      ]
+    },
+    {
+      "scenarioId": "middle_001_2",
+      "scenarioType": "middle_event",
+      "nodes": [
+        {
+          "lineOrder": 1,
+          "nodeId": "middle_001_2_001",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "background": "bg_protagonist_living_room",
+          "enabled": true,
+          "notes": "確定原稿: ユーザー提供 middle_001_2（更新2）",
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "scene_change",
+          "commandArgs": {
+            "scene_id": "middle_001_2_recap",
+            "screen": "adv",
+            "background": "bg_protagonist_living_room",
+            "transition": "fade",
+            "label": "主人公宅・リビング／前回の続き"
+          }
+        },
+        {
+          "lineOrder": 2,
+          "nodeId": "middle_001_2_002",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "hide_portrait",
+          "commandArgs": {
+            "action": "hide",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 3,
+          "nodeId": "middle_001_2_003",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_usually",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
+        },
+        {
+          "lineOrder": 4,
+          "nodeId": "middle_001_2_004",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "前回のあらすじ。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 5,
+          "nodeId": "middle_001_2_005",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "俺がゲームに夢中になっていると[br]『人生再建プログラム』の単語が耳に入った。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 6,
+          "nodeId": "middle_001_2_006",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "ちらっと横を見る。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 7,
+          "nodeId": "middle_001_2_007",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_focused",
+          "portrait": "portrait_rio_focused",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_focused",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 8,
+          "nodeId": "middle_001_2_008",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央が机の上に置いてあった[br]1冊のノートを開いている。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 9,
+          "nodeId": "middle_001_2_009",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "それはまずい。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 10,
+          "nodeId": "middle_001_2_010",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "確か俺が[br]uTuberに影響されて書いた、[br]意識高い系のノートだったはずだ。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 11,
+          "nodeId": "middle_001_2_011",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "あいつの「男磨きビレッジ」に[br]参加しようか迷ったこともあった。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 12,
+          "nodeId": "middle_001_2_012",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "…いや、今はそんなことどうでもいい。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 13,
+          "nodeId": "middle_001_2_013",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ちょっと待て",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 14,
+          "nodeId": "middle_001_2_014",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_neutral",
+          "portrait": "portrait_rio_neutral",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_neutral",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 15,
+          "nodeId": "middle_001_2_015",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "なに？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 16,
+          "nodeId": "middle_001_2_016",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "それはダメ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 17,
+          "nodeId": "middle_001_2_017",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "え、でも見ていいって言ったじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 18,
+          "nodeId": "middle_001_2_018",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "言ったけどそれだと思わなかった",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 19,
+          "nodeId": "middle_001_2_019",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 20,
+          "nodeId": "middle_001_2_020",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "見られたらまずいものなんだ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 21,
+          "nodeId": "middle_001_2_021",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "そうだよ、返して",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 22,
+          "nodeId": "middle_001_2_022",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "立ち上がろうとする。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 23,
+          "nodeId": "middle_001_2_023",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop"
+          }
+        },
+        {
+          "lineOrder": 24,
+          "nodeId": "middle_001_2_024",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…っ！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 25,
+          "nodeId": "middle_001_2_025",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "足に力が入らず、その場に崩れ落ちる。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 26,
+          "nodeId": "middle_001_2_026",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_surprised",
+          "portrait": "portrait_rio_surprised",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_surprised",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 27,
+          "nodeId": "middle_001_2_027",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "え、なにしてんの？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 28,
+          "nodeId": "middle_001_2_028",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "足しびれた…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 29,
+          "nodeId": "middle_001_2_029",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_smile",
+          "portrait": "portrait_rio_smile",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_smile",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 30,
+          "nodeId": "middle_001_2_030",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "…ふふっ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 31,
+          "nodeId": "middle_001_2_031",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "笑うな",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 32,
+          "nodeId": "middle_001_2_032",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 33,
+          "nodeId": "middle_001_2_033",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 34,
+          "nodeId": "middle_001_2_034",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_mischief",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_mischief",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
+        },
+        {
+          "lineOrder": 35,
+          "nodeId": "middle_001_2_035",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "だっさ〜w",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 36,
+          "nodeId": "middle_001_2_036",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "いいから返して",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 37,
+          "nodeId": "middle_001_2_037",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央はノートから目を離さないまま、[br]俺の足をつま先でつんつんとつついてきた。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 38,
+          "nodeId": "middle_001_2_038",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_damage",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_damage",
+            "volume": 0.55
+          }
+        },
+        {
+          "lineOrder": 39,
+          "nodeId": "middle_001_2_039",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ちょっ！！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 40,
+          "nodeId": "middle_001_2_040",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_neutral",
+          "portrait": "portrait_rio_neutral",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_neutral",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 41,
+          "nodeId": "middle_001_2_041",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あ、やっぱり動けないんだ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 42,
+          "nodeId": "middle_001_2_042",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "卑怯な…！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 43,
+          "nodeId": "middle_001_2_043",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 44,
+          "nodeId": "middle_001_2_044",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ざっこ〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 45,
+          "nodeId": "middle_001_2_045",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあ続き読も",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 46,
+          "nodeId": "middle_001_2_046",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "なんでだよ！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 47,
+          "nodeId": "middle_001_2_047",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_focused",
+          "portrait": "portrait_rio_focused",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_focused",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 48,
+          "nodeId": "middle_001_2_048",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央は俺の抗議を完全に無視して、[br]ノートに視線を戻した。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 49,
+          "nodeId": "middle_001_2_049",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "えーっと",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 50,
+          "nodeId": "middle_001_2_050",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "『人生再建プログラム』",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 51,
+          "nodeId": "middle_001_2_051",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "『目的。だらしない生活から脱却し、[br]1年後には別人になる』",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 52,
+          "nodeId": "middle_001_2_052",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "音読するな！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 53,
+          "nodeId": "middle_001_2_053",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "人生はいつからでも変えることができる。",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 54,
+          "nodeId": "middle_001_2_054",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "今日がその日だ。[br]今までの俺とは訣別する。",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 55,
+          "nodeId": "middle_001_2_055",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "1年後の俺は年収1000万、[br]爆美女にモテモテで困っている…",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 56,
+          "nodeId": "middle_001_2_056",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_damage",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_damage",
+            "volume": 0.4
+          }
+        },
+        {
+          "lineOrder": 57,
+          "nodeId": "middle_001_2_057",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "ツン",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 58,
+          "nodeId": "middle_001_2_058",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "やめっ…やめてください…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 59,
+          "nodeId": "middle_001_2_059",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ゲーム、SNS、ジャンクフード[br]などの一時的な快楽に支配されない",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 60,
+          "nodeId": "middle_001_2_060",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 61,
+          "nodeId": "middle_001_2_061",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "今ゲームしてたよね？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 62,
+          "nodeId": "middle_001_2_062",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_damage",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_damage",
+            "volume": 0.4
+          }
+        },
+        {
+          "lineOrder": 63,
+          "nodeId": "middle_001_2_063",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "ツン",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 64,
+          "nodeId": "middle_001_2_064",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…してました",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 65,
+          "nodeId": "middle_001_2_065",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "人生再建失敗しちゃったんだ？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 66,
+          "nodeId": "middle_001_2_066",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…はい",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 67,
+          "nodeId": "middle_001_2_067",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ふーん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 68,
+          "nodeId": "middle_001_2_068",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 69,
+          "nodeId": "middle_001_2_069",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_focused",
+          "portrait": "portrait_rio_focused",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_focused",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 70,
+          "nodeId": "middle_001_2_070",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_turn_the_page",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_turn_the_page",
+            "volume": 0.4
+          }
+        },
+        {
+          "lineOrder": 71,
+          "nodeId": "middle_001_2_071",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "ページをめくる。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 72,
+          "nodeId": "middle_001_2_072",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop"
+          }
+        },
+        {
+          "lineOrder": 73,
+          "nodeId": "middle_001_2_073",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "『Day first』",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 74,
+          "nodeId": "middle_001_2_074",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "数秒の沈黙。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 75,
+          "nodeId": "middle_001_2_075",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 500
+          }
+        },
+        {
+          "lineOrder": 76,
+          "nodeId": "middle_001_2_076",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_smile",
+          "portrait": "portrait_rio_smile",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_smile",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 77,
+          "nodeId": "middle_001_2_077",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_usually",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
+        },
+        {
+          "lineOrder": 78,
+          "nodeId": "middle_001_2_078",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "…ふふっ、[br]Day firstってなに？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 79,
+          "nodeId": "middle_001_2_079",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "1日目だよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 80,
+          "nodeId": "middle_001_2_080",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "なんでちょっと英語でかっこつけたの？[br]1日目とかDay 1でいいじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 81,
+          "nodeId": "middle_001_2_081",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "そこ擦るな",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 82,
+          "nodeId": "middle_001_2_082",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_laugh",
+          "portrait": "portrait_rio_laugh",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_laugh",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 83,
+          "nodeId": "middle_001_2_083",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "Day first…あははっ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 84,
+          "nodeId": "middle_001_2_084",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央は完全にツボに入ったらしい。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 85,
+          "nodeId": "middle_001_2_085",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "最悪だ…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 86,
+          "nodeId": "middle_001_2_086",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_turn_the_page",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_turn_the_page",
+            "volume": 0.4
+          }
+        },
+        {
+          "lineOrder": 87,
+          "nodeId": "middle_001_2_087",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "笑いながら次のページをめくる。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 88,
+          "nodeId": "middle_001_2_088",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 89,
+          "nodeId": "middle_001_2_089",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "でもDay firstさん、[br]1日目は全部やってるじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 90,
+          "nodeId": "middle_001_2_090",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "呼び方変えてね",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 91,
+          "nodeId": "middle_001_2_091",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "まあやると決めた日はやる男だから",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 92,
+          "nodeId": "middle_001_2_092",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_neutral",
+          "portrait": "portrait_rio_neutral",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_neutral",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 93,
+          "nodeId": "middle_001_2_093",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "2日目は？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 94,
+          "nodeId": "middle_001_2_094",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "起床：×。夜更かししてしまった",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 95,
+          "nodeId": "middle_001_2_095",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ランニング：△。筋肉痛だった",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 96,
+          "nodeId": "middle_001_2_096",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "英語：×。仕事で余裕ない",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 97,
+          "nodeId": "middle_001_2_097",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 98,
+          "nodeId": "middle_001_2_098",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "3日目",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 99,
+          "nodeId": "middle_001_2_099",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "起床：×",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 100,
+          "nodeId": "middle_001_2_100",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ランニング：×。暑かった",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 101,
+          "nodeId": "middle_001_2_101",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "英語：×。仕事が忙しい",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 102,
+          "nodeId": "middle_001_2_102",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 103,
+          "nodeId": "middle_001_2_103",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_unimpressed",
+          "portrait": "portrait_rio_unimpressed",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_unimpressed",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 104,
+          "nodeId": "middle_001_2_104",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "全部×じゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 105,
+          "nodeId": "middle_001_2_105",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "そういう日もある",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 106,
+          "nodeId": "middle_001_2_106",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_neutral",
+          "portrait": "portrait_rio_neutral",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_neutral",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 107,
+          "nodeId": "middle_001_2_107",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "Day 4は？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 108,
+          "nodeId": "middle_001_2_108",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 109,
+          "nodeId": "middle_001_2_109",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ねえ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 110,
+          "nodeId": "middle_001_2_110",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ない",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 111,
+          "nodeId": "middle_001_2_111",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ないの？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 112,
+          "nodeId": "middle_001_2_112",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "うん",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 113,
+          "nodeId": "middle_001_2_113",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 114,
+          "nodeId": "middle_001_2_114",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 115,
+          "nodeId": "middle_001_2_115",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 116,
+          "nodeId": "middle_001_2_116",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "人生再建できなかったんだ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 117,
+          "nodeId": "middle_001_2_117",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "それやめてね？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 118,
+          "nodeId": "middle_001_2_118",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_laugh",
+          "portrait": "portrait_rio_laugh",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_laugh",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 119,
+          "nodeId": "middle_001_2_119",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ふふっ、あははっ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 120,
+          "nodeId": "middle_001_2_120",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "さすがに笑いすぎだろ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 121,
+          "nodeId": "middle_001_2_121",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "だって",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 122,
+          "nodeId": "middle_001_2_122",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "人生再建プログラムなのに",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 123,
+          "nodeId": "middle_001_2_123",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "その後全部白紙なんだもん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 124,
+          "nodeId": "middle_001_2_124",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "当時はいけると思ってたんだよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 125,
+          "nodeId": "middle_001_2_125",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 126,
+          "nodeId": "middle_001_2_126",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "Day firstのとき？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 127,
+          "nodeId": "middle_001_2_127",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "もういい！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 128,
+          "nodeId": "middle_001_2_128",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "background": "bg_protagonist_living_room",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "scene_change",
+          "commandArgs": {
+            "scene_id": "middle_001_2_notebook_terms",
+            "screen": "adv",
+            "background": "bg_protagonist_living_room",
+            "transition": {
+              "type": "colorSlide"
+            },
+            "label": "主人公宅・リビング／ノートの返却条件"
+          }
+        },
+        {
+          "lineOrder": 129,
+          "nodeId": "middle_001_2_129",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "足の痺れが治ったところで、[br]ようやく立ち上がった。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 130,
+          "nodeId": "middle_001_2_130",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "返して",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 131,
+          "nodeId": "middle_001_2_131",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "やだ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 132,
+          "nodeId": "middle_001_2_132",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "じゃあせめて内容は忘れて",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 133,
+          "nodeId": "middle_001_2_133",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_triumphant",
+          "portrait": "portrait_rio_triumphant",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_triumphant",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 134,
+          "nodeId": "middle_001_2_134",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "もうだいたい覚えた",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 135,
+          "nodeId": "middle_001_2_135",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "最悪だ…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 136,
+          "nodeId": "middle_001_2_136",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "俺としては一刻も早く忘れてほしい。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 137,
+          "nodeId": "middle_001_2_137",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_mischievous_default",
+          "portrait": "portrait_rio_mischievous_default",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_mischievous_default",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 138,
+          "nodeId": "middle_001_2_138",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあこうしよ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 139,
+          "nodeId": "middle_001_2_139",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop",
+            "asset_id": "bgm_usually",
+            "fade_ms": 1000,
+            "volume": 0.8
+          }
+        },
+        {
+          "lineOrder": 140,
+          "nodeId": "middle_001_2_140",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 1000
+          }
+        },
+        {
+          "lineOrder": 141,
+          "nodeId": "middle_001_2_141",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央がノートを開いたまま、こちらに向けた。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 142,
+          "nodeId": "middle_001_2_142",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "Day 4。[br]何も書かれていないページ。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 143,
+          "nodeId": "middle_001_2_143",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "これ全部埋まったら返してあげる",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 144,
+          "nodeId": "middle_001_2_144",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "全部？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 145,
+          "nodeId": "middle_001_2_145",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 146,
+          "nodeId": "middle_001_2_146",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_focused",
+          "portrait": "portrait_rio_focused",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_focused",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 147,
+          "nodeId": "middle_001_2_147",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_turn_some_page",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_turn_some_page",
+            "volume": 0.4
+          }
+        },
+        {
+          "lineOrder": 148,
+          "nodeId": "middle_001_2_148",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "パラパラとページをめくる。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 149,
+          "nodeId": "middle_001_2_149",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "…まだいっぱいあるね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 150,
+          "nodeId": "middle_001_2_150",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "無理でしょ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 151,
+          "nodeId": "middle_001_2_151",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_triumphant",
+          "portrait": "portrait_rio_triumphant",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_triumphant",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 152,
+          "nodeId": "middle_001_2_152",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあ一生私のだね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 153,
+          "nodeId": "middle_001_2_153",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "なんだよそれ…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 154,
+          "nodeId": "middle_001_2_154",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "まあもう使わないノートだ。[br]誰に渡ったところでどうでもいいか。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 155,
+          "nodeId": "middle_001_2_155",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 156,
+          "nodeId": "middle_001_2_156",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…ていうかさ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 157,
+          "nodeId": "middle_001_2_157",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "そもそも誰が書くの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 158,
+          "nodeId": "middle_001_2_158",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "portrait_rio_neutral",
+          "portrait": "portrait_rio_neutral",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "scene_transition",
+          "command": "show_portrait",
+          "commandArgs": {
+            "action": "show",
+            "asset_id": "portrait_rio_neutral",
+            "transition": "fade"
+          }
+        },
+        {
+          "lineOrder": 159,
+          "nodeId": "middle_001_2_159",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "え",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 160,
+          "nodeId": "middle_001_2_160",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "私しかいないじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "adv",
+          "uiVariant": "dialogue"
         }
       ]
     },
@@ -2660,7 +5125,7 @@
       "repeatable": false,
       "cooldownDays": 0,
       "enabled": true,
-      "notes": "確定原稿: ユーザー提供 middle_001_1",
+      "notes": "確定原稿: ユーザー提供 middle_001_1（更新4）",
       "chapterId": "chapter_01",
       "episodeOrder": 1,
       "storyCategory": "main",
@@ -2670,6 +5135,28 @@
           "conditionKey": "cumulative_days",
           "operator": "gte",
           "threshold": "1"
+        }
+      ]
+    },
+    {
+      "eventId": "event_middle_001_2",
+      "eventType": "middle_event",
+      "title": "Day first",
+      "entryScenarioId": "middle_001_2",
+      "priority": 101,
+      "repeatable": false,
+      "cooldownDays": 0,
+      "enabled": true,
+      "notes": "確定原稿: ユーザー提供 middle_001_2（更新2）",
+      "chapterId": "chapter_01",
+      "episodeOrder": 2,
+      "storyCategory": "main",
+      "conditions": [
+        {
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
+          "threshold": "2"
         }
       ]
     }

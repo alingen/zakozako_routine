@@ -609,6 +609,92 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         )
     }
 
+    func testLoopingSoundEffectRestoresAndStopsAtTheScriptedBoundary() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "looping_sound_effect",
+            scenarioType: .middleEvent,
+            nodes: [
+                StoryNode(
+                    nodeId: "start_loop",
+                    lineOrder: 1,
+                    speaker: "system",
+                    messageType: .action,
+                    command: "play_se",
+                    commandArgs: .object([
+                        "action": .string("play"),
+                        "asset_id": .string("se_keyboard_typing"),
+                        "loop": .bool(true),
+                    ])
+                ),
+                StoryNode(
+                    nodeId: "first_line",
+                    lineOrder: 2,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "入力中",
+                    screenMode: .chat,
+                    uiVariant: .dialogue
+                ),
+                StoryNode(
+                    nodeId: "stop_loop",
+                    lineOrder: 3,
+                    speaker: "system",
+                    messageType: .action,
+                    command: "play_se",
+                    commandArgs: .object([
+                        "action": .string("stop"),
+                        "asset_id": .string("se_keyboard_typing"),
+                    ])
+                ),
+                StoryNode(
+                    nodeId: "second_line",
+                    lineOrder: 4,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "入力終了",
+                    screenMode: .chat,
+                    uiVariant: .dialogue
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(scenarios: [scenario], choiceGroups: [], events: [])
+        )
+        let stateRepository = try makeStateRepository()
+        let playbackKey = "integration:looping_sound_effect"
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+
+        await player.start()
+        XCTAssertEqual(player.currentNode?.nodeId, "first_line")
+        XCTAssertEqual(
+            player.loopingSoundEffects["se_keyboard_typing"],
+            StorySoundEffectPlayback(assetID: "se_keyboard_typing", volume: 1, loop: true)
+        )
+        XCTAssertTrue(player.consumePendingSoundEffects().isEmpty)
+
+        let resumedPlayer = makePlayer(
+            scenario: scenario,
+            playbackKey: playbackKey,
+            contentRepository: contentRepository,
+            stateRepository: stateRepository
+        )
+        await resumedPlayer.start()
+        XCTAssertEqual(resumedPlayer.currentNode?.nodeId, "first_line")
+        XCTAssertEqual(
+            resumedPlayer.loopingSoundEffects["se_keyboard_typing"],
+            StorySoundEffectPlayback(assetID: "se_keyboard_typing", volume: 1, loop: true)
+        )
+
+        await player.advance()
+        XCTAssertEqual(player.currentNode?.nodeId, "second_line")
+        XCTAssertTrue(player.loopingSoundEffects.isEmpty)
+    }
+
     func testRealDailyChoiceTargetsExistingBranchAndPersistsValue() async throws {
         let contentRepository = try makeGeneratedContentRepository()
         let stateRepository = try makeStateRepository()

@@ -35,6 +35,50 @@ final class StorySoundEffectCommandTests: XCTestCase {
         XCTAssertTrue(result.effects.isEmpty)
         XCTAssertNotNil(result.diagnostic)
     }
+
+    func testPlaySESupportsLoopingAndStoppingTheSameAsset() {
+        let playNode = StoryNode(
+            nodeId: "loop_sound",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            command: "play_se",
+            commandArgs: .object([
+                "action": .string("play"),
+                "asset_id": .string("se_keyboard_typing"),
+                "loop": .bool(true),
+                "volume": .number(0.6),
+            ])
+        )
+        let stopNode = StoryNode(
+            nodeId: "stop_sound",
+            lineOrder: 2,
+            speaker: "system",
+            messageType: .action,
+            command: "play_se",
+            commandArgs: .object([
+                "action": .string("stop"),
+                "asset_id": .string("se_keyboard_typing"),
+            ])
+        )
+
+        XCTAssertEqual(
+            StoryCommandDispatcher().dispatch(node: playNode).effects,
+            [
+                .playSoundEffect(
+                    StorySoundEffectPlayback(
+                        assetID: "se_keyboard_typing",
+                        volume: 0.6,
+                        loop: true
+                    )
+                ),
+            ]
+        )
+        XCTAssertEqual(
+            StoryCommandDispatcher().dispatch(node: stopNode).effects,
+            [.stopSoundEffect("se_keyboard_typing")]
+        )
+    }
 }
 
 final class ADVTextLayoutTests: XCTestCase {

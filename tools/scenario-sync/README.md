@@ -142,7 +142,10 @@ story_content.generated.json
   `command_args={"asset_id":"se_defeat","volume":0.8}` とします。参照する素材は
   `asset_catalog` に `asset_type=se` で登録します。`asset_id` はBundle内のファイル名から
   拡張子を除いた名前と一致させてください（例：`se_defeat.mp3`）。`volume` は省略時1です。
-- BGMは `play_bgm`／`stop_bgm` で制御します。`play_se` はループせず、行に到達するたび一度だけ再生します。
+- 通常の `play_se` は行に到達するたび一度だけ再生します。区間ループは開始行を
+  `command_args={"action":"play","asset_id":"se_keyboard_typing","loop":true,"volume":1}`、
+  停止行を `command_args={"action":"stop","asset_id":"se_keyboard_typing"}` とします。
+- BGMは `play_bgm`／`stop_bgm` で制御します。
 
 ### interactions（7列）
 

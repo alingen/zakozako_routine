@@ -191,6 +191,11 @@ final class StorySceneTransitionTests: XCTestCase {
         XCTAssertTrue(probe.requestedAssetIDs.contains("bg_new"))
         XCTAssertTrue(probe.requestedAssetIDs.contains("portrait_new"))
         XCTAssertEqual(probe.sleeps.reduce(0) { $0 + $1.milliseconds }, 700)
+        XCTAssertEqual(
+            player.consumePendingSoundEffects(),
+            [StorySoundEffectPlayback(assetID: "se_color_slide", volume: 1)]
+        )
+        XCTAssertTrue(player.consumePendingSoundEffects().isEmpty, "Play the slide SE only once")
     }
 
     func testRapidRepeatedAdvanceDoesNotSkipTheNewDialogue() async throws {
@@ -297,6 +302,19 @@ final class StorySceneTransitionTests: XCTestCase {
         XCTAssertTrue(probe.barriers.isEmpty)
         XCTAssertTrue(probe.sleeps.isEmpty)
         XCTAssertNil(player.sceneTransition)
+        XCTAssertTrue(player.consumePendingSoundEffects().isEmpty)
+    }
+
+    func testExplicitCrossFadeDoesNotPlayColorSlideSound() async throws {
+        let probe = TransitionProbe()
+        let player = try makePlayer(probe: probe, transitionArguments: .object([
+            "transition": .object(["type": .string("crossFade")]),
+        ]))
+        await player.start()
+        await player.advance()
+
+        XCTAssertEqual(player.currentNode?.nodeId, "new")
+        XCTAssertTrue(player.consumePendingSoundEffects().isEmpty)
     }
 
     func testInitialSceneDoesNotAnimateWithoutAnOldScene() async throws {
@@ -309,6 +327,7 @@ final class StorySceneTransitionTests: XCTestCase {
         XCTAssertTrue(probe.barriers.isEmpty)
         XCTAssertTrue(probe.sleeps.isEmpty)
         XCTAssertNil(player.sceneTransition)
+        XCTAssertTrue(player.consumePendingSoundEffects().isEmpty)
     }
 
     func testCompletedTransitionIsNotReplayedWhenRestoringCheckpoint() async throws {

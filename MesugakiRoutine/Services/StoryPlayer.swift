@@ -99,6 +99,7 @@ final class StoryPlayer {
     private(set) var activeAudioAssetID: String?
     private(set) var bgmPlaybackState: StoryBGMPlaybackState?
     private(set) var pendingSoundEffects: [StorySoundEffectPlayback] = []
+    private(set) var loopingSoundEffects: [String: StorySoundEffectPlayback] = [:]
 
     @ObservationIgnored private let scenario: StoryScenario
     @ObservationIgnored private let event: StoryEvent?
@@ -598,7 +599,7 @@ private extension StoryPlayer {
                     allowTransientEffects: true
                 )
                 for effect in dispatch.effects {
-                    if case .playSoundEffect(let sound) = effect {
+                    if case .playSoundEffect(let sound) = effect, !sound.loop {
                         pendingSoundEffects.append(sound)
                     }
                 }
@@ -716,6 +717,7 @@ private extension StoryPlayer {
         availableChoices = []
         isModalPresented = false
         isTyping = false
+        loopingSoundEffects = [:]
         shouldDelayCurrentADVText = false
         awaitsTextAfterClearBackground = false
         isCompleted = true
@@ -837,8 +839,12 @@ private extension StoryPlayer {
                 bgmPlaybackState = state
             case .stopBGM:
                 bgmPlaybackState = nil
-            case .playSoundEffect:
-                break
+            case .playSoundEffect(let sound):
+                if sound.loop {
+                    loopingSoundEffects[sound.assetID] = sound
+                }
+            case .stopSoundEffect(let assetID):
+                loopingSoundEffects.removeValue(forKey: assetID)
             }
         }
 
@@ -1132,6 +1138,7 @@ private extension StoryPlayer {
         activeAudioAssetID = nil
         bgmPlaybackState = nil
         pendingSoundEffects = []
+        loopingSoundEffects = [:]
         if clearError { recoverableError = nil }
     }
 
@@ -1180,6 +1187,11 @@ private extension StoryPlayer {
     ) async throws {
         prepareAssets(sceneAssetIDs(startingAt: node))
         let reduced = reduceMotion()
+        if configuration.type == .colorSlide {
+            pendingSoundEffects.append(
+                StorySoundEffectPlayback(assetID: "se_color_slide", volume: 1)
+            )
+        }
         sceneTransition = StorySceneTransitionState(
             configuration: configuration, phase: .covering,
             startedAt: transitionUptime(), reduceMotion: reduced

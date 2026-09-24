@@ -7,13 +7,7 @@ import { normalize } from '../src/normalize.js';
 import { validate } from '../src/validate.js';
 
 const EXPECTED_MODES = ['adv', 'chat'];
-const EXPECTED_VARIANTS = [
-  'beat',
-  'dialogue',
-  'narration',
-  'scene_transition',
-  'title_card',
-];
+const EXPECTED_VARIANTS = ['dialogue', 'narration', 'scene_transition', 'title_card'];
 const EXPECTED_COMMANDS = [
   'clear_background',
   'hide_portrait',
@@ -21,6 +15,7 @@ const EXPECTED_COMMANDS = [
   'play_se',
   'scene_change',
   'show_portrait',
+  'stop_bgm',
   'wait',
 ];
 
@@ -88,7 +83,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(normalized.issues.errors).toEqual([]);
   });
 
-  it('contains the authored daily catalog, prologue, and first chapter episode', () => {
+  it('contains the authored daily catalog, prologue, and chapter episodes', () => {
     const daily = bundle.scenarios.filter((scenario) => scenario.scenarioType === 'daily');
     const scenarioById = new Map(
       bundle.scenarios.map((scenario) => [scenario.scenarioId, scenario]),
@@ -101,6 +96,10 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     const prologueScenario = scenarioById.get('prologue_001');
     const middleEvent = bundle.events.find((event) => event.eventId === 'event_middle_001_1');
     const middleScenario = scenarioById.get('middle_001_1');
+    const secondMiddleEvent = bundle.events.find(
+      (event) => event.eventId === 'event_middle_001_2',
+    );
+    const secondMiddleScenario = scenarioById.get('middle_001_2');
 
     expect(daily.map((scenario) => scenario.scenarioId)).toEqual(['daily_q003']);
     expect(daily[0]).toMatchObject({
@@ -182,19 +181,212 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       scenarioId: 'middle_001_1',
       scenarioType: 'middle_event',
     });
-    expect(middleScenario?.nodes).toHaveLength(121);
-    expect(middleScenario?.nodes.slice(0, 3)).toMatchObject([
+    expect(middleScenario?.nodes).toHaveLength(149);
+    expect(middleScenario?.nodes.slice(0, 4)).toMatchObject([
       { command: 'clear_background' },
       { command: 'hide_portrait' },
-      { command: 'play_bgm', assetId: 'bgm_usually' },
+      { text: '人生はいつからでも[br]変えることができる。' },
+      { text: '今日がその日だ。' },
     ]);
-    expect(middleScenario?.nodes.find((node) => node.lineOrder === 19)).toMatchObject({
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 8)).toMatchObject({
       command: 'wait',
+      commandArgs: { duration_ms: 500 },
     });
-    expect(
-      middleScenario?.nodes.find((node) => node.lineOrder === 19)?.commandArgs,
-    ).toBeUndefined();
-    expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1]);
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 15)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 800 },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 16)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_protagonist_my_room',
+      commandArgs: expect.objectContaining({ background: 'bg_protagonist_my_room' }),
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 21)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 500 },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 22)).toMatchObject({
+      command: 'play_se',
+      assetId: 'se_keyboard_typing',
+      commandArgs: expect.objectContaining({ action: 'play', loop: true, volume: 0.5 }),
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 23)).toMatchObject({
+      text: 'カタカタカタ',
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 25)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 500 },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 27)).toMatchObject({
+      text: '『挑戦てwww[br]書くだけで挑戦とか言えちゃう[br]感性見習いたいわw』',
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 42)).toMatchObject({
+      command: 'play_se',
+      assetId: 'se_keyboard_typing',
+      commandArgs: expect.objectContaining({ action: 'stop' }),
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 44)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 300 },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 46)).toMatchObject({
+      command: 'clear_background',
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 47)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 1000 },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 54)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 500 },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 56)).toMatchObject({
+      command: 'play_bgm',
+      assetId: 'bgm_usually',
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 79)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_protagonist_living_room',
+      commandArgs: expect.objectContaining({ transition: { type: 'colorSlide' } }),
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 107)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 500 },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 119)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 1000 },
+    });
+    expect(middleScenario?.nodes.some((node) => node.uiVariant === 'beat')).toBe(false);
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 131)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_protagonist_living_room',
+      commandArgs: expect.objectContaining({
+        transition: { type: 'colorSlide' },
+        label: 'リビング',
+      }),
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 140)).toMatchObject({
+      command: 'stop_bgm',
+      assetId: 'bgm_usually',
+      commandArgs: {
+        action: 'stop',
+        asset_id: 'bgm_usually',
+        fade_ms: 1000,
+        volume: 0.8,
+      },
+    });
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 144)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 1000 },
+    });
+    expect(middleScenario?.nodes.at(-1)).toMatchObject({
+      lineOrder: 149,
+      text: 'それは[br]俺が一番見られたくないノートだった。',
+    });
+    expect(secondMiddleEvent).toMatchObject({
+      eventType: 'middle_event',
+      title: 'Day first',
+      entryScenarioId: 'middle_001_2',
+      priority: 101,
+      chapterId: 'chapter_01',
+      episodeOrder: 2,
+      storyCategory: 'main',
+    });
+    expect(secondMiddleScenario).toMatchObject({
+      scenarioId: 'middle_001_2',
+      scenarioType: 'middle_event',
+    });
+    expect(secondMiddleScenario?.nodes).toHaveLength(160);
+    expect(secondMiddleScenario?.nodes.slice(0, 8)).toMatchObject([
+      {
+        lineOrder: 1,
+        command: 'scene_change',
+        background: 'bg_protagonist_living_room',
+        commandArgs: expect.objectContaining({ scene_id: 'middle_001_2_recap' }),
+      },
+      { lineOrder: 2, command: 'hide_portrait' },
+      {
+        lineOrder: 3,
+        command: 'play_bgm',
+        assetId: 'bgm_usually',
+        commandArgs: {
+          action: 'play',
+          asset_id: 'bgm_usually',
+          loop: true,
+          fade_ms: 1000,
+          volume: 0.8,
+        },
+      },
+      { lineOrder: 4, text: '前回のあらすじ。' },
+      {
+        lineOrder: 5,
+        text: '俺がゲームに夢中になっていると[br]『人生再建プログラム』の単語が耳に入った。',
+      },
+      { lineOrder: 6, text: 'ちらっと横を見る。' },
+      {
+        lineOrder: 7,
+        command: 'show_portrait',
+        assetId: 'portrait_rio_focused',
+      },
+      { lineOrder: 8, text: '莉央が机の上に置いてあった[br]1冊のノートを開いている。' },
+    ]);
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 11)).toMatchObject({
+      text: 'あいつの「男磨きビレッジ」に[br]参加しようか迷ったこともあった。',
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 23)).toMatchObject({
+      command: 'stop_bgm',
+      commandArgs: { action: 'stop' },
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 34)).toMatchObject({
+      command: 'play_bgm',
+      assetId: 'bgm_mischief',
+      commandArgs: expect.objectContaining({ loop: true, fade_ms: 1000, volume: 0.8 }),
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 38)).toMatchObject({
+      command: 'play_se',
+      assetId: 'se_damage',
+      commandArgs: { action: 'play', asset_id: 'se_damage', volume: 0.55 },
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 68)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 600 },
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 128)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_protagonist_living_room',
+      commandArgs: expect.objectContaining({ transition: { type: 'colorSlide' } }),
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 155)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 600 },
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 70)).toMatchObject({
+      command: 'play_se',
+      assetId: 'se_turn_the_page',
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 72)).toMatchObject({
+      command: 'stop_bgm',
+      commandArgs: { action: 'stop' },
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 77)).toMatchObject({
+      command: 'play_bgm',
+      assetId: 'bgm_usually',
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 139)).toMatchObject({
+      command: 'stop_bgm',
+      assetId: 'bgm_usually',
+      commandArgs: expect.objectContaining({ action: 'stop', fade_ms: 1000 }),
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 147)).toMatchObject({
+      command: 'play_se',
+      assetId: 'se_turn_some_page',
+    });
+    expect(secondMiddleScenario?.nodes.find((node) => node.lineOrder === 160)).toMatchObject({
+      speaker: 'rio',
+      text: '私しかいないじゃん',
+    });
+    expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2]);
     for (const event of [prologueEvent!, ...chapterOneEpisodes]) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);
     }
@@ -230,9 +422,11 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(values((node) => node.screenMode)).toEqual(EXPECTED_MODES);
     expect(values((node) => node.uiVariant)).toEqual(EXPECTED_VARIANTS);
     expect(values((node) => node.command)).toEqual(EXPECTED_COMMANDS);
-    expect([...new Set(bundle.scenarios.map((scenario) => scenario.scenarioType))]).toEqual(
-      ['daily', 'middle_event', 'prologue'],
-    );
+    expect([...new Set(bundle.scenarios.map((scenario) => scenario.scenarioType))]).toEqual([
+      'daily',
+      'middle_event',
+      'prologue',
+    ]);
     expect(nodes.some((node) => node.speaker === 'protagonist')).toBe(true);
     expect(nodes.some((node) => node.messageType === 'action')).toBe(true);
     expect(nodes.some((node) => node.commandArgs && typeof node.commandArgs === 'object')).toBe(
@@ -247,7 +441,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       .filter((event) => event.chapterId === 'chapter_01' && event.storyCategory === 'main')
       .filter((event) => event.episodeOrder !== undefined)
       .sort((left, right) => (left.episodeOrder ?? 0) - (right.episodeOrder ?? 0));
-    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1]);
+    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1, 2]);
     expect(chapterOne[0]).toMatchObject({
       eventId: 'event_prologue_001',
       episodeOrder: 0,
@@ -269,6 +463,18 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
           conditionKey: 'cumulative_days',
           operator: 'gte',
           threshold: '1',
+        },
+      ],
+    });
+    expect(chapterOne[2]).toMatchObject({
+      eventId: 'event_middle_001_2',
+      episodeOrder: 2,
+      conditions: [
+        {
+          conditionType: 'achievement',
+          conditionKey: 'cumulative_days',
+          operator: 'gte',
+          threshold: '2',
         },
       ],
     });
