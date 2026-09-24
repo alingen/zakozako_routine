@@ -38,8 +38,9 @@ struct StoryAssetView: View {
 
     var body: some View {
         Group {
-            if let assetID = normalizedAssetID, UIImage(named: assetID) != nil {
-                Image(assetID)
+            if let assetID = normalizedAssetID,
+               let image = StorySceneAssetPreparation.shared.image(named: assetID) {
+                Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
                     .accessibilityLabel("\(purpose.accessibilityName) \(assetID)")

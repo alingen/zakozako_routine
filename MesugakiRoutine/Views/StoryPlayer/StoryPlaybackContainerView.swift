@@ -163,6 +163,9 @@ struct StoryPlaybackContainerView: View {
     @State private var isCompletionFadeVisible = false
     @StateObject private var bgmPlayback = StoryBGMPlaybackController()
     @StateObject private var soundEffectPlayback = StorySoundEffectPlaybackController()
+    #if DEBUG
+    @State private var transitionDiagnostics = StoryTransitionFrameDiagnostics()
+    #endif
 
     var body: some View {
         ZStack {
@@ -174,6 +177,7 @@ struct StoryPlaybackContainerView: View {
                         input: renderedInput,
                         advOpeningRevealPhase: advOpeningRevealPhase,
                         allowsSkip: allowsSkip,
+                        isSceneTransitionActive: player.sceneTransition != nil,
                         onAdvance: { pace in
                             Task {
                                 await player.advance(
@@ -218,6 +222,8 @@ struct StoryPlaybackContainerView: View {
                             soundEffectPlayback.playTextWindowClick()
                         }
                     )
+                    .allowsHitTesting(player.sceneTransition == nil)
+                    .accessibilityHidden(player.sceneTransition != nil)
                     .onAppear {
                         cacheActiveSnapshot(liveInput)
                     }
@@ -258,6 +264,16 @@ struct StoryPlaybackContainerView: View {
                     .zIndex(20)
                     .accessibilityHidden(true)
             }
+
+            if let transition = player?.sceneTransition {
+                StorySceneTransitionOverlay(state: transition)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture { }
+                    .zIndex(30)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("場面転換中")
+            }
         }
         .task(id: launch.id) {
             await prepare()
@@ -268,7 +284,7 @@ struct StoryPlaybackContainerView: View {
         .onChange(of: usesLandscapePresentation) { _, _ in
             updateOrientationForStory()
         }
-        .task(id: shouldRunCompletionFade) {
+        .task(id: shouldRunCompletionFade && player?.sceneTransition == nil) {
             await runCompletionFadeIfNeeded()
         }
         .onChange(of: player?.bgmPlaybackState) { _, state in
@@ -280,11 +296,28 @@ struct StoryPlaybackContainerView: View {
             }
         }
         .onDisappear {
+            #if DEBUG
+            transitionDiagnostics.update(isActive: false)
+            #endif
             player?.close()
             bgmPlayback.stop()
             soundEffectPlayback.stop()
             AppOrientationController.set(.portrait)
         }
+        #if DEBUG
+        .onChange(of: player?.sceneTransition != nil) { _, active in
+            transitionDiagnostics.update(isActive: active)
+        }
+        .task(id: player != nil) {
+            guard launch.scenario.scenarioId == "debug_color_slide",
+                  ProcessInfo.processInfo.arguments.contains("--color-slide-autoplay"),
+                  let player else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                await player.advance()
+            }
+        }
+        #endif
     }
 
     private var usesLandscapePresentation: Bool {
@@ -328,7 +361,26 @@ struct StoryPlaybackContainerView: View {
                 event: launch.event,
                 playbackKey: launch.playbackKey,
                 contentRepository: content,
-                stateRepository: state
+                stateRepository: state,
+                preloadSceneAssets: { ids in
+                    #if DEBUG
+                    if launch.scenario.scenarioId == "debug_color_slide",
+                       ProcessInfo.processInfo.arguments.contains("--color-slide-slow-assets") {
+                        do { try await Task.sleep(for: .seconds(3)) } catch { return }
+                    }
+                    #endif
+                    await StorySceneAssetPreparation.shared.prepare(ids)
+                },
+                transitionFrameBarrier: { await awaitStoryRenderedFrame() },
+                reduceMotion: {
+                    #if DEBUG
+                    if launch.scenario.scenarioId == "debug_color_slide",
+                       ProcessInfo.processInfo.arguments.contains("--color-slide-reduce-motion") {
+                        return true
+                    }
+                    #endif
+                    return UIAccessibility.isReduceMotionEnabled
+                }
             )
             player = created
 
@@ -455,7 +507,7 @@ struct StoryPlaybackContainerView: View {
     }
 
     private func runCompletionFadeIfNeeded() async {
-        guard shouldRunCompletionFade else {
+        guard shouldRunCompletionFade, player?.sceneTransition == nil else {
             isCompletionFadeVisible = false
             return
         }

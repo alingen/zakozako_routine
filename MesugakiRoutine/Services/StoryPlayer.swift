@@ -72,6 +72,7 @@ final class StoryPlayer {
     private(set) var isModalPresented = false
     private(set) var isCompleted = false
     private(set) var recoverableError: String?
+    private(set) var sceneTransition: StorySceneTransitionState?
 
     var isCurrentNodeTerminal: Bool {
         guard let graph,
@@ -111,6 +112,15 @@ final class StoryPlayer {
     @ObservationIgnored private let graph: StoryScenarioGraph?
     @ObservationIgnored private let graphConstructionError: String?
     @ObservationIgnored private let initialMode: StoryScreenMode
+    @ObservationIgnored private let preloadSceneAssets: @MainActor ([String]) async -> Void
+    @ObservationIgnored private let transitionFrameBarrier: @MainActor () async -> Void
+    @ObservationIgnored private let reduceMotion: @MainActor () -> Bool
+    @ObservationIgnored private let transitionUptime: () -> TimeInterval
+    @ObservationIgnored private var assetPreparation: Task<Void, Never>?
+    @ObservationIgnored private var preparedAssetIDs: [String] = []
+    @ObservationIgnored private var assetsReady = false
+    @ObservationIgnored private var assetPreparationGeneration: UInt64 = 0
+    @ObservationIgnored private var coveredSince: TimeInterval = 0
 
     @ObservationIgnored private var checkpoint: StoryPlaybackCheckpoint?
     @ObservationIgnored private var currentPhase = 0
@@ -131,7 +141,11 @@ final class StoryPlayer {
             try await Task<Never, Never>.sleep(nanoseconds: milliseconds * 1_000_000)
         },
         logger: @escaping StoryPlayerLogger = { _ in },
-        now: @escaping StoryPlayerNow = Date.init
+        now: @escaping StoryPlayerNow = Date.init,
+        preloadSceneAssets: @escaping @MainActor ([String]) async -> Void = { _ in },
+        transitionFrameBarrier: @escaping @MainActor () async -> Void = {},
+        reduceMotion: @escaping @MainActor () -> Bool = { false },
+        transitionUptime: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) {
         self.scenario = scenario
         self.event = event
@@ -142,6 +156,10 @@ final class StoryPlayer {
         self.sleep = sleep
         self.logger = logger
         self.now = now
+        self.preloadSceneAssets = preloadSceneAssets
+        self.transitionFrameBarrier = transitionFrameBarrier
+        self.reduceMotion = reduceMotion
+        self.transitionUptime = transitionUptime
 
         let defaultMode: StoryScreenMode = scenario.scenarioType == .daily ? .chat : .adv
         initialMode = defaultMode
@@ -440,6 +458,7 @@ final class StoryPlayer {
     /// the first node via `start()`.
     @discardableResult
     func skip() async -> Bool {
+        guard sceneTransition == nil else { return false }
         let token = beginReplacingOperation()
         isClosed = false
         defer { endOperation(token) }
@@ -467,6 +486,7 @@ final class StoryPlayer {
         isClosed = true
         isModalPresented = false
         availableChoices = []
+        cancelSceneTransition()
     }
 
     func consumePendingSoundEffects() -> [StorySoundEffectPlayback] {
@@ -483,6 +503,43 @@ private extension StoryPlayer {
         token: UInt64,
         skipsCommandWaits: Bool = false
     ) async throws {
+        defer {
+            if operationGeneration == token { sceneTransition = nil }
+        }
+        try await driveNodes(
+            from: firstNode,
+            firstNodeWasReplayed: firstNodeWasReplayed,
+            token: token,
+            skipsCommandWaits: skipsCommandWaits
+        )
+        guard operationGeneration == token, !isClosed else { return }
+        if let transition = sceneTransition {
+            // The new background, portrait, text and choices are all committed
+            // while fully covered. Wait for their rendered frame before opening.
+            await transitionFrameBarrier()
+            try validateTransitionOperation(token)
+            let remaining = transition.configuration.minimumHold - (transitionUptime() - coveredSince)
+            if remaining > 0 { try await sleep(UInt64(ceil(remaining * 1_000))) }
+            try validateTransitionOperation(token)
+            sceneTransition = StorySceneTransitionState(
+                configuration: transition.configuration, phase: .revealing,
+                startedAt: transitionUptime(), reduceMotion: transition.reduceMotion
+            )
+            try await sleep(UInt64((transition.configuration.effectiveRevealDuration(
+                reduceMotion: transition.reduceMotion
+            ) * 1_000).rounded()))
+            try validateTransitionOperation(token)
+            sceneTransition = nil
+        }
+        prefetchNextScene()
+    }
+
+    func driveNodes(
+        from firstNode: StoryNode,
+        firstNodeWasReplayed: Bool,
+        token: UInt64,
+        skipsCommandWaits: Bool
+    ) async throws {
         guard let graph else { return }
         var cursor: StoryNode? = firstNode
         var replayed = firstNodeWasReplayed
@@ -493,6 +550,12 @@ private extension StoryPlayer {
         while let node = cursor {
             guard operationGeneration == token, !isClosed else { return }
             let dispatch = commandDispatcher.dispatch(node: node)
+            if !replayed, currentNode != nil, currentMode == .adv,
+               sceneTransition == nil,
+               normalized(node.command)?.lowercased() == "scene_change",
+               let configuration = StorySceneTransitionConfiguration(arguments: node.commandArgs) {
+                try await coverScene(configuration: configuration, startingAt: node, token: token)
+            }
             let resolvedChoices = try choices(for: node)
             let isChoiceNode = node.choiceId != nil || node.messageType == .choice
             var pausesForUser = shouldPauseForUser(on: node, dispatch: dispatch)
@@ -1051,6 +1114,7 @@ private extension StoryPlayer {
     }
 
     func resetPresentation(clearError: Bool) {
+        cancelSceneTransition()
         currentNode = nil
         currentMode = initialMode
         visibleChatNodes = []
@@ -1107,5 +1171,93 @@ private extension StoryPlayer {
 
     func endOperation(_ token: UInt64) {
         if operationGeneration == token { isProcessing = false }
+    }
+
+    func coverScene(
+        configuration: StorySceneTransitionConfiguration,
+        startingAt node: StoryNode,
+        token: UInt64
+    ) async throws {
+        prepareAssets(sceneAssetIDs(startingAt: node))
+        let reduced = reduceMotion()
+        sceneTransition = StorySceneTransitionState(
+            configuration: configuration, phase: .covering,
+            startedAt: transitionUptime(), reduceMotion: reduced
+        )
+        try await sleep(UInt64((configuration.effectiveCoverDuration(reduceMotion: reduced) * 1_000).rounded()))
+        try validateTransitionOperation(token)
+        coveredSince = transitionUptime()
+        sceneTransition = StorySceneTransitionState(
+            configuration: configuration, phase: .covered,
+            startedAt: coveredSince, reduceMotion: reduced, isWaitingForAssets: !assetsReady
+        )
+        // Two display-link ticks in the SwiftUI host acknowledge a fully opaque
+        // rendered frame. Do not exchange scene data merely on a timer callback.
+        await transitionFrameBarrier()
+        try validateTransitionOperation(token)
+        await assetPreparation?.value
+        try validateTransitionOperation(token)
+        sceneTransition?.isWaitingForAssets = false
+    }
+
+    func validateTransitionOperation(_ token: UInt64) throws {
+        guard operationGeneration == token, !isClosed, !Task.isCancelled else {
+            throw CancellationError()
+        }
+    }
+
+    func prepareAssets(_ ids: [String]) {
+        guard ids != preparedAssetIDs || assetPreparation == nil else { return }
+        assetPreparation?.cancel()
+        assetPreparationGeneration &+= 1
+        let generation = assetPreparationGeneration
+        preparedAssetIDs = ids
+        assetsReady = false
+        let load = preloadSceneAssets
+        assetPreparation = Task { [weak self] in
+            await load(ids)
+            guard !Task.isCancelled, let self, self.assetPreparationGeneration == generation else { return }
+            self.assetsReady = true
+        }
+    }
+
+    func prefetchNextScene() {
+        guard let graph, let currentNode, !isCompleted,
+              let next = try? graph.nextVisibleNode(after: currentNode, phase: currentPhase) else { return }
+        prepareAssets(sceneAssetIDs(startingAt: next))
+    }
+
+    /// Look ahead only through automatic commands to the next visible node.
+    /// This is read-only: no checkpoints, flags, choices or rewards are changed.
+    func sceneAssetIDs(startingAt first: StoryNode) -> [String] {
+        guard let graph else { return [] }
+        var ids = Set<String>()
+        var visited = Set<String>()
+        var cursor: StoryNode? = first
+        while let node = cursor, visited.insert(node.nodeId).inserted {
+            for value in [node.background, node.portrait, node.cg] {
+                if let value = normalized(value) { ids.insert(value) }
+            }
+            let dispatch = commandDispatcher.dispatch(node: node)
+            for effect in dispatch.effects {
+                switch effect {
+                case .setBackground(let id), .setPortrait(let id), .showCG(let id): ids.insert(id)
+                default: break
+                }
+            }
+            if node.messageType == .image, let id = node.assetId { ids.insert(id) }
+            if shouldPauseForUser(on: node, dispatch: dispatch) { break }
+            cursor = try? graph.nextVisibleNode(after: node, phase: currentPhase)
+        }
+        return ids.sorted()
+    }
+
+    func cancelSceneTransition() {
+        sceneTransition = nil
+        assetPreparation?.cancel()
+        assetPreparation = nil
+        assetPreparationGeneration &+= 1
+        preparedAssetIDs = []
+        assetsReady = false
     }
 }

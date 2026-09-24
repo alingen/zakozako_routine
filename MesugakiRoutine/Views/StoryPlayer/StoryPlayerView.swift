@@ -83,6 +83,7 @@ struct StoryPlayerView: View {
     let input: any StoryPlayerViewInput
     var advOpeningRevealPhase: ADVOpeningRevealPhase = .text
     var allowsSkip = true
+    var isSceneTransitionActive = false
     let onAdvance: (StoryAdvancePace) -> Void
     let onChoice: (StoryChoice) -> Void
     let onDismissModal: () -> Void
@@ -209,6 +210,7 @@ struct StoryPlayerView: View {
                     delaysTextAfterBlackout: input.shouldDelayCurrentADVText,
                     playbackMode: advPlaybackMode,
                     isPlaybackPaused: isShowingLog
+                        || isSceneTransitionActive
                         || !advOpeningRevealPhase.startsTextReveal,
                     isAutomationAvailable: input.recoverableError?.isEmpty != false,
                     isLogAvailable: StoryLogPresentationPolicy.isAvailable(

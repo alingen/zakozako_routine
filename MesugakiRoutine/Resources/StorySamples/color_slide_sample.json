@@ -1,0 +1,60 @@
+{
+  "scenarioId": "debug_color_slide",
+  "scenarioType": "middle_event",
+  "enabled": true,
+  "nodes": [
+    {
+      "nodeId": "sample_living_room",
+      "lineOrder": 1,
+      "speaker": "narrator",
+      "messageType": "text",
+      "text": "そして完全に日が落ち切った頃、隣の家に母親が帰ってきた。",
+      "background": "bg_protagonist_living_room",
+      "portrait": "portrait_rio_smile",
+      "screenMode": "adv",
+      "uiVariant": "narration",
+      "nextNodeId": "sample_to_entrance"
+    },
+    {
+      "nodeId": "sample_to_entrance",
+      "lineOrder": 2,
+      "speaker": "system",
+      "messageType": "action",
+      "command": "scene_change",
+      "portrait": "portrait_rio_neutral",
+      "commandArgs": {
+        "background": "bg_protagonist_entrance",
+        "transition": {
+          "type": "colorSlide",
+          "duration": 0.70,
+          "minimumHold": 0.08
+        }
+      },
+      "nextNodeId": "sample_entrance"
+    },
+    {
+      "nodeId": "sample_entrance",
+      "lineOrder": 3,
+      "speaker": "rio",
+      "speakerName": "莉央",
+      "messageType": "text",
+      "text": "じゃ、おじゃましました",
+      "screenMode": "adv",
+      "uiVariant": "dialogue",
+      "nextNodeId": "sample_to_living_room"
+    },
+    {
+      "nodeId": "sample_to_living_room",
+      "lineOrder": 4,
+      "speaker": "system",
+      "messageType": "action",
+      "command": "scene_change",
+      "portrait": "portrait_rio_smile",
+      "commandArgs": {
+        "background": "bg_protagonist_living_room",
+        "transition": { "type": "colorSlide" }
+      },
+      "nextNodeId": "sample_living_room"
+    }
+  ]
+}

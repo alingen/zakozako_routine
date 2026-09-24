@@ -39,6 +39,7 @@ enum AppOrientationController {
 struct MesugakiRoutineApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     let modelContainer: ModelContainer
+    private let usesIsolatedStorySample: Bool
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -54,9 +55,15 @@ struct MesugakiRoutineApp: App {
         // scene with the selected preview. Keep that bootstrap store ephemeral so
         // previews never depend on a stale or unavailable on-disk SwiftData store.
         let isRunningForPreviews = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+        #if DEBUG
+        let isTransitionSample = ProcessInfo.processInfo.arguments.contains("--color-slide-sample")
+        #else
+        let isTransitionSample = false
+        #endif
+        usesIsolatedStorySample = isTransitionSample
         let configuration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: isRunningForPreviews
+            isStoredInMemoryOnly: isRunningForPreviews || isTransitionSample
         )
         do {
             modelContainer = try ModelContainer(for: schema, configurations: [configuration])
@@ -68,18 +75,32 @@ struct MesugakiRoutineApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            appContent
                 .environment(SiriLaunchCoordinator.shared)
                 .task {
+                    guard !usesIsolatedStorySample else { return }
                     synchronizeScreenTimeBehavior()
                 }
         }
         .modelContainer(modelContainer)
         .onChange(of: scenePhase) {
-            guard scenePhase == .active else { return }
+            guard scenePhase == .active, !usesIsolatedStorySample else { return }
             synchronizeScreenTimeBehavior()
             rescheduleNotifications()
         }
+    }
+
+    @ViewBuilder
+    private var appContent: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--color-slide-sample") {
+            StorySceneTransitionSample()
+        } else {
+            RootTabView()
+        }
+        #else
+        RootTabView()
+        #endif
     }
 
     /// アプリがフォアグラウンドに戻るたびに、日付が変わっている場合の再スケジュールを保証する。
