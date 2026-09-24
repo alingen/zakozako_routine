@@ -156,15 +156,17 @@ story_content.generated.json
   `profile:key!=value` を利用できます。未知の条件はアプリ側で非該当になります。
 - アプリは条件に合う候補を `weight` で重み付き抽選し、候補が複数なら直前のIDを除外します。
 
-### senarios（25列）
+### senarios（24列）
 
 `scenario_id`, `scenario_type`, `line_order`, `node_id`, `speaker`, `message_type`, `text`,
 `choice_id`, `next_node_id`, `save_key`, `save_value`, `asset_id`, `min_phase`, `max_phase`,
-`speaker_name`, `typing_duration_ms`, `background`, `portrait`, `cg`, `enabled`, `notes`,
+`speaker_name`, `background`, `portrait`, `cg`, `enabled`, `notes`,
 `screen_mode`, `ui_variant`, `command`, `command_args`
 
 - プロローグと小・中・大イベントの本文を同じシートで管理します。
 - `scenario_type` は `prologue`、`small_event`、`middle_event`、`large_event` のいずれかです。
+- `min_phase`／`max_phase` は関係性フェーズによるノードの表示条件で、文字数や改行を制御する列ではありません。
+- `typing_duration_ms` は持たず、チャットでの入力中表示はアプリ既定の600msを使います。
 - その他のnode／演出列の意味は `daily` と共通です。
 
 ### events（18列）

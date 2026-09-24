@@ -201,7 +201,9 @@ function normalizeScenarioRows(
 
     const minPhase = integer(bag, sheet, row, 'min_phase', false);
     const maxPhase = integer(bag, sheet, row, 'max_phase', false);
-    const typingDurationMs = integer(bag, sheet, row, 'typing_duration_ms', false);
+    const typingDurationMs = isDaily
+      ? integer(bag, sheet, row, 'typing_duration_ms', false)
+      : undefined;
     const commandArgs = parseCommandArgs(bag, sheet, row);
 
     if (
