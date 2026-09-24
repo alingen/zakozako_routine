@@ -6,46 +6,21 @@ import { generate, serialize } from '../src/generate.js';
 import { normalize } from '../src/normalize.js';
 import { validate } from '../src/validate.js';
 
-const EXPECTED_MODES = ['adv', 'call', 'chat'];
+const EXPECTED_MODES = ['adv', 'chat'];
 const EXPECTED_VARIANTS = [
-  'audio_message',
   'beat',
-  'call_connected',
-  'call_end',
-  'cg',
   'dialogue',
-  'image_message',
-  'incoming_call',
-  'modal',
-  'monologue',
   'narration',
-  'outgoing_call',
-  'premium_gate',
-  'recording',
   'scene_transition',
-  'silence',
-  'state',
-  'typing',
-  'wait',
+  'title_card',
 ];
 const EXPECTED_COMMANDS = [
-  'call_connected',
-  'call_end',
-  'call_start',
   'clear_background',
-  'hide_cg',
   'hide_portrait',
   'play_bgm',
-  'play_audio',
-  'premium_gate',
-  'record_audio',
+  'play_se',
   'scene_change',
-  'set_state',
-  'show_cg',
   'show_portrait',
-  'show_modal',
-  'typing_hide',
-  'typing_show',
   'wait',
 ];
 
@@ -113,20 +88,19 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(normalized.issues.errors).toEqual([]);
   });
 
-  it('contains the authored daily catalog, prologue, and chapter-01 episodes 1–7', () => {
+  it('contains the authored daily catalog, prologue, and first chapter episode', () => {
     const daily = bundle.scenarios.filter((scenario) => scenario.scenarioType === 'daily');
     const scenarioById = new Map(
       bundle.scenarios.map((scenario) => [scenario.scenarioId, scenario]),
     );
     const chapterOneEpisodes = bundle.events
       .filter((event) => event.chapterId === 'chapter_01' && event.storyCategory === 'main')
-      .filter(
-        (event) =>
-          event.episodeOrder !== undefined && event.episodeOrder >= 1 && event.episodeOrder <= 7,
-      )
+      .filter((event) => event.episodeOrder !== undefined && event.episodeOrder >= 1)
       .sort((left, right) => (left.episodeOrder ?? 0) - (right.episodeOrder ?? 0));
     const prologueEvent = bundle.events.find((event) => event.eventId === 'event_prologue_001');
     const prologueScenario = scenarioById.get('prologue_001');
+    const middleEvent = bundle.events.find((event) => event.eventId === 'event_middle_001_1');
+    const middleScenario = scenarioById.get('middle_001_1');
 
     expect(daily.map((scenario) => scenario.scenarioId)).toEqual(['daily_q003']);
     expect(daily[0]).toMatchObject({
@@ -196,7 +170,31 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       { lineOrder: 49, text: '数週間前。' },
     ]);
     expect(prologueScenario?.nodes.some((node) => node.nodeId === 'prologue_001_054')).toBe(false);
-    expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(middleEvent).toMatchObject({
+      eventType: 'middle_event',
+      title: '人生再建プログラム',
+      entryScenarioId: 'middle_001_1',
+      chapterId: 'chapter_01',
+      episodeOrder: 1,
+      storyCategory: 'main',
+    });
+    expect(middleScenario).toMatchObject({
+      scenarioId: 'middle_001_1',
+      scenarioType: 'middle_event',
+    });
+    expect(middleScenario?.nodes).toHaveLength(121);
+    expect(middleScenario?.nodes.slice(0, 3)).toMatchObject([
+      { command: 'clear_background' },
+      { command: 'hide_portrait' },
+      { command: 'play_bgm', assetId: 'bgm_usually' },
+    ]);
+    expect(middleScenario?.nodes.find((node) => node.lineOrder === 19)).toMatchObject({
+      command: 'wait',
+    });
+    expect(
+      middleScenario?.nodes.find((node) => node.lineOrder === 19)?.commandArgs,
+    ).toBeUndefined();
+    expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1]);
     for (const event of [prologueEvent!, ...chapterOneEpisodes]) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);
     }
@@ -229,11 +227,11 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     const values = (pick: (node: (typeof nodes)[number]) => string | undefined) =>
       [...new Set(nodes.map(pick).filter((value): value is string => value !== undefined))].sort();
 
-    expect(values((node) => node.screenMode)).toEqual(expect.arrayContaining(EXPECTED_MODES));
-    expect(values((node) => node.uiVariant)).toEqual(expect.arrayContaining(EXPECTED_VARIANTS));
-    expect(values((node) => node.command)).toEqual(expect.arrayContaining(EXPECTED_COMMANDS));
+    expect(values((node) => node.screenMode)).toEqual(EXPECTED_MODES);
+    expect(values((node) => node.uiVariant)).toEqual(EXPECTED_VARIANTS);
+    expect(values((node) => node.command)).toEqual(EXPECTED_COMMANDS);
     expect([...new Set(bundle.scenarios.map((scenario) => scenario.scenarioType))]).toEqual(
-      expect.arrayContaining(['daily', 'prologue', 'small_event', 'middle_event', 'large_event']),
+      ['daily', 'middle_event', 'prologue'],
     );
     expect(nodes.some((node) => node.speaker === 'protagonist')).toBe(true);
     expect(nodes.some((node) => node.messageType === 'action')).toBe(true);
@@ -247,9 +245,9 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(bundle.events.map((event) => event.storyCategory)).toContain('main');
     const chapterOne = bundle.events
       .filter((event) => event.chapterId === 'chapter_01' && event.storyCategory === 'main')
-      .filter((event) => event.episodeOrder !== undefined && event.episodeOrder <= 7)
+      .filter((event) => event.episodeOrder !== undefined)
       .sort((left, right) => (left.episodeOrder ?? 0) - (right.episodeOrder ?? 0));
-    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1]);
     expect(chapterOne[0]).toMatchObject({
       eventId: 'event_prologue_001',
       episodeOrder: 0,
@@ -262,17 +260,18 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
         },
       ],
     });
-    for (const [index, event] of chapterOne.slice(1).entries()) {
-      expect(event.episodeOrder).toBe(index + 1);
-      expect(event.conditions).toEqual([
+    expect(chapterOne[1]).toMatchObject({
+      eventId: 'event_middle_001_1',
+      episodeOrder: 1,
+      conditions: [
         {
           conditionType: 'achievement',
           conditionKey: 'cumulative_days',
           operator: 'gte',
-          threshold: String(index + 1),
+          threshold: '1',
         },
-      ]);
-    }
+      ],
+    });
   });
 
   it('retains branches and validates choice references within each scenario', () => {
