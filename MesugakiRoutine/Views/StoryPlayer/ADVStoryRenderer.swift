@@ -2,7 +2,11 @@ import SwiftUI
 
 enum ADVTextWindowPresentationPolicy {
     static func showsContent(for node: StoryNode) -> Bool {
-        node.uiVariant != .sceneTransition || !node.storyDisplayText.isEmpty
+        if node.command?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            == "portrait_hesitate" {
+            return false
+        }
+        return node.uiVariant != .sceneTransition || !node.storyDisplayText.isEmpty
     }
 }
 
@@ -17,6 +21,7 @@ struct ADVStoryRenderer: View {
     var isModalPresented = false
     var openingRevealPhase: ADVOpeningRevealPhase = .text
     var delaysTextAfterBlackout = false
+    var showsHesitationBubble = false
     var playbackMode: ADVPlaybackMode = .manual
     var isPlaybackPaused = false
     var isAutomationAvailable = true
@@ -131,6 +136,17 @@ struct ADVStoryRenderer: View {
                                 .transition(
                                     .asymmetric(insertion: .opacity, removal: .identity)
                                 )
+
+                                if showsHesitationBubble {
+                                    ADVHesitationBubble()
+                                        .id(node.nodeId)
+                                        .frame(width: 82, height: 57)
+                                        .position(
+                                            x: min(proxy.size.width - 47, proxy.size.width * 0.76),
+                                            y: max(100, proxy.size.height * 0.25)
+                                        )
+                                        .allowsHitTesting(false)
+                                }
                             }
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
@@ -390,6 +406,71 @@ struct ADVStoryRenderer: View {
         }
         guard !Task.isCancelled else { return }
         onAdvance(playbackMode == .fastForward ? .fastForward : .normal)
+    }
+}
+
+enum ADVHesitationBubbleAnimation {
+    static func visibleDotCount(elapsed: TimeInterval, reduceMotion: Bool) -> Int {
+        if reduceMotion { return 3 }
+        guard elapsed.isFinite else { return 1 }
+        let cyclePosition = max(0, elapsed).truncatingRemainder(dividingBy: 1.05)
+        return min(3, Int(cyclePosition / 0.35) + 1)
+    }
+}
+
+private struct ADVHesitationBubble: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var startedAt = Date()
+
+    var body: some View {
+        Group {
+            if reduceMotion {
+                bubble(visibleDotCount: 3)
+            } else {
+                TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+                    bubble(visibleDotCount: ADVHesitationBubbleAnimation.visibleDotCount(
+                        elapsed: timeline.date.timeIntervalSince(startedAt),
+                        reduceMotion: false
+                    ))
+                }
+            }
+        }
+        .onAppear { startedAt = Date() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("言いよどんでいる")
+    }
+
+    private func bubble(visibleDotCount: Int) -> some View {
+        ZStack(alignment: .top) {
+            ADVHesitationBubbleShape()
+                .fill(.white.opacity(0.96))
+                .shadow(color: .black.opacity(0.25), radius: 7, y: 3)
+
+            HStack(spacing: 8) {
+                ForEach(0..<3) { index in
+                    Circle()
+                        .fill(AppColor.primary.opacity(index < visibleDotCount ? 1 : 0.22))
+                        .frame(width: 7, height: 7)
+                }
+            }
+            .frame(height: 45)
+        }
+    }
+}
+
+private struct ADVHesitationBubbleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path(roundedRect: CGRect(
+            x: rect.minX,
+            y: rect.minY,
+            width: rect.width,
+            height: rect.height - 11
+        ), cornerRadius: 18)
+        path.move(to: CGPoint(x: rect.minX + 22, y: rect.maxY - 14))
+        path.addLine(to: CGPoint(x: rect.minX + 15, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + 38, y: rect.maxY - 11))
+        path.closeSubpath()
+        return path
     }
 }
 

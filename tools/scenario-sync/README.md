@@ -194,6 +194,17 @@ ADVで表示中の背景画像を破棄して黒い土台へ戻す場合は、�
 `background` は空欄で構いません。空の `scene_transition` として置けば、
 読者に空の台詞を表示せず自動的に次のnodeへ進みます。
 
+### 立ち絵の言い淀みを表示する
+
+立ち絵を表示している場面で、その立ち絵に「・・・」の吹き出しを出す間は、独立した行に
+`message_type=action`、`screen_mode=adv`、`ui_variant=scene_transition`、
+`command=portrait_hesitate` を指定します。`text` は空欄にしてください。
+`command_args` が空欄なら1,500ms表示して自動的に次の行へ進みます。時間を変える場合は
+`command_args={"duration_ms":1800}` のように指定できます。`duration_ms` は0〜5,000msです。
+
+原稿取り込み時は `@hesitate` をこのコマンド行へ変換します。アプリ側で吹き出しの
+「…」を表示するため、本文の台詞・地の文として「…」を追加しません。
+
 ## 検証と前方互換性
 
 必須値、型、pair列、重複、シート間参照、scenario内遷移、event metadata、到達可能性、

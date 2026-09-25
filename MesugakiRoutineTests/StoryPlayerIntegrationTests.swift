@@ -385,6 +385,153 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         XCTAssertFalse(player.shouldDelayCurrentADVText)
     }
 
+    func testPortraitHesitationUsesDefaultAndExplicitDurationsThenAdvancesAutomatically() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "portrait_hesitation_durations",
+            scenarioType: .prologue,
+            nodes: [
+                StoryNode(
+                    nodeId: "before_hesitation",
+                    lineOrder: 1,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "えっと……",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+                StoryNode(
+                    nodeId: "default_hesitation",
+                    lineOrder: 2,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "portrait_hesitate"
+                ),
+                StoryNode(
+                    nodeId: "custom_hesitation",
+                    lineOrder: 3,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "portrait_hesitate",
+                    commandArgs: .object(["duration_ms": .number(1_800)])
+                ),
+                StoryNode(
+                    nodeId: "after_hesitation",
+                    lineOrder: 4,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "……やっぱり言うね。",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(scenarios: [scenario], choiceGroups: [], events: [])
+        )
+        let stateRepository = try makeStateRepository()
+        let sleepProbe = StoryPlayerHesitationSleepProbe()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:portrait_hesitation_durations",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository,
+            sleep: { sleepProbe.record(milliseconds: $0) }
+        )
+        sleepProbe.player = player
+
+        await player.start()
+        XCTAssertEqual(player.currentNode?.nodeId, "before_hesitation")
+        XCTAssertFalse(player.isHesitating)
+
+        await player.advance()
+
+        XCTAssertEqual(sleepProbe.waits.map(\.milliseconds), [1_500, 1_800])
+        XCTAssertEqual(
+            sleepProbe.waits.map(\.nodeID),
+            ["default_hesitation", "custom_hesitation"]
+        )
+        XCTAssertTrue(sleepProbe.waits.allSatisfy(\.isHesitating))
+        XCTAssertEqual(player.currentNode?.nodeId, "after_hesitation")
+        XCTAssertFalse(player.isHesitating)
+        XCTAssertEqual(
+            try stateRepository.checkpoint(
+                for: "integration:portrait_hesitation_durations"
+            )?.visitedNodeIds,
+            [
+                "before_hesitation",
+                "default_hesitation",
+                "custom_hesitation",
+                "after_hesitation",
+            ]
+        )
+    }
+
+    func testClosingDuringPortraitHesitationClearsBubbleAndResumeSkipsCompletedWait() async throws {
+        let scenario = StoryScenario(
+            scenarioId: "portrait_hesitation_resume",
+            scenarioType: .prologue,
+            nodes: [
+                StoryNode(
+                    nodeId: "hesitation",
+                    lineOrder: 1,
+                    speaker: "system",
+                    messageType: .action,
+                    screenMode: .adv,
+                    uiVariant: .sceneTransition,
+                    command: "portrait_hesitate"
+                ),
+                StoryNode(
+                    nodeId: "after_hesitation",
+                    lineOrder: 2,
+                    speaker: "rio",
+                    messageType: .text,
+                    text: "話すね。",
+                    screenMode: .adv,
+                    uiVariant: .dialogue
+                ),
+            ]
+        )
+        let contentRepository = try StoryContentRepository(
+            content: StoryContentBundle(scenarios: [scenario], choiceGroups: [], events: [])
+        )
+        let stateRepository = try makeStateRepository()
+        let sleepGate = StoryPlayerHesitationSleepGate()
+        let player = makePlayer(
+            scenario: scenario,
+            playbackKey: "integration:portrait_hesitation_resume",
+            contentRepository: contentRepository,
+            stateRepository: stateRepository,
+            sleep: { milliseconds in
+                sleepGate.waits.append(milliseconds)
+                await sleepGate.wait()
+            }
+        )
+
+        let startTask = Task { await player.start() }
+        let deadline = ProcessInfo.processInfo.systemUptime + 2
+        while !sleepGate.isWaiting, ProcessInfo.processInfo.systemUptime < deadline {
+            try await Task<Never, Never>.sleep(nanoseconds: 1_000_000)
+        }
+
+        XCTAssertTrue(sleepGate.isWaiting)
+        XCTAssertEqual(player.currentNode?.nodeId, "hesitation")
+        XCTAssertTrue(player.isHesitating)
+        player.close()
+        XCTAssertFalse(player.isHesitating)
+
+        sleepGate.release()
+        await startTask.value
+        await player.start()
+
+        XCTAssertEqual(sleepGate.waits, [1_500])
+        XCTAssertEqual(player.currentNode?.nodeId, "after_hesitation")
+        XCTAssertFalse(player.isHesitating)
+    }
+
     func testGeneratedPrologueHidesPortraitImmediatelyAfterClearingBackground() throws {
         let contentRepository = try makeGeneratedContentRepository()
         let scenario = try XCTUnwrap(contentRepository.scenario(id: "prologue_001"))
@@ -1432,5 +1579,46 @@ private final class StoryPlayerSleepProbe {
     func record(milliseconds: UInt64) {
         guard milliseconds > 0, player?.isTyping == true else { return }
         sawTypingDuringWait = true
+    }
+}
+
+@MainActor
+private final class StoryPlayerHesitationSleepProbe {
+    struct Wait {
+        let milliseconds: UInt64
+        let nodeID: String?
+        let isHesitating: Bool
+    }
+
+    weak var player: StoryPlayer?
+    private(set) var waits: [Wait] = []
+
+    func record(milliseconds: UInt64) {
+        waits.append(
+            Wait(
+                milliseconds: milliseconds,
+                nodeID: player?.currentNode?.nodeId,
+                isHesitating: player?.isHesitating ?? false
+            )
+        )
+    }
+}
+
+@MainActor
+private final class StoryPlayerHesitationSleepGate {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var isReleased = false
+    var waits: [UInt64] = []
+    var isWaiting: Bool { continuation != nil }
+
+    func wait() async {
+        guard !isReleased else { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func release() {
+        isReleased = true
+        continuation?.resume()
+        continuation = nil
     }
 }

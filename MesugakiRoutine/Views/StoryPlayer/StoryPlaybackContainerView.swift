@@ -511,6 +511,7 @@ struct StoryPlaybackContainerView: View {
             portraitAssetID: player.portraitAssetID,
             cgAssetID: player.cgAssetID,
             shouldDelayCurrentADVText: player.shouldDelayCurrentADVText,
+            isHesitating: player.isHesitating,
             availableChoices: player.availableChoices,
             isTyping: player.isTyping,
             isModalPresented: player.isModalPresented,

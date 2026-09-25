@@ -518,6 +518,45 @@ function validateScenarioRows(
       });
     }
 
+    if (row.command === 'portrait_hesitate') {
+      if (
+        row.messageType !== 'action' ||
+        row.screenMode !== 'adv' ||
+        row.uiVariant !== 'scene_transition' ||
+        row.text.trim() !== '' ||
+        row.choiceId !== undefined
+      ) {
+        issues.error(
+          'invalid_portrait_hesitation_row',
+          'portrait_hesitate requires an empty action/adv/scene_transition row without a choice',
+          {
+            at: { sheet, row: row.__row, column: 'command' },
+            fix: 'Set message_type=action, screen_mode=adv, ui_variant=scene_transition, and leave text and choice_id empty',
+          },
+        );
+      }
+      const durationValue = jsonObject(row.commandArgs)?.duration_ms;
+      if (durationValue !== undefined) {
+        const duration =
+          typeof durationValue === 'number'
+            ? durationValue
+            : typeof durationValue === 'string' && durationValue.trim()
+              ? Number(durationValue.trim())
+              : Number.NaN;
+        if (!Number.isFinite(duration) || duration < 0 || duration > 5_000) {
+          issues.error(
+            'invalid_portrait_hesitation_duration',
+            'portrait_hesitate duration_ms must be between 0 and 5000',
+            {
+              at: { sheet, row: row.__row, column: 'command_args' },
+              value: JSON.stringify(durationValue),
+              fix: 'Omit duration_ms for the 1500ms default, or set it between 0 and 5000',
+            },
+          );
+        }
+      }
+    }
+
     if (sheet === 'senarios') {
       warnUnknown(
         issues,
