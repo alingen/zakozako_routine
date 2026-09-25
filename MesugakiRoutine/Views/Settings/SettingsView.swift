@@ -5,12 +5,39 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         List {
-            NavigationLink("一般") {
-                GeneralSettingsView()
+            Section {
+                NavigationLink {
+                    GeneralSettingsView()
+                } label: {
+                    settingsLabel("一般", systemImage: "person.crop.circle")
+                }
+                NavigationLink {
+                    NotificationSettingsView()
+                } label: {
+                    settingsLabel("通知", systemImage: "bell")
+                }
             }
-            NavigationLink("通知") {
-                NotificationSettingsView()
+
+            Section("サポート") {
+                NavigationLink {
+                    ContactView()
+                } label: {
+                    settingsLabel("お問い合わせ", systemImage: "envelope")
+                }
             }
+
+            Section("このアプリについて") {
+                documentLink(.terms, systemImage: "doc.text")
+                documentLink(.privacyPolicy, systemImage: "hand.raised")
+                documentLink(.credits, systemImage: "music.note.list")
+                LabeledContent {
+                    Text(AppInfo.versionText)
+                        .monospacedDigit()
+                } label: {
+                    settingsLabel("バージョン", systemImage: "info.circle")
+                }
+            }
+
 #if DEBUG
             NavigationLink {
                 DebugSettingsView()
@@ -20,6 +47,25 @@ struct SettingsView: View {
 #endif
         }
         .navigationTitle("設定")
+    }
+
+    /// アイコンは控えめな色にして、赤は操作の強調だけに残す。
+    private func settingsLabel(_ title: String, systemImage: String) -> some View {
+        Label {
+            Text(title)
+                .foregroundStyle(AppColor.text)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(AppColor.muted)
+        }
+    }
+
+    private func documentLink(_ document: LegalDocument, systemImage: String) -> some View {
+        NavigationLink {
+            LegalDocumentView(document: document)
+        } label: {
+            settingsLabel(document.title, systemImage: systemImage)
+        }
     }
 }
 

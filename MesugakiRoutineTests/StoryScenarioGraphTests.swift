@@ -81,6 +81,50 @@ final class StorySoundEffectCommandTests: XCTestCase {
     }
 }
 
+final class StoryPortraitHesitationCommandTests: XCTestCase {
+    func testDefaultDurationIsFifteenHundredMilliseconds() {
+        let node = StoryNode(
+            nodeId: "hesitate-default",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            command: "portrait_hesitate"
+        )
+
+        XCTAssertEqual(
+            StoryCommandDispatcher().dispatch(node: node).effects,
+            [.portraitHesitation(milliseconds: 1_500)]
+        )
+    }
+
+    func testExplicitDurationIsUsedAndCapped() {
+        let node = StoryNode(
+            nodeId: "hesitate-override",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            command: "portrait_hesitate",
+            commandArgs: .object(["duration_ms": .number(1_800)])
+        )
+        let oversized = StoryNode(
+            nodeId: "hesitate-capped",
+            lineOrder: 2,
+            speaker: "system",
+            messageType: .action,
+            command: "portrait_hesitate",
+            commandArgs: .object(["duration_ms": .number(9_000)])
+        )
+
+        XCTAssertEqual(
+            StoryCommandDispatcher().dispatch(node: node).effects,
+            [.portraitHesitation(milliseconds: 1_800)]
+        )
+        let capped = StoryCommandDispatcher().dispatch(node: oversized)
+        XCTAssertEqual(capped.effects, [.portraitHesitation(milliseconds: 5_000)])
+        XCTAssertNotNil(capped.diagnostic)
+    }
+}
+
 final class ADVTextLayoutTests: XCTestCase {
     func testStoryDisplayTextConvertsBRForADVAndLogs() {
         let node = StoryNode(
@@ -238,6 +282,151 @@ final class ADVOpeningRevealTimingTests: XCTestCase {
 
 @MainActor
 final class ADVStoryRendererRenderingTests: XCTestCase {
+    func testHesitationCommandNeverShowsDialogueWindow() {
+        let node = StoryNode(
+            nodeId: "hesitation-no-window",
+            lineOrder: 1,
+            speaker: "system",
+            messageType: .action,
+            text: "",
+            screenMode: .adv,
+            uiVariant: .dialogue,
+            command: "portrait_hesitate"
+        )
+
+        XCTAssertFalse(ADVTextWindowPresentationPolicy.showsContent(for: node))
+    }
+
+    func testHesitationBubbleAnimationShowsDotsInSequence() {
+        XCTAssertEqual(ADVHesitationBubbleAnimation.visibleDotCount(elapsed: 0, reduceMotion: false), 1)
+        XCTAssertEqual(ADVHesitationBubbleAnimation.visibleDotCount(elapsed: 0.4, reduceMotion: false), 2)
+        XCTAssertEqual(ADVHesitationBubbleAnimation.visibleDotCount(elapsed: 0.8, reduceMotion: false), 3)
+        XCTAssertEqual(ADVHesitationBubbleAnimation.visibleDotCount(elapsed: 1.1, reduceMotion: false), 1)
+        XCTAssertEqual(ADVHesitationBubbleAnimation.visibleDotCount(elapsed: 0, reduceMotion: true), 3)
+    }
+
+    func testHesitationBubbleOverlaysPortraitWithoutChangingSceneLayout() throws {
+        let node = StoryNode(
+            nodeId: "hesitation-layout",
+            lineOrder: 1,
+            speaker: "rio",
+            messageType: .action,
+            text: "",
+            screenMode: .adv,
+            uiVariant: .sceneTransition
+        )
+
+        func render(
+            size: CGSize,
+            portraitAssetID: String?,
+            cgAssetID: String? = nil,
+            showsBubble: Bool
+        ) throws -> CGImage {
+            let content = ADVStoryRenderer(
+                node: node,
+                scenarioType: .prologue,
+                backgroundAssetID: "bg_protagonist_living_room",
+                portraitAssetID: portraitAssetID,
+                cgAssetID: cgAssetID,
+                showsHesitationBubble: showsBubble,
+                showsPlaybackControls: false,
+                onAdvance: { _ in },
+                onSelectChoice: { _ in },
+                onDismissModal: {}
+            )
+            .frame(width: size.width, height: size.height)
+            .environment(\.colorScheme, .light)
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = 1
+            return try XCTUnwrap(renderer.uiImage?.cgImage)
+        }
+
+        func rgba(in image: CGImage, x: Int, y: Int) throws -> [UInt8] {
+            let sample = try XCTUnwrap(image.cropping(to: CGRect(x: x, y: y, width: 1, height: 1)))
+            var result = [UInt8](repeating: 0, count: 4)
+            try result.withUnsafeMutableBytes { bytes in
+                let context = try XCTUnwrap(CGContext(
+                    data: bytes.baseAddress,
+                    width: 1,
+                    height: 1,
+                    bitsPerComponent: 8,
+                    bytesPerRow: 4,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                ))
+                context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            }
+            return result
+        }
+
+        for size in [
+            CGSize(width: 320, height: 568),
+            CGSize(width: 390, height: 844),
+            CGSize(width: 428, height: 926)
+        ] {
+            let withoutBubble = try render(
+                size: size,
+                portraitAssetID: "portrait_rio_neutral",
+                showsBubble: false
+            )
+            let withBubble = try render(
+                size: size,
+                portraitAssetID: "portrait_rio_neutral",
+                showsBubble: true
+            )
+            XCTAssertEqual(withBubble.width, Int(size.width))
+            XCTAssertEqual(withBubble.height, Int(size.height))
+            XCTAssertEqual(
+                try rgba(in: withBubble, x: 2, y: 40),
+                try rgba(in: withoutBubble, x: 2, y: 40),
+                "The bubble must not move the background at width \(size.width)."
+            )
+
+            let bubbleX = Int(size.width * 0.76)
+            let bubbleY = Int(size.height * 0.25 - 16)
+            let bubblePixel = try rgba(in: withBubble, x: bubbleX, y: bubbleY)
+            XCTAssertNotEqual(
+                bubblePixel,
+                try rgba(in: withoutBubble, x: bubbleX, y: bubbleY)
+            )
+            XCTAssertGreaterThan(bubblePixel[0], 230)
+            XCTAssertGreaterThan(bubblePixel[1], 230)
+            XCTAssertGreaterThan(bubblePixel[2], 230)
+
+            let noPortrait = try render(
+                size: size,
+                portraitAssetID: nil,
+                showsBubble: true
+            )
+            let noPortraitBaseline = try render(
+                size: size,
+                portraitAssetID: nil,
+                showsBubble: false
+            )
+            XCTAssertEqual(
+                try rgba(in: noPortrait, x: bubbleX, y: bubbleY),
+                try rgba(in: noPortraitBaseline, x: bubbleX, y: bubbleY)
+            )
+
+            let withCG = try render(
+                size: size,
+                portraitAssetID: "portrait_rio_neutral",
+                cgAssetID: "cg_test",
+                showsBubble: true
+            )
+            let withCGBaseline = try render(
+                size: size,
+                portraitAssetID: "portrait_rio_neutral",
+                cgAssetID: "cg_test",
+                showsBubble: false
+            )
+            XCTAssertEqual(
+                try rgba(in: withCG, x: bubbleX, y: bubbleY),
+                try rgba(in: withCGBaseline, x: bubbleX, y: bubbleY)
+            )
+        }
+    }
+
     func testEmptyWaitTransitionKeepsBlackoutFreeOfDialogueBox() throws {
         let waitNode = StoryNode(
             nodeId: "blackout_wait",

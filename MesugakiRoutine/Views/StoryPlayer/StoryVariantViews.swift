@@ -261,9 +261,14 @@ struct StoryAudioMessageView: View {
             }
 
             if audioURL == nil {
-                Label("音声素材が見つかりません", systemImage: "exclamationmark.triangle")
+                Label {
+                    Text("音声素材が見つかりません")
+                        .foregroundStyle(AppColor.text)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(AppColor.warning)
+                }
                     .font(.caption)
-                    .foregroundStyle(AppColor.warning)
             } else if let errorMessage = playback.errorMessage {
                 Text(errorMessage)
                     .font(.caption)
@@ -398,9 +403,14 @@ struct StoryUnknownVariantView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("未対応の表示: \(variantName)", systemImage: "questionmark.diamond")
+            Label {
+                Text("未対応の表示: \(variantName)")
+                    .foregroundStyle(AppColor.text)
+            } icon: {
+                Image(systemName: "questionmark.diamond")
+                    .foregroundStyle(AppColor.warning)
+            }
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(AppColor.warning)
 
             if !node.storyDisplayText.isEmpty {
                 Text(node.storyDisplayText)

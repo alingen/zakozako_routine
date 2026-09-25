@@ -448,27 +448,34 @@ final class InteractionViewModelOnboardingConversationTests: XCTestCase {
 
 @MainActor
 final class InteractionHomeCardRenderingTests: XCTestCase {
-    func testTodayCardDoesNotFadeWhenConversationIsUnavailable() throws {
+    private func dock(unread: Bool, available: Bool, resume: Bool = false) -> some View {
+        InteractionDock {
+            TodayConversationDockButton(
+                title: "今日の会話", isUnread: unread, hasResumePosition: resume,
+                isAvailable: available, action: {}
+            )
+            InteractionDockItem(kind: .story, title: "ストーリー", showsUnreadDot: true)
+            InteractionDockItem(kind: .memories, title: "思い出")
+        }
+    }
+
+    /// 会話がない日は「今日の会話」だけを薄くし、バー全体の地は変えない。
+    func testDockBackgroundDoesNotFadeWhenConversationIsUnavailable() throws {
         var samples: [[UInt8]] = []
         for isAvailable in [true, false] {
-            let content = TodayConversationCard(
-                title: "今日の会話", isUnread: false, hasResumePosition: false,
-                isAvailable: isAvailable, action: {}
-            )
-            .frame(width: 180)
-            .background(AppColor.secondary)
-            .environment(\.colorScheme, .light)
+            let content = dock(unread: false, available: isAvailable)
+                .frame(width: 320)
+                .background(AppColor.secondary)
+                .environment(\.colorScheme, .light)
             let image = try XCTUnwrap(ImageRenderer(content: content).uiImage)
             let attachment = XCTAttachment(image: image)
-            attachment.name = "Today card available=\(isAvailable)"
+            attachment.name = "Interaction dock available=\(isAvailable)"
             attachment.lifetime = .keepAlways
             add(attachment)
-            let data = try XCTUnwrap(image.pngData())
-            try data.write(to: URL(fileURLWithPath: "/tmp/zako_today_card_\(isAvailable).png"))
 
-            // 名前・セリフ・立ち絵のない背景部分で、カード全体の濃さを比較する。
+            // アイコン・ラベルのない、バーの右端付近の地で比較する。
             let cgImage = try XCTUnwrap(image.cgImage)
-            let sample = try XCTUnwrap(cgImage.cropping(to: CGRect(x: 162, y: 60, width: 1, height: 1)))
+            let sample = try XCTUnwrap(cgImage.cropping(to: CGRect(x: 300, y: 10, width: 1, height: 1)))
             var rgba = [UInt8](repeating: 0, count: 4)
             try rgba.withUnsafeMutableBytes { bytes in
                 let context = try XCTUnwrap(CGContext(
@@ -485,7 +492,7 @@ final class InteractionHomeCardRenderingTests: XCTestCase {
         }
     }
 
-    func testCardsAndLabeledSpeechRenderAtNarrowAndRegularWidths() throws {
+    func testDockAndLabeledSpeechRenderAtNarrowAndRegularWidths() throws {
         for width: CGFloat in [320, 390] {
             let content = VStack(alignment: .leading, spacing: 20) {
                 HStack {
@@ -498,19 +505,7 @@ final class InteractionHomeCardRenderingTests: XCTestCase {
                 InteractionCharacterSpeechBubble(
                     text: "がんばってね、ざこざこおにいさん♡", speakerName: "莉央"
                 )
-                InteractionHomeCardGrid {
-                    TodayConversationCard(
-                        title: "今日の会話", isUnread: true, hasResumePosition: false,
-                        isAvailable: true, action: {}
-                    )
-                    InteractionHomeFeatureCard(
-                        kind: .story, title: "ストーリー", detail: "莉央との物語を読む"
-                    )
-                    InteractionHomeFeatureCard(
-                        kind: .memories, title: "思い出", detail: "あの時の莉央に会いに"
-                    )
-                    InteractionHomeFeatureCard(kind: .freeTalk, title: "ふりーとーく", detail: "")
-                }
+                dock(unread: true, available: true)
             }
             .padding(16)
             .frame(width: width)
@@ -521,36 +516,62 @@ final class InteractionHomeCardRenderingTests: XCTestCase {
             let image = try XCTUnwrap(renderer.uiImage)
             XCTAssertEqual(image.size.width, width, accuracy: 0.5)
             let attachment = XCTAttachment(image: image)
-            attachment.name = "Interaction cards \(Int(width))pt"
+            attachment.name = "Interaction dock \(Int(width))pt"
             attachment.lifetime = .keepAlways
             add(attachment)
-            let data = try XCTUnwrap(image.pngData())
-            try data.write(to: URL(fileURLWithPath: "/tmp/zakozako_interaction_cards_\(Int(width)).png"))
         }
     }
 
-    func testFourCardGridKeepsTheSameHeightWhenTodayIsReadOrUnavailable() throws {
-        let states: [(unread: Bool, available: Bool)] = [(true, true), (false, true), (false, false)]
+    /// 大きな文字サイズ(上限の accessibility2)でも、狭い幅で横にはみ出さずに描ける。
+    func testDockAndSpeechRenderAtLargeAccessibilityTextSize() throws {
         for width: CGFloat in [320, 390] {
-            for state in states {
-                let content = InteractionHomeCardGrid {
-                    TodayConversationCard(
-                        title: "今日の会話", isUnread: state.unread, hasResumePosition: false,
-                        isAvailable: state.available, action: {}
-                    )
-                    InteractionHomeFeatureCard(
-                        kind: .story, title: "ストーリー", detail: "莉央との物語を読む"
-                    )
-                    InteractionHomeFeatureCard(
-                        kind: .memories, title: "思い出", detail: "あの時の莉央に会いに"
-                    )
-                    InteractionHomeFeatureCard(kind: .freeTalk, title: "ふりーとーく", detail: "")
+            let content = VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Spacer()
+                    InteractionProgressMiniCard(progress: .init(
+                        chapterTitle: "チャプター 01", completedCount: 2, totalCount: 6,
+                        nextStoryText: "次のストーリーを読めます"
+                    ))
                 }
-                .frame(width: width)
+                InteractionCharacterSpeechBubble(
+                    text: "2日予定あるだけで『今週忙しい』は盛りすぎでしょw", speakerName: "莉央"
+                )
+                dock(unread: true, available: true)
+            }
+            .padding(16)
+            .frame(width: width)
+            .background(AppColor.background)
+            .environment(\.dynamicTypeSize, .accessibility2)
+            .environment(\.colorScheme, .light)
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.uiImage)
+            XCTAssertEqual(image.size.width, width, accuracy: 0.5)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Interaction accessibility2 \(Int(width))pt"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
+    func testDockKeepsTheSameHeightWhenTodayIsReadOrUnavailable() throws {
+        let states: [(unread: Bool, available: Bool, resume: Bool)] = [
+            (true, true, false), (false, true, true), (false, true, false), (false, false, false),
+        ]
+        for width: CGFloat in [320, 390] {
+            var heights: [CGFloat] = []
+            for state in states {
+                let content = dock(unread: state.unread, available: state.available, resume: state.resume)
+                    .frame(width: width)
                 let image = try XCTUnwrap(ImageRenderer(content: content).uiImage)
                 XCTAssertEqual(image.size.width, width, accuracy: 0.5)
-                XCTAssertEqual(image.size.height, 130 * 2 + 12, accuracy: 0.5)
+                heights.append(image.size.height)
             }
+            for height in heights {
+                XCTAssertEqual(height, heights[0], accuracy: 0.5)
+            }
+            // 莉央を隠さないよう、バーは低く抑える。
+            XCTAssertLessThanOrEqual(heights[0], 90)
         }
     }
 }

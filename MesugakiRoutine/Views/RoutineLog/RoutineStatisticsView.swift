@@ -65,6 +65,8 @@ struct RoutineStatisticsView: View {
         .padding(.horizontal)
         .padding(.top, 12)
         .padding(.bottom, 8)
+        // 補足の muted 文字が読めるよう、年送りと同じ白い帯に載せる。
+        .background(AppColor.surface)
     }
 
     private var yearPicker: some View {
@@ -117,6 +119,8 @@ struct RoutineStatisticsView: View {
                         .font(.caption)
                         .foregroundStyle(AppColor.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 14))
                 }
                 monthlyChart(statistics)
                 weekdayChart(statistics)

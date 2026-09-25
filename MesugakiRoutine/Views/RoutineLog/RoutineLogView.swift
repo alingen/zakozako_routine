@@ -40,7 +40,7 @@ struct RoutineLogView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "flame.fill")
-                    .foregroundStyle(AppColor.warning)
+                    .foregroundStyle(AppColor.accent)
                 Text("継続 \(viewModel.streakDays)日")
                     .font(.headline)
             }
@@ -101,11 +101,12 @@ struct RoutineLogView: View {
     private var weekdayHeader: some View {
         HStack {
             ForEach(viewModel.weekdaySymbols, id: \.self) { symbol in
+                // 背景色の上では muted だと読みにくいため本文色にする。
                 Text(symbol)
                     .font(.caption2)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
-                    .foregroundStyle(AppColor.muted)
+                    .foregroundStyle(AppColor.text)
                     .frame(maxWidth: .infinity)
             }
         }

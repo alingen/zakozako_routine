@@ -511,6 +511,7 @@ struct StoryPlaybackContainerView: View {
             portraitAssetID: player.portraitAssetID,
             cgAssetID: player.cgAssetID,
             shouldDelayCurrentADVText: player.shouldDelayCurrentADVText,
+            isHesitating: player.isHesitating,
             availableChoices: player.availableChoices,
             isTyping: player.isTyping,
             isModalPresented: player.isModalPresented,
@@ -594,7 +595,8 @@ struct StoryPlaybackContainerView: View {
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppColor.background)
+        // muted の補足文が読めるよう白地にする。
+        .background(AppColor.surface)
     }
 }
 

@@ -67,6 +67,7 @@ final class StoryPlayer {
     private(set) var portraitAssetID: String?
     private(set) var cgAssetID: String?
     private(set) var shouldDelayCurrentADVText = false
+    private(set) var isHesitating = false
     private(set) var availableChoices: [StoryChoice] = []
     private(set) var isTyping = false
     private(set) var isModalPresented = false
@@ -485,6 +486,7 @@ final class StoryPlayer {
         operationGeneration &+= 1
         isProcessing = false
         isClosed = true
+        isHesitating = false
         isModalPresented = false
         availableChoices = []
         cancelSceneTransition()
@@ -505,7 +507,10 @@ private extension StoryPlayer {
         skipsCommandWaits: Bool = false
     ) async throws {
         defer {
-            if operationGeneration == token { sceneTransition = nil }
+            if operationGeneration == token {
+                sceneTransition = nil
+                isHesitating = false
+            }
         }
         try await driveNodes(
             from: firstNode,
@@ -586,12 +591,17 @@ private extension StoryPlayer {
             if replayed {
                 currentNode = presentationNode(for: node, dispatch: dispatch)
                 availableChoices = resolvedChoices
+                isHesitating = false
             } else {
                 isModalPresented = false
                 activeAudioAssetID = nil
                 let displayedNode = presentationNode(for: node, dispatch: dispatch)
                 currentNode = displayedNode
                 availableChoices = []
+                isHesitating = !pausesForUser && dispatch.effects.contains {
+                    if case .portraitHesitation = $0 { return true }
+                    return false
+                }
 
                 let encounteredCGs = applyPresentation(
                     node: node,
@@ -621,6 +631,7 @@ private extension StoryPlayer {
                 )
                 try await sleep(effectiveWait)
                 guard operationGeneration == token, !isClosed else { return }
+                isHesitating = false
             }
 
             cursor = try persistTransition(after: node, selectedChoice: nil)
@@ -719,6 +730,7 @@ private extension StoryPlayer {
         isTyping = false
         loopingSoundEffects = [:]
         shouldDelayCurrentADVText = false
+        isHesitating = false
         awaitsTextAfterClearBackground = false
         isCompleted = true
     }
@@ -831,6 +843,8 @@ private extension StoryPlayer {
                 // Do not add the renderer's implicit 300 ms delay on top of it.
                 awaitsTextAfterClearBackground = false
                 break
+            case .portraitHesitation:
+                break
             case .setCallState(let state):
                 callState = state
             case .playAudio(let assetID), .recordAudio(let assetID):
@@ -890,6 +904,15 @@ private extension StoryPlayer {
         if node.choiceId != nil || node.messageType == .choice { return true }
         if node.messageType == .image { return true }
 
+        // A hesitation command is an automatic visual beat, not a dialogue
+        // step. Keep that behavior even if a row has an unexpected UI variant.
+        if dispatch.effects.contains(where: {
+            if case .portraitHesitation = $0 { return true }
+            return false
+        }) {
+            return false
+        }
+
         // A labelled transition is visible content. An empty transition is a
         // state-only command (background/mode change), so apply it without
         // exposing a blank "System" dialogue step to the reader.
@@ -943,6 +966,7 @@ private extension StoryPlayer {
     func waitMilliseconds(in dispatch: StoryCommandDispatchResult) -> UInt64? {
         for effect in dispatch.effects {
             if case .wait(let milliseconds) = effect { return milliseconds }
+            if case .portraitHesitation(let milliseconds) = effect { return milliseconds }
         }
         return nil
     }
@@ -1129,6 +1153,7 @@ private extension StoryPlayer {
         portraitAssetID = nil
         cgAssetID = nil
         shouldDelayCurrentADVText = false
+        isHesitating = false
         awaitsTextAfterClearBackground = false
         availableChoices = []
         isTyping = false

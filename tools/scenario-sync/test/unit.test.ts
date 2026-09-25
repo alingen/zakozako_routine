@@ -115,6 +115,103 @@ describe('source normalization', () => {
     },
   );
 
+  it('preserves portrait_hesitate without arguments for its default duration', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_type: 'prologue',
+            message_type: 'action',
+            text: '',
+            screen_mode: 'adv',
+            ui_variant: 'scene_transition',
+            command: 'portrait_hesitate',
+          }),
+        ],
+      }),
+    );
+    const node = generate(result.data).scenarios[0]!.nodes[0]!;
+
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.filter((issue) => issue.at?.column === 'command')).toEqual([]);
+    expect(node.command).toBe('portrait_hesitate');
+    expect(node.commandArgs).toBeUndefined();
+  });
+
+  it.each(['{"duration_ms":0}', '{"duration_ms":1800}', '{"duration_ms":5000}'])(
+    'accepts and preserves portrait_hesitate arguments %s',
+    (commandArgs) => {
+      const result = process(
+        sheets({
+          scenarios: [
+            scenario({
+              scenario_type: 'prologue',
+              message_type: 'action',
+              text: '',
+              screen_mode: 'adv',
+              ui_variant: 'scene_transition',
+              command: 'portrait_hesitate',
+              command_args: commandArgs,
+            }),
+          ],
+        }),
+      );
+
+      expect(result.errors).toEqual([]);
+      expect(generate(result.data).scenarios[0]!.nodes[0]!.commandArgs).toEqual(
+        JSON.parse(commandArgs),
+      );
+    },
+  );
+
+  it.each([
+    '{"duration_ms":-1}',
+    '{"duration_ms":5001}',
+    '{"duration_ms":"oops"}',
+    '{"duration_ms":null}',
+  ])('rejects invalid portrait_hesitate arguments %s', (commandArgs) => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_type: 'prologue',
+            message_type: 'action',
+            text: '',
+            screen_mode: 'adv',
+            ui_variant: 'scene_transition',
+            command: 'portrait_hesitate',
+            command_args: commandArgs,
+          }),
+        ],
+      }),
+    );
+
+    expect(result.errors.map((issue) => issue.code)).toContain(
+      'invalid_portrait_hesitation_duration',
+    );
+  });
+
+  it('rejects a portrait hesitation row that could display a dialogue box', () => {
+    const result = process(
+      sheets({
+        scenarios: [
+          scenario({
+            scenario_type: 'prologue',
+            message_type: 'text',
+            text: 'まだ迷っている',
+            screen_mode: 'adv',
+            ui_variant: 'dialogue',
+            command: 'portrait_hesitate',
+          }),
+        ],
+      }),
+    );
+
+    expect(result.errors.map((issue) => issue.code)).toContain(
+      'invalid_portrait_hesitation_row',
+    );
+  });
+
   it('preserves a per-line Rio typing duration', () => {
     const raw = sheets({ scenarios: [scenario({ typing_duration_ms: 650 })] });
     const result = process(raw);

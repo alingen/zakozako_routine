@@ -376,6 +376,7 @@ final class StoryConditionEvaluatorTests: XCTestCase {
             {
               "scenarios": [],
               "choiceGroups": [],
+              "interactions": [],
               "events": [
                 {
                   "eventId": "event_condition_test",

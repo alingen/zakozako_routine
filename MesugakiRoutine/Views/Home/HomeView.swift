@@ -294,11 +294,12 @@ struct HomeView: View {
             }
         } header: {
             HStack(spacing: 8) {
-                homeSectionTitle("今日の約束", systemImage: "checkmark.circle")
+                homeSectionTitle("今日の約束")
                 Spacer()
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(AppColor.muted)
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(AppColor.text)
+                    .accessibilityLabel("\(viewModel.todayTotalCount)件中\(viewModel.todayCompletedCount)件達成")
                 Button {
                     isPresentingNewRoutine = true
                 } label: {
@@ -318,18 +319,12 @@ struct HomeView: View {
         }
     }
 
-    /// セクション見出し。アイコン幅を固定して、見出しの文字の開始位置を3セクションで揃える。
-    private func homeSectionTitle(_ title: String, systemImage: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .frame(width: 24)
-                .accessibilityHidden(true)
-            Text(title)
-        }
-        .font(.headline)
-        .foregroundStyle(AppColor.text)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+    /// セクション見出し。カードのタイトル(headline)より一段小さくして、カードを主役にする。
+    private func homeSectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(AppColor.text)
+            .accessibilityAddTraits(.isHeader)
     }
 
     /// 約束1件。カード本体は編集、時計はタイマー、右端の丸は達成状態の変更に分離する。
@@ -424,7 +419,7 @@ struct HomeView: View {
                 .appCardRow()
             }
         } header: {
-            homeSectionTitle("やらないこと", systemImage: "nosign")
+            homeSectionTitle("やらないこと")
                 .textCase(nil)
         }
     }
@@ -449,6 +444,7 @@ struct HomeView: View {
                 usage: usage,
                 hasScreenTimeIssue: hasScreenTimeIssue
             ),
+            hasStreak: !hasScreenTimeIssue && !usage.failed && behavior.currentStreakDays >= 1,
             detailText: promiseDetailText(
                 behavior: behavior,
                 usage: usage,
@@ -489,7 +485,7 @@ struct HomeView: View {
         hasScreenTimeIssue: Bool
     ) -> Color {
         if hasScreenTimeIssue || usage.failed { return AppColor.error }
-        return behavior.currentStreakDays >= 1 ? AppColor.success : AppColor.muted
+        return AppColor.muted
     }
 
     private func promiseDetailText(
@@ -602,7 +598,7 @@ struct HomeView: View {
                 .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
                 .routineListRowStyle()
         } header: {
-            homeSectionTitle("みんなのざこ速報", systemImage: "ellipsis.bubble")
+            homeSectionTitle("みんなのざこ速報")
                 .textCase(nil)
         }
     }

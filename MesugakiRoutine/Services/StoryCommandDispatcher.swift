@@ -38,6 +38,7 @@ enum StoryCommandEffect: Equatable {
     case setTyping(Bool)
     case presentModal
     case wait(milliseconds: UInt64)
+    case portraitHesitation(milliseconds: UInt64)
     case setCallState(StoryCallPresentationState)
     case playAudio(String?)
     case recordAudio(String?)
@@ -68,6 +69,7 @@ struct StoryCommandDispatchResult: Equatable {
 /// finite set of effects understood by the current player.
 struct StoryCommandDispatcher {
     static let maximumWaitMilliseconds: UInt64 = 5_000
+    static let defaultPortraitHesitationMilliseconds: UInt64 = 1_500
 
     func dispatch(node: StoryNode) -> StoryCommandDispatchResult {
         guard let rawCommand = normalized(node.command) else { return .none }
@@ -127,6 +129,9 @@ struct StoryCommandDispatcher {
 
         case "wait":
             return waitResult(command: command, arguments: node.commandArgs)
+
+        case "portrait_hesitate":
+            return portraitHesitationResult(arguments: node.commandArgs)
 
         case "call_start":
             return StoryCommandDispatchResult(
@@ -216,6 +221,31 @@ struct StoryCommandDispatcher {
 }
 
 private extension StoryCommandDispatcher {
+    func portraitHesitationResult(arguments: JSONValue?) -> StoryCommandDispatchResult {
+        guard let rawDuration = arguments?["duration_ms"] else {
+            return StoryCommandDispatchResult(
+                effect: .portraitHesitation(
+                    milliseconds: Self.defaultPortraitHesitationMilliseconds
+                )
+            )
+        }
+        guard let duration = number(from: rawDuration), duration.isFinite else {
+            return StoryCommandDispatchResult(
+                effect: .portraitHesitation(
+                    milliseconds: Self.defaultPortraitHesitationMilliseconds
+                ),
+                diagnostic: "command portrait_hesitate のduration_msを解釈できません"
+            )
+        }
+        let capped = min(max(0, duration), Double(Self.maximumWaitMilliseconds))
+        return StoryCommandDispatchResult(
+            effect: .portraitHesitation(milliseconds: UInt64(capped.rounded())),
+            diagnostic: duration > Double(Self.maximumWaitMilliseconds)
+                ? "command portrait_hesitate のduration_msを5000msに制限しました"
+                : nil
+        )
+    }
+
     func waitResult(
         command: String,
         arguments: JSONValue?

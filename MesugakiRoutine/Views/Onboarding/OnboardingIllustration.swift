@@ -477,9 +477,16 @@ struct OnboardingPromiseTaskCard: View {
                     .foregroundStyle(AppColor.muted)
                     .lineLimit(1)
 
-                Text(isChecked ? "1日連続！" : "今日から")
-                    .font(.caption)
-                    .foregroundStyle(isChecked ? AppColor.success : AppColor.muted)
+                HStack(spacing: 2) {
+                    if isChecked {
+                        Image(systemName: "flame.fill")
+                            .foregroundStyle(AppColor.accent)
+                            .accessibilityHidden(true)
+                    }
+                    Text(isChecked ? "1日連続！" : "今日から")
+                        .foregroundStyle(isChecked ? AppColor.text : AppColor.muted)
+                }
+                .font(.caption)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

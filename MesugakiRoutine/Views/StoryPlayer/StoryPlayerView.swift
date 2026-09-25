@@ -13,6 +13,7 @@ protocol StoryPlayerViewInput {
     var portraitAssetID: String? { get }
     var cgAssetID: String? { get }
     var shouldDelayCurrentADVText: Bool { get }
+    var isHesitating: Bool { get }
     var availableChoices: [StoryChoice] { get }
     var isTyping: Bool { get }
     var isModalPresented: Bool { get }
@@ -33,6 +34,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
     let portraitAssetID: String?
     let cgAssetID: String?
     let shouldDelayCurrentADVText: Bool
+    let isHesitating: Bool
     let availableChoices: [StoryChoice]
     let isTyping: Bool
     let isModalPresented: Bool
@@ -51,6 +53,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         portraitAssetID: String? = nil,
         cgAssetID: String? = nil,
         shouldDelayCurrentADVText: Bool = false,
+        isHesitating: Bool = false,
         availableChoices: [StoryChoice] = [],
         isTyping: Bool = false,
         isModalPresented: Bool = false,
@@ -68,6 +71,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         self.portraitAssetID = portraitAssetID
         self.cgAssetID = cgAssetID
         self.shouldDelayCurrentADVText = shouldDelayCurrentADVText
+        self.isHesitating = isHesitating
         self.availableChoices = availableChoices
         self.isTyping = isTyping
         self.isModalPresented = isModalPresented
@@ -208,6 +212,7 @@ struct StoryPlayerView: View {
                     isModalPresented: input.isModalPresented,
                     openingRevealPhase: advOpeningRevealPhase,
                     delaysTextAfterBlackout: input.shouldDelayCurrentADVText,
+                    showsHesitationBubble: input.isHesitating,
                     playbackMode: advPlaybackMode,
                     isPlaybackPaused: isShowingLog
                         || isSceneTransitionActive
@@ -393,7 +398,7 @@ struct StoryPlayerView: View {
                 .frame(maxWidth: .infinity)
         }
         .padding(28)
-        .background(AppColor.background)
+        .background(AppColor.surface)
         .accessibilityElement(children: .contain)
     }
 
@@ -414,9 +419,14 @@ struct StoryPlayerView: View {
                 onTextWindowTap: onTextWindowTap
             )
 
-            Text("未対応の画面モード: \(modeName)")
+            Label {
+                Text("未対応の画面モード: \(modeName)")
+                    .foregroundStyle(AppColor.text)
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(AppColor.warning)
+            }
                 .font(.caption.monospaced())
-                .foregroundStyle(AppColor.warning)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(AppColor.surface.opacity(0.96), in: Capsule())
@@ -446,7 +456,7 @@ struct StoryPlayerView: View {
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppColor.background)
+        .background(AppColor.surface)
     }
 }
 
@@ -521,7 +531,8 @@ private struct StoryLogView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppColor.background)
+        // muted のナレーションが読めるよう、白地にする。
+        .background(AppColor.surface)
     }
 }
 
@@ -562,18 +573,24 @@ private struct StoryLogRow: View {
         displaySpeakerName == nil
     }
 
+    /// ADV の行送り([br])由来の改行は、ログでは詰めて1つの文として読めるようにする。
+    private var logText: String {
+        node.storyDisplayText.replacingOccurrences(of: "\n", with: "")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             if let displaySpeakerName {
+                // 莉央は赤、主人公は本文色にして、誰の台詞かを見分けやすくする。
                 Text(displaySpeakerName)
                     .font(.subheadline.bold())
-                    .foregroundStyle(AppColor.primary)
+                    .foregroundStyle(isProtagonist ? AppColor.text : AppColor.primary)
             }
 
-            Text(node.storyDisplayText)
+            // ナレーションは色だけで区別する(和文の斜体は字形が崩れるため使わない)。
+            Text(logText)
                 .font(.body)
                 .foregroundStyle(isNarration ? AppColor.muted : AppColor.text)
-                .italic(isNarration)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 20)
