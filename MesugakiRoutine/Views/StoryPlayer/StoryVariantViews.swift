@@ -255,15 +255,9 @@ struct StoryAudioMessageView: View {
                 .accessibilityLabel(playback.isPlaying ? "音声を一時停止" : "音声を再生")
                 .accessibilityHint(audioURL == nil ? "音声素材が見つかりません" : "")
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(node.storyDisplayText.isEmpty ? "音声メッセージ" : node.storyDisplayText)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppColor.text)
-                    Text(assetID ?? "asset未指定")
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(AppColor.muted)
-                        .lineLimit(2)
-                }
+                Text(node.storyDisplayText.isEmpty ? "音声メッセージ" : node.storyDisplayText)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppColor.text)
             }
 
             if audioURL == nil {

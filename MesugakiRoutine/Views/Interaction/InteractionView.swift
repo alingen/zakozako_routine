@@ -152,6 +152,8 @@ struct InteractionView: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
+        // バーは隠したまま、遷移先の戻るボタンに「交流」と出すためのタイトル。
+        .navigationTitle("交流")
         .toolbar(.hidden, for: .navigationBar)
         .task {
             viewModel.configure(context: modelContext)

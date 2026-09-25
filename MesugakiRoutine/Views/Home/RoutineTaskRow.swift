@@ -18,7 +18,6 @@ struct RoutineTaskRow: View {
     let timerTargetDurationMinutes: Int?
     let isTimerActive: Bool
     let isCompleted: Bool
-    let isEditing: Bool
     let isHighlighted: Bool
     let allowsEditing: Bool
     let highlightsDeferredReport: Bool
@@ -91,20 +90,20 @@ struct RoutineTaskRow: View {
     private var taskDetails: some View {
         if allowsEditing {
             Button(action: onEdit) {
-                taskSummary(showsEditChevron: isEditing)
+                taskSummary
             }
             .buttonStyle(RoutineRowPressStyle())
             .accessibilityLabel(taskAccessibilityLabel)
             .accessibilityHint("タップして内容を編集")
         } else {
-            taskSummary(showsEditChevron: isEditing)
+            taskSummary
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(taskAccessibilityLabel)
                 .accessibilityHint("右側の丸をタップして達成を報告")
         }
     }
 
-    private func taskSummary(showsEditChevron: Bool) -> some View {
+    private var taskSummary: some View {
         HStack(spacing: 12) {
             RoutineProgressPie(
                 progress: progressFraction,
@@ -151,14 +150,6 @@ struct RoutineTaskRow: View {
             }
 
             Spacer(minLength: 0)
-
-            if showsEditChevron {
-                Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(AppColor.muted)
-                    .frame(width: 28, height: 50)
-                    .accessibilityHidden(true)
-            }
         }
         .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         .contentShape(Rectangle())
@@ -170,50 +161,47 @@ struct RoutineTaskRow: View {
             .joined(separator: "、")
     }
 
-    @ViewBuilder
     private var trailingControls: some View {
-        if !isEditing {
-            HStack(spacing: 8) {
-                if let timerTargetDurationMinutes, !isCompleted {
-                    Button(action: onStartTimer) {
-                        Image(systemName: isTimerActive ? "clock.fill" : "clock")
-                            .font(.system(size: 19, weight: .semibold))
-                            .foregroundStyle(isTimerActive ? Color.white : AppColor.primary)
-                            .frame(width: 46, height: 46)
-                            .background(
-                                isTimerActive ? AppColor.primary : AppColor.primarySoft,
-                                in: Circle()
-                            )
-                            .overlay {
-                                Circle()
-                                    .stroke(
-                                        isTimerActive ? AppColor.primary : AppColor.border,
-                                        lineWidth: 1
-                                    )
-                            }
-                    }
-                    .buttonStyle(RoutineRowPressStyle())
-                    .accessibilityLabel("\(title)のタイマー")
-                    .accessibilityValue(isTimerActive ? "動作中" : "\(timerTargetDurationMinutes)分")
-                    .accessibilityHint(
-                        isTimerActive
-                            ? "タップして動作中のタイマーを表示"
-                            : "タップしてタイマーを開始"
-                    )
+        HStack(spacing: 8) {
+            if let timerTargetDurationMinutes, !isCompleted {
+                Button(action: onStartTimer) {
+                    Image(systemName: isTimerActive ? "clock.fill" : "clock")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(isTimerActive ? Color.white : AppColor.primary)
+                        .frame(width: 46, height: 46)
+                        .background(
+                            isTimerActive ? AppColor.primary : AppColor.primarySoft,
+                            in: Circle()
+                        )
+                        .overlay {
+                            Circle()
+                                .stroke(
+                                    isTimerActive ? AppColor.primary : AppColor.border,
+                                    lineWidth: 1
+                                )
+                        }
                 }
-
-                RoutineCompletionButton(
-                    title: title,
-                    isCompleted: isCompleted,
-                    progressCount: progressCount,
-                    progressTarget: progressTarget,
-                    highlightsDeferredReport: highlightsDeferredReport,
-                    externalActionTrigger: completionActionTrigger,
-                    reportsFrame: reportsCompletionButtonFrame,
-                    onAdvance: onAdvance,
-                    onUndoCompletion: onUndoCompletion
+                .buttonStyle(RoutineRowPressStyle())
+                .accessibilityLabel("\(title)のタイマー")
+                .accessibilityValue(isTimerActive ? "動作中" : "\(timerTargetDurationMinutes)分")
+                .accessibilityHint(
+                    isTimerActive
+                        ? "タップして動作中のタイマーを表示"
+                        : "タップしてタイマーを開始"
                 )
             }
+
+            RoutineCompletionButton(
+                title: title,
+                isCompleted: isCompleted,
+                progressCount: progressCount,
+                progressTarget: progressTarget,
+                highlightsDeferredReport: highlightsDeferredReport,
+                externalActionTrigger: completionActionTrigger,
+                reportsFrame: reportsCompletionButtonFrame,
+                onAdvance: onAdvance,
+                onUndoCompletion: onUndoCompletion
+            )
         }
     }
 }
@@ -234,11 +222,6 @@ struct BlockedBehaviorTaskRow: View {
     let needsRepair: Bool
     let onEdit: () -> Void
     let onAction: () -> Void
-
-    /// 「やらないこと」は、失敗していない状態を達成済みとして扱う。
-    private var isKeepingPromise: Bool {
-        !isFailed && !needsRepair
-    }
 
     var body: some View {
         Group {
@@ -326,30 +309,30 @@ struct BlockedBehaviorTaskRow: View {
                 .frame(width: 52, height: 52)
                 .background(AppColor.error.opacity(0.12), in: Circle())
         } else {
-            RoutineProgressPie(
-                progress: progressFraction,
-                size: 52,
-                tint: AppColor.primary,
-                centerSystemImage: iconName ?? "hand.raised"
+            BlockedBehaviorRemainingRing(
+                remainingFraction: progressFraction,
+                isFailed: isFailed,
+                systemImage: iconName ?? "hand.raised"
             )
         }
     }
 
+    /// 約束の完了ボタン(赤い塗り)と区別するため、メニューは白地＋枠線の控えめな見た目にする。
     private var stateButton: some View {
         Button(action: onAction) {
             ZStack {
                 Circle()
-                    .fill(isKeepingPromise ? AppColor.primary : AppColor.surface)
+                    .fill(AppColor.surface)
 
                 Circle()
                     .stroke(
-                        needsRepair ? AppColor.error : AppColor.primary,
-                        lineWidth: isFailed || isKeepingPromise ? 0 : 2.5
+                        needsRepair ? AppColor.error : AppColor.border,
+                        lineWidth: isFailed ? 0 : 2.5
                     )
 
                 Image(systemName: stateIconName)
                     .font(.system(size: isFailed ? 32 : 19, weight: .bold))
-                    .foregroundStyle(isKeepingPromise ? Color.white : (needsRepair ? AppColor.error : AppColor.primary))
+                    .foregroundStyle(stateIconColor)
             }
             .frame(width: 50, height: 50)
             .contentShape(Circle())
@@ -365,10 +348,50 @@ struct BlockedBehaviorTaskRow: View {
         return "ellipsis"
     }
 
+    private var stateIconColor: Color {
+        if needsRepair { return AppColor.error }
+        if isFailed { return AppColor.primary }
+        return AppColor.muted
+    }
+
     private var actionAccessibilityLabel: String {
         if needsRepair { return "\(title)のスクリーンタイムを再設定" }
         if isFailed { return "\(title)は失敗" }
         return "\(title)の選択肢"
+    }
+}
+
+/// 「やらないこと」の残り回数。約束の円(塗りつぶし＝達成)と混同しないよう、
+/// 薄い地の上に残り割合を線で示し、アイコンは常に色付きのままにする。
+private struct BlockedBehaviorRemainingRing: View {
+    let remainingFraction: Double
+    let isFailed: Bool
+    let systemImage: String
+
+    private let size: CGFloat = 52
+    private let lineWidth: CGFloat = 3.5
+
+    private var clamped: Double { min(max(remainingFraction, 0), 1) }
+    private var tint: Color { isFailed ? AppColor.muted : AppColor.primary }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(isFailed ? AppColor.muted.opacity(0.12) : AppColor.primarySoft)
+
+            Circle()
+                .trim(from: 0, to: clamped)
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .padding(lineWidth / 2)
+
+            Image(systemName: systemImage)
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(tint)
+        }
+        .frame(width: size, height: size)
+        .animation(.easeInOut(duration: 0.25), value: clamped)
+        .accessibilityHidden(true)
     }
 }
 
@@ -693,7 +716,6 @@ extension View {
             timerTargetDurationMinutes: 10,
             isTimerActive: false,
             isCompleted: false,
-            isEditing: false,
             isHighlighted: false,
             allowsEditing: true,
             highlightsDeferredReport: false,
@@ -719,7 +741,6 @@ extension View {
             timerTargetDurationMinutes: nil,
             isTimerActive: false,
             isCompleted: true,
-            isEditing: false,
             isHighlighted: false,
             allowsEditing: true,
             highlightsDeferredReport: false,

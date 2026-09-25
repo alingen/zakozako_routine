@@ -73,6 +73,9 @@ struct ADVStoryRenderer: View {
 
     var body: some View {
         GeometryReader { proxy in
+            // 操作バーはhome indicatorを避けるが、背景・立ち絵は画面下端まで描く。
+            let bottomInset = proxy.safeAreaInsets.bottom
+
             ZStack {
                 Color.black
                     .ignoresSafeArea()
@@ -84,9 +87,10 @@ struct ADVStoryRenderer: View {
                             purpose: .background,
                             contentMode: .fill
                         )
-                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .frame(width: proxy.size.width, height: proxy.size.height + bottomInset)
                         .clipped()
-                        .ignoresSafeArea()
+                        // レイアウト上の高さは変えず、下端の安全領域へはみ出して描く。
+                        .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
                     }
 
                     Color.black.opacity(effectiveCG == nil ? 0.12 : 0.28)
@@ -200,7 +204,11 @@ struct ADVStoryRenderer: View {
                     StoryModalView(node: node, onDismiss: onDismissModal)
                 }
             }
-            .clipped()
+            // 大きな立ち絵の横はみ出しは切りつつ、下端の安全領域までは表示する。
+            .mask {
+                Rectangle()
+                    .padding(.bottom, -bottomInset)
+            }
         }
         .background(AppColor.background)
         .task(id: blackoutTextRevealTaskID) {

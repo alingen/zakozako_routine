@@ -14,11 +14,12 @@ struct HomeView: View {
     @State private var timerDialogID: UUID?
     @State private var backgroundTimerCompletionFeedbackTrigger = 0
     @State private var isPresentingNewRoutine = false
-    @State private var isEditingRoutines = false
     @State private var isPresentingNewBlockedBehavior = false
     @State private var isShowingBlockedBehaviorDeleteError = false
     @State private var nextStrugglingTauntIndex = 0
     @State private var nextDefeatedTauntIndex = 0
+    @State private var rioReaction: RioReaction?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Binding private var appDialog: AppDialogRequest?
     private let onboardingRoutineID: UUID?
@@ -53,11 +54,42 @@ struct HomeView: View {
 
     var body: some View {
         List {
+            rioHeaderSection
             todayRoutinesSection
             todayPromiseSection
             zakoBulletinSection
         }
         .appScreenBackground()
+        .overlay(alignment: .bottom) {
+            if let rioReaction {
+                Button {
+                    dismissRioReaction()
+                } label: {
+                    RioReactionToast(reaction: rioReaction)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .id(rioReaction.id)
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .move(edge: .bottom).combined(with: .opacity)
+                )
+            }
+        }
+        // 画面をふさがない一言なので、数秒で自動的に下げる。
+        .task(id: rioReaction?.id) {
+            guard let id = rioReaction?.id else { return }
+            do {
+                try await Task.sleep(for: .seconds(3))
+            } catch {
+                return
+            }
+            if rioReaction?.id == id {
+                dismissRioReaction()
+            }
+        }
         .navigationDestination(item: $editingRoutine) { routine in
             RoutineEditView(routine: routine)
         }
@@ -210,64 +242,94 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - 0. 今日の莉央
+
+    @ViewBuilder
+    private var rioHeaderSection: some View {
+        if let comment = viewModel.rioComment {
+            Section {
+                RioHomeHeader(mood: viewModel.rioMood, text: comment.text) {
+                    viewModel.selectNextRioComment()
+                }
+                .routineListRowStyle()
+            }
+        }
+    }
+
+    /// 約束が今回のタップ(またはタイマー)で目標に届いたときだけ、莉央が反応する。
+    private func presentRioReactionIfNeeded(for routine: Routine, wasCompleted: Bool) {
+        guard !wasCompleted,
+              routine.id != onboardingRoutineID,
+              viewModel.todayProgress(for: routine).isCompletedToday else { return }
+        let allDone = viewModel.todayTotalCount > 0
+            && viewModel.todayCompletedCount == viewModel.todayTotalCount
+        let reaction = viewModel.makeRioReaction(allDone ? .allRoutinesCompleted : .routineCompleted)
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+            rioReaction = reaction
+        }
+        AccessibilityNotification.Announcement("莉央、\(reaction.text)").post()
+    }
+
+    private func dismissRioReaction() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            rioReaction = nil
+        }
+    }
+
     // MARK: - 1. 今日の約束
 
     private var todayRoutinesSection: some View {
         Section {
-            if viewModel.todayRoutines.isEmpty && !isEditingRoutines {
-                Text("今日の約束はありません")
-                    .font(.subheadline)
-                    .foregroundStyle(AppColor.muted)
-                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .background(
-                        AppColor.surface,
-                        in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    )
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
-                    }
-                    .routineListRowStyle()
+            // 空の日は追加の入口をそのまま置く。編集はカード本体のタップで行う。
+            if viewModel.todayRoutines.isEmpty {
+                AddRoutineTaskRow {
+                    isPresentingNewRoutine = true
+                }
+                .routineListRowStyle()
             }
 
             ForEach(viewModel.todayRoutines) { routine in
                 routineListRow(routine)
                     .routineListRowStyle()
             }
-
-            if isEditingRoutines {
-                AddRoutineTaskRow {
-                    isPresentingNewRoutine = true
-                }
-                .routineListRowStyle()
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
         } header: {
             HStack(spacing: 8) {
-                Label("今日の約束", systemImage: "checkmark.circle")
-                    .font(.headline)
-                    .foregroundStyle(AppColor.text)
+                homeSectionTitle("今日の約束", systemImage: "checkmark.circle")
                 Spacer()
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(AppColor.muted)
                 Button {
-                    isEditingRoutines.toggle()
+                    isPresentingNewRoutine = true
                 } label: {
-                    Image(systemName: isEditingRoutines ? "checkmark" : "square.and.pencil")
+                    Image(systemName: "plus")
                         .font(.title3.weight(.semibold))
-                        // グリフごとの高さ差でヘッダーがガタつかないよう、表示枠を固定する。
-                        .frame(width: 28, height: 28)
+                        .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(AppColor.primary)
-                .accessibilityLabel(isEditingRoutines ? "編集を終える" : "約束を編集")
+                // 44pt のタップ領域を確保しつつ、見た目の位置は右端に揃える。
+                .padding(.vertical, -8)
+                .padding(.trailing, -8)
+                .accessibilityLabel("約束を追加")
             }
             .textCase(nil)
         }
-        .animation(.easeInOut(duration: 0.22), value: isEditingRoutines)
+    }
+
+    /// セクション見出し。アイコン幅を固定して、見出しの文字の開始位置を3セクションで揃える。
+    private func homeSectionTitle(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            Text(title)
+        }
+        .font(.headline)
+        .foregroundStyle(AppColor.text)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     /// 約束1件。カード本体は編集、時計はタイマー、右端の丸は達成状態の変更に分離する。
@@ -297,7 +359,6 @@ struct HomeView: View {
             timerTargetDurationMinutes: routine.targetDurationMinutes,
             isTimerActive: activeTimerForRoutine != nil,
             isCompleted: progress.isCompletedToday,
-            isEditing: isEditingRoutines,
             isHighlighted: false,
             allowsEditing: routine.id != onboardingRoutineID || highlightsDeferredReport,
             highlightsDeferredReport: highlightsDeferredReport && routine.id == onboardingRoutineID,
@@ -314,10 +375,16 @@ struct HomeView: View {
                 if didUpdate, completesTarget, routine.id == onboardingRoutineID {
                     onOnboardingRoutineCompleted()
                 }
+                if didUpdate {
+                    presentRioReactionIfNeeded(for: routine, wasCompleted: progress.isCompletedToday)
+                }
                 return didUpdate
             },
             onUndoCompletion: {
-                updateRoutineCompletion(routine, completed: false)
+                if rioReaction != nil {
+                    dismissRioReaction()
+                }
+                return updateRoutineCompletion(routine, completed: false)
             },
             onCompletionButtonFrameChange: { frame in
                 guard routine.id == onboardingRoutineID else { return }
@@ -357,9 +424,7 @@ struct HomeView: View {
                 .appCardRow()
             }
         } header: {
-            Label("やらないこと", systemImage: "nosign")
-                .font(.headline)
-                .foregroundStyle(AppColor.text)
+            homeSectionTitle("やらないこと", systemImage: "nosign")
                 .textCase(nil)
         }
     }
@@ -453,14 +518,17 @@ struct HomeView: View {
 
     private func presentBlockedBehaviorActions(for behavior: BlockedBehavior) {
         appDialog = AppDialogRequest(
-            title: nil,
-            message: "「\(behavior.title)」",
+            title: "「\(behavior.title)」",
+            message: nil,
             actions: [
                 AppDialogAction("負けそう…") {
                     .showTaunt(nextTaunt(for: .struggling))
                 },
                 AppDialogAction("負けました", style: .destructive) {
                     .replace(failureConfirmation(for: behavior))
+                },
+                AppDialogAction("閉じる", style: .cancel) {
+                    .dismiss
                 },
             ]
         )
@@ -521,14 +589,22 @@ struct HomeView: View {
 
     private var zakoBulletinSection: some View {
         Section {
+            // 約束・やらないことのカードと同じ幅・角丸に揃える。
             ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+                }
+                .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
+                .routineListRowStyle()
         } header: {
-            Label("みんなのざこ速報", systemImage: "ellipsis.bubble")
-                .font(.headline)
-                .foregroundStyle(AppColor.text)
+            homeSectionTitle("みんなのざこ速報", systemImage: "ellipsis.bubble")
                 .textCase(nil)
         }
-        .appCardRow()
     }
 
     private func updateRoutineCompletion(_ routine: Routine, completed: Bool) -> Bool {
@@ -557,6 +633,7 @@ struct HomeView: View {
             if completesTarget, routine.id == onboardingRoutineID {
                 onOnboardingRoutineCompleted()
             }
+            presentRioReactionIfNeeded(for: routine, wasCompleted: progress.isCompletedToday)
         }
     }
 

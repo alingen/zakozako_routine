@@ -191,6 +191,52 @@ final class StoryConditionEvaluatorTests: XCTestCase {
         )
     }
 
+    func testDisplayTextIsUserFacingWithoutCMSKeys() throws {
+        let evaluator = StoryConditionEvaluator()
+        let metrics = StoryProgressMetrics(continuousDays: 1, cumulativeAchievementDays: 2)
+        let cases: [(type: String, key: String, operatorName: String, threshold: String, expected: String)] = [
+            ("achievement", "cumulative_days", "gte", "3", "約束を累計3日達成"),
+            ("streak", "continuous_days", "gte", "5", "約束を5日連続で達成"),
+            ("streak", "streak_days", "gt", "4", "約束を5日連続で達成"),
+            ("relationship", "trust", "gte", "10", "信頼度を10まで上げる"),
+            ("event", "event_completed", "exists", "event_prologue", "前のストーリーを読む"),
+            ("profile", "favorite_food", "eq", "curry", "ストーリーを進めると解放"),
+            ("future_metric", "score", "gte", "3", "ストーリーを進めると解放"),
+        ]
+
+        for testCase in cases {
+            let condition = try decodeCondition(
+                type: testCase.type,
+                key: testCase.key,
+                operatorName: testCase.operatorName,
+                threshold: testCase.threshold
+            )
+            let text = evaluator.evaluate(condition: condition, metrics: metrics).displayText
+            XCTAssertEqual(text, testCase.expected, "\(testCase.type)/\(testCase.key)")
+            XCTAssertFalse(text.contains(testCase.key), "CMS key leaked: \(text)")
+        }
+    }
+
+    func testConditionProgressTextIsOnlyShownForNumericValues() {
+        let numeric = StoryConditionPresentation(
+            id: "days",
+            text: "約束を累計3日達成",
+            currentValue: "2",
+            targetValue: "3",
+            isSatisfied: false
+        )
+        let eventID = StoryConditionPresentation(
+            id: "event",
+            text: "前のストーリーを読む",
+            currentValue: "event_prologue",
+            targetValue: "event_prologue",
+            isSatisfied: true
+        )
+
+        XCTAssertEqual(numeric.progressText, "2 / 3")
+        XCTAssertNil(eventID.progressText)
+    }
+
     func testUnlockRemainsMonotonicWhenConditionLaterBecomesFalse() throws {
         let content = try decodeContent(
             conditionsJSON:

@@ -223,11 +223,7 @@ struct StoryConditionEvaluator {
             current: currentText,
             threshold: condition.threshold,
             satisfied: satisfied,
-            displayText: displayText(
-                condition: condition,
-                current: currentText,
-                satisfied: satisfied
-            ),
+            displayText: displayText(condition: condition),
             diagnostic: diagnostic
         )
     }
@@ -306,34 +302,51 @@ private extension StoryConditionEvaluator {
         return ComparisonOutcome(satisfied: satisfied, diagnostic: nil)
     }
 
-    func displayText(
-        condition: StoryCondition,
-        current: String?,
-        satisfied: Bool
-    ) -> String {
-        let currentText = current ?? "—"
-        let symbol: String
-        switch condition.operator {
-        case .equal: symbol = "="
-        case .notEqual: symbol = "≠"
-        case .greaterThan: symbol = ">"
-        case .greaterThanOrEqual: symbol = "≥"
-        case .lessThan: symbol = "<"
-        case .lessThanOrEqual: symbol = "≤"
-        case .exists: symbol = "あり"
-        case .unknown(let value): symbol = value
+    /// ストーリー一覧に出すユーザー向けの条件文。CMS のキー名・演算子・IDは出さない。
+    /// 達成/未達成はアイコンで、現在値は「2 / 3」の進捗表示で別に見せる。
+    func displayText(condition: StoryCondition) -> String {
+        let type = condition.conditionType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let key = condition.conditionKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if type == "event_completed"
+            || ["event_completed", "completed_event"].contains(key) {
+            return "前のストーリーを読む"
         }
 
-        let prefix = satisfied ? "達成" : "未達成"
-        if condition.conditionType == "streak" && condition.conditionKey == "continuous_days" {
-            return "\(prefix): 継続 \(currentText)日 \(symbol) \(condition.threshold)日"
+        guard let target = numericTarget(for: condition) else {
+            return "ストーリーを進めると解放"
         }
-        if ["event_completed", "completed_event"].contains(condition.conditionKey) {
-            return "\(prefix): 前提イベント \(condition.threshold)"
+        if type == "streak", ["continuous_days", "streak_days", "streak"].contains(key) {
+            return "約束を\(target)日連続で達成"
         }
-        if condition.operator == .exists {
-            return "\(prefix): \(condition.conditionKey) \(symbol)"
+        if ["cumulative", "achievement"].contains(type),
+           ["cumulative_days", "total_days"].contains(key) {
+            return "約束を累計\(target)日達成"
         }
-        return "\(prefix): \(condition.conditionKey) \(currentText) \(symbol) \(condition.threshold)"
+        if type == "relationship", key == "trust" {
+            return "信頼度を\(target)まで上げる"
+        }
+        return "ストーリーを進めると解放"
+    }
+
+    /// 「N 以上」系の比較だけを、到達すべき整数値に直す。それ以外は自然文にできないので nil。
+    func numericTarget(for condition: StoryCondition) -> Int? {
+        guard let threshold = Double(
+            condition.threshold.trimmingCharacters(in: .whitespacesAndNewlines)
+        ), threshold.isFinite else { return nil }
+
+        let target: Double
+        switch condition.operator {
+        case .greaterThanOrEqual:
+            target = ceil(threshold)
+        case .greaterThan:
+            target = floor(threshold) + 1
+        case .equal where threshold.rounded() == threshold:
+            target = threshold
+        default:
+            return nil
+        }
+        guard target >= 0, target < Double(Int.max) else { return nil }
+        return Int(target)
     }
 }

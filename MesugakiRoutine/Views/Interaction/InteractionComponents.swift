@@ -167,7 +167,7 @@ struct InteractionHomeCardGrid<Content: View>: View {
     }
 }
 
-/// 立ち絵はカード内の固定枠で切り抜く。後からカード専用イラストに差し替えられる入口。
+/// 交流の入口カード。今日の会話・思い出はアイコンのみ、ストーリー・ふりーとーくは立ち絵を薄く敷く。
 struct InteractionHomeFeatureCard: View {
     let kind: InteractionHomeCardKind
     let title: String
@@ -186,11 +186,8 @@ struct InteractionHomeFeatureCard: View {
                     .fill(.ultraThinMaterial)
                 (isFreeTalk ? AppColor.text.opacity(0.82) : kind.tint.opacity(0.09))
 
-                if kind == .memories || kind == .today {
-                    portraitAccent(width: min(76, proxy.size.width * 0.4))
-                        .padding(.leading, 7)
-                        .opacity(kind == .memories ? 0.95 : 0.82)
-                } else {
+                // 今日の会話・思い出はアイコンだけで見せる(立ち絵を重ねると文字と被るため)。
+                if kind == .story || kind == .freeTalk {
                     Image("rio_interaction_home")
                         .resizable()
                         .scaledToFill()
@@ -242,7 +239,6 @@ struct InteractionHomeFeatureCard: View {
                     }
                 }
                 .padding(12)
-                .padding(.leading, kind == .today || kind == .memories ? min(66, proxy.size.width * 0.34) : 0)
 
                 if let badge {
                     Text(badge)
@@ -283,21 +279,6 @@ struct InteractionHomeFeatureCard: View {
     private var accessibilityLabel: String {
         if isFreeTalk { return "\(title)、開発中" }
         return showsUnreadDot ? "\(title)、\(detail)、未読あり" : "\(title)、\(detail)"
-    }
-
-    private func portraitAccent(width: CGFloat) -> some View {
-        Image("rio_interaction_home")
-            .resizable()
-            .scaledToFill()
-            .scaleEffect(2.4, anchor: .top)
-            .frame(width: width, height: height - 22, alignment: .top)
-            .clipped()
-            .padding(4)
-            .padding(.bottom, kind == .memories ? 9 : 0)
-            .background(AppColor.surface.opacity(kind == .memories ? 0.86 : 0.25))
-            .clipShape(RoundedRectangle(cornerRadius: kind == .memories ? 5 : 14))
-            .rotationEffect(.degrees(kind == .memories ? -7 : 0))
-            .accessibilityHidden(true)
     }
 }
 
