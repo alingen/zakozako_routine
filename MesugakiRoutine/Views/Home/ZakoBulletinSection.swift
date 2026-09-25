@@ -6,7 +6,7 @@ enum ZakoBulletinKind: Equatable {
 }
 
 /// 「みんなのざこ速報」の1件。1ユーザーぶんの速報を1行に収める。
-/// 例: 「だいすけおにいさんが 散歩する を達成しました！」
+/// 例: だいすけおにいさんが「散歩する」を達成しました！
 struct ZakoBulletinItem: Identifiable {
     let id: UUID
     /// 1行で表示する速報本文。
@@ -57,6 +57,8 @@ struct ZakoBulletinFeedView: View {
                 .foregroundStyle(AppColor.text)
                 .lineLimit(2)
                 .truncationMode(.tail)
+                // List の行の高さ計算で1行に潰されないよう、縦方向は内容の高さを使う。
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(item.relativeTime)
@@ -69,10 +71,11 @@ struct ZakoBulletinFeedView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// 赤は操作と莉央に取っておき、達成の知らせはブランドのサブカラー(Purple)で示す。
     private func iconColor(for kind: ZakoBulletinKind) -> Color {
         switch kind {
         case .achievement:
-            return AppColor.primary
+            return AppColor.secondary
         case .failure:
             return AppColor.muted.opacity(0.5)
         }
@@ -81,7 +84,7 @@ struct ZakoBulletinFeedView: View {
     private func iconBackgroundColor(for kind: ZakoBulletinKind) -> Color {
         switch kind {
         case .achievement:
-            return AppColor.primarySoft.opacity(0.72)
+            return AppColor.secondary.opacity(0.12)
         case .failure:
             return AppColor.muted.opacity(0.12)
         }
@@ -95,13 +98,13 @@ struct ZakoBulletinFeedView: View {
                 items: [
                     ZakoBulletinItem(
                         id: UUID(),
-                        line: "ひろみちおにいさんが 10分勉強する を達成しました！",
+                        line: "ひろみちおにいさんが「10分勉強する」を達成しました！",
                         relativeTime: "7時間前",
                         kind: .achievement
                     ),
                     ZakoBulletinItem(
                         id: UUID(),
-                        line: "ひろみちおにいさんが スマホを見ない に負けました…",
+                        line: "ひろみちおにいさんが「スマホを見ない」に負けました…",
                         relativeTime: "14時間前",
                         kind: .failure
                     ),

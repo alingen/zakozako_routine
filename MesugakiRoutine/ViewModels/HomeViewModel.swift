@@ -168,13 +168,13 @@ final class HomeViewModel {
         for routine in routines where routine.isComplete(now: now) {
             guard let last = routine.progressEvents.max(),
                   calendar.isDate(last, inSameDayAs: now) else { continue }
-            entries.append((last, "\(who)が \(routine.title) を達成しました！", .achievement))
+            entries.append((last, "\(who)が「\(routine.title)」を達成しました！", .achievement))
         }
 
         if let behavior, behavior.usageInCurrentPeriod(now: now) >= behavior.effectiveLimit,
            let lastUse = behavior.usageEvents.max(),
            calendar.isDate(lastUse, inSameDayAs: now) {
-            entries.append((lastUse, "\(who)が \(behavior.title) に負けました…", .failure))
+            entries.append((lastUse, "\(who)が「\(behavior.title)」に負けました…", .failure))
         }
 
         return entries

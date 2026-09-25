@@ -131,8 +131,7 @@ struct RoutineTaskRow: View {
                 }
 
                 HStack(spacing: 4) {
-                    Text(streakText)
-                        .foregroundStyle(hasStreak ? AppColor.success : AppColor.muted)
+                    StreakText(text: streakText, isActive: hasStreak)
 
                     if let progressText {
                         Text("・ \(progressText)")
@@ -215,6 +214,8 @@ struct BlockedBehaviorTaskRow: View {
     let iconName: String?
     let statusText: String
     let statusColor: Color
+    /// 連続で守れている日数を表示しているとき true。炎アイコン付きで表示する。
+    let hasStreak: Bool
     let detailText: String?
     /// 現在の期間に残っている回数の割合。1から始まり、失敗を記録するたびに減る。
     let progressFraction: Double
@@ -283,9 +284,15 @@ struct BlockedBehaviorTaskRow: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(statusText)
-                    .font(.caption)
-                    .foregroundStyle(statusColor)
+                Group {
+                    if hasStreak {
+                        StreakText(text: statusText, isActive: true)
+                    } else {
+                        Text(statusText)
+                            .foregroundStyle(statusColor)
+                    }
+                }
+                .font(.caption)
 
                 if let detailText {
                     Text(detailText)
@@ -358,6 +365,25 @@ struct BlockedBehaviorTaskRow: View {
         if needsRepair { return "\(title)のスクリーンタイムを再設定" }
         if isFailed { return "\(title)は失敗" }
         return "\(title)の選択肢"
+    }
+}
+
+/// 連続記録の表示。文字は読みやすさのため本文色にし、
+/// 「達成」を表すブランドの Yellow は炎アイコン(飾り)に持たせる。
+private struct StreakText: View {
+    let text: String
+    let isActive: Bool
+
+    var body: some View {
+        HStack(spacing: 2) {
+            if isActive {
+                Image(systemName: "flame.fill")
+                    .foregroundStyle(AppColor.accent)
+                    .accessibilityHidden(true)
+            }
+            Text(text)
+                .foregroundStyle(isActive ? AppColor.text : AppColor.muted)
+        }
     }
 }
 

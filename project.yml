@@ -49,7 +49,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        CFBundleDisplayName: ざこルーティン
+        CFBundleDisplayName: ざこざこルーティン
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zakozako.mesugakiroutine

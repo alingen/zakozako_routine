@@ -95,8 +95,9 @@ private struct StoryListRow: View {
                 }
 
                 Spacer(minLength: 6)
+                // 行全体がタップ対象なので、シェブロンは目立たせず muted にする。
                 Image(systemName: item.isUnlocked ? "chevron.right" : "lock.fill")
-                    .foregroundStyle(item.isUnlocked ? AppColor.primary : AppColor.muted)
+                    .foregroundStyle(AppColor.muted)
                     .padding(.top, 22)
             }
             .padding(.vertical, 5)

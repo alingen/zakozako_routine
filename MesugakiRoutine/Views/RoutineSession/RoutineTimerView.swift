@@ -151,7 +151,7 @@ struct RoutineTimerView: View {
 
                         Text("目標 \(targetMinutes)分")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppColor.muted)
+                            .foregroundStyle(AppColor.text)
                     }
                     .padding(.horizontal, 24)
 

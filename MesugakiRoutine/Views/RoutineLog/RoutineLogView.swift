@@ -101,11 +101,12 @@ struct RoutineLogView: View {
     private var weekdayHeader: some View {
         HStack {
             ForEach(viewModel.weekdaySymbols, id: \.self) { symbol in
+                // 背景色の上では muted だと読みにくいため本文色にする。
                 Text(symbol)
                     .font(.caption2)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
-                    .foregroundStyle(AppColor.muted)
+                    .foregroundStyle(AppColor.text)
                     .frame(maxWidth: .infinity)
             }
         }

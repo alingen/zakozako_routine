@@ -41,7 +41,6 @@ struct InteractionView: View {
             let visualHeight = proxy.size.height + proxy.safeAreaInsets.bottom
             let backgroundHeight = visualHeight + proxy.safeAreaInsets.top
             let artworkDrop = min(48, proxy.size.height * 0.055)
-            let cardHeight = min(136, max(112, proxy.size.height * 0.18))
 
             ZStack(alignment: .top) {
                 AppColor.background
@@ -107,7 +106,13 @@ struct InteractionView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
                         Spacer(minLength: 0)
-                        InteractionProgressMiniCard(progress: viewModel.storyProgress)
+                        NavigationLink {
+                            storyCatalog
+                        } label: {
+                            InteractionProgressMiniCard(progress: viewModel.storyProgress)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("ストーリーの一覧を開きます")
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, proxy.size.height * 0.10)
@@ -118,7 +123,7 @@ struct InteractionView: View {
                         InteractionCharacterSpeechBubble(text: homeDialogue, speakerName: "莉央")
                             .frame(width: min(340, proxy.size.width - 48))
                             .padding(.leading, 16)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 16)
                             .id(viewModel.interactionComment?.id)
                             .transition(
                                 .scale(scale: 0.94, anchor: .bottomLeading)
@@ -127,13 +132,14 @@ struct InteractionView: View {
                             .allowsHitTesting(false)
                     }
 
-                    InteractionHomeCardGrid {
-                        todayCard(height: cardHeight)
-                        storyCard(height: cardHeight)
-                        memoriesCard(height: cardHeight)
-                        freeTalkCard(height: cardHeight)
+                    // 入口は1本のバーに3つだけ並べ、莉央の見える範囲を広く取る。
+                    InteractionDock {
+                        todayButton
+                        storyButton
+                        memoriesButton
                     }
                     .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
 
@@ -155,6 +161,8 @@ struct InteractionView: View {
         // バーは隠したまま、遷移先の戻るボタンに「交流」と出すためのタイトル。
         .navigationTitle("交流")
         .toolbar(.hidden, for: .navigationBar)
+        // 立ち絵の上でもタブの文字が読めるよう、タブバーの地を常に敷く。
+        .toolbarBackground(.visible, for: .tabBar)
         .task {
             viewModel.configure(context: modelContext)
             offerDeferredConversationIfNeeded()
@@ -219,13 +227,12 @@ struct InteractionView: View {
         }
     }
 
-    private func todayCard(height: CGFloat) -> some View {
-        TodayConversationCard(
+    private var todayButton: some View {
+        TodayConversationDockButton(
             title: viewModel.todayConversationTitle,
             isUnread: viewModel.todayConversationIsUnread,
             hasResumePosition: viewModel.todayConversationHasResumePosition,
             isAvailable: viewModel.todayConversationIsAvailable,
-            height: height,
             action: {
                 if let identity = onboardingConversationIdentity,
                    viewModel.openOnboardingConversation(identity: identity) {
@@ -237,49 +244,36 @@ struct InteractionView: View {
         )
     }
 
-    private func storyCard(height: CGFloat) -> some View {
+    private var storyButton: some View {
         NavigationLink {
-            StoryCatalogView(
-                mainChapters: viewModel.mainChapters,
-                subChapters: viewModel.subChapters,
-                onOpen: { _ = viewModel.openEvent(id: $0) }
-            )
+            storyCatalog
         } label: {
-            InteractionHomeFeatureCard(
+            InteractionDockItem(
                 kind: .story,
                 title: "ストーリー",
-                detail: "莉央との物語を読む",
-                showsUnreadDot: viewModel.hasUnreadStories,
-                height: height
+                showsUnreadDot: viewModel.hasUnreadStories
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(InteractionDockButtonStyle())
         .accessibilityHint("メインストーリーとサブストーリーを開きます")
     }
 
-    private func memoriesCard(height: CGFloat) -> some View {
+    private var storyCatalog: some View {
+        StoryCatalogView(
+            mainChapters: viewModel.mainChapters,
+            subChapters: viewModel.subChapters,
+            onOpen: { _ = viewModel.openEvent(id: $0) }
+        )
+    }
+
+    private var memoriesButton: some View {
         NavigationLink {
             MemoryGalleryView(memories: viewModel.memories)
         } label: {
-            InteractionHomeFeatureCard(
-                kind: .memories,
-                title: "思い出",
-                detail: "あの時の莉央に会いに",
-                height: height
-            )
+            InteractionDockItem(kind: .memories, title: "思い出")
         }
-        .buttonStyle(.plain)
+        .buttonStyle(InteractionDockButtonStyle())
         .accessibilityHint("思い出のコレクションを開きます")
-    }
-
-    private func freeTalkCard(height: CGFloat) -> some View {
-        InteractionHomeFeatureCard(
-            kind: .freeTalk,
-            title: "ふりーとーく",
-            detail: "",
-            height: height
-        )
-        .allowsHitTesting(false)
     }
 
     private func showNextHomeDialogue() {
