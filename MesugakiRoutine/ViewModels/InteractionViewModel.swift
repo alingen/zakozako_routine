@@ -37,6 +37,17 @@ final class InteractionViewModel {
     private var todayScenario: StoryScenario?
     private var todayPlaybackKey: String?
 
+    func recordInteractionScreenOpen(context: ModelContext, now: Date = .now) {
+        do {
+            try UserActionEventRepository(context: context).record(
+                .interactionScreenOpened,
+                occurredAt: now
+            )
+        } catch {
+            loadError = "交流画面への来訪を記録できませんでした: \(error.localizedDescription)"
+        }
+    }
+
     func configure(context: ModelContext, now: Date = .now, calendar: Calendar = .current) {
         if dependencies == nil {
             dependencies = AppDependencies(context: context)
@@ -255,6 +266,13 @@ final class InteractionViewModel {
         now: Date = .now,
         calendar: Calendar = .current
     ) {
+        if let dependencies {
+            do {
+                try dependencies.userActionEventRepository.record(.characterTapped, occurredAt: now)
+            } catch {
+                loadError = "莉央へのタップを記録できませんでした: \(error.localizedDescription)"
+            }
+        }
         guard let dependencies, let content = dependencies.storyContentRepository else {
             interactionComment = nil
             return

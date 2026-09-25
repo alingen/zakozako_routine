@@ -28,6 +28,30 @@ extension Routine {
 /// 1つの約束を何期間（日／週／月）連続で達成しているかを計算する。
 /// 進行中の期間が未達でも、期限までは直前までの連続記録を維持する。
 enum RoutineStreak {
+    /// 全ルーティンの達成日から、過去最高の連続日数を再計算する。
+    static func overallBestStreak(
+        completionDates: [Date],
+        calendar: Calendar = .current
+    ) -> Int {
+        let days = Set(completionDates.map {
+            AppDay.startOfDay(for: $0, calendar: calendar)
+        }).sorted()
+        var best = 0
+        var run = 0
+        var previous: Date?
+        for day in days {
+            if let previous,
+               calendar.date(byAdding: .day, value: 1, to: previous) == day {
+                run += 1
+            } else {
+                run = 1
+            }
+            best = max(best, run)
+            previous = day
+        }
+        return best
+    }
+
     static func currentStreak(
         routine: Routine,
         now: Date = .now,

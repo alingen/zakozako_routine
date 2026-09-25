@@ -41,11 +41,13 @@ struct MesugakiRoutineApp: App {
     let modelContainer: ModelContainer
     private let usesIsolatedStorySample: Bool
     @Environment(\.scenePhase) private var scenePhase
+    @State private var hasRecordedCurrentActivation = false
 
     init() {
         let schema = Schema([
             Routine.self,
             BlockedBehavior.self,
+            UserActionEvent.self,
             StoryEventProgress.self,
             StoryPlaybackProgress.self,
             StoryProfileValue.self,
@@ -79,14 +81,35 @@ struct MesugakiRoutineApp: App {
                 .environment(SiriLaunchCoordinator.shared)
                 .task {
                     guard !usesIsolatedStorySample else { return }
+                    if scenePhase == .active && !hasRecordedCurrentActivation {
+                        recordAppOpen()
+                    }
                     synchronizeScreenTimeBehavior()
                 }
         }
         .modelContainer(modelContainer)
         .onChange(of: scenePhase) {
-            guard scenePhase == .active, !usesIsolatedStorySample else { return }
+            guard !usesIsolatedStorySample else { return }
+            guard scenePhase == .active else {
+                hasRecordedCurrentActivation = false
+                return
+            }
+            if !hasRecordedCurrentActivation {
+                recordAppOpen()
+            }
             synchronizeScreenTimeBehavior()
             rescheduleNotifications()
+        }
+    }
+
+    private func recordAppOpen() {
+        // 初回の .task と scenePhase 変更が重なっても、同じ active 期間は1件だけ記録する。
+        do {
+            try UserActionEventRepository(context: modelContainer.mainContext).record(.appOpened)
+            hasRecordedCurrentActivation = true
+        } catch {
+            // 書き込み失敗時は次の active 通知で再試行できるようにする。
+            hasRecordedCurrentActivation = false
         }
     }
 

@@ -743,6 +743,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         let schema = Schema([
             Routine.self,
             BlockedBehavior.self,
+            UserActionEvent.self,
             StoryEventProgress.self,
             StoryPlaybackProgress.self,
             StoryProfileValue.self,

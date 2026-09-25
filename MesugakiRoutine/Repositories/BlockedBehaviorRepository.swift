@@ -147,6 +147,12 @@ final class BlockedBehaviorRepository {
 
         try performMutation {
             behavior.usageEvents.append(now)
+            context.insert(UserActionEvent(
+                eventType: .prohibitionFailed,
+                targetType: .prohibition,
+                targetID: behavior.id,
+                occurredAt: now
+            ))
             // 配列が無限に伸びないよう、直近3か月より古いイベントは捨てる(判定に不要)。
             if let cutoff = calendar.date(byAdding: .month, value: -3, to: now) {
                 behavior.usageEvents.removeAll { $0 < cutoff }
@@ -154,6 +160,21 @@ final class BlockedBehaviorRepository {
             behavior.updatedAt = now
         }
         return .recorded
+    }
+
+    /// 「負けそう…」を押した事実。日別の勝敗や消費回数は変えない。
+    func recordUrge(_ behavior: BlockedBehavior, now: Date = .now) throws {
+        guard behavior.isActive, behavior.masteredAt == nil else {
+            throw BlockedBehaviorRepositoryError.inactiveBehavior
+        }
+        try performMutation {
+            context.insert(UserActionEvent(
+                eventType: .prohibitionUrge,
+                targetType: .prohibition,
+                targetID: behavior.id,
+                occurredAt: now
+            ))
+        }
     }
 
     /// Device Activity 拡張から届いた、上限超過または1日の監視完了を保存する。

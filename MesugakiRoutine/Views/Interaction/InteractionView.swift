@@ -182,6 +182,7 @@ struct InteractionView: View {
         }
         .onAppear {
             viewModel.reload()
+            viewModel.recordInteractionScreenOpen(context: modelContext)
             offerDeferredConversationIfNeeded()
         }
         .onChange(of: onboardingConversationIdentity) { _, _ in
@@ -337,6 +338,7 @@ struct InteractionView: View {
         for: [
             Routine.self,
             BlockedBehavior.self,
+            UserActionEvent.self,
             StoryEventProgress.self,
             StoryPlaybackProgress.self,
             StoryProfileValue.self,

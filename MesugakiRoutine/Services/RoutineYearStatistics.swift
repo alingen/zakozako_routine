@@ -45,6 +45,15 @@ struct RoutineCompletionSummary: Equatable {
     let unitLabel: String
 }
 
+/// 既存の統計結果から読み出す、1つの約束の対象期間と完了時刻。
+/// `completedAt == nil` は対象だったが未達成の期間を表す。
+struct RoutinePeriodFact: Equatable {
+    let routineID: UUID
+    let periodStart: Date
+    let periodEnd: Date
+    let completedAt: Date?
+}
+
 enum RoutineStatisticsArchiveError: LocalizedError {
     case corrupted
     case unsupportedVersion(Int)
@@ -88,6 +97,21 @@ private struct RoutineNaturalPeriodKey: Hashable {
 /// ルール変更前の結果は `Routine.progressStatisticsArchiveData` に確定保存し、変更後の
 /// ルールで過去を再解釈しない。
 enum RoutineYearStatisticsCalculator {
+    static func periodFacts(
+        for routine: Routine,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> [RoutinePeriodFact] {
+        allOutcomes(for: routine, now: now, calendar: calendar).map {
+            RoutinePeriodFact(
+                routineID: routine.id,
+                periodStart: $0.start,
+                periodEnd: $0.end,
+                completedAt: $0.completedAt
+            )
+        }
+    }
+
     static func calculate(
         routine: Routine,
         year: Int,
