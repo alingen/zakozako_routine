@@ -29,7 +29,7 @@ enum StoryAssetPurpose {
     }
 }
 
-/// CMSのasset IDを安全に描画し、未収録の場合も識別可能な表示を保つ。
+/// CMSのasset IDを安全に描画する。未収録の場合は用途別のプレースホルダーを出す。
 struct StoryAssetView: View {
     let assetID: String?
     let purpose: StoryAssetPurpose
@@ -43,7 +43,7 @@ struct StoryAssetView: View {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
-                    .accessibilityLabel("\(purpose.accessibilityName) \(assetID)")
+                    .accessibilityLabel(purpose.accessibilityName)
             } else {
                 fallback
             }
@@ -66,25 +66,12 @@ struct StoryAssetView: View {
                 endPoint: .bottomTrailing
             )
 
-            VStack(spacing: 8) {
-                Image(systemName: purpose.placeholderSymbol)
-                    .font(.title2)
-                Text(normalizedAssetID ?? "asset未指定")
-                    .font(.caption2.monospaced())
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-            }
-            .padding()
-            .foregroundStyle(AppColor.muted)
+            // asset ID は内部値なので画面にも読み上げにも出さない。
+            Image(systemName: purpose.placeholderSymbol)
+                .font(.title2)
+                .foregroundStyle(AppColor.muted)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(fallbackAccessibilityLabel)
-    }
-
-    private var fallbackAccessibilityLabel: String {
-        if let normalizedAssetID {
-            return "\(purpose.accessibilityName) \(normalizedAssetID) は未収録です"
-        }
-        return "\(purpose.accessibilityName)は未指定です"
+        .accessibilityLabel(purpose.accessibilityName)
     }
 }

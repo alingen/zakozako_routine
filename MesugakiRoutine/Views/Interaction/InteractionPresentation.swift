@@ -92,8 +92,10 @@ struct StoryConditionPresentation: Identifiable, Hashable {
     let targetValue: String?
     let isSatisfied: Bool
 
+    /// 日数・信頼度など数値の条件だけ「2 / 3」で見せる。イベントIDなどの内部値は出さない。
     var progressText: String? {
-        guard let currentValue, let targetValue else { return nil }
+        guard let currentValue, let targetValue,
+              Double(currentValue) != nil, Double(targetValue) != nil else { return nil }
         return "\(currentValue) / \(targetValue)"
     }
 }
