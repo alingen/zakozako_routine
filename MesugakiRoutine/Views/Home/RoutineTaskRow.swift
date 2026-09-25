@@ -105,10 +105,11 @@ struct RoutineTaskRow: View {
 
     private var taskSummary: some View {
         HStack(spacing: 12) {
+            // 途中は Primary で満ちていき、達成したら「達成」を表す Purple に変わる。
             RoutineProgressPie(
                 progress: progressFraction,
                 size: 52,
-                tint: AppColor.primary,
+                tint: isCompleted ? AppColor.secondary : AppColor.primary,
                 centerSystemImage: iconName ?? "checklist"
             )
 
@@ -438,6 +439,8 @@ private struct RoutineCompletionButton: View {
     @State private var fillProgress: CGFloat = 0
     @State private var showsCheckmark = false
     @State private var isAnimating = false
+    /// いま再生中のタップで目標に届くか。タップ開始時に決め、演出の途中で変えない。
+    @State private var currentTapCompletesTarget = false
     @State private var successFeedbackTrigger = 0
     @State private var undoFeedbackTrigger = 0
     @State private var completionTask: Task<Void, Never>?
@@ -454,6 +457,15 @@ private struct RoutineCompletionButton: View {
         progressCount + 1 >= max(progressTarget, 1)
     }
 
+    /// 達成済み、または目標に届くタップの演出中は「達成」を表す Purple。
+    /// 回数が残るタップの一瞬の塗りは Primary のまま
+    /// (記録後に回数が増えても、そのタップの演出の色は変えない)。
+    private var fillColor: Color {
+        isCompleted || (isAnimating && currentTapCompletesTarget)
+            ? AppColor.secondary
+            : AppColor.primary
+    }
+
     var body: some View {
         Button(action: toggleCompletion) {
             ZStack {
@@ -461,13 +473,13 @@ private struct RoutineCompletionButton: View {
                     .fill(AppColor.surface)
 
                 Circle()
-                    .fill(AppColor.primary)
+                    .fill(fillColor)
                     .scaleEffect(reduceMotion ? 1 : displayedFillProgress)
                     .opacity(displayedFillProgress)
 
                 Circle()
                     .stroke(
-                        displayedFillProgress > 0 ? AppColor.primary : AppColor.border,
+                        displayedFillProgress > 0 ? fillColor : AppColor.border,
                         lineWidth: 2.5
                     )
 
@@ -546,6 +558,7 @@ private struct RoutineCompletionButton: View {
         }
 
         guard !isAnimating else { return }
+        currentTapCompletesTarget = completesWithNextTap
         isAnimating = true
         fillProgress = 0
         showsCheckmark = false
@@ -570,7 +583,7 @@ private struct RoutineCompletionButton: View {
                 }
                 successFeedbackTrigger += 1
 
-                if !completesWithNextTap {
+                if !currentTapCompletesTarget {
                     do {
                         try await Task.sleep(for: .milliseconds(reduceMotion ? 140 : 240))
                     } catch {

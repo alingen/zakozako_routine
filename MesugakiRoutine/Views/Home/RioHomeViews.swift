@@ -37,10 +37,12 @@ enum RioReactionKind: Equatable {
     case routineCompleted
     /// 今日の約束をぜんぶ達成した。
     case allRoutinesCompleted
+    /// タイマーを最後までやった(目標回数にはまだ届いていない)。
+    case timerFinished
 
     var portraitAssetName: String {
         switch self {
-        case .routineCompleted: return "portrait_rio_smile"
+        case .routineCompleted, .timerFinished: return "portrait_rio_smile"
         case .allRoutinesCompleted: return "portrait_rio_triumphant"
         }
     }
@@ -50,6 +52,7 @@ enum RioReactionKind: Equatable {
         switch self {
         case .routineCompleted: return "reaction_routine_completed"
         case .allRoutinesCompleted: return "reaction_all_completed"
+        case .timerFinished: return "reaction_timer_finished"
         }
     }
 
@@ -66,6 +69,12 @@ enum RioReactionKind: Equatable {
                 "え、今日の約束ぜんぶ終わったの？…ふーん、やるじゃん♡",
                 "ぜんぶできたんだ？今日だけはざこって言わないであげる♡",
                 "今日のおにいさん、ちょっとだけかっこいいかもw",
+            ]
+        case .timerFinished:
+            return [
+                "え、最後までやったの？ざこのくせに粘るじゃん♡",
+                "はい1回ぶんね〜。まだ終わりじゃないよ？w",
+                "途中でやめると思ってたのに、つまんな〜い♡",
             ]
         }
     }

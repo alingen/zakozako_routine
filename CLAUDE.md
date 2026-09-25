@@ -22,7 +22,7 @@
 |---|---|---|---|
 | Primary | #D73A5A | `primary` | 「今押すべき操作」と莉央（完了ボタン、追加、NEW、名札） |
 | Pink | #F8D5DC | `primarySoft` | 莉央の吹き出し、アイコンの丸い地 |
-| Purple | #735ECF | `secondary` | ストーリー・思い出、達成のお知らせなど特別感のあるもの |
+| Purple | #735ECF | `secondary` | 達成（完了した約束の円とチェック、達成のお知らせ）、ストーリー・思い出など特別感のあるもの |
 | Yellow | #FFD166 | `accent` | 連続記録の炎などの飾り |
 | Background | #FFF7F3 | `background` | 画面の地 |
 | Surface | #FFFFFF | `surface` | カード、入力欄、読みもの画面の地 |

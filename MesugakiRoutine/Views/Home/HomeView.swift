@@ -256,14 +256,25 @@ struct HomeView: View {
         }
     }
 
-    /// 約束が今回のタップ(またはタイマー)で目標に届いたときだけ、莉央が反応する。
-    private func presentRioReactionIfNeeded(for routine: Routine, wasCompleted: Bool) {
-        guard !wasCompleted,
-              routine.id != onboardingRoutineID,
-              viewModel.todayProgress(for: routine).isCompletedToday else { return }
-        let allDone = viewModel.todayTotalCount > 0
-            && viewModel.todayCompletedCount == viewModel.todayTotalCount
-        let reaction = viewModel.makeRioReaction(allDone ? .allRoutinesCompleted : .routineCompleted)
+    /// 約束が今回のタップ(またはタイマー)で目標に届いたとき、莉央が反応する。
+    /// タイマーを最後までやったときは、目標回数に届いていなくてもひとこと言う。
+    private func presentRioReactionIfNeeded(
+        for routine: Routine,
+        wasCompleted: Bool,
+        finishedTimer: Bool = false
+    ) {
+        guard !wasCompleted, routine.id != onboardingRoutineID else { return }
+        let kind: RioReactionKind
+        if viewModel.todayProgress(for: routine).isCompletedToday {
+            let allDone = viewModel.todayTotalCount > 0
+                && viewModel.todayCompletedCount == viewModel.todayTotalCount
+            kind = allDone ? .allRoutinesCompleted : .routineCompleted
+        } else if finishedTimer {
+            kind = .timerFinished
+        } else {
+            return
+        }
+        let reaction = viewModel.makeRioReaction(kind)
         withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
             rioReaction = reaction
         }
@@ -500,8 +511,8 @@ struct HomeView: View {
                 : "\(usage.periodLabel)は上限に達しました"
         }
         return behavior.trackingKind == .screenTime
-            ? "今日は \(formattedScreenTimeLimit(behavior.screenTimeLimitMinutes)) まで"
-            : "\(usage.periodLabel) あと \(usage.remaining) 回"
+            ? "今日は\(formattedScreenTimeLimit(behavior.screenTimeLimitMinutes))まで"
+            : "\(usage.periodLabel)はあと\(usage.remaining)回"
     }
 
     private func formattedScreenTimeLimit(_ minutes: Int) -> String {
@@ -629,7 +640,11 @@ struct HomeView: View {
             if completesTarget, routine.id == onboardingRoutineID {
                 onOnboardingRoutineCompleted()
             }
-            presentRioReactionIfNeeded(for: routine, wasCompleted: progress.isCompletedToday)
+            presentRioReactionIfNeeded(
+                for: routine,
+                wasCompleted: progress.isCompletedToday,
+                finishedTimer: true
+            )
         }
     }
 
