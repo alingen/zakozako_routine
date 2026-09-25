@@ -45,7 +45,7 @@ struct RoutineLogView: View {
                     .font(.headline)
             }
 
-            Text("直近30日の達成率")
+            Text("直近30日の記録")
                 .font(.caption)
                 .foregroundStyle(AppColor.muted)
 
@@ -72,11 +72,55 @@ struct RoutineLogView: View {
                     .foregroundStyle(AppColor.muted)
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
+
+            // 「やらないこと」は達成率ではなく勝ち負けで数えるので、線で分けて置く。
+            if let behavior = viewModel.activeBehavior {
+                Divider()
+                    .overlay(AppColor.border)
+
+                NavigationLink {
+                    BlockedBehaviorRecordView(behavior: behavior)
+                } label: {
+                    behaviorRow(behavior)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(behaviorAccessibilityLabel(behavior))
+                .accessibilityHint("やらないことの記録を表示")
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppColor.border))
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
+    }
+
+    private func behaviorRow(_ behavior: BlockedBehavior) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: behavior.iconName ?? "nosign")
+                .foregroundStyle(AppColor.secondary)
+                .frame(width: 22)
+            Text(behavior.title)
+                .font(.subheadline)
+                .foregroundStyle(AppColor.text)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            Spacer()
+            Text(behaviorRecordText)
+                .font(.subheadline.bold())
+                .foregroundStyle(AppColor.text)
+                .monospacedDigit()
+            chevron
+        }
+    }
+
+    private var behaviorRecordText: String {
+        let count = viewModel.behaviorRecentCount
+        return count.isEmpty ? "記録はまだありません" : "\(count.kept)勝 \(count.lost)敗"
+    }
+
+    private func behaviorAccessibilityLabel(_ behavior: BlockedBehavior) -> String {
+        "\(behavior.title)、直近30日 \(behaviorRecordText)"
     }
 
     private var monthHeader: some View {
@@ -85,7 +129,10 @@ struct RoutineLogView: View {
                 viewModel.goToPreviousMonth()
             } label: {
                 Image(systemName: "chevron.left")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("前の月")
             Spacer()
             Text(viewModel.displayedMonth, format: .dateTime.year().month(.wide))
                 .font(.headline)
@@ -94,7 +141,10 @@ struct RoutineLogView: View {
                 viewModel.goToNextMonth()
             } label: {
                 Image(systemName: "chevron.right")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("次の月")
         }
     }
 
@@ -128,14 +178,14 @@ struct RoutineLogView: View {
                 .foregroundStyle(isToday ? Color.white : AppColor.text)
                 .frame(width: 28, height: 28)
                 .background(isToday ? AppColor.primary : Color.clear, in: Circle())
-            LazyVGrid(columns: iconColumns, spacing: 1) {
+            LazyVGrid(columns: iconColumns, spacing: 2) {
                 ForEach(completed, id: \.id) { routine in
                     Image(systemName: routine.iconName ?? routineIcon)
-                        .font(.system(size: 8, weight: .semibold))
-                        .foregroundStyle(AppColor.primary)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppColor.secondary)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 12, alignment: .top)
+            .frame(maxWidth: .infinity, minHeight: 14, alignment: .top)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
@@ -169,8 +219,9 @@ struct RoutineLogView: View {
 
     private func achievementTitle(_ achievement: RoutineAchievement) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: routineIcon)
-                .foregroundStyle(AppColor.primary)
+            Image(systemName: achievement.routine.iconName ?? routineIcon)
+                .foregroundStyle(AppColor.secondary)
+                .frame(width: 22)
             Text(achievement.routine.title)
                 .font(.subheadline)
                 .foregroundStyle(AppColor.text)
@@ -183,9 +234,10 @@ struct RoutineLogView: View {
             Text("\(Int((achievement.rate * 100).rounded()))%")
                 .font(.subheadline.bold())
                 .foregroundStyle(AppColor.text)
-            Text("(\(achievement.completedCount)/\(achievement.applicableCount)\(achievement.unitLabel))")
-                .font(.caption2)
+            Text("\(achievement.completedCount)/\(achievement.applicableCount)\(achievement.unitLabel)")
+                .font(.caption)
                 .foregroundStyle(AppColor.muted)
+                .monospacedDigit()
         }
     }
 

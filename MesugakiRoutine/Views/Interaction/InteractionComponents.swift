@@ -1,21 +1,15 @@
 import SwiftUI
 
+/// 交流画面の莉央のひとこと。ホームや煽りと同じピンクの吹き出しで、白い操作部品と見分ける。
+/// 莉央本人が大きく映っているので、名札やアバターは付けない。
 struct InteractionCharacterSpeechBubble: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let text: String
-    var speakerName: String? = nil
+    /// 読み上げで誰の言葉かを伝えるための名前。
+    var speakerName: String = "莉央"
 
-    @ViewBuilder
     var body: some View {
-        if let speakerName {
-            labeledBubble(name: speakerName)
-        } else {
-            legacyBubble
-        }
-    }
-
-    private func labeledBubble(name: String) -> some View {
         Text(text)
             .font(.body.weight(.semibold))
             .foregroundStyle(AppColor.text)
@@ -24,79 +18,17 @@ struct InteractionCharacterSpeechBubble: View {
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
             .minimumScaleFactor(0.86)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.leading, 20)
-            .padding(.trailing, 30)
-            .padding(.top, 25)
-            .padding(.bottom, 18)
-            .frame(maxWidth: .infinity, minHeight: 102, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(AppColor.surface.opacity(0.91))
-                    .shadow(color: AppColor.text.opacity(0.14), radius: 16, y: 6)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(.white.opacity(0.9), lineWidth: 1)
-            }
-            .overlay(alignment: .topLeading) {
-                Text(name)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 6)
-                    .background(AppColor.primary, in: Capsule())
-                    .padding(.leading, 20)
-                    .offset(y: -14)
+                // 立ち絵の上でも輪郭が分かるよう、薄い影だけ付ける。
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppColor.primarySoft)
+                    .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 4)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(name)、\(text)")
-    }
-
-    private var legacyBubble: some View {
-        Text(text)
-            .font(.body.weight(.bold))
-            .foregroundStyle(AppColor.text)
-            .multilineTextAlignment(.center)
-            .lineLimit(3)
-            .minimumScaleFactor(0.86)
-            .padding(.horizontal, 22)
-            .padding(.top, 50)
-            .padding(.bottom, 22)
-            .frame(maxWidth: .infinity, minHeight: 112)
-            .background {
-                InteractionSpeechBubbleShape()
-                    .fill(AppColor.surface.opacity(0.94))
-                    .shadow(color: AppColor.text.opacity(0.18), radius: 14, y: 7)
-            }
-            .overlay {
-                InteractionSpeechBubbleShape()
-                    .stroke(.white.opacity(0.96), lineWidth: 1.5)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("莉央、\(text)")
-    }
-}
-
-private struct InteractionSpeechBubbleShape: Shape {
-    private let tailHeight: CGFloat = 32
-    private let cornerRadius: CGFloat = 22
-
-    func path(in rect: CGRect) -> Path {
-        let bodyRect = CGRect(
-            x: rect.minX,
-            y: rect.minY + tailHeight,
-            width: rect.width,
-            height: max(0, rect.height - tailHeight)
-        )
-        let tailCenterX = rect.minX + rect.width * 0.56
-        let tailHalfWidth: CGFloat = 18
-
-        var path = Path(roundedRect: bodyRect, cornerRadius: cornerRadius)
-        path.move(to: CGPoint(x: tailCenterX - tailHalfWidth, y: bodyRect.minY + 1))
-        path.addLine(to: CGPoint(x: tailCenterX, y: rect.minY))
-        path.addLine(to: CGPoint(x: tailCenterX + tailHalfWidth, y: bodyRect.minY + 1))
-        path.closeSubpath()
-        return path
+            .accessibilityLabel("\(speakerName)、\(text)")
     }
 }
 

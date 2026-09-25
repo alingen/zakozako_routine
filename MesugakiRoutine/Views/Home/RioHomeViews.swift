@@ -155,11 +155,8 @@ struct RioReactionToast: View {
         }
         .padding(10)
         .padding(.trailing, 6)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
-        }
+        // 莉央のひとことはピンクの吹き出しにそろえる(白は操作部品の色)。
+        .background(AppColor.primarySoft, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("莉央、\(reaction.text)")

@@ -2091,20 +2091,10 @@ struct RioSpeechRow<Content: View>: View {
     }
 }
 
+/// 莉央のひとことに添える顔。ホームと同じ丸いアバターにそろえる。
 struct OnboardingRioPortrait: View {
     var body: some View {
-        Image("rio_blocked_behavior_taunt")
-            .resizable()
-            .scaledToFill()
-            .frame(width: 92, height: 92, alignment: .top)
-            .clipped()
-            .background(AppColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(AppColor.primary.opacity(0.35), lineWidth: 1)
-            }
-            .accessibilityHidden(true)
+        RioAvatar(assetName: "portrait_rio_mischievous_default", size: 64)
     }
 }
 

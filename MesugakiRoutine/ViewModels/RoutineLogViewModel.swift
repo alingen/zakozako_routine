@@ -22,6 +22,10 @@ final class RoutineLogViewModel {
     private(set) var achievements: [RoutineAchievement] = []
     /// いずれかの約束を達成した日が今日(または昨日)から連続している数。
     private(set) var streakDays: Int = 0
+    /// 挑戦中の「やらないこと」(同時に1件だけ)。
+    private(set) var activeBehavior: BlockedBehavior?
+    /// 挑戦中の「やらないこと」の、直近30日の勝ち負け。
+    private(set) var behaviorRecentCount = BlockedBehaviorRecordCount()
     private(set) var hasLoaded = false
     var displayedMonth: Date
 
@@ -75,6 +79,10 @@ final class RoutineLogViewModel {
             now: now,
             calendar: calendar
         )
+        activeBehavior = dependencies.blockedBehaviorRepository.fetchActive()
+        behaviorRecentCount = activeBehavior.map {
+            BlockedBehaviorHistory(behavior: $0, now: now, calendar: calendar).recentCount(days: 30)
+        } ?? BlockedBehaviorRecordCount()
         hasLoaded = true
     }
 

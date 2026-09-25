@@ -44,7 +44,8 @@ struct ADVStoryRenderer: View {
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
     private var canAdvance: Bool { choices.isEmpty && !isModalPresented }
-    private var reservedControlBarHeight: CGFloat { showsPlaybackControls ? 68 : 0 }
+    /// 操作ボタン(44pt)と下余白の分。テキストボックスとの間隔を保つ。
+    private var reservedControlBarHeight: CGFloat { showsPlaybackControls ? 56 : 0 }
     private var isBlackoutTextReady: Bool {
         !delaysTextAfterBlackout || revealedBlackoutNodeID == node.nodeId
     }
@@ -503,8 +504,9 @@ private struct ADVPlaybackControlBar: View {
     let onToggleAuto: () -> Void
     let onToggleFastForward: () -> Void
 
+    // 本文より目立たないよう、黒い一体型のバーではなく小さな半透明のピルを並べる。
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 8) {
             controlButton(
                 title: allowsSkip ? "スキップ" : "閉じる",
                 symbol: allowsSkip ? "forward.end.fill" : "xmark",
@@ -533,14 +535,7 @@ private struct ADVPlaybackControlBar: View {
                 action: onToggleFastForward
             )
         }
-        .padding(5)
-        .frame(height: 56)
-        .background(.black.opacity(0.52), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(.white.opacity(0.3), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+        .frame(height: 44)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("ADV操作メニュー")
     }
@@ -554,23 +549,29 @@ private struct ADVPlaybackControlBar: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            HStack(spacing: 4) {
                 Image(systemName: symbol)
-                    .font(.caption.weight(.semibold))
+                    .font(.caption2.weight(.bold))
                 Text(title)
-                    .font(.caption2.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.75)
             }
             .foregroundStyle(.white.opacity(isEnabled ? 1 : 0.42))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, minHeight: 34)
             .background {
-                if isActive {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(AppColor.primary.opacity(0.88))
-                }
+                // オン中(オート・早送り)は Primary で塗る。
+                Capsule()
+                    .fill(isActive ? AppColor.primary.opacity(0.88) : Color.black.opacity(0.38))
             }
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                Capsule()
+                    .stroke(.white.opacity(isActive ? 0 : 0.28), lineWidth: 1)
+            }
+            // 見た目は34ptのピルのまま、タップ領域は44pt確保する。
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
@@ -763,16 +764,11 @@ struct ADVTextWindow: View {
         .background {
             switch backgroundStyle {
             case .material:
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                    // Material alone inherits too much of a dark scene's hue.
-                    // Keep the blur, then anchor the window to a translucent
-                    // white base so dark backgrounds cannot reduce legibility.
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(AppColor.surface.opacity(0.84))
-                }
-                .shadow(color: .black.opacity(0.14), radius: 12, y: 4)
+                // すりガラスは暗い場面で灰色にくすむため使わない。
+                // 白寄りの半透明にして、背景がうっすら透けるだけにとどめる。
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppColor.surface.opacity(0.9))
+                    .shadow(color: .black.opacity(0.14), radius: 12, y: 4)
             case .baseColor:
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(AppColor.background)
@@ -790,9 +786,10 @@ struct ADVTextWindow: View {
                     .lineLimit(1)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 7)
+                    // 名札は交流の吹き出しと同じカプセル型。莉央は Primary、主人公は本文色の地にして見分ける。
                     .background {
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                            .fill(AppColor.primary)
+                        Capsule()
+                            .fill(isProtagonist ? AppColor.text : AppColor.primary)
                     }
                     .offset(y: -19)
             }
