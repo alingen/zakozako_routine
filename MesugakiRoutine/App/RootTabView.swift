@@ -4,6 +4,8 @@ import SwiftData
 enum AppDialogActionStyle: Equatable {
     case standard
     case destructive
+    /// 何もせず閉じる操作。ボタン群の下に文字だけで置く。
+    case cancel
 }
 
 enum AppDialogActionResult {
@@ -31,7 +33,8 @@ struct AppDialogAction: Identifiable {
 
 struct AppDialogRequest: Identifiable {
     let id = UUID()
-    let title: String?
+    /// 何を決める画面かが分かるよう、タイトルは必須にする。
+    let title: String
     let message: String?
     let actions: [AppDialogAction]
 }
@@ -918,11 +921,10 @@ struct RootTabView: View {
 
             VStack(spacing: 20) {
                 VStack(spacing: 8) {
-                    if let title = request.title {
-                        Text(title)
-                            .font(.headline)
-                            .foregroundStyle(AppColor.text)
-                    }
+                    Text(request.title)
+                        .font(.headline)
+                        .foregroundStyle(AppColor.text)
+                        .multilineTextAlignment(.center)
 
                     if let message = request.message {
                         Text(message)
@@ -932,13 +934,28 @@ struct RootTabView: View {
                     }
                 }
 
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) {
-                        dialogButtons(for: request)
+                VStack(spacing: 4) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            dialogButtons(for: request)
+                        }
+
+                        VStack(spacing: 12) {
+                            dialogButtons(for: request)
+                        }
                     }
 
-                    VStack(spacing: 12) {
-                        dialogButtons(for: request)
+                    ForEach(request.actions.filter { $0.style == .cancel }) { action in
+                        Button {
+                            handle(action.action())
+                        } label: {
+                            Text(action.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppColor.muted)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -956,21 +973,26 @@ struct RootTabView: View {
         }
     }
 
+    /// 取り消し以外の操作ボタン。破壊的な操作は塗り、通常の操作は白地＋枠線で区別する。
     @ViewBuilder
     private func dialogButtons(for request: AppDialogRequest) -> some View {
-        ForEach(request.actions) { action in
-            Button(role: action.style == .destructive ? .destructive : nil) {
+        ForEach(request.actions.filter { $0.style != .cancel }) { action in
+            let isDestructive = action.style == .destructive
+            Button(role: isDestructive ? .destructive : nil) {
                 handle(action.action())
             } label: {
                 Text(action.title)
                     .font(.headline)
-                    .foregroundStyle(action.style == .destructive ? Color.white : AppColor.text)
+                    .foregroundStyle(isDestructive ? Color.white : AppColor.text)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(
-                        action.style == .destructive ? AppColor.error : AppColor.background,
-                        in: Capsule()
-                    )
+                    .background(isDestructive ? AppColor.error : AppColor.surface, in: Capsule())
+                    .overlay {
+                        if !isDestructive {
+                            Capsule().stroke(AppColor.border, lineWidth: 1.5)
+                        }
+                    }
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
         }

@@ -54,6 +54,22 @@ final class HomeViewModel {
     /// Screen Time の権限取消・監視復元失敗を、カード内の再設定導線に表示する。
     private(set) var screenTimeMonitoringIssueMessage: String?
 
+    /// Home上部で莉央が話している一言。
+    private(set) var rioComment: InteractionComment?
+    /// `rioComment` を選んだときの状態。状態が変わったら選び直す。
+    private var rioCommentMood: RioHomeMood?
+
+    /// 今日の記録から決まる莉央の状態。負けた日は達成より優先してからかう。
+    var rioMood: RioHomeMood {
+        if let currentBehavior, promiseUsage(for: currentBehavior).failed {
+            return .defeated
+        }
+        if todayTotalCount > 0, todayCompletedCount == todayTotalCount {
+            return .allDone
+        }
+        return todayCompletedCount > 0 ? .inProgress : .notStarted
+    }
+
     private var dependencies: AppDependencies?
 
     func configure(context: ModelContext) {
@@ -103,7 +119,40 @@ final class HomeViewModel {
         currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
         masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
         zakoBulletinItems = Self.buildBulletin(routines: allRoutines, behavior: currentBehavior)
+        // 再読み込みのたびに入れ替えるとせわしないので、状態が変わったときだけ選び直す。
+        if rioComment == nil || rioCommentMood != rioMood {
+            selectNextRioComment()
+        }
         rescheduleNotifications()
+    }
+
+    // MARK: - 莉央
+
+    /// 今の状態に合う一言へ切り替える。状態専用の行がシートに無ければ、交流タブと同じ一言を使う。
+    func selectNextRioComment() {
+        let mood = rioMood
+        rioComment = interactionComment(touchArea: mood.commentTouchArea, excluding: rioComment?.id)
+            ?? interactionComment(touchArea: "character", excluding: rioComment?.id)
+        rioCommentMood = mood
+    }
+
+    /// 達成時の反応。シートに専用の行があればそれを、無ければ既定の一言を使う。
+    func makeRioReaction(_ kind: RioReactionKind) -> RioReaction {
+        let text = interactionComment(touchArea: kind.commentTouchArea, excluding: nil)?.text
+            ?? kind.fallbackMessages.randomElement()
+            ?? ""
+        return RioReaction(kind: kind, text: text)
+    }
+
+    private func interactionComment(touchArea: String, excluding excludedID: String?) -> InteractionComment? {
+        guard let dependencies, let content = dependencies.storyContentRepository else { return nil }
+        let profileValues = (try? dependencies.storyStateRepository.profileValues()) ?? [:]
+        return InteractionCommentSelector.select(
+            from: content.interactions,
+            touchArea: touchArea,
+            profileValues: profileValues,
+            excluding: excludedID
+        )
     }
 
     /// 「みんなのざこ速報」の項目を、自分の最近の記録から組み立てる(最大3件)。

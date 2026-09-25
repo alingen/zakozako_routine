@@ -28,6 +28,7 @@ struct ZakoBulletinFeedView: View {
             Text("まだ速報はありません")
                 .font(.subheadline)
                 .foregroundStyle(AppColor.muted)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         } else {
             VStack(spacing: 0) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
