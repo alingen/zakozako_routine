@@ -6,13 +6,28 @@ import { generate, serialize } from '../src/generate.js';
 import { normalize } from '../src/normalize.js';
 import { validate } from '../src/validate.js';
 
-const EXPECTED_MODES = ['adv', 'chat'];
-const EXPECTED_VARIANTS = ['dialogue', 'narration', 'scene_transition', 'title_card'];
+const EXPECTED_MODES = ['adv', 'call', 'chat'];
+const EXPECTED_VARIANTS = [
+  'audio_message',
+  'call_connected',
+  'call_end',
+  'dialogue',
+  'incoming_call',
+  'narration',
+  'recording',
+  'scene_transition',
+  'title_card',
+];
 const EXPECTED_COMMANDS = [
+  'call_connected',
+  'call_end',
+  'call_start',
   'clear_background',
   'hide_portrait',
+  'play_audio',
   'play_bgm',
   'play_se',
+  'record_audio',
   'scene_change',
   'show_portrait',
   'stop_bgm',
@@ -102,6 +117,10 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     const thirdMiddleScenario = scenarioById.get('middle_001_3');
     const fourthMiddleEvent = bundle.events.find((event) => event.eventId === 'event_middle_001_4');
     const fourthMiddleScenario = scenarioById.get('middle_001_4');
+    const smallEvent = bundle.events.find((event) => event.eventId === 'event_small_001');
+    const smallScenario = scenarioById.get('small_001');
+    const secondSmallEvent = bundle.events.find((event) => event.eventId === 'event_small_002');
+    const secondSmallScenario = scenarioById.get('small_002');
 
     expect(daily.map((scenario) => scenario.scenarioId)).toEqual(['daily_q003']);
     expect(daily[0]).toMatchObject({
@@ -472,7 +491,119 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       screenMode: 'chat',
       uiVariant: 'narration',
     });
-    expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4]);
+    expect(smallEvent).toMatchObject({
+      eventType: 'small_event',
+      title: '３問クイズ',
+      entryScenarioId: 'small_001',
+      priority: 104,
+      chapterId: 'chapter_01',
+      episodeOrder: 5,
+      storyCategory: 'main',
+    });
+    expect(smallScenario).toMatchObject({
+      scenarioId: 'small_001',
+      scenarioType: 'small_event',
+    });
+    expect(smallScenario?.nodes).toHaveLength(148);
+    expect(smallScenario?.nodes[0]).toMatchObject({
+      lineOrder: 1,
+      command: 'scene_change',
+      screenMode: 'chat',
+      commandArgs: expect.objectContaining({ scene_id: 'small_001_quiz_chat' }),
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 24)).toMatchObject({
+      command: 'call_start',
+      screenMode: 'chat',
+      uiVariant: 'incoming_call',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 27)).toMatchObject({
+      command: 'play_se',
+      assetId: 'se_call_ring',
+      commandArgs: { action: 'stop', asset_id: 'se_call_ring' },
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 28)).toMatchObject({
+      command: 'call_connected',
+      screenMode: 'call',
+      uiVariant: 'call_connected',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 110)).toMatchObject({
+      command: 'record_audio',
+      assetId: 'audio_zako_onii_recording',
+      text: 'ここで録音した音声は習慣化機能の罰ゲームとしてご利用いただけます。',
+      uiVariant: 'recording',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 111)).toMatchObject({
+      command: 'play_audio',
+      assetId: 'audio_zako_onii_recording',
+      speaker: 'protagonist',
+      text: '私は何歳も年下の莉央ちゃんに負けたざこおにいさんです',
+      uiVariant: 'audio_message',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 127)).toMatchObject({
+      command: 'call_end',
+      screenMode: 'call',
+      uiVariant: 'call_end',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 130)).toMatchObject({
+      saveKey: 'recording_saved',
+      saveValue: 'true',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 143)).toMatchObject({
+      saveKey: 'ringtone_recording',
+      saveValue: 'true',
+    });
+    expect(smallScenario?.nodes.at(-1)).toMatchObject({
+      lineOrder: 148,
+      text: '録音は設定画面から削除できます。',
+      screenMode: 'chat',
+      uiVariant: 'narration',
+    });
+    expect(secondSmallEvent).toMatchObject({
+      eventType: 'small_event',
+      title: 'テスト勉強',
+      entryScenarioId: 'small_002',
+      priority: 105,
+      chapterId: 'chapter_01',
+      episodeOrder: 6,
+      storyCategory: 'main',
+    });
+    expect(secondSmallScenario).toMatchObject({
+      scenarioId: 'small_002',
+      scenarioType: 'small_event',
+    });
+    expect(secondSmallScenario?.nodes).toHaveLength(74);
+    expect(secondSmallScenario?.nodes[0]).toMatchObject({
+      lineOrder: 1,
+      command: 'scene_change',
+      screenMode: 'chat',
+      commandArgs: expect.objectContaining({
+        scene_id: 'day6_study_chat',
+        transition: 'cut',
+      }),
+    });
+    expect(secondSmallScenario?.nodes.find((node) => node.lineOrder === 2)).toMatchObject({
+      command: 'play_bgm',
+      assetId: 'bgm_usually',
+      commandArgs: expect.objectContaining({ loop: true, fade_ms: 1000, volume: 0.2 }),
+    });
+    expect(secondSmallScenario?.nodes.find((node) => node.lineOrder === 5)).toMatchObject({
+      speaker: 'narrator',
+      text: '莉央から数学の問題が送られてきた',
+      screenMode: 'chat',
+      uiVariant: 'narration',
+    });
+    expect(secondSmallScenario?.nodes.find((node) => node.lineOrder === 57)).toMatchObject({
+      speaker: 'narrator',
+      text: 'ここからはリリース後のPremiumでご覧いただけます',
+      screenMode: 'chat',
+      uiVariant: 'narration',
+    });
+    expect(secondSmallScenario?.nodes.at(-1)).toMatchObject({
+      lineOrder: 74,
+      command: 'stop_bgm',
+      commandArgs: { action: 'stop', fade_ms: 1000 },
+    });
+    expect(chapterOneEpisodes.map((event) => event.episodeOrder)).toEqual([1, 2, 3, 4, 5, 6]);
     for (const event of [prologueEvent!, ...chapterOneEpisodes]) {
       expect(scenarioById.get(event.entryScenarioId)?.nodes.length).toBeGreaterThan(0);
     }
@@ -512,6 +643,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       'daily',
       'middle_event',
       'prologue',
+      'small_event',
     ]);
     expect(nodes.some((node) => node.speaker === 'protagonist')).toBe(true);
     expect(nodes.some((node) => node.messageType === 'action')).toBe(true);
@@ -527,7 +659,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       .filter((event) => event.chapterId === 'chapter_01' && event.storyCategory === 'main')
       .filter((event) => event.episodeOrder !== undefined)
       .sort((left, right) => (left.episodeOrder ?? 0) - (right.episodeOrder ?? 0));
-    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1, 2, 3, 4]);
+    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(chapterOne[0]).toMatchObject({
       eventId: 'event_prologue_001',
       episodeOrder: 0,
@@ -585,6 +717,30 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
           conditionKey: 'cumulative_days',
           operator: 'gte',
           threshold: '4',
+        },
+      ],
+    });
+    expect(chapterOne[5]).toMatchObject({
+      eventId: 'event_small_001',
+      episodeOrder: 5,
+      conditions: [
+        {
+          conditionType: 'achievement',
+          conditionKey: 'cumulative_days',
+          operator: 'gte',
+          threshold: '5',
+        },
+      ],
+    });
+    expect(chapterOne[6]).toMatchObject({
+      eventId: 'event_small_002',
+      episodeOrder: 6,
+      conditions: [
+        {
+          conditionType: 'achievement',
+          conditionKey: 'cumulative_days',
+          operator: 'gte',
+          threshold: '6',
         },
       ],
     });

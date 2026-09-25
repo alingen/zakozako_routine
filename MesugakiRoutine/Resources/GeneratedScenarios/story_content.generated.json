@@ -7837,6 +7837,2601 @@
           "uiVariant": "narration"
         }
       ]
+    },
+    {
+      "scenarioId": "small_001",
+      "scenarioType": "small_event",
+      "nodes": [
+        {
+          "lineOrder": 1,
+          "nodeId": "small_001_001",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "notes": "確定原稿: ユーザー提供 small_001（更新1）",
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "scene_change",
+          "commandArgs": {
+            "scene_id": "small_001_quiz_chat",
+            "screen": "chat",
+            "transition": "fade",
+            "label": "3問クイズ"
+          }
+        },
+        {
+          "lineOrder": 2,
+          "nodeId": "small_001_002",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "走ったよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 3,
+          "nodeId": "small_001_003",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "何分？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 4,
+          "nodeId": "small_001_004",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "15分",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 5,
+          "nodeId": "small_001_005",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "のびてる",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 6,
+          "nodeId": "small_001_006",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_usually",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.2
+          }
+        },
+        {
+          "lineOrder": 7,
+          "nodeId": "small_001_007",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ねえ、暇？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 8,
+          "nodeId": "small_001_008",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "クイズしよ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 9,
+          "nodeId": "small_001_009",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "急だね",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 10,
+          "nodeId": "small_001_010",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "3問全問正解できたら",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 11,
+          "nodeId": "small_001_011",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "莉央ちゃんがめちゃくちゃ褒めてあげる",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 12,
+          "nodeId": "small_001_012",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "めちゃくちゃ？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 13,
+          "nodeId": "small_001_013",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 14,
+          "nodeId": "small_001_014",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ざこおにいさんでもやればできるんだね〜、えらいえらいって",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 15,
+          "nodeId": "small_001_015",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "それ褒めてる？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 16,
+          "nodeId": "small_001_016",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "まあ時間あるし、やるよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 17,
+          "nodeId": "small_001_017",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "でも間違えたら罰ゲームね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 18,
+          "nodeId": "small_001_018",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "それ先に言ってよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 19,
+          "nodeId": "small_001_019",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "もう参加したから逃げるの禁止〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 20,
+          "nodeId": "small_001_020",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "理不尽な…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 21,
+          "nodeId": "small_001_021",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 22,
+          "nodeId": "small_001_022",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあ通話するね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 23,
+          "nodeId": "small_001_023",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "え",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 24,
+          "nodeId": "small_001_024",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "incoming_call",
+          "command": "call_start",
+          "commandArgs": {
+            "direction": "incoming"
+          }
+        },
+        {
+          "lineOrder": 25,
+          "nodeId": "small_001_025",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_call_ring",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_call_ring",
+            "volume": 0.6
+          }
+        },
+        {
+          "lineOrder": 26,
+          "nodeId": "small_001_026",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 1500
+          }
+        },
+        {
+          "lineOrder": 27,
+          "nodeId": "small_001_027",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_call_ring",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "stop",
+            "asset_id": "se_call_ring"
+          }
+        },
+        {
+          "lineOrder": 28,
+          "nodeId": "small_001_028",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "call_connected",
+          "command": "call_connected"
+        },
+        {
+          "lineOrder": 29,
+          "nodeId": "small_001_029",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "チャットでいいんじゃないの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 30,
+          "nodeId": "small_001_030",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "クイズ文字打つのめんどうだったし",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 31,
+          "nodeId": "small_001_031",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おにいさん既読スルーして逃げそうじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 32,
+          "nodeId": "small_001_032",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "嫌な予感しかしないんだけど",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 33,
+          "nodeId": "small_001_033",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあいくよ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 34,
+          "nodeId": "small_001_034",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "第1問！",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 35,
+          "nodeId": "small_001_035",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "莉央ちゃんはかわいい。○か×か",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 36,
+          "nodeId": "small_001_036",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "それはクイズなの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 37,
+          "nodeId": "small_001_037",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "早く答えて",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 38,
+          "nodeId": "small_001_038",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…○？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 39,
+          "nodeId": "small_001_039",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "疑問形なの気になるけど",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 40,
+          "nodeId": "small_001_040",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "正解にしてあげる〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 41,
+          "nodeId": "small_001_041",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ありがとうございます",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 42,
+          "nodeId": "small_001_042",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃ、第2問",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 43,
+          "nodeId": "small_001_043",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おにいさんの人生再建プログラムが続いたのは何日でしょう？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 44,
+          "nodeId": "small_001_044",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "なんのことやら",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 45,
+          "nodeId": "small_001_045",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "わかってるくせに",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 46,
+          "nodeId": "small_001_046",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…3日",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 47,
+          "nodeId": "small_001_047",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "正解〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 48,
+          "nodeId": "small_001_048",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "余裕じゃん",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 49,
+          "nodeId": "small_001_049",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うわ、調子乗ってる〜w",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 50,
+          "nodeId": "small_001_050",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "全問正解したら褒めてくれるんだよね？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 51,
+          "nodeId": "small_001_051",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "はいはい",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 52,
+          "nodeId": "small_001_052",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあ最後ね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 53,
+          "nodeId": "small_001_053",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "これに正解したらおにいさんの勝ち",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 54,
+          "nodeId": "small_001_054",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "どうぞ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 55,
+          "nodeId": "small_001_055",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop",
+            "fade_ms": 500
+          }
+        },
+        {
+          "lineOrder": 56,
+          "nodeId": "small_001_056",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 57,
+          "nodeId": "small_001_057",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "第3問",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 58,
+          "nodeId": "small_001_058",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おにいさんは今",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 59,
+          "nodeId": "small_001_059",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "莉央ちゃんに褒めてほしいと思っている。○か×か",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 60,
+          "nodeId": "small_001_060",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…×",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 61,
+          "nodeId": "small_001_061",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 62,
+          "nodeId": "small_001_062",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "へえ〜？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 63,
+          "nodeId": "small_001_063",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_mischief",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_mischief",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.2
+          }
+        },
+        {
+          "lineOrder": 64,
+          "nodeId": "small_001_064",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 65,
+          "nodeId": "small_001_065",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "答え変えてもいいよ♡",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 66,
+          "nodeId": "small_001_066",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…○",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 67,
+          "nodeId": "small_001_067",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ふーん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 68,
+          "nodeId": "small_001_068",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "褒めてほしいんだ〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 69,
+          "nodeId": "small_001_069",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "こんな年下の女の子に褒めてほしいなんて",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 70,
+          "nodeId": "small_001_070",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "恥ずかしいね〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 71,
+          "nodeId": "small_001_071",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 72,
+          "nodeId": "small_001_072",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ねえねえ認めちゃえば？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 73,
+          "nodeId": "small_001_073",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "女の子に褒められると嬉しくなっちゃうどうしようもない人間だって",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 74,
+          "nodeId": "small_001_074",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ほらほら〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 75,
+          "nodeId": "small_001_075",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…やっぱり×",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 76,
+          "nodeId": "small_001_076",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあ褒めなくていいんだ？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 77,
+          "nodeId": "small_001_077",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "え",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 78,
+          "nodeId": "small_001_078",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "だって×なんでしょ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 79,
+          "nodeId": "small_001_079",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "いらないよね？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 80,
+          "nodeId": "small_001_080",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…いや",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 81,
+          "nodeId": "small_001_081",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 300
+          }
+        },
+        {
+          "lineOrder": 82,
+          "nodeId": "small_001_082",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "se_defeat",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "play_se",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "se_defeat",
+            "volume": 0.6
+          }
+        },
+        {
+          "lineOrder": 83,
+          "nodeId": "small_001_083",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "はいざんね〜ん！不正解！",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 84,
+          "nodeId": "small_001_084",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "いやいや、それはずるいでしょ！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 85,
+          "nodeId": "small_001_085",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "自分で言ったのに〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 86,
+          "nodeId": "small_001_086",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ということで罰ゲームね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 87,
+          "nodeId": "small_001_087",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "納得いかない…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 88,
+          "nodeId": "small_001_088",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…何するの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 89,
+          "nodeId": "small_001_089",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ん〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 90,
+          "nodeId": "small_001_090",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 91,
+          "nodeId": "small_001_091",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あ、いいこと思いついた",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 92,
+          "nodeId": "small_001_092",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "いまここで",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 93,
+          "nodeId": "small_001_093",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "『私は何歳も年下の莉央ちゃんに負けたざこおにいさんです』",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 94,
+          "nodeId": "small_001_094",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "って言って？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 95,
+          "nodeId": "small_001_095",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "嫌だよ！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 96,
+          "nodeId": "small_001_096",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あははっ！即答じゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 97,
+          "nodeId": "small_001_097",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "負けたのに罰ゲームから逃げるんだ？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 98,
+          "nodeId": "small_001_098",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ださ〜w",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 99,
+          "nodeId": "small_001_099",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 100,
+          "nodeId": "small_001_100",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あれ？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 101,
+          "nodeId": "small_001_101",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "もしかして言えないの？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 102,
+          "nodeId": "small_001_102",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "大人なのに約束やぶるの、なさけな〜い",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 103,
+          "nodeId": "small_001_103",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "わかったよ！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 104,
+          "nodeId": "small_001_104",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "一回だけね",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 105,
+          "nodeId": "small_001_105",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "さすがおにいさんノリいい〜♡",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 106,
+          "nodeId": "small_001_106",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop",
+            "fade_ms": 500
+          }
+        },
+        {
+          "lineOrder": 107,
+          "nodeId": "small_001_107",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃあいくよ〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 108,
+          "nodeId": "small_001_108",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 300
+          }
+        },
+        {
+          "lineOrder": 109,
+          "nodeId": "small_001_109",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "3、2、1、はいっ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 110,
+          "nodeId": "small_001_110",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "ここで録音した音声は習慣化機能の罰ゲームとしてご利用いただけます。",
+          "assetId": "audio_zako_onii_recording",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "recording",
+          "command": "record_audio",
+          "commandArgs": {
+            "asset_id": "audio_zako_onii_recording",
+            "helper_text": "ここで録音した音声は習慣化機能の罰ゲームとしてご利用いただけます。"
+          }
+        },
+        {
+          "lineOrder": 111,
+          "nodeId": "small_001_111",
+          "speaker": "protagonist",
+          "messageType": "action",
+          "text": "私は何歳も年下の莉央ちゃんに負けたざこおにいさんです",
+          "assetId": "audio_zako_onii_recording",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "audio_message",
+          "command": "play_audio",
+          "commandArgs": {
+            "asset_id": "audio_zako_onii_recording",
+            "speaker": "protagonist",
+            "text": "私は何歳も年下の莉央ちゃんに負けたざこおにいさんです"
+          }
+        },
+        {
+          "lineOrder": 112,
+          "nodeId": "small_001_112",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 113,
+          "nodeId": "small_001_113",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 114,
+          "nodeId": "small_001_114",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "はい、言ったよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 115,
+          "nodeId": "small_001_115",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_mischief",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_mischief",
+            "loop": true,
+            "fade_ms": 500,
+            "volume": 0.2
+          }
+        },
+        {
+          "lineOrder": 116,
+          "nodeId": "small_001_116",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "…あはははっ！",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 117,
+          "nodeId": "small_001_117",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "言わせたのそっちでしょ！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 118,
+          "nodeId": "small_001_118",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "声ちょっと恥ずかしそうなのウケる〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 119,
+          "nodeId": "small_001_119",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "もう、これでいいでしょ？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 120,
+          "nodeId": "small_001_120",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 121,
+          "nodeId": "small_001_121",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 122,
+          "nodeId": "small_001_122",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ちゃんと録音したよ♡",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 123,
+          "nodeId": "small_001_123",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 1000
+          }
+        },
+        {
+          "lineOrder": 124,
+          "nodeId": "small_001_124",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "…え、録音してたの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 125,
+          "nodeId": "small_001_125",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃーね〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 126,
+          "nodeId": "small_001_126",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "おい",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 127,
+          "nodeId": "small_001_127",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "call_end",
+          "command": "call_end"
+        },
+        {
+          "lineOrder": 128,
+          "nodeId": "small_001_128",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 129,
+          "nodeId": "small_001_129",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "よし、保存完了♪",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 130,
+          "nodeId": "small_001_130",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "saveKey": "recording_saved",
+          "saveValue": "true",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition"
+        },
+        {
+          "lineOrder": 131,
+          "nodeId": "small_001_131",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "なんで保存するの！？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 132,
+          "nodeId": "small_001_132",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "記念？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 133,
+          "nodeId": "small_001_133",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "何の記念だよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 134,
+          "nodeId": "small_001_134",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おにいさんが莉央ちゃんに負けた記念",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 135,
+          "nodeId": "small_001_135",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "最悪だ…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 136,
+          "nodeId": "small_001_136",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "というかさっきの問題",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 137,
+          "nodeId": "small_001_137",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "どう答えても不正解だったでしょ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 138,
+          "nodeId": "small_001_138",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "そうだよ？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 139,
+          "nodeId": "small_001_139",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "よく気づいたね〜えらいえらい♡",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 140,
+          "nodeId": "small_001_140",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "そこで使うな",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 141,
+          "nodeId": "small_001_141",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "せっかく録音したし",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 142,
+          "nodeId": "small_001_142",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "次からかうときに使お〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 143,
+          "nodeId": "small_001_143",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "saveKey": "ringtone_recording",
+          "saveValue": "true",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition"
+        },
+        {
+          "lineOrder": 144,
+          "nodeId": "small_001_144",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ところで消してもらうことは…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 145,
+          "nodeId": "small_001_145",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "むり",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 146,
+          "nodeId": "small_001_146",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop",
+            "fade_ms": 1000
+          }
+        },
+        {
+          "lineOrder": 147,
+          "nodeId": "small_001_147",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 148,
+          "nodeId": "small_001_148",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "録音は設定画面から削除できます。",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "narration"
+        }
+      ]
+    },
+    {
+      "scenarioId": "small_002",
+      "scenarioType": "small_event",
+      "nodes": [
+        {
+          "lineOrder": 1,
+          "nodeId": "small_002_001",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "notes": "確定原稿: ユーザー提供 small_002（更新1）",
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "scene_change",
+          "commandArgs": {
+            "scene_id": "day6_study_chat",
+            "screen": "chat",
+            "transition": "cut",
+            "label": "テスト勉強"
+          }
+        },
+        {
+          "lineOrder": 2,
+          "nodeId": "small_002_002",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "assetId": "bgm_usually",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "play_bgm",
+          "commandArgs": {
+            "action": "play",
+            "asset_id": "bgm_usually",
+            "loop": true,
+            "fade_ms": 1000,
+            "volume": 0.2
+          }
+        },
+        {
+          "lineOrder": 3,
+          "nodeId": "small_002_003",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ねえ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 4,
+          "nodeId": "small_002_004",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "これわかる？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 5,
+          "nodeId": "small_002_005",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央から数学の問題が送られてきた",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 6,
+          "nodeId": "small_002_006",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ああ、これなら。x＝6かな",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 7,
+          "nodeId": "small_002_007",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "待って",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 8,
+          "nodeId": "small_002_008",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "答えじゃなくて、やり方！",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 9,
+          "nodeId": "small_002_009",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "え",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 10,
+          "nodeId": "small_002_010",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "答えだけ聞いたら意味ないじゃん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 11,
+          "nodeId": "small_002_011",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "意外とちゃんと勉強するんだ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 12,
+          "nodeId": "small_002_012",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "は？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 13,
+          "nodeId": "small_002_013",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "意外とってなに？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 14,
+          "nodeId": "small_002_014",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "いや、いつもサボってそうだから",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 15,
+          "nodeId": "small_002_015",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 16,
+          "nodeId": "small_002_016",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "昨日の録音",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 17,
+          "nodeId": "small_002_017",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "ごめんなさい。莉央さんは真面目だと思います",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 18,
+          "nodeId": "small_002_018",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "よろしい",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 19,
+          "nodeId": "small_002_019",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "真面目なんだから、自分で解けるのでは",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 20,
+          "nodeId": "small_002_020",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "それとこれとは別",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 21,
+          "nodeId": "small_002_021",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "で、どうやるの？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 22,
+          "nodeId": "small_002_022",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "これはね〜",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 23,
+          "nodeId": "small_002_023",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央に問題の解き方を教えた",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 24,
+          "nodeId": "small_002_024",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 25,
+          "nodeId": "small_002_025",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "わかったかも",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 26,
+          "nodeId": "small_002_026",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "じゃあ続きは自分で",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 27,
+          "nodeId": "small_002_027",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "え〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 28,
+          "nodeId": "small_002_028",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "答え聞いたら意味ないんでしょ？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 29,
+          "nodeId": "small_002_029",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うざ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 30,
+          "nodeId": "small_002_030",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "さっき自分で言ってたじゃん",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 31,
+          "nodeId": "small_002_031",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "これってテスト勉強？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 32,
+          "nodeId": "small_002_032",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うん、けっこうやばい",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 33,
+          "nodeId": "small_002_033",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "なにが？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 34,
+          "nodeId": "small_002_034",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "テスト範囲",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 35,
+          "nodeId": "small_002_035",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "今回めっちゃ広いんだけど",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 36,
+          "nodeId": "small_002_036",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "どのくらい？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 37,
+          "nodeId": "small_002_037",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "莉央からテスト範囲が送られてくる",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 38,
+          "nodeId": "small_002_038",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "覚えるの多いし、普通に無理じゃない？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 39,
+          "nodeId": "small_002_039",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "結構あるね",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 40,
+          "nodeId": "small_002_040",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "でしょ？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 41,
+          "nodeId": "small_002_041",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "先生たち、私たちのこと暇だと思ってる",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 42,
+          "nodeId": "small_002_042",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "実際忙しいの？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 43,
+          "nodeId": "small_002_043",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "そうだよ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 44,
+          "nodeId": "small_002_044",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おにいさんをからかったり",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 45,
+          "nodeId": "small_002_045",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おにいさんをあおったりするから",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 46,
+          "nodeId": "small_002_046",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "別に減らしてくれてもいいんですよ？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 47,
+          "nodeId": "small_002_047",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "は？指図すんな",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 48,
+          "nodeId": "small_002_048",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "すみません…",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 49,
+          "nodeId": "small_002_049",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "笑",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 50,
+          "nodeId": "small_002_050",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "問題全部LINEで聞くのだるい〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 51,
+          "nodeId": "small_002_051",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "俺も1問ずつ送られるの大変かも",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 52,
+          "nodeId": "small_002_052",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "そうだ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 53,
+          "nodeId": "small_002_053",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 54,
+          "nodeId": "small_002_054",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うちにきて教えてよ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 55,
+          "nodeId": "small_002_055",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "え",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 56,
+          "nodeId": "small_002_056",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "wait",
+          "commandArgs": {
+            "duration_ms": 600
+          }
+        },
+        {
+          "lineOrder": 57,
+          "nodeId": "small_002_057",
+          "speaker": "narrator",
+          "messageType": "text",
+          "text": "ここからはリリース後のPremiumでご覧いただけます",
+          "speakerName": "地の文",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "narration"
+        },
+        {
+          "lineOrder": 58,
+          "nodeId": "small_002_058",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "うーん",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 59,
+          "nodeId": "small_002_059",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "まあ土曜なら空いてるけど",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 60,
+          "nodeId": "small_002_060",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "おっけ〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 61,
+          "nodeId": "small_002_061",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "ママに聞いてみる",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 62,
+          "nodeId": "small_002_062",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "あ、そういえば",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 63,
+          "nodeId": "small_002_063",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "今日も走ったよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 64,
+          "nodeId": "small_002_064",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "Day 6",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 65,
+          "nodeId": "small_002_065",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "うん",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 66,
+          "nodeId": "small_002_066",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "反応うすくない？",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 67,
+          "nodeId": "small_002_067",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "いま範囲表見てるから",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 68,
+          "nodeId": "small_002_068",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "はいはい",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 69,
+          "nodeId": "small_002_069",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃ、土曜ね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 70,
+          "nodeId": "small_002_070",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あ、勝手にうち来たら通報するからね",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 71,
+          "nodeId": "small_002_071",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "行かないよ！",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 72,
+          "nodeId": "small_002_072",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "あははっ",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 73,
+          "nodeId": "small_002_073",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "じゃ、聞いとく〜",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 74,
+          "nodeId": "small_002_074",
+          "speaker": "system",
+          "messageType": "action",
+          "text": "",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "scene_transition",
+          "command": "stop_bgm",
+          "commandArgs": {
+            "action": "stop",
+            "fade_ms": 1000
+          }
+        }
+      ]
     }
   ],
   "choiceGroups": [
@@ -8288,6 +10883,50 @@
           "conditionKey": "cumulative_days",
           "operator": "gte",
           "threshold": "4"
+        }
+      ]
+    },
+    {
+      "eventId": "event_small_001",
+      "eventType": "small_event",
+      "title": "３問クイズ",
+      "entryScenarioId": "small_001",
+      "priority": 104,
+      "repeatable": false,
+      "cooldownDays": 0,
+      "enabled": true,
+      "notes": "確定原稿: ユーザー提供 small_001（更新1）",
+      "chapterId": "chapter_01",
+      "episodeOrder": 5,
+      "storyCategory": "main",
+      "conditions": [
+        {
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
+          "threshold": "5"
+        }
+      ]
+    },
+    {
+      "eventId": "event_small_002",
+      "eventType": "small_event",
+      "title": "テスト勉強",
+      "entryScenarioId": "small_002",
+      "priority": 105,
+      "repeatable": false,
+      "cooldownDays": 0,
+      "enabled": true,
+      "notes": "確定原稿: ユーザー提供 small_002（更新1）",
+      "chapterId": "chapter_01",
+      "episodeOrder": 6,
+      "storyCategory": "main",
+      "conditions": [
+        {
+          "conditionType": "achievement",
+          "conditionKey": "cumulative_days",
+          "operator": "gte",
+          "threshold": "6"
         }
       ]
     }
