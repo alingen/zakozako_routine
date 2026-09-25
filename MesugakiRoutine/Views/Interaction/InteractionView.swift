@@ -41,6 +41,11 @@ struct InteractionView: View {
             let visualHeight = proxy.size.height + proxy.safeAreaInsets.bottom
             let backgroundHeight = visualHeight + proxy.safeAreaInsets.top
             let artworkDrop = min(48, proxy.size.height * 0.055)
+            // 立ち絵は幅から決めつつ、表示領域の高さでも上限を設ける。SEのように幅が同じで
+            // 背の低い端末では少し小さく描き、顔の位置も高さの割合で決めて吹き出しと被らせない。
+            // (iPhone 13 mini では従来と同じ大きさ・位置になる値)
+            let artworkWidth = min(proxy.size.width * 1.8, proxy.size.height)
+            let artworkTop = proxy.size.height * 0.2435
 
             ZStack(alignment: .top) {
                 AppColor.background
@@ -62,9 +67,8 @@ struct InteractionView: View {
                     Image("rio_interaction_home")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: proxy.size.width * 1.5)
-                        .scaleEffect(1.2, anchor: .top)
-                        .offset(y: 128 + artworkDrop)
+                        .frame(width: artworkWidth)
+                        .offset(y: artworkTop)
                         .frame(
                             width: proxy.size.width,
                             height: visualHeight,
@@ -141,13 +145,20 @@ struct InteractionView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                 }
+                // 立ち絵の上に重ねる操作群なので、極端な文字サイズでは莉央を覆い尽くさないよう上限を設ける。
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                 .frame(width: proxy.size.width, height: proxy.size.height)
 
                 if let loadError = viewModel.loadError {
                     VStack {
-                        Label(loadError, systemImage: "exclamationmark.triangle.fill")
+                        Label {
+                            Text(loadError)
+                                .foregroundStyle(AppColor.text)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(AppColor.warning)
+                        }
                             .font(.caption)
-                            .foregroundStyle(AppColor.warning)
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 14))

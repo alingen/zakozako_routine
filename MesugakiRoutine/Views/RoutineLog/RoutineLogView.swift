@@ -40,7 +40,7 @@ struct RoutineLogView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "flame.fill")
-                    .foregroundStyle(AppColor.warning)
+                    .foregroundStyle(AppColor.accent)
                 Text("継続 \(viewModel.streakDays)日")
                     .font(.headline)
             }

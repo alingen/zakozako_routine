@@ -522,6 +522,38 @@ final class InteractionHomeCardRenderingTests: XCTestCase {
         }
     }
 
+    /// 大きな文字サイズ(上限の accessibility2)でも、狭い幅で横にはみ出さずに描ける。
+    func testDockAndSpeechRenderAtLargeAccessibilityTextSize() throws {
+        for width: CGFloat in [320, 390] {
+            let content = VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Spacer()
+                    InteractionProgressMiniCard(progress: .init(
+                        chapterTitle: "チャプター 01", completedCount: 2, totalCount: 6,
+                        nextStoryText: "次のストーリーを読めます"
+                    ))
+                }
+                InteractionCharacterSpeechBubble(
+                    text: "2日予定あるだけで『今週忙しい』は盛りすぎでしょw", speakerName: "莉央"
+                )
+                dock(unread: true, available: true)
+            }
+            .padding(16)
+            .frame(width: width)
+            .background(AppColor.background)
+            .environment(\.dynamicTypeSize, .accessibility2)
+            .environment(\.colorScheme, .light)
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.uiImage)
+            XCTAssertEqual(image.size.width, width, accuracy: 0.5)
+            let attachment = XCTAttachment(image: image)
+            attachment.name = "Interaction accessibility2 \(Int(width))pt"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+    }
+
     func testDockKeepsTheSameHeightWhenTodayIsReadOrUnavailable() throws {
         let states: [(unread: Bool, available: Bool, resume: Bool)] = [
             (true, true, false), (false, true, true), (false, true, false), (false, false, false),

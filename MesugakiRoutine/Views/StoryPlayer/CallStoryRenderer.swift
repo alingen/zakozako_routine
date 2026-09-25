@@ -184,9 +184,9 @@ struct CallStoryRenderer: View {
         }
     }
 
+    /// 「電話に出る」も「今押すべき操作」なので Primary。緑は状態表示専用のため使わない。
     private var advanceColor: Color {
         switch node.uiVariant {
-        case .incomingCall: return AppColor.success
         case .callEnd: return AppColor.error
         default: return AppColor.primary
         }

@@ -595,7 +595,8 @@ struct StoryPlaybackContainerView: View {
         }
         .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(AppColor.background)
+        // muted の補足文が読めるよう白地にする。
+        .background(AppColor.surface)
     }
 }
 

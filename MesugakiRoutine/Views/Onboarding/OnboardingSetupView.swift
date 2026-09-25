@@ -331,7 +331,7 @@ struct OnboardingSetupView: View {
 
                         Text("\(stateStore.draft.userName.count)/10")
                             .font(.caption.monospacedDigit())
-                            .foregroundStyle(AppColor.muted)
+                            .foregroundStyle(AppColor.text)
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .accessibilityLabel("10文字中\(stateStore.draft.userName.count)文字入力済み")
 
@@ -572,7 +572,7 @@ struct OnboardingSetupView: View {
 
             Text("使いすぎを防ぎたいアプリと、1日の上限時間を選んでください。")
                 .font(.body)
-                .foregroundStyle(AppColor.muted)
+                .foregroundStyle(AppColor.text)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 0) {
@@ -1138,10 +1138,11 @@ struct OnboardingSetupView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    /// 背景色の上に置くので、muted ではなく本文色で読みやすくする。
     private func systemFootnote(_ text: String) -> some View {
         Label(text, systemImage: "info.circle")
             .font(.footnote)
-            .foregroundStyle(AppColor.muted)
+            .foregroundStyle(AppColor.text)
     }
 
     @ViewBuilder

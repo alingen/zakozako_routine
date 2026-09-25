@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct InteractionCharacterSpeechBubble: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let text: String
     var speakerName: String? = nil
 
@@ -18,8 +20,10 @@ struct InteractionCharacterSpeechBubble: View {
             .font(.body.weight(.semibold))
             .foregroundStyle(AppColor.text)
             .multilineTextAlignment(.leading)
-            .lineLimit(3)
+            // 大きな文字サイズでは行数を制限せず、全文を読めるようにする。
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
             .minimumScaleFactor(0.86)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.leading, 20)
             .padding(.trailing, 30)
             .padding(.top, 25)
@@ -201,12 +205,15 @@ struct InteractionDockItem: View {
                         .offset(x: 6, y: -4)
                 }
 
+            // 「スト/ーリー」のような不自然な折り返しを避け、大きな文字サイズでは1行のまま縮める。
             Text(title)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(isEnabled ? AppColor.text : AppColor.muted)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.6)
         }
+        // 隣の項目のラベルとくっつかないよう、左右に余白を取る。
+        .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, minHeight: 68)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
@@ -236,14 +243,18 @@ struct InteractionDockItem: View {
 }
 
 struct InteractionProgressMiniCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let progress: InteractionStoryProgressPresentation
+
+    private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(progress.chapterTitle)
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
+                    .lineLimit(isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
                 Text("\(progress.completedCount) / \(progress.totalCount)")
@@ -274,7 +285,8 @@ struct InteractionProgressMiniCard: View {
                 Text(progress.nextStoryText)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(AppColor.muted)
-                    .lineLimit(2)
+                    .lineLimit(isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
@@ -283,7 +295,8 @@ struct InteractionProgressMiniCard: View {
             }
         }
         .padding(12)
-        .frame(width: 188)
+        // 大きな文字サイズでは幅を広げて、章名と進み具合が切れないようにする。
+        .frame(width: isAccessibilitySize ? 260 : 188)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 17, style: .continuous)
