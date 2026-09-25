@@ -589,7 +589,10 @@ struct HomeView: View {
             index = nextDefeatedTauntIndex % kind.messages.count
             nextDefeatedTauntIndex = (nextDefeatedTauntIndex + 1) % kind.messages.count
         }
-        return BlockedBehaviorTauntRequest(text: kind.messages[index])
+        return BlockedBehaviorTauntRequest(
+            text: kind.messages[index],
+            offersChallenge: kind == .struggling
+        )
     }
 
     // MARK: - 3. みんなのざこ速報

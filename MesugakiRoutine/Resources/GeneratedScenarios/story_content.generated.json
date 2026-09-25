@@ -7849,64 +7849,20 @@
           "messageType": "action",
           "text": "",
           "enabled": true,
-          "notes": "確定原稿: ユーザー提供 small_001（更新1）",
+          "notes": "確定原稿: ユーザー提供 small_001（更新2）",
           "screenMode": "chat",
           "uiVariant": "scene_transition",
           "command": "scene_change",
           "commandArgs": {
-            "scene_id": "small_001_quiz_chat",
+            "scene_id": "day2_quiz_chat",
             "screen": "chat",
-            "transition": "fade",
+            "transition": "cut",
             "label": "3問クイズ"
           }
         },
         {
           "lineOrder": 2,
           "nodeId": "small_001_002",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "走ったよ",
-          "speakerName": "主人公",
-          "enabled": true,
-          "screenMode": "chat",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 3,
-          "nodeId": "small_001_003",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "何分？",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "chat",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 4,
-          "nodeId": "small_001_004",
-          "speaker": "protagonist",
-          "messageType": "text",
-          "text": "15分",
-          "speakerName": "主人公",
-          "enabled": true,
-          "screenMode": "chat",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 5,
-          "nodeId": "small_001_005",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "のびてる",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "chat",
-          "uiVariant": "dialogue"
-        },
-        {
-          "lineOrder": 6,
-          "nodeId": "small_001_006",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -7922,6 +7878,50 @@
             "fade_ms": 1000,
             "volume": 0.2
           }
+        },
+        {
+          "lineOrder": 3,
+          "nodeId": "small_001_003",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "走ったよ",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 4,
+          "nodeId": "small_001_004",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "何分？",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 5,
+          "nodeId": "small_001_005",
+          "speaker": "protagonist",
+          "messageType": "text",
+          "text": "15分",
+          "speakerName": "主人公",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 6,
+          "nodeId": "small_001_006",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "のびてる",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "chat",
+          "uiVariant": "dialogue"
         },
         {
           "lineOrder": 7,
@@ -9150,6 +9150,17 @@
         {
           "lineOrder": 112,
           "nodeId": "small_001_112",
+          "speaker": "rio",
+          "messageType": "text",
+          "text": "…",
+          "speakerName": "莉央",
+          "enabled": true,
+          "screenMode": "call",
+          "uiVariant": "dialogue"
+        },
+        {
+          "lineOrder": 113,
+          "nodeId": "small_001_113",
           "speaker": "system",
           "messageType": "action",
           "text": "",
@@ -9160,17 +9171,6 @@
           "commandArgs": {
             "duration_ms": 600
           }
-        },
-        {
-          "lineOrder": 113,
-          "nodeId": "small_001_113",
-          "speaker": "rio",
-          "messageType": "text",
-          "text": "…",
-          "speakerName": "莉央",
-          "enabled": true,
-          "screenMode": "call",
-          "uiVariant": "dialogue"
         },
         {
           "lineOrder": 114,
@@ -9293,7 +9293,7 @@
           "uiVariant": "scene_transition",
           "command": "wait",
           "commandArgs": {
-            "duration_ms": 1000
+            "duration_ms": 600
           }
         },
         {
@@ -10895,7 +10895,7 @@
       "repeatable": false,
       "cooldownDays": 0,
       "enabled": true,
-      "notes": "確定原稿: ユーザー提供 small_001（更新1）",
+      "notes": "確定原稿: ユーザー提供 small_001（更新2）",
       "chapterId": "chapter_01",
       "episodeOrder": 5,
       "storyCategory": "main",

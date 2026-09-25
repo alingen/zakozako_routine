@@ -509,7 +509,12 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       lineOrder: 1,
       command: 'scene_change',
       screenMode: 'chat',
-      commandArgs: expect.objectContaining({ scene_id: 'small_001_quiz_chat' }),
+      commandArgs: expect.objectContaining({ scene_id: 'day2_quiz_chat', transition: 'cut' }),
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 2)).toMatchObject({
+      command: 'play_bgm',
+      assetId: 'bgm_usually',
+      commandArgs: expect.objectContaining({ loop: true, fade_ms: 1000, volume: 0.2 }),
     });
     expect(smallScenario?.nodes.find((node) => node.lineOrder === 24)).toMatchObject({
       command: 'call_start',
@@ -538,6 +543,16 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       speaker: 'protagonist',
       text: '私は何歳も年下の莉央ちゃんに負けたざこおにいさんです',
       uiVariant: 'audio_message',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 112)).toMatchObject({
+      speaker: 'rio',
+      text: '…',
+      screenMode: 'call',
+      uiVariant: 'dialogue',
+    });
+    expect(smallScenario?.nodes.find((node) => node.lineOrder === 113)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 600 },
     });
     expect(smallScenario?.nodes.find((node) => node.lineOrder === 127)).toMatchObject({
       command: 'call_end',

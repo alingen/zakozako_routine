@@ -42,6 +42,7 @@ struct AppDialogRequest: Identifiable {
 struct BlockedBehaviorTauntRequest: Identifiable {
     let id = UUID()
     let text: String
+    var offersChallenge = false
 }
 
 private enum RootTab: Hashable {
@@ -259,10 +260,19 @@ struct RootTabView: View {
             }
 
             if let blockedBehaviorTaunt {
-                Button(action: dismissBlockedBehaviorTaunt) {
-                    blockedBehaviorTauntOverlay(blockedBehaviorTaunt)
+                Group {
+                    if blockedBehaviorTaunt.offersChallenge {
+                        RioChallengeView(
+                            taunt: blockedBehaviorTaunt.text,
+                            onDismiss: dismissBlockedBehaviorTaunt
+                        )
+                    } else {
+                        Button(action: dismissBlockedBehaviorTaunt) {
+                            blockedBehaviorTauntOverlay(blockedBehaviorTaunt)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
                 .id(blockedBehaviorTaunt.id)
                 .transition(
                     .asymmetric(
