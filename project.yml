@@ -50,6 +50,7 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         CFBundleDisplayName: ざこざこルーティン
+        CFBundleName: ざこざこルーティン
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zakozako.mesugakiroutine

@@ -32010,7 +32010,7 @@
     ],
     "events": [
       [
-        "events — ザコルーティン 会話シナリオCMS"
+        "events — ざこざこルーティン 会話シナリオCMS"
       ],
       [
         "Google Sheetsが正本です。アプリ側の生成JSON / TypeScriptを直接編集しないでください。青い見出しの下へ行を追加します。同一event_idの複数条件はAND。プロローグとDay1〜7の章・話数管理には chapter_id / episode_order / story_category を使用します。"

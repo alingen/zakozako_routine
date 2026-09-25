@@ -63,7 +63,7 @@ final class RoutineNotificationScheduler {
 
             let hasSomeProgress = routine.progressCount(now: fireDate, calendar: calendar) > 0
             let content = UNMutableNotificationContent()
-            content.title = "ざこルーティン"
+            content.title = AppInfo.displayName
             content.body = hasSomeProgress
                 ? "ちょっと〜、\(routine.title)とちゅうで放置とか一番ざこいパターンだよ〜？さっさと終わらせなよ〜♡"
                 : "うわっ、まだ\(routine.title)やってすらいないの？ざっこ〜♡サボり確定じゃん〜"

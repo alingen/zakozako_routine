@@ -2,7 +2,7 @@ import AppIntents
 
 /// アプリインストール時にOSへ自動登録される既定のSiriフレーズ。
 /// これにより、ユーザーがショートカットを作らなくても
-/// 「Hey Siri、ざこルーティンで今日の約束を開く」がそのまま動く。
+/// 「Hey Siri、ざこざこルーティンで今日の約束を開く」がそのまま動く。
 struct MesugakiRoutineShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
