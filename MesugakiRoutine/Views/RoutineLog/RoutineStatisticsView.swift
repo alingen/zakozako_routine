@@ -20,24 +20,17 @@ struct RoutineStatisticsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // やらないことの記録と同じ並び: 見出しカード → 期間送り → 数字 → 内容。
-            VStack(spacing: 16) {
-                routineHeader
-                yearPicker
-            }
-            .padding([.horizontal, .top])
-
-            TabView(selection: $selectedYear) {
-                ForEach(availableYears, id: \.self) { year in
-                    DeferredView {
-                        statisticsPage(for: year)
-                    }
-                        .tag(year)
+        // 見出しカードと年の切り替えも各年のページに入れて一緒にスクロールさせる。
+        // 上に固定すると小さい端末で画面の約1/3を占め、グラフが切れて見えるため。
+        TabView(selection: $selectedYear) {
+            ForEach(availableYears, id: \.self) { year in
+                DeferredView {
+                    statisticsPage(for: year)
                 }
+                    .tag(year)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
         }
+        .tabViewStyle(.page(indexDisplayMode: .never))
         .background(AppColor.background.ignoresSafeArea())
         .navigationTitle("達成状況")
         .navigationBarTitleDisplayMode(.inline)
@@ -74,7 +67,7 @@ struct RoutineStatisticsView: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
     }
 
-    private var yearPicker: some View {
+    private func yearPicker(for year: Int) -> some View {
         HStack {
             Button {
                 moveYear(by: -1)
@@ -82,12 +75,12 @@ struct RoutineStatisticsView: View {
                 Image(systemName: "chevron.left")
                     .frame(width: 44, height: 44)
             }
-            .foregroundStyle(selectedYear == availableYears.first ? AppColor.muted : AppColor.text)
-            .disabled(selectedYear == availableYears.first)
+            .foregroundStyle(year == availableYears.first ? AppColor.muted : AppColor.text)
+            .disabled(year == availableYears.first)
             .accessibilityLabel("前年")
 
             Spacer()
-            Text(verbatim: "\(selectedYear)年")
+            Text(verbatim: "\(year)年")
                 .font(.headline)
                 .foregroundStyle(AppColor.text)
                 .contentTransition(.numericText())
@@ -99,8 +92,8 @@ struct RoutineStatisticsView: View {
                 Image(systemName: "chevron.right")
                     .frame(width: 44, height: 44)
             }
-            .foregroundStyle(selectedYear == availableYears.last ? AppColor.muted : AppColor.text)
-            .disabled(selectedYear == availableYears.last)
+            .foregroundStyle(year == availableYears.last ? AppColor.muted : AppColor.text)
+            .disabled(year == availableYears.last)
             .accessibilityLabel("翌年")
         }
     }
@@ -113,7 +106,10 @@ struct RoutineStatisticsView: View {
         )
 
         return ScrollView {
+            // やらないことの記録と同じ並び: 見出しカード → 期間送り → 数字 → 内容。
             VStack(spacing: 16) {
+                routineHeader
+                yearPicker(for: year)
                 headlineStatistics(statistics)
                 if routine.progressStatisticsArchiveData != nil {
                     Text("設定変更前の実績は、当時の達成ルールで集計しています")

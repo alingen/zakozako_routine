@@ -113,7 +113,9 @@ struct RioChallengeView: View {
                 .accessibilityIdentifier("rioChallengeReroll")
             }
         }
-        .padding(24)
+        // 最後の「別のお題」は高さ44ptの文字ボタンなので、選択肢のダイアログと同じく下を詰めて見た目をそろえる。
+        .padding([.horizontal, .top], 24)
+        .padding(.bottom, 12)
         .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         // カードの余白や文面のタップで、外側の「閉じる」が反応しないようにする。
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))

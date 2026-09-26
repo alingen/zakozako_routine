@@ -98,19 +98,21 @@ struct ZakoNewsDetailView: View {
     @State private var showDelete = false
     @State private var showReport = false
     @State private var detent: PresentationDetent = .medium
-    /// 開いた時点で自分の投稿のひとことが空なら、入力欄を応援より上に置く(保存後も並びは変えない)。
-    @State private var commentFirst = false
+    /// 開いた時点で自分の投稿のひとことが空なら、入力欄に合わせて開く。
+    @State private var focusesCommentOnOpen = false
     @FocusState private var isCommentFocused: Bool
 
     var body: some View {
         NavigationStack {
             // 設定画面のような Form ではなく、一覧と同じ組み方の投稿カード → 応援 → (自分の投稿なら)ひとこと、の順に置く。
+            // 応援は投稿への反応なので、入力欄をはさまず投稿カードのすぐ下に置く。
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    postCard
-                    if post.isMine && commentFirst { commentCard }
-                    reactionButtons
-                    if post.isMine && !commentFirst { commentCard }
+                    VStack(alignment: .leading, spacing: 8) {
+                        postCard
+                        reactionButtons
+                    }
+                    if post.isMine { commentCard }
                     if let errorMessage {
                         Text(errorMessage).font(.footnote).foregroundStyle(AppColor.error)
                     }
@@ -126,11 +128,11 @@ struct ZakoNewsDetailView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("閉じる") { dismiss() }.disabled(working) } }
             .onAppear {
                 comment = post.comment
-                commentFirst = post.isMine && post.comment.isEmpty
+                focusesCommentOnOpen = post.isMine && post.comment.isEmpty
             }
             .task {
                 // ひとことを書きに来た人のために、シートが開ききってから入力欄に合わせる。
-                guard commentFirst else { return }
+                guard focusesCommentOnOpen else { return }
                 try? await Task.sleep(for: .milliseconds(450))
                 isCommentFocused = true
             }

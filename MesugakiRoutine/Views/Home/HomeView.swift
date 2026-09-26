@@ -570,7 +570,8 @@ struct HomeView: View {
                     guard viewModel.recordPromiseUrge(behavior) else { return .dismiss }
                     return .showTaunt(nextTaunt(for: .struggling))
                 },
-                AppDialogAction("負けました", style: .destructive) {
+                // 次に確認画面があるので、ここでは塗らない。Error の塗りは確認画面の「負けました…」だけ。
+                AppDialogAction("負けました", style: .caution) {
                     .replace(failureConfirmation(for: behavior))
                 },
                 AppDialogAction("閉じる", style: .cancel) {

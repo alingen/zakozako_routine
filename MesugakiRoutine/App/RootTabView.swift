@@ -4,6 +4,8 @@ import SwiftData
 enum AppDialogActionStyle: Equatable {
     case standard
     case destructive
+    /// 次に確認画面が続く、失敗や取り消しにつながる操作。塗らずに白地＋枠線、文字だけ Error にする。
+    case caution
     /// 何もせず閉じる操作。ボタン群の下に文字だけで置く。
     case cancel
 }
@@ -979,10 +981,13 @@ struct RootTabView: View {
                     }
                 }
             }
-            .padding(24)
+            // 最後が文字だけの「閉じる」(高さ44pt)のときは、見た目の上下の余白がそろうよう下を詰める。
+            .padding([.horizontal, .top], 24)
+            .padding(.bottom, request.actions.last?.style == .cancel ? 12 : 24)
             .frame(maxWidth: 420)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .padding(.horizontal, 32)
+            // お題カードと同じ形(角丸20・横余白20)にそろえる。
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal, 20)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityAction(.escape) {
@@ -994,6 +999,7 @@ struct RootTabView: View {
     }
 
     /// 取り消し以外の操作ボタン。破壊的な操作は塗り、通常の操作は白地＋枠線で区別する。
+    /// 確認画面が後に続く操作(caution)は、通常と同じ強さのまま文字だけ Error にする。
     @ViewBuilder
     private func dialogButtons(for request: AppDialogRequest) -> some View {
         ForEach(request.actions.filter { $0.style != .cancel }) { action in
@@ -1003,7 +1009,7 @@ struct RootTabView: View {
             } label: {
                 Text(action.title)
                     .font(.headline)
-                    .foregroundStyle(isDestructive ? Color.white : AppColor.text)
+                    .foregroundStyle(isDestructive ? Color.white : action.style == .caution ? AppColor.error : AppColor.text)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(isDestructive ? AppColor.error : AppColor.surface, in: Capsule())
