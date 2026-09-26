@@ -58,8 +58,14 @@ final class HomeViewModel {
     /// Home上部で莉央が話している一言。
     private(set) var rioComment: InteractionComment?
     private(set) var prohibitionReactionText: String?
-    /// `rioComment` を選んだときの状態。状態が変わったら選び直す。
-    private var rioCommentMood: RioHomeMood?
+    /// 条件・日付・時間帯が同じ再読み込みでは、表示中のコメントを維持する。
+    private struct RioCommentState: Equatable {
+        let day: Date
+        let hour: Int
+        let matchingKeys: [String]
+        let profileValues: [String: String]
+    }
+    private var rioCommentState: RioCommentState?
 
     /// 今日の記録から決まる莉央の状態。負けた日は達成より優先してからかう。
     var rioMood: RioHomeMood {
@@ -120,27 +126,56 @@ final class HomeViewModel {
         }
         currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
         masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
-        // 再読み込みのたびに入れ替えるとせわしないので、状態が変わったときだけ選び直す。
-        if rioComment == nil || rioCommentMood != rioMood {
-            selectNextRioComment()
-        }
+        updateRioComment(trigger: .homeUpdated)
         rescheduleNotifications()
     }
 
     // MARK: - 莉央
 
-    /// 今の状態に合う一言へ切り替える。状態専用の行がシートに無ければ、交流タブと同じ一言を使う。
+    /// 交流と同じ条件判定・抽選・表示済み管理で、今の状態に合う一言へ切り替える。
     func selectNextRioComment() {
-        let mood = rioMood
-        rioComment = interactionComment(touchArea: mood.commentTouchArea, excluding: rioComment?.id)
-            ?? interactionComment(touchArea: "character", excluding: rioComment?.id)
-        rioCommentMood = mood
+        let now = Date.now
+        _ = try? dependencies?.userActionEventRepository.record(.characterTapped, occurredAt: now)
+        updateRioComment(trigger: .characterTapped, now: now)
     }
 
-    /// 達成時の反応。シートに専用の行があればそれを、無ければ既定の一言を使う。
+    private func updateRioComment(trigger: ReactionTrigger, now: Date = .now) {
+        guard let dependencies, let content = dependencies.storyContentRepository,
+              let context = try? dependencies.reactionContextProvider.current(now: now) else { return }
+        let profileValues = (try? dependencies.storyStateRepository.profileValues()) ?? [:]
+        let state = RioCommentState(
+            day: AppDay.startOfDay(for: now),
+            hour: Calendar.current.component(.hour, from: now),
+            matchingKeys: ReactionConditionEvaluator.matches(
+                conditions: content.reactionConditions, context: context,
+                trigger: .homeUpdated, now: now
+            ).map(\.consumptionKey).sorted(),
+            profileValues: profileValues
+        )
+        guard trigger == .characterTapped || rioComment == nil || rioCommentState != state else { return }
+        rioComment = dependencies.interactionReactionService.select(
+            conditions: content.reactionConditions, lines: content.reactionLines,
+            interactions: content.interactions, context: context, trigger: trigger,
+            profileValues: profileValues, now: now
+        )
+        rioCommentState = state
+    }
+
+    /// 全達成時は reaction_lines の「すべて達成」を優先する。
     func makeRioReaction(_ kind: RioReactionKind) -> RioReaction {
-        let text = interactionComment(touchArea: kind.commentTouchArea, excluding: nil)?.text
-            ?? kind.fallbackMessages.randomElement()
+        let reactionComment: InteractionComment?
+        if kind == .allRoutinesCompleted,
+           let dependencies, let content = dependencies.storyContentRepository,
+           let context = try? dependencies.reactionContextProvider.current() {
+            reactionComment = dependencies.interactionReactionService.selectAllCompletedReaction(
+                conditions: content.reactionConditions, lines: content.reactionLines, context: context
+            )
+        } else {
+            reactionComment = nil
+        }
+        let text = reactionComment?.displayText
+            ?? interactionComment(touchArea: kind.commentTouchArea, excluding: nil)?.displayText
+            ?? RioCopy.random(group: kind.fallbackGroup)
             ?? ""
         return RioReaction(kind: kind, text: text)
     }

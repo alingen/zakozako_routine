@@ -391,6 +391,7 @@ struct StoryContentBundle: Codable, Hashable {
     let interactions: [InteractionComment]
     let reactionConditions: [ReactionCondition]
     let reactionLines: [ReactionLine]
+    let rioLines: [RioLine]
     let events: [StoryEvent]
 
     init(
@@ -399,6 +400,7 @@ struct StoryContentBundle: Codable, Hashable {
         interactions: [InteractionComment] = [],
         reactionConditions: [ReactionCondition] = [],
         reactionLines: [ReactionLine] = [],
+        rioLines: [RioLine] = [],
         events: [StoryEvent]
     ) {
         self.scenarios = scenarios
@@ -406,6 +408,7 @@ struct StoryContentBundle: Codable, Hashable {
         self.interactions = interactions
         self.reactionConditions = reactionConditions
         self.reactionLines = reactionLines
+        self.rioLines = rioLines
         self.events = events
     }
 
@@ -416,6 +419,7 @@ struct StoryContentBundle: Codable, Hashable {
         interactions = try values.decode([InteractionComment].self, forKey: .interactions)
         reactionConditions = try values.decodeIfPresent([ReactionCondition].self, forKey: .reactionConditions) ?? []
         reactionLines = try values.decodeIfPresent([ReactionLine].self, forKey: .reactionLines) ?? []
+        rioLines = try values.decodeIfPresent([RioLine].self, forKey: .rioLines) ?? []
         events = try values.decode([StoryEvent].self, forKey: .events)
     }
 }

@@ -9,6 +9,7 @@ import {
   SCENARIO_COLUMNS,
   REACTION_CONDITION_COLUMNS,
   REACTION_LINE_COLUMNS,
+  RIO_LINE_COLUMNS,
 } from '../src/schema.js';
 import type { RawSheets } from '../src/types.js';
 
@@ -22,6 +23,7 @@ export function sheets(options: {
   interactions?: Values[];
   reactionConditions?: Values[];
   reactionLines?: Values[];
+  rioLines?: Values[];
   events?: Values[];
   titleRows?: number;
 }): RawSheets {
@@ -45,6 +47,10 @@ export function sheets(options: {
     },
   );
   return {
+    rioLines: gridToRows(
+      grid(RIO_LINE_COLUMNS, options.rioLines ?? [], options.titleRows ?? 0),
+      'line_id',
+    ),
     daily: gridToRows(grid(DAILY_COLUMNS, dailyRows, options.titleRows ?? 0), 'scenario_id'),
     dailyCatalog: gridToRows(
       grid(DAILY_CATALOG_COLUMNS, options.catalogs ?? defaultCatalogs, options.titleRows ?? 0),

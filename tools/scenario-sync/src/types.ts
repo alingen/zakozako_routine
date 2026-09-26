@@ -20,6 +20,7 @@ export interface RawSheets {
   interactions: RawRow[];
   reactionConditions: RawRow[];
   reactionLines: RawRow[];
+  rioLines: RawRow[];
   /** Event scenario lines from the intentionally named `senarios` tab. */
   scenarios: RawRow[];
   events: RawRow[];
@@ -37,6 +38,7 @@ export interface SheetSnapshot {
     interactions: string[][];
     reaction_conditions: string[][];
     reaction_lines: string[][];
+    rio_lines: string[][];
     senarios: string[][];
     events: string[][];
   };
@@ -173,6 +175,16 @@ export interface ReactionLine {
 export type NormalizedReactionCondition = ReactionCondition & { __row: number };
 export type NormalizedReactionLine = ReactionLine & { __row: number };
 
+export interface RioLine {
+  lineId: string;
+  groupId: string;
+  text: string;
+  weight: number;
+  active: boolean;
+  note?: string;
+}
+export type NormalizedRioLine = RioLine & { __row: number };
+
 export interface NormalizedSheets {
   daily: NormalizedScenarioRow[];
   dailyCatalog: NormalizedDailyCatalogRow[];
@@ -181,6 +193,7 @@ export interface NormalizedSheets {
   interactions: NormalizedInteractionRow[];
   reactionConditions: NormalizedReactionCondition[];
   reactionLines: NormalizedReactionLine[];
+  rioLines: NormalizedRioLine[];
   scenarios: NormalizedScenarioRow[];
   events: NormalizedEventRow[];
 }
@@ -267,5 +280,6 @@ export interface StoryContentBundle {
   interactions: InteractionComment[];
   reactionConditions: ReactionCondition[];
   reactionLines: ReactionLine[];
+  rioLines: RioLine[];
   events: StoryEvent[];
 }

@@ -48,6 +48,9 @@ export function generate(data: NormalizedSheets): StoryContentBundle {
       .sort((a, b) => compareText(a.lineId, b.lineId))
       .map(({ __row, ...line }) => line),
     events: generateEvents(data.events),
+    rioLines: [...data.rioLines]
+      .sort((a, b) => compareText(a.lineId, b.lineId))
+      .map(({ __row, ...line }) => line),
   };
 }
 

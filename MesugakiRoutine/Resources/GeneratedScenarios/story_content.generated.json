@@ -10459,22 +10459,274 @@
   ],
   "interactions": [
     {
+      "id": "interaction_new_009",
+      "text": "集合写真、毎回端にいるの似合うねw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_011",
+      "text": "人に道聞かれただけでちょっと嬉しそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_013",
+      "text": "友達の友達が一人混ざるだけで急に静かになりそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_020",
+      "text": "SNS開いて閉じて、またすぐ開くの何確認してるの？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_024",
+      "text": "保護フィルムだけずっとボロボロそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_036",
+      "text": "「確認します」って言えば一回逃げられるもんねw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_042",
+      "text": "「あとでやる」だけは毎日続いてるね♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_045",
+      "text": "作業BGM選ぶ時間が作業より長い日あるでしょw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_046",
+      "text": "チュートリアル飛ばして後から操作わかんないって言うのなしねw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_047",
+      "text": "ボスに負けた時だけ「このゲームバランス悪い」って言うでしょw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_051",
+      "text": "同窓会って、行かないんじゃなくて呼ばれてない？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_052",
+      "text": "休みの日、最初に声出すの夕方だったりする？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_054",
+      "text": "ネットだと文章ちょっと強気だねw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_058",
+      "text": "誕生日、企業アカウントの通知が一番早そうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_059",
+      "text": "『狭く深く付き合うタイプ』って便利な言葉だね♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_060",
+      "text": "その服また見た♡ちゃんと洗ってる？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_061",
+      "text": "黒い服着とけば失敗しないと思ってる？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_062",
+      "text": "髪切った？あ、寝ぐせかw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_063",
+      "text": "新品の服着てる日だけ動きちょっと丁寧そうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_064",
+      "text": "靴だけ妙にきれいだね。あんまり外出ないから？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_067",
+      "text": "ちゃんとしてそう♡近くで見なければw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_068",
+      "text": "悪い人ではないんだよね。そこ止まりだけど♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_069",
+      "text": "なんか安心する♡競争相手じゃなさそうでw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_071",
+      "text": "何回会っても「普通の人」から更新されなそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_074",
+      "text": "今日も無害そうでえらいえらい♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_075",
+      "text": "秘密とかあるの？聞いても面白くなさそうだけどw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_078",
+      "text": "女の子に名前呼ばれただけで今日ちょっと機嫌いいでしょw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_080",
+      "text": "脈あり判定、ずいぶん甘めなんだね♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_082",
+      "text": "『彼女とかいるんですか？』って聞かれる準備だけはできてそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_084",
+      "text": "女の子に笑われたら、ウケたのか笑われたのか確認しそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_085",
+      "text": "女の子に『おもしろい』って言われた回、まだ覚えてそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_086",
+      "text": "二次元でも主人公にはなれなそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_089",
+      "text": "負けたあと相手のプロフィール見に行くタイプ？w",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_090",
+      "text": "ガチャ当たった時だけ『日頃の行い』とか言いそうw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_091",
+      "text": "推しが人気出たら「前から知ってた」って言いたそうだねw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_092",
+      "text": "魔王には話しかけるのに店員さんは呼べないんだw",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_099",
+      "text": "今日もなんかキモい♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
+      "id": "interaction_new_100",
+      "text": "夢に出てきたんだけど。勝手に入ってこないでね♡",
+      "touchArea": "character",
+      "weight": 1,
+      "active": true
+    },
+    {
       "id": "touch_default_001",
       "text": "がんばってね、ざこざこおにいさん♡",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_002",
-      "text": "また負けちゃったんだ、ざ〜こ♡",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_003",
-      "text": "今回は何日もつかな〜？",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -10487,50 +10739,22 @@
       "active": true
     },
     {
-      "id": "touch_default_005",
-      "text": "予定一個あるだけで、一日予定ある判定してそうw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_006",
-      "text": "2日予定あるだけで『今週忙しい』は盛りすぎでしょw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
       "id": "touch_default_007",
-      "text": "おにいさんって、予定ないのに忙しいって言いそうw",
+      "text": "予定ないのに「最近忙しくて」って言ってそうw",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_008",
-      "text": "コンビニ行っただけで外出した気になってない？",
+      "text": "コンビニ行っただけで今日は外出した扱い？w",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_009",
-      "text": "休日に予定なくても別に気にしてなさそうなのが一番キモいw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_010",
-      "text": "二度寝してから『あと5分だけだったのに』って言うのやめな〜w",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_011",
-      "text": "履歴書の趣味欄って何書いてる？あっ書くことないかw",
+      "text": "休日ずっと家でもノーダメなの、もう才能でしょw",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -10550,13 +10774,6 @@
       "active": true
     },
     {
-      "id": "touch_default_014",
-      "text": "スマホケース、透明のやつ黄ばんでるから変えたらw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
       "id": "touch_default_015",
       "text": "SNSにラーメンの画像ばっかり載せるのやめなよw",
       "touchArea": "character",
@@ -10571,36 +10788,8 @@
       "active": true
     },
     {
-      "id": "touch_default_017",
-      "text": "送料無料まであと500円だからって30分悩んでるのダサくない？",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_018",
-      "text": "星4.3と星4.2の違いで本気で悩めるの才能だよw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
       "id": "touch_default_019",
       "text": "店員さんに声小さいから聞き返されてんのウケる〜w",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_020",
-      "text": "袋いりますか？で毎回0.5秒考えるの何？w",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_021",
-      "text": "『メール確認』とかTODOに入れて数稼いでそうw",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -10621,21 +10810,14 @@
     },
     {
       "id": "touch_default_024",
-      "text": "予定ないのに一回カレンダー確認するの何？w",
+      "text": "予定ないのにカレンダー開いて何確認してるの？w",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_025",
-      "text": "『その日はたぶん大丈夫』って言うけど普通に何もないのバレバレ〜w",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_026",
-      "text": "カメラOFFだと姿勢終わってるのバレバレ〜w",
+      "text": "『その日はたぶん大丈夫』って言うけど普通に何もないのバレバレだよ♡",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -10649,28 +10831,21 @@
     },
     {
       "id": "touch_default_028",
-      "text": "一回積みゲー終わってから新作チェックしたら？w",
+      "text": "積みゲーあるのに新作だけはちゃんとチェックするんだw",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_029",
-      "text": "休むの下手なくせに頑張るのも下手なの大変だねw",
+      "text": "休むのも頑張るのも下手なの器用だねw",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_030",
-      "text": "夜中に意識高い動画見て翌朝普通に寝坊するのダサすぎw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_031",
-      "text": "褒められ慣れてなさすぎてキモ〜w",
+      "text": "夜中だけ意識高くなって、朝は寝坊するんだw",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -10698,21 +10873,21 @@
     },
     {
       "id": "touch_default_035",
-      "text": "絵文字使うか使わないか気にしてる時点で歳だよ♡",
+      "text": "絵文字ひとつ送る前に「これおじさんっぽい？」って考えてそうw",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_036",
-      "text": "文章の最後に『笑』付けるかどうかで一生悩んでるのウケるw",
+      "text": "文末の「笑」、付けるか毎回迷ってそうw",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_037",
-      "text": "『普通にいい人』って言われて効きすぎ〜w",
+      "text": "「普通にいい人」って言われた日のこと、まだ覚えてそうw",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -10720,27 +10895,6 @@
     {
       "id": "touch_default_038",
       "text": "別にダサくないよ？ただ、かっこよくもないだけ♡",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_039",
-      "text": "おにいさん存在感薄いのに反応だけは大きいよねw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_040",
-      "text": "おにいさんのWikipedia、『人物』の欄2行で終わりそうw",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_041",
-      "text": "おにいさんの人生、映画化しても予告編作れなそうw",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -10754,21 +10908,14 @@
     },
     {
       "id": "touch_default_043",
-      "text": "なんかこう…全部ちょっとずつ惜しいよね",
+      "text": "なんかこう…全部ちょっとずつ惜しいよねw",
       "touchArea": "character",
       "weight": 1,
       "active": true
     },
     {
       "id": "touch_default_044",
-      "text": "休日何してるんですか？が一番困る質問そう",
-      "touchArea": "character",
-      "weight": 1,
-      "active": true
-    },
-    {
-      "id": "touch_default_045",
-      "text": "人生に季節感なさそうw",
+      "text": "お休みの日なにしてるの？あっ一番困る質問か〜w",
       "touchArea": "character",
       "weight": 1,
       "active": true
@@ -12772,7 +12919,7 @@
     {
       "lineId": "rx_bulk_routine_completed_just_now_004",
       "conditionId": "routine_completed_just_now",
-      "text": "褒めてほしいなら先にそう言えば？w",
+      "text": "褒めてほしいなら先にそう言えば〜？w",
       "weight": 1,
       "active": true,
       "strength": "normal",
@@ -14374,6 +14521,600 @@
           "threshold": "6"
         }
       ]
+    }
+  ],
+  "rioLines": [
+    {
+      "lineId": "blocked_defeated_001",
+      "groupId": "blocked_defeated",
+      "text": "ほんとに負けてきたの？w",
+      "weight": 1,
+      "active": true,
+      "note": "負けました・reaction_linesに候補がない場合。ID順で循環"
+    },
+    {
+      "lineId": "blocked_defeated_002",
+      "groupId": "blocked_defeated",
+      "text": "わざわざ敗北報告しに来たんだ♡",
+      "weight": 1,
+      "active": true,
+      "note": "負けました・予備"
+    },
+    {
+      "lineId": "blocked_defeated_003",
+      "groupId": "blocked_defeated",
+      "text": "うわ、大人なのに我慢できなかったんだ〜",
+      "weight": 1,
+      "active": true,
+      "note": "負けました・予備"
+    },
+    {
+      "lineId": "blocked_struggling_001",
+      "groupId": "blocked_struggling",
+      "text": "よわよわメンタル出てきたね♡",
+      "weight": 1,
+      "active": true,
+      "note": "負けそう・reaction_linesに候補がない場合。ID順で循環"
+    },
+    {
+      "lineId": "blocked_struggling_002",
+      "groupId": "blocked_struggling",
+      "text": "負けそうだから莉央ちゃんに助け求めにきたんだw",
+      "weight": 1,
+      "active": true,
+      "note": "負けそう・予備"
+    },
+    {
+      "lineId": "blocked_struggling_003",
+      "groupId": "blocked_struggling",
+      "text": "はいはい、見ててあげるから我慢して〜",
+      "weight": 1,
+      "active": true,
+      "note": "負けそう・予備"
+    },
+    {
+      "lineId": "challenge_intro_001",
+      "groupId": "challenge_intro",
+      "text": "じゃあこれやってきて〜",
+      "weight": 1,
+      "active": true,
+      "note": "莉央のお題の導入"
+    },
+    {
+      "lineId": "exercise_001",
+      "groupId": "challenge_exercise",
+      "text": "スクワットを10回する",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "exercise_002",
+      "groupId": "challenge_exercise",
+      "text": "肩を10回ぐるぐる回す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "exercise_003",
+      "groupId": "challenge_exercise",
+      "text": "その場で軽く10回ジャンプする",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "exercise_004",
+      "groupId": "challenge_exercise",
+      "text": "1分だけストレッチする",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "exercise_005",
+      "groupId": "challenge_exercise",
+      "text": "部屋を1周して戻ってくる",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "home_all_completed_001",
+      "groupId": "home_all_completed",
+      "text": "え、今日の約束ぜんぶ終わったの？…ふーん、やるじゃん♡",
+      "weight": 1,
+      "active": true,
+      "note": "全達成ポップアップ・reaction_linesと従来interactionsに候補がない場合"
+    },
+    {
+      "lineId": "home_all_completed_002",
+      "groupId": "home_all_completed",
+      "text": "ぜんぶできたんだ？今日だけはざこって言わないであげる♡",
+      "weight": 1,
+      "active": true,
+      "note": "全達成ポップアップ・予備"
+    },
+    {
+      "lineId": "home_all_completed_003",
+      "groupId": "home_all_completed",
+      "text": "今日のおにいさん、ちょっとだけかっこいいかもw",
+      "weight": 1,
+      "active": true,
+      "note": "全達成ポップアップ・予備"
+    },
+    {
+      "lineId": "home_routine_completed_001",
+      "groupId": "home_routine_completed",
+      "text": "へぇ〜、ちゃんとやったんだ？ざこのくせに♡",
+      "weight": 1,
+      "active": true,
+      "note": "1つ達成ポップアップ・従来interactionsの候補がない場合"
+    },
+    {
+      "lineId": "home_routine_completed_002",
+      "groupId": "home_routine_completed",
+      "text": "はいはい、えらいえらい♡",
+      "weight": 1,
+      "active": true,
+      "note": "1つ達成ポップアップ・予備"
+    },
+    {
+      "lineId": "home_routine_completed_003",
+      "groupId": "home_routine_completed",
+      "text": "おにいさんにしてはやるじゃん♡",
+      "weight": 1,
+      "active": true,
+      "note": "1つ達成ポップアップ・予備"
+    },
+    {
+      "lineId": "home_timer_finished_001",
+      "groupId": "home_timer_finished",
+      "text": "え、最後までやったの？ざこのくせに粘るじゃん♡",
+      "weight": 1,
+      "active": true,
+      "note": "タイマー完了・従来interactionsの候補がない場合"
+    },
+    {
+      "lineId": "home_timer_finished_002",
+      "groupId": "home_timer_finished",
+      "text": "はい1回ぶんね〜。まだ終わりじゃないよ？w",
+      "weight": 1,
+      "active": true,
+      "note": "タイマー完了・予備"
+    },
+    {
+      "lineId": "home_timer_finished_003",
+      "groupId": "home_timer_finished",
+      "text": "途中でやめると思ってたのに、つまんな〜い♡",
+      "weight": 1,
+      "active": true,
+      "note": "タイマー完了・予備"
+    },
+    {
+      "lineId": "memory_001",
+      "groupId": "challenge_memory",
+      "text": "昨日のハイライトを3つ思い浮かべる",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "memory_002",
+      "groupId": "challenge_memory",
+      "text": "最近ちょっと笑ったことを1つ思い出す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "memory_003",
+      "groupId": "challenge_memory",
+      "text": "最近食べておいしかったものを3つ思い出す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "memory_004",
+      "groupId": "challenge_memory",
+      "text": "今週やってよかったことを1つ考える",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "memory_005",
+      "groupId": "challenge_memory",
+      "text": "子どもの頃好きだったものを3つ思い出す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "music_001",
+      "groupId": "challenge_music",
+      "text": "好きな曲を1曲流しながら踊る",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "music_002",
+      "groupId": "challenge_music",
+      "text": "好きな曲を1曲だけ聴く",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "music_003",
+      "groupId": "challenge_music",
+      "text": "今日のテーマソングを1曲決める",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "music_004",
+      "groupId": "challenge_music",
+      "text": "好きな曲のサビだけ口ずさむ",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "notification_in_progress_001",
+      "groupId": "notification_in_progress",
+      "text": "ちょっと〜、{routine_title}とちゅうで放置とか一番ざこいパターンだよ〜？さっさと終わらせなよ〜♡",
+      "weight": 1,
+      "active": true,
+      "note": "未完了通知・途中。{routine_title}を約束名に置換"
+    },
+    {
+      "lineId": "notification_not_started_001",
+      "groupId": "notification_not_started",
+      "text": "うわっ、まだ{routine_title}やってすらいないの？ざっこ〜♡サボり確定じゃん〜",
+      "weight": 1,
+      "active": true,
+      "note": "未完了通知・未着手。{routine_title}を約束名に置換"
+    },
+    {
+      "lineId": "observation_001",
+      "groupId": "challenge_observation",
+      "text": "今見える青いものを3つ探す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "observation_002",
+      "groupId": "challenge_observation",
+      "text": "聞こえる音を3種類探す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "observation_003",
+      "groupId": "challenge_observation",
+      "text": "一番近くにある丸いものを探す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "observation_004",
+      "groupId": "challenge_observation",
+      "text": "部屋の中から「これいつ買った？」と思う物を1つ探す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "observation_005",
+      "groupId": "challenge_observation",
+      "text": "今いる場所で一番どうでもいい物を探す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "onboarding_blocked_001",
+      "groupId": "onboarding_blocked",
+      "text": "せっかくやること決めたのにスマホとかに負けてそ〜w",
+      "weight": 1,
+      "active": true,
+      "note": "やめること選択・最初"
+    },
+    {
+      "lineId": "onboarding_blocked_002",
+      "groupId": "onboarding_blocked",
+      "text": "まずはそのざこざこ習慣やめることから考えようね？",
+      "weight": 1,
+      "active": true,
+      "note": "やめること選択・2つ目"
+    },
+    {
+      "lineId": "onboarding_blocked_after_001",
+      "groupId": "onboarding_blocked_after",
+      "text": "負けそうになったらちゃんと教えてね？",
+      "weight": 1,
+      "active": true,
+      "note": "やめること選択後・最初"
+    },
+    {
+      "lineId": "onboarding_blocked_after_002",
+      "groupId": "onboarding_blocked_after",
+      "text": "おにいさんのなさけない顔見にいくから♡",
+      "weight": 1,
+      "active": true,
+      "note": "やめること選択後・2つ目"
+    },
+    {
+      "lineId": "onboarding_completed_001",
+      "groupId": "onboarding_completed",
+      "text": "ざこなのに頑張ったね♡",
+      "weight": 1,
+      "active": true,
+      "note": "最初の約束達成"
+    },
+    {
+      "lineId": "onboarding_confirm_001",
+      "groupId": "onboarding_confirm",
+      "text": "じゃあできたら教えてね〜",
+      "weight": 1,
+      "active": true,
+      "note": "確認画面・最初"
+    },
+    {
+      "lineId": "onboarding_confirm_002",
+      "groupId": "onboarding_confirm",
+      "text": "どこまでできるか楽しみ〜w",
+      "weight": 1,
+      "active": true,
+      "note": "確認画面・2つ目"
+    },
+    {
+      "lineId": "onboarding_cue_001",
+      "groupId": "onboarding_cue",
+      "text": "適当に『{routine_title}』だけ決めてもどうせやらないでしょ〜w",
+      "weight": 1,
+      "active": true,
+      "note": "きっかけ設定。{routine_title}を約束名に置換"
+    },
+    {
+      "lineId": "onboarding_goal_001",
+      "groupId": "onboarding_goal",
+      "text": "張り切って入れたのに明日すぐサボってそ〜w",
+      "weight": 1,
+      "active": true,
+      "note": "目標設定"
+    },
+    {
+      "lineId": "onboarding_habit_001",
+      "groupId": "onboarding_habit",
+      "text": "まずは１つだけでいいよ〜",
+      "weight": 1,
+      "active": true,
+      "note": "習慣選択・最初"
+    },
+    {
+      "lineId": "onboarding_habit_002",
+      "groupId": "onboarding_habit",
+      "text": "おにいさんのよわよわメンタルじゃ何個も続かないでしょw",
+      "weight": 1,
+      "active": true,
+      "note": "習慣選択・2つ目"
+    },
+    {
+      "lineId": "onboarding_illustration_001",
+      "groupId": "onboarding_illustration",
+      "text": "えらいえらい♡",
+      "weight": 1,
+      "active": true,
+      "note": "初回案内の説明イラスト内"
+    },
+    {
+      "lineId": "onboarding_intro_001",
+      "groupId": "onboarding_intro",
+      "text": "お、ざこのおにいさん発見〜",
+      "weight": 1,
+      "active": true,
+      "note": "初回案内・最初の声かけ"
+    },
+    {
+      "lineId": "onboarding_intro_002",
+      "groupId": "onboarding_intro",
+      "text": "もしかして習慣化アプリ入れただけで満足してないよね？",
+      "weight": 1,
+      "active": true,
+      "note": "初回案内・2つ目の声かけ"
+    },
+    {
+      "lineId": "onboarding_report_001",
+      "groupId": "onboarding_report",
+      "text": "できたら報告してね〜",
+      "weight": 1,
+      "active": true,
+      "note": "プロローグ後・2つ目"
+    },
+    {
+      "lineId": "onboarding_today_001",
+      "groupId": "onboarding_today",
+      "text": "今日は「{routine_title}」だよ",
+      "weight": 1,
+      "active": true,
+      "note": "プロローグ後。{routine_title}を約束名に置換"
+    },
+    {
+      "lineId": "onboarding_tomorrow_001",
+      "groupId": "onboarding_tomorrow",
+      "text": "さすがに2日くらいはできるよね〜？w",
+      "weight": 1,
+      "active": true,
+      "note": "通知選択後"
+    },
+    {
+      "lineId": "silly_001",
+      "groupId": "challenge_silly",
+      "text": "冷蔵庫を開けずに、中にあるものを5個思い出す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_002",
+      "groupId": "challenge_silly",
+      "text": "5秒以内に動物を7種類言う",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_003",
+      "groupId": "challenge_silly",
+      "text": "利き手じゃない方で自分の名前を書いてみる",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_004",
+      "groupId": "challenge_silly",
+      "text": "10秒だけ変なポーズをする",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_005",
+      "groupId": "challenge_silly",
+      "text": "絶対売れなさそうなアイスの新商品を考える",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_006",
+      "groupId": "challenge_silly",
+      "text": "目の前にある物に勝手に商品名をつける",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_007",
+      "groupId": "challenge_silly",
+      "text": "コンビニの商品を3つだけ無人島に持っていくなら何にするか考える",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_008",
+      "groupId": "challenge_silly",
+      "text": "100万円もらったら最初に何を買うか考える",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_009",
+      "groupId": "challenge_silly",
+      "text": "今から瞬間移動できるならどこに行くか考える",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "silly_010",
+      "groupId": "challenge_silly",
+      "text": "今日一番どうでもよかった出来事を思い出す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "small_task_001",
+      "groupId": "challenge_small_task",
+      "text": "ゴミを1個だけ捨てる",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "small_task_002",
+      "groupId": "challenge_small_task",
+      "text": "机の上の物を3個だけ片付ける",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "small_task_003",
+      "groupId": "challenge_small_task",
+      "text": "いらない写真を3枚だけ消す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "small_task_004",
+      "groupId": "challenge_small_task",
+      "text": "明日の予定を1個確認する",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "small_task_005",
+      "groupId": "challenge_small_task",
+      "text": "身の回りの物を1個だけ元の場所に戻す",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "standard_001",
+      "groupId": "challenge_standard",
+      "text": "水をコップ1杯飲んでくる",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "standard_002",
+      "groupId": "challenge_standard",
+      "text": "いったんその場から離れてみる",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "standard_003",
+      "groupId": "challenge_standard",
+      "text": "深呼吸を5回する",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "standard_004",
+      "groupId": "challenge_standard",
+      "text": "顔を洗ってくる",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "standard_005",
+      "groupId": "challenge_standard",
+      "text": "3分だけ別のことをする",
+      "weight": 1,
+      "active": true,
+      "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
     }
   ]
 }

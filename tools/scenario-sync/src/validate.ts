@@ -42,6 +42,34 @@ export function validate(data: NormalizedSheets): ValidateResult {
   validateChoiceRows(data.choices, data.daily, choices, issues);
   validateInteractions(data.interactions, issues);
   validateReactions(data, issues);
+  const rioLineIDs = new Set<string>();
+  const challengeGroups = new Set([
+    'standard',
+    'silly',
+    'exercise',
+    'music',
+    'memory',
+    'observation',
+    'small_task',
+  ]);
+  for (const row of data.rioLines) {
+    const at = { sheet: 'rio_lines', row: row.__row, column: 'line_id' };
+    if (rioLineIDs.has(row.lineId))
+      issues.error('duplicate_rio_line', 'line_id must be unique', { at });
+    rioLineIDs.add(row.lineId);
+    if (row.weight < 0) issues.error('invalid_rio_weight', 'weight must be nonnegative', { at });
+    const tokens = row.text.match(/\{[^{}]+\}/g) ?? [];
+    if (tokens.some((token) => token !== '{routine_title}')) {
+      issues.error('invalid_rio_placeholder', 'Only {routine_title} is supported', { at });
+    }
+    if (
+      row.groupId.startsWith('challenge_') &&
+      row.groupId !== 'challenge_intro' &&
+      !challengeGroups.has(row.groupId.slice('challenge_'.length))
+    ) {
+      issues.error('invalid_challenge_group', 'Unknown challenge category', { at });
+    }
+  }
   validateEventRows(data.events, scenarios, issues);
   checkReachability(data, issues);
 

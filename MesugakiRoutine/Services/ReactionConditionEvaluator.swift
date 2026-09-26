@@ -1,6 +1,7 @@
 import Foundation
 
 enum ReactionTrigger: Equatable {
+    case homeUpdated
     case interactionOpened
     case characterTapped
     /// この呼び出しを起こした操作だけ。過去の失敗を即時イベントとして再生しない。
@@ -108,7 +109,7 @@ enum ReactionConditionEvaluator {
             case "routine_none_completed", "interaction_before_completion": return zeroToday
             case "routine_one_completed": return context.todayRoutineCount > 0 && actualTodayCount == 1
             case "routine_today_first_completed":
-                return trigger == .interactionOpened && actualTodayCount == 1 && recent(context.lastCompletionAt, seconds: 120)
+                return isScreenUpdate(trigger) && actualTodayCount == 1 && recent(context.lastCompletionAt, seconds: 120)
             case "routine_half_completed":
                 guard context.todayRoutineCount > 0 else { return false }
                 let ratio = Double(context.todayCompletedCount) / Double(context.todayRoutineCount)
@@ -117,7 +118,7 @@ enum ReactionConditionEvaluator {
                 return context.isAllCompleted && todayContains(context.allCompletedAt)
                     && timeMatches(context.allCompletedAt, range: condition.value)
             case "routine_completed_just_now", "interaction_after_completion":
-                return trigger == .interactionOpened && recent(context.lastCompletionAt, range: condition.value)
+                return isScreenUpdate(trigger) && recent(context.lastCompletionAt, range: condition.value)
             case "interaction_after_all_completed":
                 return context.isAllCompleted && recent(context.allCompletedAt, range: condition.value)
             case "interaction_after_prohibition_failed":
@@ -154,7 +155,7 @@ enum ReactionConditionEvaluator {
             case "prohibition_failed_early":
                 return todayContains(context.lastProhibitionFailedAt) && timeMatches(context.lastProhibitionFailedAt, range: condition.value)
             case "app_return_after_absence":
-                guard trigger == .interactionOpened, recent(context.lastAppOpenAt, seconds: 120),
+                guard isScreenUpdate(trigger), recent(context.lastAppOpenAt, seconds: 120),
                       let days = context.daysSincePreviousAppOpen else { return false }
                 return compare(Double(days), condition: condition)
             // 通常会話の既存時間帯に合わせる（4–12 / 12–17 / 17–22）。
@@ -185,6 +186,10 @@ enum ReactionConditionEvaluator {
                 day = previous
             }
             return count
+        }
+
+        private func isScreenUpdate(_ trigger: ReactionTrigger) -> Bool {
+            trigger == .homeUpdated || trigger == .interactionOpened
         }
 
         func run(endingOn day: Date) -> Int {

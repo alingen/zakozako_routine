@@ -286,7 +286,7 @@ struct HomeView: View {
     private var rioHeaderSection: some View {
         if let comment = viewModel.rioComment {
             Section {
-                RioHomeHeader(mood: viewModel.rioMood, text: comment.text) {
+                RioHomeHeader(mood: viewModel.rioMood, text: comment.displayText) {
                     viewModel.selectNextRioComment()
                 }
                 .routineListRowStyle()
@@ -620,17 +620,22 @@ struct HomeView: View {
     }
 
     private func nextTaunt(for kind: BlockedBehaviorTauntKind) -> BlockedBehaviorTauntRequest {
+        let messages = kind.messages
+        guard !messages.isEmpty else {
+            return BlockedBehaviorTauntRequest(text: viewModel.prohibitionReactionText ?? "",
+                                              offersChallenge: kind == .struggling)
+        }
         let index: Int
         switch kind {
         case .struggling:
-            index = nextStrugglingTauntIndex % kind.messages.count
-            nextStrugglingTauntIndex = (nextStrugglingTauntIndex + 1) % kind.messages.count
+            index = nextStrugglingTauntIndex % messages.count
+            nextStrugglingTauntIndex = (nextStrugglingTauntIndex + 1) % messages.count
         case .defeated:
-            index = nextDefeatedTauntIndex % kind.messages.count
-            nextDefeatedTauntIndex = (nextDefeatedTauntIndex + 1) % kind.messages.count
+            index = nextDefeatedTauntIndex % messages.count
+            nextDefeatedTauntIndex = (nextDefeatedTauntIndex + 1) % messages.count
         }
         return BlockedBehaviorTauntRequest(
-            text: viewModel.prohibitionReactionText ?? kind.messages[index],
+            text: viewModel.prohibitionReactionText ?? messages[index],
             offersChallenge: kind == .struggling
         )
     }
@@ -908,18 +913,8 @@ enum BlockedBehaviorTauntKind {
 
     var messages: [String] {
         switch self {
-        case .struggling:
-            return [
-                "よわよわメンタル出てきたね♡",
-                "負けそうだから莉央ちゃんに助け求めにきたんだw",
-                "はいはい、見ててあげるから我慢して〜",
-            ]
-        case .defeated:
-            return [
-                "ほんとに負けてきたの？w",
-                "わざわざ敗北報告しに来たんだ♡",
-                "うわ、大人なのに我慢できなかったんだ〜",
-            ]
+        case .struggling: return RioCopy.lines(group: "blocked_struggling")
+        case .defeated: return RioCopy.lines(group: "blocked_defeated")
         }
     }
 }

@@ -65,8 +65,8 @@ final class RoutineNotificationScheduler {
             let content = UNMutableNotificationContent()
             content.title = AppInfo.displayName
             content.body = hasSomeProgress
-                ? "ちょっと〜、\(routine.title)とちゅうで放置とか一番ざこいパターンだよ〜？さっさと終わらせなよ〜♡"
-                : "うわっ、まだ\(routine.title)やってすらいないの？ざっこ〜♡サボり確定じゃん〜"
+                ? RioCopy.text("notification_in_progress_001", routineTitle: routine.title)
+                : RioCopy.text("notification_not_started_001", routineTitle: routine.title)
             content.sound = .default
 
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)

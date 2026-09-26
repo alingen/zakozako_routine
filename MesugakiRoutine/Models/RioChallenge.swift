@@ -6,6 +6,7 @@ struct RioChallenge: Codable, Identifiable, Equatable {
     let category: Category
     let text: String
     let enabled: Bool
+    var weight: Int = 1
 
     enum Category: String, Codable, CaseIterable {
         case standard

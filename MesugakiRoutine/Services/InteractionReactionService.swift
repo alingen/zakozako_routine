@@ -16,6 +16,29 @@ final class InteractionReactionService {
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
+    /// 全達成直後のポップアップ専用。ホーム更新で先に表示済みになっていても、
+    /// 操作への反応として必ず全達成の候補から選ぶ。通常表示側には表示済みを共有する。
+    func selectAllCompletedReaction(
+        conditions: [ReactionCondition], lines: [ReactionLine], context: ReactionContext,
+        now: Date = .now, calendar: Calendar = .current,
+        randomUnit: () -> Double = { Double.random(in: 0..<1) }
+    ) -> InteractionComment? {
+        guard let match = ReactionConditionEvaluator.matches(
+            conditions: conditions, context: context, trigger: .homeUpdated,
+            now: now, calendar: calendar
+        ).first(where: { $0.condition.id == "routine_all_completed" }) else { return nil }
+        var state = readState(day: AppDay.startOfDay(for: now, calendar: calendar))
+        guard let line = InteractionCommentSelector.select(
+            from: lines.filter { $0.conditionId == match.condition.id }.map(\.comment),
+            touchArea: "character", now: now, calendar: calendar,
+            excluding: state.lastLineID, randomUnit: randomUnit
+        ) else { return nil }
+        state.consumed.insert(match.consumptionKey)
+        state.lastLineID = line.id
+        save(state)
+        return line
+    }
+
     func select(
         conditions: [ReactionCondition], lines: [ReactionLine], interactions: [InteractionComment],
         context: ReactionContext, trigger: ReactionTrigger, touchArea: String = "character",

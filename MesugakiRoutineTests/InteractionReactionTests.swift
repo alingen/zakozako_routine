@@ -89,6 +89,39 @@ final class InteractionReactionTests: XCTestCase {
         XCTAssertTrue(try matches(context([fact(late)], total: 1, completed: 1, now: late), now: late).contains("routine_all_completed_late"))
     }
 
+    func testHomeUsesProgressConditionsWithoutInteractionVisitConditions() throws {
+        let visit = UserActionEvent(eventType: .interactionScreenOpened, occurredAt: now)
+        let ctx = context([fact(now)], total: 2, completed: 1, events: [visit])
+        let home = try matches(ctx, trigger: .homeUpdated)
+        XCTAssertTrue(home.isSuperset(of: ["routine_one_completed", "routine_remaining_one",
+            "routine_today_first_completed", "routine_completed_just_now"]))
+        XCTAssertFalse(home.contains { $0.hasPrefix("interaction_") })
+        XCTAssertFalse(home.contains("character_many_taps"))
+        XCTAssertFalse(try matches(ctx, trigger: .homeUpdated, now: now.addingTimeInterval(121))
+            .contains("routine_completed_just_now"))
+        XCTAssertTrue(try matches(context(total: 2), trigger: .homeUpdated).contains("noon_zero"))
+    }
+
+    func testHomeAndInteractionShareReactionConsumptionAndFallback() throws {
+        let storage = defaults()
+        let home = InteractionReactionService(defaults: storage)
+        let interaction = InteractionReactionService(defaults: storage)
+        let conditions = [condition("routine_none_completed")]
+        let lines = [line("home_line", condition: "routine_none_completed")]
+        let fallback = [InteractionComment(id: "daily", text: "通常会話")]
+        let ctx = context(total: 1)
+        let selected = home.select(conditions: conditions, lines: lines, interactions: fallback,
+            context: ctx, trigger: .homeUpdated, now: now, calendar: calendar)
+        XCTAssertEqual(selected?.id, "home_line")
+        XCTAssertEqual(selected?.displayText, "A\nB")
+        XCTAssertEqual(interaction.select(conditions: conditions, lines: lines, interactions: fallback,
+            context: ctx, trigger: .interactionOpened, now: now, calendar: calendar)?.id, "daily")
+        let tomorrow = offset(1, from: now)
+        XCTAssertEqual(home.select(conditions: conditions, lines: lines, interactions: fallback,
+            context: context(total: 1, now: tomorrow), trigger: .homeUpdated,
+            now: tomorrow, calendar: calendar)?.id, "home_line")
+    }
+
     func testCompletionDatesAreNotDuplicatedAcrossWeeklyPeriodOrRuleSegments() throws {
         let id = UUID()
         let yesterday = date(26, 10)
@@ -238,6 +271,53 @@ final class InteractionReactionTests: XCTestCase {
         }
         XCTAssertTrue(ReactionConditionEvaluator.matches(conditions: [condition("routine_one_completed", active: false)],
             context: ctx, trigger: .characterTapped, now: now, calendar: calendar).isEmpty)
+    }
+
+    func testAllCompletedPopupUsesCMSAfterHomeAlreadyConsumedCondition() throws {
+        let condition = try XCTUnwrap(StoryContentRepository().reactionConditions.first {
+            $0.id == "routine_all_completed"
+        })
+        let lines = [line("first", condition: condition.id), line("second", condition: condition.id),
+                     line("disabled", condition: condition.id, weight: 999, active: false)]
+        let ctx = context([fact(now)], total: 1, completed: 1)
+        let service = InteractionReactionService(defaults: defaults())
+        XCTAssertEqual(service.select(conditions: [condition], lines: lines, interactions: [],
+            context: ctx, trigger: .homeUpdated, now: now, calendar: calendar, randomUnit: { 0 })?.id, "first")
+        let popup = service.selectAllCompletedReaction(conditions: [condition], lines: lines,
+            context: ctx, now: now, calendar: calendar, randomUnit: { 0 })
+        XCTAssertEqual(popup?.id, "second")
+        XCTAssertEqual(popup?.displayText, "A\nB")
+        XCTAssertNil(service.select(conditions: [condition], lines: lines, interactions: [],
+            context: ctx, trigger: .interactionOpened, now: now, calendar: calendar))
+    }
+
+    func testAllCompletedPopupRequiresCompletionAndOnlyUsesEnabledMatchingLines() throws {
+        var allDone = try XCTUnwrap(StoryContentRepository().reactionConditions.first {
+            $0.id == "routine_all_completed"
+        })
+        let lines = [line("disabled", condition: allDone.id, active: false),
+                     line("zero", condition: allDone.id, weight: 0),
+                     line("light", condition: allDone.id),
+                     line("heavy", condition: allDone.id, weight: 3),
+                     line("unrelated", condition: "routine_first_completion", weight: 999)]
+        let ctx = context([fact(now)], total: 1, completed: 1)
+        for (random, expected) in [(0.0, "light"), (0.9, "heavy")] {
+            XCTAssertEqual(InteractionReactionService(defaults: defaults()).selectAllCompletedReaction(
+                conditions: [allDone, condition("routine_first_completion", priority: 999)], lines: lines,
+                context: ctx, now: now, calendar: calendar, randomUnit: { random })?.id, expected)
+        }
+        let service = InteractionReactionService(defaults: defaults())
+        for incomplete in [context(), context([fact(now)], total: 2, completed: 1)] {
+            XCTAssertNil(service.selectAllCompletedReaction(conditions: [allDone], lines: lines,
+                context: incomplete, now: now, calendar: calendar))
+        }
+        XCTAssertNil(service.selectAllCompletedReaction(conditions: [allDone], lines: Array(lines.prefix(2)),
+            context: ctx, now: now, calendar: calendar))
+        allDone = ReactionCondition(conditionId: allDone.id, label: allDone.label,
+            triggerType: allDone.triggerType, conditionKey: allDone.conditionKey,
+            operator: allDone.operator, value: allDone.value, priority: allDone.priority, active: false)
+        XCTAssertNil(service.selectAllCompletedReaction(conditions: [allDone], lines: lines,
+            context: ctx, now: now, calendar: calendar))
     }
 
     func testDailyPoolStaysAtThreeAndRotatesAtFourAMAvoidingYesterday() {

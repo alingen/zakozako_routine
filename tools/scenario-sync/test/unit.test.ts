@@ -963,6 +963,7 @@ describe('deterministic generation and CLI contracts', () => {
       interactions: [...normalized.interactions].reverse(),
       reactionConditions: [...normalized.reactionConditions].reverse(),
       reactionLines: [...normalized.reactionLines].reverse(),
+      rioLines: [...normalized.rioLines].reverse(),
       events: [...normalized.events].reverse(),
     };
 

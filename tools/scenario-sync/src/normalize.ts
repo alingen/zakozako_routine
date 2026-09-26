@@ -7,6 +7,7 @@ import type {
   NormalizedInteractionRow,
   NormalizedReactionCondition,
   NormalizedReactionLine,
+  NormalizedRioLine,
   NormalizedScenarioRow,
   NormalizedSheets,
   RawRow,
@@ -22,6 +23,7 @@ import {
   INTERACTION_COLUMNS,
   REACTION_CONDITION_COLUMNS,
   REACTION_LINE_COLUMNS,
+  RIO_LINE_COLUMNS,
   REQUIRED_CHOICE_COLUMNS,
   REQUIRED_ASSET_CATALOG_COLUMNS,
   REQUIRED_DAILY_CATALOG_COLUMNS,
@@ -536,6 +538,30 @@ function normalizeReactionLines(bag: IssueBag, rows: RawRow[]): NormalizedReacti
   });
 }
 
+function normalizeRioLines(bag: IssueBag, rows: RawRow[]): NormalizedRioLine[] {
+  const sheet = 'rio_lines';
+  checkColumns(bag, sheet, rows, RIO_LINE_COLUMNS, RIO_LINE_COLUMNS);
+  return rows.flatMap((row): NormalizedRioLine[] => {
+    if (!booleanValue(bag, sheet, row, 'active', true)) return [];
+    const lineId = requiredString(bag, sheet, row, 'line_id');
+    const groupId = requiredString(bag, sheet, row, 'group_id');
+    const text = requiredString(bag, sheet, row, 'text');
+    const weight = integer(bag, sheet, row, 'weight', true);
+    if (!lineId || !groupId || !text || weight === undefined) return [];
+    return [
+      {
+        __row: row.__row,
+        lineId,
+        groupId,
+        text,
+        weight,
+        active: true,
+        note: optionalString(row, 'note'),
+      },
+    ];
+  });
+}
+
 export function normalize(raw: RawSheets): NormalizeResult {
   const issues = new IssueBag();
   return {
@@ -547,6 +573,7 @@ export function normalize(raw: RawSheets): NormalizeResult {
       interactions: normalizeInteractions(issues, raw.interactions),
       reactionConditions: normalizeReactionConditions(issues, raw.reactionConditions),
       reactionLines: normalizeReactionLines(issues, raw.reactionLines),
+      rioLines: normalizeRioLines(issues, raw.rioLines),
       scenarios: normalizeScenarioRows(issues, raw.scenarios, 'senarios'),
       events: normalizeEvents(issues, raw.events),
     },

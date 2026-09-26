@@ -255,3 +255,11 @@ export const KNOWN_ASSET_TYPES = new Set([
 export function isBlank(value: unknown): boolean {
   return value === undefined || value === null || String(value).trim() === '';
 }
+export const RIO_LINE_COLUMNS = [
+  'line_id',
+  'group_id',
+  'text',
+  'weight',
+  'active',
+  'note',
+] as const;

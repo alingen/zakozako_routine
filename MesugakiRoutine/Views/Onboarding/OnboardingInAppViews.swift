@@ -290,10 +290,10 @@ struct OnboardingTomorrowRioMessageView: View {
                 ScrollView {
                     VStack(spacing: 22) {
                         RioSpeechRow {
-                            OnboardingRioBubble(text: "さすがに2日くらいはできるよね〜？w")
+                            OnboardingRioBubble(text: RioCopy.text("onboarding_tomorrow_001"))
                         }
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("莉央、さすがに2日くらいはできるよね〜？w")
+                        .accessibilityLabel("莉央、\(RioCopy.text("onboarding_tomorrow_001"))")
 
                         Button("次へ", action: onContinue)
                             .font(.footnote.weight(.semibold))

@@ -946,7 +946,7 @@ struct OnboardingSetupView: View {
         case .goalSetting:
             OnboardingDelayedGuidanceView(
                 stage: stateStore.delayedGuidanceStage(for: step) ?? .presented,
-                message: "張り切って入れたのに明日すぐサボってそ〜w",
+                message: RioCopy.text("onboarding_goal_001"),
                 illustration: .smallGoal,
                 title: "最初は少なすぎるくらいでOK",
                 explanation: "まずは、余裕でできる量から始めましょう。",
@@ -956,7 +956,7 @@ struct OnboardingSetupView: View {
         case .cueSelection:
             OnboardingDelayedGuidanceView(
                 stage: stateStore.delayedGuidanceStage(for: step) ?? .presented,
-                message: "適当に『\(selectedPromiseTitle)』だけ決めてもどうせやらないでしょ〜w",
+                message: RioCopy.text("onboarding_cue_001", routineTitle: selectedPromiseTitle),
                 illustration: .cueToHabit(
                     habitTitle: selectedPromiseTitle,
                     iconName: stateStore.draft.habitIconName ?? "checklist"
@@ -1205,13 +1205,13 @@ private struct OnboardingRioIntroductionView: View {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
-                                        OnboardingRioBubble(text: "お、ざこのおにいさん発見〜")
-                                            .accessibilityLabel("莉央、お、ざこのおにいさん発見〜")
+                                        OnboardingRioBubble(text: RioCopy.text("onboarding_intro_001"))
+                                            .accessibilityLabel("莉央、\(RioCopy.text("onboarding_intro_001"))")
                                             .accessibilityFocused($focusedContent, equals: .firstMessage)
 
                                         if showsSecondMessage {
-                                            OnboardingRioBubble(text: "もしかして習慣化アプリ入れただけで満足してないよね？")
-                                                .accessibilityLabel("莉央、もしかして習慣化アプリ入れただけで満足してないよね？")
+                                            OnboardingRioBubble(text: RioCopy.text("onboarding_intro_002"))
+                                                .accessibilityLabel("莉央、\(RioCopy.text("onboarding_intro_002"))")
                                                 .accessibilityFocused($focusedContent, equals: .secondMessage)
                                                 .id(IntroductionContent.secondMessage)
                                                 .transition(revealTransition)
@@ -1359,13 +1359,13 @@ private struct OnboardingHabitSelectionIntroductionView: View {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
-                                        OnboardingRioBubble(text: "まずは１つだけでいいよ〜")
-                                            .accessibilityLabel("莉央、まずは１つだけでいいよ〜")
+                                        OnboardingRioBubble(text: RioCopy.text("onboarding_habit_001"))
+                                            .accessibilityLabel("莉央、\(RioCopy.text("onboarding_habit_001"))")
                                             .accessibilityFocused($focusedContent, equals: .firstMessage)
 
                                         if showsSecondMessage {
-                                            OnboardingRioBubble(text: "おにいさんのよわよわメンタルじゃ何個も続かないでしょw")
-                                                .accessibilityLabel("莉央、おにいさんのよわよわメンタルじゃ何個も続かないでしょw")
+                                            OnboardingRioBubble(text: RioCopy.text("onboarding_habit_002"))
+                                                .accessibilityLabel("莉央、\(RioCopy.text("onboarding_habit_002"))")
                                                 .accessibilityFocused($focusedContent, equals: .secondMessage)
                                                 .id(FocusedContent.secondMessage)
                                                 .transition(revealTransition)
@@ -1505,14 +1505,14 @@ private struct OnboardingBlockedBehaviorGuidanceView: View {
 
     private var firstMessage: String {
         isPostSelection
-            ? "負けそうになったらちゃんと教えてね？"
-            : "せっかくやること決めたのにスマホとかに負けてそ〜w"
+            ? RioCopy.text("onboarding_blocked_after_001")
+            : RioCopy.text("onboarding_blocked_001")
     }
 
     private var secondMessage: String {
         isPostSelection
-            ? "おにいさんのなさけない顔見にいくから♡"
-            : "まずはそのざこざこ習慣やめることから考えようね？"
+            ? RioCopy.text("onboarding_blocked_after_002")
+            : RioCopy.text("onboarding_blocked_002")
     }
 
     private var revealTransition: AnyTransition {
@@ -1717,13 +1717,13 @@ private struct OnboardingConfirmationGuidanceView: View {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
-                                        OnboardingRioBubble(text: "じゃあできたら教えてね〜")
-                                            .accessibilityLabel("莉央、じゃあできたら教えてね〜")
+                                        OnboardingRioBubble(text: RioCopy.text("onboarding_confirm_001"))
+                                            .accessibilityLabel("莉央、\(RioCopy.text("onboarding_confirm_001"))")
                                             .accessibilityFocused($focusedContent, equals: .firstMessage)
 
                                         if showsSecondMessage {
-                                            OnboardingRioBubble(text: "どこまでできるか楽しみ〜w")
-                                                .accessibilityLabel("莉央、どこまでできるか楽しみ〜w")
+                                            OnboardingRioBubble(text: RioCopy.text("onboarding_confirm_002"))
+                                                .accessibilityLabel("莉央、\(RioCopy.text("onboarding_confirm_002"))")
                                                 .accessibilityFocused($focusedContent, equals: .secondMessage)
                                                 .id(FocusedContent.secondMessage)
                                                 .transition(revealTransition)

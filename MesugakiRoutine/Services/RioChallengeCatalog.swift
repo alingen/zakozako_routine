@@ -14,10 +14,11 @@ struct RioChallengeCatalog {
     }()
 
     static func load(bundle: Bundle = .main) throws -> RioChallengeCatalog {
-        guard let url = bundle.url(forResource: "rio_challenges", withExtension: "json") else {
-            throw CocoaError(.fileNoSuchFile)
+        let challenges = try StoryContentRepository(bundle: bundle).rioLines.compactMap { line -> RioChallenge? in
+            guard line.groupId.hasPrefix("challenge_"),
+                  let category = RioChallenge.Category(rawValue: String(line.groupId.dropFirst("challenge_".count))) else { return nil }
+            return RioChallenge(id: line.id, category: category, text: line.displayText(), enabled: line.active, weight: line.weight)
         }
-        let challenges = try JSONDecoder().decode([RioChallenge].self, from: Data(contentsOf: url))
         return RioChallengeCatalog(challenges: challenges)
     }
 
@@ -30,7 +31,7 @@ struct RioChallengeCatalog {
         excluding previousID: String? = nil,
         using generator: inout R
     ) -> RioChallenge? {
-        let candidates = challenges.filter { $0.enabled && $0.id != previousID }
+        let candidates = challenges.filter { $0.enabled && $0.weight > 0 && $0.id != previousID }
         let categories = RioChallenge.Category.allCases.filter { category in
             candidates.contains { $0.category == category }
         }
@@ -40,7 +41,13 @@ struct RioChallengeCatalog {
         var draw = Int.random(in: 0..<totalWeight, using: &generator)
         for category in categories {
             if draw < category.selectionWeight {
-                return candidates.filter { $0.category == category }.randomElement(using: &generator)
+                let group = candidates.filter { $0.category == category }
+                var lineDraw = Int.random(in: 0..<group.reduce(0) { $0 + $1.weight }, using: &generator)
+                for challenge in group {
+                    if lineDraw < challenge.weight { return challenge }
+                    lineDraw -= challenge.weight
+                }
+                return nil
             }
             draw -= category.selectionWeight
         }

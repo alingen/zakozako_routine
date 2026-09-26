@@ -52,6 +52,7 @@ const raw = hasCurrentFixture
       interactions: [],
       reactionConditions: [],
       reactionLines: [],
+      rioLines: [],
       scenarios: [],
       events: [],
     };
@@ -626,14 +627,17 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     }
   });
 
-  it('publishes the three migrated touch comments independently from scenarios', () => {
-    expect(bundle.interactions.map((comment) => comment.text)).toEqual(
+  it('publishes the current touch comments independently from scenarios', () => {
+    const texts = bundle.interactions.map((comment) => comment.text);
+    expect(texts).toHaveLength(66);
+    expect(texts).toEqual(
       expect.arrayContaining([
         'がんばってね、ざこざこおにいさん♡',
-        'また負けちゃったんだ、ざ〜こ♡',
-        '今回は何日もつかな〜？',
+        '予定ないのに「最近忙しくて」って言ってそうw',
+        '集合写真、毎回端にいるの似合うねw',
       ]),
     );
+    expect(texts).not.toContain('また負けちゃったんだ、ざ〜こ♡');
     expect(bundle.interactions.every((comment) => comment.touchArea === 'character')).toBe(true);
   });
 
@@ -821,6 +825,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       interactions: [...normalized.data.interactions].reverse(),
       reactionConditions: [...normalized.data.reactionConditions].reverse(),
       reactionLines: [...normalized.data.reactionLines].reverse(),
+      rioLines: [...normalized.data.rioLines].reverse(),
       events: [...normalized.data.events].reverse(),
     };
     const content = serialize(bundle);

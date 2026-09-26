@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import type { RawRow, RawSheets, SheetSnapshot } from './types.js';
 import type { SyncConfig } from './config.js';
 import { SNAPSHOT_PATH } from './config.js';
-import { REACTION_CONDITION_COLUMNS, REACTION_LINE_COLUMNS } from './schema.js';
+import { REACTION_CONDITION_COLUMNS, REACTION_LINE_COLUMNS, RIO_LINE_COLUMNS } from './schema.js';
 
 function headerRowIndex(grid: string[][], firstColumnName: string): number {
   const index = grid.findIndex((row) =>
@@ -38,6 +38,7 @@ export function snapshotToRawSheets(snapshot: SheetSnapshot): RawSheets {
   for (const [tab, columns] of [
     ['reaction_conditions', REACTION_CONDITION_COLUMNS],
     ['reaction_lines', REACTION_LINE_COLUMNS],
+    ['rio_lines', RIO_LINE_COLUMNS],
   ] as const) {
     const header = snapshot.tabs[tab]?.find((row) =>
       row.some((cell) => cell.trim() === columns[0]),
@@ -54,6 +55,7 @@ export function snapshotToRawSheets(snapshot: SheetSnapshot): RawSheets {
     interactions: gridToRows(snapshot.tabs.interactions, 'id'),
     reactionConditions: gridToRows(snapshot.tabs.reaction_conditions, 'condition_id'),
     reactionLines: gridToRows(snapshot.tabs.reaction_lines, 'line_id'),
+    rioLines: gridToRows(snapshot.tabs.rio_lines, 'line_id'),
     scenarios: gridToRows(snapshot.tabs.senarios, 'scenario_id'),
     events: gridToRows(snapshot.tabs.events, 'event_id'),
   };
@@ -73,6 +75,7 @@ export function loadSnapshot(path = SNAPSHOT_PATH): SheetSnapshot {
     !parsed.tabs.interactions ||
     !parsed.tabs.reaction_conditions ||
     !parsed.tabs.reaction_lines ||
+    !parsed.tabs.rio_lines ||
     !parsed.tabs.senarios ||
     !parsed.tabs.events
   ) {
@@ -118,6 +121,7 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
       config.tabs.events,
       config.tabs.reactionConditions,
       config.tabs.reactionLines,
+      config.tabs.rioLines,
     ],
     majorDimension: 'ROWS',
   });
@@ -139,6 +143,7 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
       events: grid(6),
       reaction_conditions: grid(7),
       reaction_lines: grid(8),
+      rio_lines: grid(9),
     },
   };
 }
@@ -183,6 +188,7 @@ async function fetchViaPublicXlsx(config: SyncConfig): Promise<SheetSnapshot> {
       events: readTab(config.tabs.events),
       reaction_conditions: readTab(config.tabs.reactionConditions),
       reaction_lines: readTab(config.tabs.reactionLines),
+      rio_lines: readTab(config.tabs.rioLines),
     },
   };
 }

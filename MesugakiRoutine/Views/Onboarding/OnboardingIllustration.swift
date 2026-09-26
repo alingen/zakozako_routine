@@ -104,7 +104,7 @@ struct OnboardingIllustration: View {
                     .background(AppColor.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                Text("えらいえらい♡")
+                Text(RioCopy.text("onboarding_illustration_001"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppColor.text)
                     .fixedSize(horizontal: false, vertical: true)

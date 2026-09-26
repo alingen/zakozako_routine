@@ -28,6 +28,7 @@ export interface SyncConfig {
     interactions: string;
     reactionConditions: string;
     reactionLines: string;
+    rioLines: string;
     scenarios: string;
     choices: string;
     events: string;
@@ -79,6 +80,7 @@ export function loadConfig(): SyncConfig {
       interactions: process.env.SCENARIO_TAB_INTERACTIONS?.trim() || 'interactions',
       reactionConditions: 'reaction_conditions',
       reactionLines: 'reaction_lines',
+      rioLines: 'rio_lines',
       scenarios: process.env.SCENARIO_TAB_SCENARIOS?.trim() || 'senarios',
       events: process.env.SCENARIO_TAB_EVENTS?.trim() || 'events',
     },

@@ -29,11 +29,11 @@ struct RioChallengeView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             OnboardingRioBubble(text: taunt)
 
-                            OnboardingRioBubble(text: "じゃあこれやってきて〜")
+                            OnboardingRioBubble(text: RioCopy.text("challenge_intro_001"))
                                 .opacity(isRevealed ? 1 : 0)
                                 .offset(y: isRevealed || reduceMotion ? 0 : 8)
                                 .accessibilityHidden(!isRevealed)
-                                .accessibilityLabel("莉央、じゃあこれやってきて〜")
+                                .accessibilityLabel("莉央、\(RioCopy.text("challenge_intro_001"))")
                         }
                     }
 
@@ -146,6 +146,6 @@ struct RioChallengeView: View {
     ZStack {
         AppColor.background.ignoresSafeArea()
         Color.black.opacity(0.48).ignoresSafeArea()
-        RioChallengeView(taunt: "よわよわメンタル出てきたね♡", onDismiss: {})
+        RioChallengeView(taunt: RioCopy.text("blocked_struggling_001"), onDismiss: {})
     }
 }

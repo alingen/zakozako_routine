@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Home上部の莉央の状態。表情と、CMS(interactions)から選ぶ一言の touch_area を決める。
+/// Home上部の莉央の表情。コメントは共通のリアクション条件から選ぶ。
 enum RioHomeMood: Equatable {
     /// 今日の約束にまだ手をつけていない(約束が0件の日も含む)。
     case notStarted
@@ -20,15 +20,6 @@ enum RioHomeMood: Equatable {
         }
     }
 
-    /// シートの interactions でこの値を touch_area にした行があれば優先して使う。
-    var commentTouchArea: String {
-        switch self {
-        case .notStarted: return "home_not_started"
-        case .inProgress: return "home_in_progress"
-        case .allDone: return "home_all_done"
-        case .defeated: return "home_defeated"
-        }
-    }
 }
 
 /// 約束を達成した瞬間の莉央の反応。
@@ -56,26 +47,11 @@ enum RioReactionKind: Equatable {
         }
     }
 
-    var fallbackMessages: [String] {
+    var fallbackGroup: String {
         switch self {
-        case .routineCompleted:
-            return [
-                "へぇ〜、ちゃんとやったんだ？ざこのくせに♡",
-                "はいはい、えらいえらい♡",
-                "おにいさんにしてはやるじゃん♡",
-            ]
-        case .allRoutinesCompleted:
-            return [
-                "え、今日の約束ぜんぶ終わったの？…ふーん、やるじゃん♡",
-                "ぜんぶできたんだ？今日だけはざこって言わないであげる♡",
-                "今日のおにいさん、ちょっとだけかっこいいかもw",
-            ]
-        case .timerFinished:
-            return [
-                "え、最後までやったの？ざこのくせに粘るじゃん♡",
-                "はい1回ぶんね〜。まだ終わりじゃないよ？w",
-                "途中でやめると思ってたのに、つまんな〜い♡",
-            ]
+        case .routineCompleted: return "home_routine_completed"
+        case .allRoutinesCompleted: return "home_all_completed"
+        case .timerFinished: return "home_timer_finished"
         }
     }
 }

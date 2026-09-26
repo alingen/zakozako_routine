@@ -447,7 +447,7 @@ struct RootTabView: View {
         guard onboardingState.phase == .firstReport else { return }
         onboardingReportTargetFrame = nil
         onboardingState.completeFirstReport(with: .completed)
-        blockedBehaviorTaunt = BlockedBehaviorTauntRequest(text: "ざこなのに頑張ったね♡")
+        blockedBehaviorTaunt = BlockedBehaviorTauntRequest(text: RioCopy.text("onboarding_completed_001"))
     }
 
     private func deferFirstReport() {
@@ -827,7 +827,7 @@ struct RootTabView: View {
             if let routine = onboardingRoutine(), routine.isComplete() {
                 onboardingState.reconcileFirstReportIfNeeded(isRoutineComplete: true)
                 blockedBehaviorTaunt = BlockedBehaviorTauntRequest(
-                    text: "ざこなのに頑張ったね♡"
+                    text: RioCopy.text("onboarding_completed_001")
                 )
             }
         case .conversationPrompt:
@@ -1339,7 +1339,7 @@ private struct OnboardingPostPrologueMessageView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var todayMessage: String {
-        "今日は「\(routineTitle)」だよ"
+        RioCopy.text("onboarding_today_001", routineTitle: routineTitle)
     }
 
     var body: some View {
@@ -1352,7 +1352,7 @@ private struct OnboardingPostPrologueMessageView: View {
                                 OnboardingRioBubble(text: todayMessage)
 
                                 if showsSecondMessage {
-                                    OnboardingRioBubble(text: "できたら報告してね〜")
+                                    OnboardingRioBubble(text: RioCopy.text("onboarding_report_001"))
                                         .transition(
                                             reduceMotion
                                                 ? .opacity
@@ -1393,7 +1393,7 @@ private struct OnboardingPostPrologueMessageView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             showsSecondMessage
-                ? "莉央、\(todayMessage)。できたら報告してね〜"
+                ? "莉央、\(todayMessage)。\(RioCopy.text("onboarding_report_001"))"
                 : "莉央、\(todayMessage)"
         )
         .accessibilityAddTraits(.isModal)

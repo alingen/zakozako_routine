@@ -189,7 +189,7 @@ function printSummary(
       `asset_catalog=${raw.assetCatalog.length}, ` +
       `choices=${raw.choices.length}, ` +
       `interactions=${raw.interactions.length}, reaction_conditions=${raw.reactionConditions.length}, ` +
-      `reaction_lines=${raw.reactionLines.length}, senarios=${raw.scenarios.length}, ` +
+      `reaction_lines=${raw.reactionLines.length}, rio_lines=${raw.rioLines.length}, senarios=${raw.scenarios.length}, ` +
       `events=${raw.events.length}`,
   );
 
