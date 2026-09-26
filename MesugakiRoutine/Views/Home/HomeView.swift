@@ -6,6 +6,11 @@ struct HomeView: View {
     @Environment(SiriLaunchCoordinator.self) private var siriLaunchCoordinator
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = HomeViewModel()
+    @State private var news = ZakoNewsStore.shared
+    @State private var selectedNewsPost: ZakoNewsPost?
+    @State private var showsNewsFeed = false
+    @State private var homeIsVisible = false
+    @GestureState private var homeIsInteracting = false
     @State private var editingRoutine: Routine?
     @State private var editingBlockedBehavior: BlockedBehavior?
     @State private var activeTimer: ActiveRoutineTimer?
@@ -52,12 +57,40 @@ struct HomeView: View {
         return activeTimer.id
     }
 
+    private var canRotateNews: Bool {
+        homeIsVisible && scenePhase == .active && !homeIsInteracting
+            && selectedNewsPost == nil && !showsNewsFeed && appDialog == nil
+            && editingRoutine == nil && editingBlockedBehavior == nil
+            && !isPresentingNewRoutine && !isPresentingNewBlockedBehavior
+            && presentedTimer == nil && rioReaction == nil
+            && onboardingRoutineID == nil
+    }
+
     var body: some View {
         List {
             rioHeaderSection
             todayRoutinesSection
             todayPromiseSection
             zakoBulletinSection
+        }
+        .simultaneousGesture(DragGesture(minimumDistance: 0).updating($homeIsInteracting) { _, state, _ in state = true })
+        .sheet(item: $selectedNewsPost) { post in ZakoNewsDetailView(post: post) }
+        .sheet(isPresented: $showsNewsFeed) { ZakoNewsFeedSheet() }
+        .task(id: canRotateNews) {
+            guard canRotateNews else { return }
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(ZakoNewsConfiguration.rotationSeconds)) }
+                catch { return }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) { news.rotate() }
+            }
+        }
+        .task(id: homeIsVisible && scenePhase == .active) {
+            guard homeIsVisible && scenePhase == .active else { return }
+            while !Task.isCancelled {
+                await news.refreshIfNeeded()
+                do { try await Task.sleep(for: .seconds(ZakoNewsConfiguration.refreshSeconds)) }
+                catch { return }
+            }
         }
         .appScreenBackground()
         .overlay(alignment: .bottom) {
@@ -188,10 +221,12 @@ struct HomeView: View {
             viewModel.configure(context: modelContext)
         }
         .onAppear {
+            homeIsVisible = true
             viewModel.reload()
             siriLaunchCoordinator.pendingOpenTodayRoutines = false
             refreshActiveTimer(at: .now)
         }
+        .onDisappear { homeIsVisible = false }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active, presentedTimer == nil {
                 viewModel.reload()
@@ -600,7 +635,23 @@ struct HomeView: View {
     private var zakoBulletinSection: some View {
         Section {
             // 約束・やらないことのカードと同じ幅・角丸に揃える。
-            ZakoBulletinFeedView(items: viewModel.zakoBulletinItems)
+            VStack(alignment: .leading, spacing: 8) {
+                ZakoBulletinFeedView(items: news.rotation.visible) { selectedNewsPost = $0 }
+                if let post = news.latestSharedPost {
+                    HStack {
+                        Button("ひとことを添える") { selectedNewsPost = post }
+                            .font(.footnote).tint(AppColor.primary)
+                        Spacer()
+                        Button { news.clearHint() } label: { Image(systemName: "xmark") }
+                            .font(.caption).accessibilityLabel("ひとことの案内を閉じる")
+                    }
+                }
+                if let message = news.errorMessage {
+                    Text(message).font(.caption).foregroundStyle(AppColor.muted)
+                    Button("再試行") { Task { await news.sendPending(); await news.refreshIfNeeded(force: true) } }
+                        .font(.footnote).disabled(news.isLoading)
+                }
+            }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -612,8 +663,12 @@ struct HomeView: View {
                 .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
                 .routineListRowStyle()
         } header: {
-            homeSectionTitle("みんなのざこ速報")
-                .textCase(nil)
+            HStack {
+                homeSectionTitle("みんなのざこ速報")
+                Spacer(minLength: 8)
+                Button("もっと見る") { showsNewsFeed = true }
+                    .font(.caption).textCase(nil).tint(AppColor.muted)
+            }.textCase(nil)
         }
     }
 

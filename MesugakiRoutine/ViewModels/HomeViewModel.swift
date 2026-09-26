@@ -46,8 +46,9 @@ final class HomeViewModel {
     /// 14日間守り切って卒業した「やらないこと」。新しい順。
     private(set) var masteredBehaviors: [BlockedBehavior] = []
 
-    /// 「みんなのざこ速報」に出す項目(いまは自分の記録だけ。最大3件)。
-    private(set) var zakoBulletinItems: [ZakoBulletinItem] = []
+    private let news: ZakoNewsStore
+
+    init(news: ZakoNewsStore? = nil) { self.news = news ?? .shared }
 
     private(set) var routineOperationErrorMessage: String?
     private(set) var blockedBehaviorOperationErrorMessage: String?
@@ -118,7 +119,6 @@ final class HomeViewModel {
         }
         currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
         masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
-        zakoBulletinItems = Self.buildBulletin(routines: allRoutines, behavior: currentBehavior)
         // 再読み込みのたびに入れ替えるとせわしないので、状態が変わったときだけ選び直す。
         if rioComment == nil || rioCommentMood != rioMood {
             selectNextRioComment()
@@ -155,51 +155,6 @@ final class HomeViewModel {
         )
     }
 
-    /// 「みんなのざこ速報」の項目を、自分の最近の記録から組み立てる(最大3件)。
-    static func buildBulletin(
-        routines: [Routine],
-        behavior: BlockedBehavior?,
-        now: Date = .now,
-        calendar: Calendar = .current
-    ) -> [ZakoBulletinItem] {
-        let who = AppSettingsStore.userDisplayName
-        var entries: [(date: Date, line: String, kind: ZakoBulletinKind)] = []
-
-        for routine in routines where routine.isComplete(now: now) {
-            guard let last = routine.progressEvents.max(),
-                  calendar.isDate(last, inSameDayAs: now) else { continue }
-            entries.append((last, "\(who)が「\(routine.title)」を達成しました！", .achievement))
-        }
-
-        if let behavior, behavior.usageInCurrentPeriod(now: now) >= behavior.effectiveLimit,
-           let lastUse = behavior.usageEvents.max(),
-           calendar.isDate(lastUse, inSameDayAs: now) {
-            entries.append((lastUse, "\(who)が「\(behavior.title)」に負けました…", .failure))
-        }
-
-        return entries
-            .sorted { $0.date > $1.date }
-            .prefix(3)
-            .map {
-                ZakoBulletinItem(
-                    id: UUID(),
-                    line: $0.line,
-                    relativeTime: Self.relativeTime(from: $0.date, now: now),
-                    kind: $0.kind
-                )
-            }
-    }
-
-    private static func relativeTime(from date: Date, now: Date) -> String {
-        let seconds = max(0, now.timeIntervalSince(date))
-        switch seconds {
-        case ..<60: return "たった今"
-        case ..<3600: return "\(Int(seconds / 60))分前"
-        case ..<86_400: return "\(Int(seconds / 3600))時間前"
-        default: return "\(Int(seconds / 86_400))日前"
-        }
-    }
-
     // MARK: - やらないこと
 
     func promiseUsage(for behavior: BlockedBehavior, now: Date = .now) -> PromiseUsage {
@@ -215,9 +170,10 @@ final class HomeViewModel {
     func recordPromiseFailure(_ behavior: BlockedBehavior) -> Bool {
         guard let dependencies else { return false }
         do {
+            let now = Date.now
+            let didRecord: Bool
             if behavior.trackingKind == .screenTime {
-                let now = Date.now
-                _ = try dependencies.blockedBehaviorRepository.recordScreenTimeSignal(
+                didRecord = try dependencies.blockedBehaviorRepository.recordScreenTimeSignal(
                     ScreenTimeMonitorSignal(
                         behaviorID: behavior.id,
                         appDayStart: AppDay.startOfDay(for: now),
@@ -228,7 +184,10 @@ final class HomeViewModel {
                     processedAt: now
                 )
             } else {
-                try dependencies.blockedBehaviorRepository.recordFailure(behavior)
+                didRecord = try dependencies.blockedBehaviorRepository.recordFailure(behavior, now: now) == .recorded
+            }
+            if didRecord {
+                news.enqueue(.failure(behavior, now: now))
             }
             blockedBehaviorOperationErrorMessage = nil
             reload()
@@ -271,7 +230,8 @@ final class HomeViewModel {
             screenTimeLimitMinutes: draft.trackingKind == .screenTime
                 ? draft.screenTimeLimitMinutes
                 : nil,
-            screenTimeSelectionData: draft.screenTimeSelectionData
+            screenTimeSelectionData: draft.screenTimeSelectionData,
+            shareToZakoNews: draft.shareToZakoNews
         ) else { return "保存できませんでした。もう一度お試しください。" }
 
         if behavior.trackingKind == .screenTime {
@@ -300,6 +260,7 @@ final class HomeViewModel {
         guard !title.isEmpty else { return "タイトルを入力してください。" }
 
         let previousTitle = behavior.title
+        let previousSharing = behavior.shareToZakoNews
         let previousIconName = behavior.iconName
         let previousLimitPeriod = behavior.limitPeriod
         let previousLimitCount = behavior.limitCount
@@ -323,7 +284,8 @@ final class HomeViewModel {
                 : nil,
             screenTimeSelectionData: draft.trackingKind == .screenTime
                 ? draft.screenTimeSelectionData
-                : nil
+                : nil,
+            shareToZakoNews: draft.shareToZakoNews
         )
 
         guard didSave else {
@@ -346,7 +308,8 @@ final class HomeViewModel {
                     limitCount: previousLimitCount,
                     trackingKind: previousTrackingKind,
                     screenTimeLimitMinutes: previousScreenTimeLimitMinutes,
-                    screenTimeSelectionData: previousScreenTimeSelectionData
+                    screenTimeSelectionData: previousScreenTimeSelectionData,
+                    shareToZakoNews: previousSharing
                 )
                 if previousTrackingKind == .screenTime {
                     try? dependencies.screenTimeMonitoringService.startMonitoring(for: behavior)
@@ -356,6 +319,7 @@ final class HomeViewModel {
             }
         }
 
+        if !draft.shareToZakoNews { news.cancelPending(for: behavior.id) }
         blockedBehaviorOperationErrorMessage = nil
         reload()
         return nil
@@ -388,6 +352,7 @@ final class HomeViewModel {
             return false
         }
         dependencies.screenTimeMonitoringService.discardStoredSignals(for: behavior)
+        news.cancelPending(for: behavior.id)
         reload()
         return true
     }
@@ -406,7 +371,9 @@ final class HomeViewModel {
     func deleteRoutine(_ routine: Routine) {
         guard let dependencies else { return }
         do {
+            let routineID = routine.id
             try dependencies.routineRepository.delete(routine)
+            news.cancelPending(for: routineID)
             routineOperationErrorMessage = nil
             reload()
         } catch {
@@ -422,6 +389,7 @@ final class HomeViewModel {
         guard !routine.isComplete(now: now) else { return true }
         do {
             try dependencies.routineRepository.recordProgress(routine, now: now)
+            news.enqueue(.achievement(routine, now: now))
             routineOperationErrorMessage = nil
         } catch {
             routineOperationErrorMessage = error.localizedDescription
@@ -448,6 +416,7 @@ final class HomeViewModel {
                 completed: completed,
                 now: now
             )
+            if completed { news.enqueue(.achievement(routine, now: now)) }
             routineOperationErrorMessage = nil
         } catch {
             routineOperationErrorMessage = error.localizedDescription

@@ -26,6 +26,12 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                NavigationLink { ZakoNewsSettingsView() } label: {
+                    settingsLabel("ざこ速報", systemImage: "megaphone")
+                }
+            }
+
             Section("このアプリについて") {
                 documentLink(.terms, systemImage: "doc.text")
                 documentLink(.privacyPolicy, systemImage: "hand.raised")

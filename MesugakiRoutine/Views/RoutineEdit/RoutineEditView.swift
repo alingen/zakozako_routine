@@ -107,6 +107,7 @@ struct RoutineEditView: View {
 
     private var detailsForm: some View {
         Form {
+            ZakoNewsSharingSection(isOn: $viewModel.shareToZakoNews, title: viewModel.title)
             Section("約束") {
                 TextField("タイトル", text: $viewModel.title)
             }

@@ -143,6 +143,7 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
 /// 選択画面と確認画面の間だけで保持する、未保存の入力内容。
 struct BlockedBehaviorDraft: Equatable {
     var title = ""
+    var shareToZakoNews = false
     var iconName: String?
     var isQuitCompletely = true
     var limitPeriod: HabitPeriod = .day
@@ -155,6 +156,7 @@ struct BlockedBehaviorDraft: Equatable {
 
     init(behavior: BlockedBehavior) {
         title = behavior.title
+        shareToZakoNews = behavior.shareToZakoNews
         iconName = behavior.iconName
         isQuitCompletely = behavior.limitPeriod == .day && behavior.effectiveLimit == 1
         limitPeriod = behavior.limitPeriod
@@ -169,6 +171,7 @@ struct BlockedBehaviorDraft: Equatable {
     }
 
     var canSave: Bool {
+        guard !shareToZakoNews || ZakoNewsText.canShare(title: title) else { return false }
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return false
         }

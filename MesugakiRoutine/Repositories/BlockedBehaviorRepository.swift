@@ -73,7 +73,8 @@ final class BlockedBehaviorRepository {
         limitCount: Int = 0,
         trackingKind: BlockedBehaviorTrackingKind = .manual,
         screenTimeLimitMinutes: Int? = nil,
-        screenTimeSelectionData: Data? = nil
+        screenTimeSelectionData: Data? = nil,
+        shareToZakoNews: Bool = false
     ) -> BlockedBehavior? {
         guard canAddNew() else { return nil }
         let behavior = BlockedBehavior(
@@ -85,6 +86,7 @@ final class BlockedBehaviorRepository {
             screenTimeLimitMinutes: screenTimeLimitMinutes,
             screenTimeSelectionData: screenTimeSelectionData
         )
+        behavior.shareToZakoNews = shareToZakoNews
         context.insert(behavior)
         do {
             try context.save()
@@ -106,9 +108,11 @@ final class BlockedBehaviorRepository {
         trackingKind: BlockedBehaviorTrackingKind,
         screenTimeLimitMinutes: Int?,
         screenTimeSelectionData: Data?,
-        now: Date = .now
+        now: Date = .now,
+        shareToZakoNews: Bool? = nil
     ) -> Bool {
         behavior.title = title
+        if let shareToZakoNews { behavior.shareToZakoNews = shareToZakoNews }
         behavior.iconName = iconName
         behavior.limitPeriod = limitPeriod
         behavior.limitCount = max(limitCount, 1)

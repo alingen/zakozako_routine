@@ -10,6 +10,8 @@ import SwiftData
 final class Routine {
     @Attribute(.unique) var id: UUID
     var title: String
+    /// 既存データは必ず共有OFFで移行する。
+    var shareToZakoNews: Bool = false
     /// 「寝る前」「朝ごはんの後」など、この約束を始めるきっかけ。
     /// 通知時刻とは分けて保持し、未設定の既存データでは nil。
     var cueText: String?

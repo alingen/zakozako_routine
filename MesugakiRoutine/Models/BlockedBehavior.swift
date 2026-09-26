@@ -15,6 +15,7 @@ enum BlockedBehaviorTrackingKind: String, Codable {
 final class BlockedBehavior {
     @Attribute(.unique) var id: UUID
     var title: String
+    var shareToZakoNews: Bool = false
     /// カードの円の中に表示する SF Symbol 名。既存データは nil のまま扱える。
     var iconName: String?
     /// 現在挑戦中かどうか。true になれるのは同時に1件のみ。

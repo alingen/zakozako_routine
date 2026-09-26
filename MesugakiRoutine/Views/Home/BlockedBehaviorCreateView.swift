@@ -148,6 +148,7 @@ struct BlockedBehaviorCreateView: View {
 
     private var detailsForm: some View {
         Form {
+            ZakoNewsSharingSection(isOn: $draft.shareToZakoNews, title: draft.title)
             Section("やらないこと") {
                 TextField("例: YouTubeを見ない", text: $draft.title)
             }

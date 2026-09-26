@@ -30,7 +30,8 @@ final class RoutineRepository {
         targetCount: Int = 1,
         scheduledStartMinute: Int? = nil,
         activeWeekdayValues: [Int] = Weekday.allWeekdayValues,
-        targetDurationMinutes: Int? = nil
+        targetDurationMinutes: Int? = nil,
+        shareToZakoNews: Bool = false
     ) throws -> Routine {
         let routine = Routine(
             title: title,
@@ -43,6 +44,7 @@ final class RoutineRepository {
             targetCount: targetCount
         )
         try performMutation {
+            routine.shareToZakoNews = shareToZakoNews
             context.insert(routine)
         }
         return routine
@@ -59,7 +61,8 @@ final class RoutineRepository {
         scheduledStartMinute: Int?,
         activeWeekdayValues: [Int],
         targetDurationMinutes: Int? = nil,
-        now: Date = .now
+        now: Date = .now,
+        shareToZakoNews: Bool? = nil
     ) throws {
         let periodChanged = routine.period != period
         let targetChanged = routine.targetCount != max(targetCount, 1)
@@ -83,6 +86,7 @@ final class RoutineRepository {
             }
 
             routine.title = title
+            if let shareToZakoNews { routine.shareToZakoNews = shareToZakoNews }
             routine.cueText = normalizedCueText(cueText)
             routine.isActive = isActive
             routine.iconName = iconName

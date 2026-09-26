@@ -7,6 +7,7 @@ import Observation
 final class RoutineEditViewModel {
     private(set) var routine: Routine?
     var title: String = ""
+    var shareToZakoNews = false
     /// 約束を実行するきっかけ。「寝る前」など。空なら未設定として保存する。
     var cueText: String = ""
     /// 円の中に表示するアイコン(SF Symbol 名)。未選択なら nil。
@@ -30,6 +31,7 @@ final class RoutineEditViewModel {
         self.routine = routine
         if let routine {
             title = routine.title
+            shareToZakoNews = routine.shareToZakoNews
             cueText = routine.cueText ?? ""
             iconName = routine.iconName
             period = routine.period
@@ -47,6 +49,7 @@ final class RoutineEditViewModel {
 
     var canSave: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (!shareToZakoNews || ZakoNewsText.canShare(title: title))
     }
 
     /// 対象曜日を選べるか(1日の期間のときだけ)。
@@ -118,7 +121,8 @@ final class RoutineEditViewModel {
                     targetCount: count,
                     scheduledStartMinute: scheduledStartMinute,
                     activeWeekdayValues: weekdayValues,
-                    targetDurationMinutes: targetDurationMinutes
+                    targetDurationMinutes: targetDurationMinutes,
+                    shareToZakoNews: shareToZakoNews
                 )
             } else {
                 routine = try dependencies.routineRepository.create(
@@ -129,10 +133,12 @@ final class RoutineEditViewModel {
                     targetCount: count,
                     scheduledStartMinute: scheduledStartMinute,
                     activeWeekdayValues: weekdayValues,
-                    targetDurationMinutes: targetDurationMinutes
+                    targetDurationMinutes: targetDurationMinutes,
+                    shareToZakoNews: shareToZakoNews
                 )
             }
             saveErrorMessage = nil
+            if !shareToZakoNews, let routine { ZakoNewsStore.shared.cancelPending(for: routine.id) }
             return true
         } catch {
             saveErrorMessage = error.localizedDescription
@@ -153,6 +159,7 @@ final class RoutineEditViewModel {
         targetDurationMinutes: Int?
     ) {
         self.title = title
+        self.shareToZakoNews = false
         self.cueText = cueText
         self.iconName = iconName
         self.period = period
@@ -171,6 +178,7 @@ final class RoutineEditViewModel {
         let routineID = routine.id
         do {
             try dependencies.routineRepository.delete(routine)
+            ZakoNewsStore.shared.cancelPending(for: routineID)
             dependencies.notificationScheduler.cancelNotification(for: routineID)
             saveErrorMessage = nil
             self.routine = nil
