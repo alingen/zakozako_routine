@@ -188,7 +188,8 @@ function printSummary(
     `Rows: daily=${raw.daily.length}, daily_catalog=${raw.dailyCatalog.length}, ` +
       `asset_catalog=${raw.assetCatalog.length}, ` +
       `choices=${raw.choices.length}, ` +
-      `interactions=${raw.interactions.length}, senarios=${raw.scenarios.length}, ` +
+      `interactions=${raw.interactions.length}, reaction_conditions=${raw.reactionConditions.length}, ` +
+      `reaction_lines=${raw.reactionLines.length}, senarios=${raw.scenarios.length}, ` +
       `events=${raw.events.length}`,
   );
 
@@ -203,7 +204,9 @@ function printSummary(
     console.log(
       `Bundle: scenarios=${result.artifact.scenarios.length} (daily=${dailyCount}), ` +
         `nodes=${nodeCount}, choiceGroups=${result.artifact.choiceGroups.length}, ` +
-        `interactions=${result.artifact.interactions.length}, events=${result.artifact.events.length}`,
+        `interactions=${result.artifact.interactions.length}, ` +
+        `reactionConditions=${result.artifact.reactionConditions.length}, reactionLines=${result.artifact.reactionLines.length}, ` +
+        `events=${result.artifact.events.length}`,
     );
   }
 

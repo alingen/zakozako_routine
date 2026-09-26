@@ -207,9 +207,7 @@ describe('source normalization', () => {
       }),
     );
 
-    expect(result.errors.map((issue) => issue.code)).toContain(
-      'invalid_portrait_hesitation_row',
-    );
+    expect(result.errors.map((issue) => issue.code)).toContain('invalid_portrait_hesitation_row');
   });
 
   it('preserves a per-line Rio typing duration', () => {
@@ -963,6 +961,8 @@ describe('deterministic generation and CLI contracts', () => {
       scenarios: [...normalized.scenarios].reverse(),
       choices: [...normalized.choices].reverse(),
       interactions: [...normalized.interactions].reverse(),
+      reactionConditions: [...normalized.reactionConditions].reverse(),
+      reactionLines: [...normalized.reactionLines].reverse(),
       events: [...normalized.events].reverse(),
     };
 

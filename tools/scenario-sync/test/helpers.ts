@@ -7,6 +7,8 @@ import {
   EVENT_COLUMNS,
   INTERACTION_COLUMNS,
   SCENARIO_COLUMNS,
+  REACTION_CONDITION_COLUMNS,
+  REACTION_LINE_COLUMNS,
 } from '../src/schema.js';
 import type { RawSheets } from '../src/types.js';
 
@@ -18,6 +20,8 @@ export function sheets(options: {
   assets?: Values[];
   choices?: Values[];
   interactions?: Values[];
+  reactionConditions?: Values[];
+  reactionLines?: Values[];
   events?: Values[];
   titleRows?: number;
 }): RawSheets {
@@ -47,11 +51,7 @@ export function sheets(options: {
       'scenario_id',
     ),
     assetCatalog: gridToRows(
-      grid(
-        ASSET_CATALOG_COLUMNS,
-        options.assets ?? [],
-        options.titleRows ?? 0,
-      ),
+      grid(ASSET_CATALOG_COLUMNS, options.assets ?? [], options.titleRows ?? 0),
       'asset_id',
     ),
     scenarios: gridToRows(
@@ -65,6 +65,14 @@ export function sheets(options: {
     interactions: gridToRows(
       grid(INTERACTION_COLUMNS, options.interactions ?? [], options.titleRows ?? 0),
       'id',
+    ),
+    reactionConditions: gridToRows(
+      grid(REACTION_CONDITION_COLUMNS, options.reactionConditions ?? [], options.titleRows ?? 0),
+      'condition_id',
+    ),
+    reactionLines: gridToRows(
+      grid(REACTION_LINE_COLUMNS, options.reactionLines ?? [], options.titleRows ?? 0),
+      'line_id',
     ),
     events: gridToRows(
       grid(EVENT_COLUMNS, options.events ?? [], options.titleRows ?? 0),

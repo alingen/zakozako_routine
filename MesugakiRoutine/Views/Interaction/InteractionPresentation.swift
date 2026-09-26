@@ -11,13 +11,8 @@ enum InteractionCommentSelector {
         excluding excludedID: String? = nil,
         randomUnit: () -> Double = { Double.random(in: 0..<1) }
     ) -> InteractionComment? {
-        var candidates = comments.filter {
-            $0.active
-                && $0.weight > 0
-                && matchesTouchArea($0.touchArea, requested: touchArea)
-                && matchesTime($0.timeCondition, now: now, calendar: calendar)
-                && matchesCondition($0.condition, profileValues: profileValues)
-        }
+        var candidates = candidates(from: comments, touchArea: touchArea, now: now,
+            calendar: calendar, profileValues: profileValues)
         if candidates.count > 1, let excludedID {
             candidates.removeAll { $0.id == excludedID }
         }
@@ -31,6 +26,18 @@ enum InteractionCommentSelector {
             target -= comment.weight
         }
         return candidates.last
+    }
+
+    static func candidates(
+        from comments: [InteractionComment], touchArea: String, now: Date,
+        calendar: Calendar, profileValues: [String: String]
+    ) -> [InteractionComment] {
+        comments.filter {
+            $0.active && $0.weight > 0
+                && matchesTouchArea($0.touchArea, requested: touchArea)
+                && matchesTime($0.timeCondition, now: now, calendar: calendar)
+                && matchesCondition($0.condition, profileValues: profileValues)
+        }
     }
 
     private static func matchesTouchArea(_ value: String?, requested: String) -> Bool {

@@ -8,6 +8,7 @@ struct InteractionView: View {
     @State private var viewModel = InteractionViewModel()
     @State private var onboardingPlaybackKeyInPlayer: String?
     @State private var autoPlayedStoryEventID: String?
+    @State private var isVisible = false
 
     @Binding private var openTodayConversationRequest: Bool
     @Binding private var openStoryEventRequest: String?
@@ -33,7 +34,7 @@ struct InteractionView: View {
     }
 
     private var homeDialogue: String? {
-        viewModel.interactionComment?.text
+        viewModel.interactionComment?.displayText
     }
 
     var body: some View {
@@ -195,10 +196,12 @@ struct InteractionView: View {
             openRequestedStoryEventIfNeeded()
         }
         .onAppear {
-            viewModel.reload()
+            isVisible = true
+            viewModel.configure(context: modelContext)
             viewModel.recordInteractionScreenOpen(context: modelContext)
             offerDeferredConversationIfNeeded()
         }
+        .onDisappear { isVisible = false }
         .onChange(of: onboardingConversationIdentity) { _, _ in
             viewModel.reload()
             offerDeferredConversationIfNeeded()
@@ -210,8 +213,11 @@ struct InteractionView: View {
             if eventID != nil { openRequestedStoryEventIfNeeded() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
+            if phase == .active && isVisible {
                 viewModel.reload()
+                if viewModel.activeLaunch == nil {
+                    viewModel.recordInteractionScreenOpen(context: modelContext)
+                }
                 offerDeferredConversationIfNeeded()
             }
         }

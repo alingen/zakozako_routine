@@ -41,10 +41,50 @@ export function validate(data: NormalizedSheets): ValidateResult {
   validateAssetReferences(scenarioRows, data.events, assets, issues);
   validateChoiceRows(data.choices, data.daily, choices, issues);
   validateInteractions(data.interactions, issues);
+  validateReactions(data, issues);
   validateEventRows(data.events, scenarios, issues);
   checkReachability(data, issues);
 
   return { issues };
+}
+
+function validateReactions(data: NormalizedSheets, issues: IssueBag): void {
+  const conditionIDs = new Set<string>();
+  for (const row of data.reactionConditions) {
+    const at = { sheet: 'reaction_conditions', row: row.__row, column: 'condition_id' };
+    if (conditionIDs.has(row.conditionId))
+      issues.error('duplicate_reaction_condition', 'condition_id must be unique', { at });
+    conditionIDs.add(row.conditionId);
+    if (!row.active) continue;
+    if (!['state', 'derived', 'event', 'calendar'].includes(row.triggerType)) {
+      issues.error('invalid_reaction_trigger', 'Unsupported trigger_type', {
+        at,
+        value: row.triggerType,
+      });
+    }
+    if (!['==', '!=', '>=', '<=', '>', '<', 'derived', 'between', 'event'].includes(row.operator)) {
+      issues.error('invalid_reaction_operator', 'Unsupported operator', {
+        at,
+        value: row.operator,
+      });
+    }
+  }
+  const lineIDs = new Set<string>();
+  for (const row of data.reactionLines) {
+    const at = { sheet: 'reaction_lines', row: row.__row, column: 'line_id' };
+    if (lineIDs.has(row.lineId))
+      issues.error('duplicate_reaction_line', 'line_id must be unique', { at });
+    lineIDs.add(row.lineId);
+    if (!conditionIDs.has(row.conditionId))
+      issues.error('missing_reaction_condition', 'Active line must reference a known condition', {
+        at,
+        value: row.conditionId,
+      });
+    if (row.weight < 0)
+      issues.error('invalid_reaction_weight', 'weight must be nonnegative', { at });
+    if (!['normal', 'strong'].includes(row.strength))
+      issues.error('invalid_reaction_strength', 'strength must be normal or strong', { at });
+  }
 }
 
 function validateAssetCatalog(

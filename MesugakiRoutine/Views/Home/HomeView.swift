@@ -567,7 +567,8 @@ struct HomeView: View {
             message: nil,
             actions: [
                 AppDialogAction("負けそう…") {
-                    .showTaunt(nextTaunt(for: .struggling))
+                    guard viewModel.recordPromiseUrge(behavior) else { return .dismiss }
+                    return .showTaunt(nextTaunt(for: .struggling))
                 },
                 AppDialogAction("負けました", style: .destructive) {
                     .replace(failureConfirmation(for: behavior))
@@ -628,7 +629,7 @@ struct HomeView: View {
             nextDefeatedTauntIndex = (nextDefeatedTauntIndex + 1) % kind.messages.count
         }
         return BlockedBehaviorTauntRequest(
-            text: kind.messages[index],
+            text: viewModel.prohibitionReactionText ?? kind.messages[index],
             offersChallenge: kind == .struggling
         )
     }

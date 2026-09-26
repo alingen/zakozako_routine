@@ -114,6 +114,28 @@ export const EVENT_COLUMNS = [
   'story_category',
 ] as const;
 
+export const REACTION_CONDITION_COLUMNS = [
+  'condition_id',
+  'label',
+  'trigger_type',
+  'condition_key',
+  'operator',
+  'value',
+  'priority',
+  'active',
+  'note',
+] as const;
+export const REACTION_LINE_COLUMNS = [
+  'line_id',
+  'condition_id',
+  'text',
+  'strength',
+  'premium_only',
+  'weight',
+  'active',
+  'note',
+] as const;
+
 export const REQUIRED_DAILY_COLUMNS = [
   'scenario_id',
   'line_order',

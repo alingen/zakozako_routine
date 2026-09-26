@@ -8,6 +8,7 @@ struct AppDependencies {
     let blockedBehaviorRepository: BlockedBehaviorRepository
     let userActionEventRepository: UserActionEventRepository
     let reactionContextProvider: ReactionContextProvider
+    let interactionReactionService: InteractionReactionService
     let screenTimeMonitoringService: ScreenTimeMonitoringService
     let notificationScheduler: RoutineNotificationScheduler
     let storyStateRepository: StoryStateRepository
@@ -19,6 +20,7 @@ struct AppDependencies {
         blockedBehaviorRepository = BlockedBehaviorRepository(context: context)
         userActionEventRepository = UserActionEventRepository(context: context)
         reactionContextProvider = ReactionContextProvider(context: context)
+        interactionReactionService = InteractionReactionService()
         screenTimeMonitoringService = ScreenTimeMonitoringService()
         notificationScheduler = RoutineNotificationScheduler()
         storyStateRepository = StoryStateRepository(context: context)

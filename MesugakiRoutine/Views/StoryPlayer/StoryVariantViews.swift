@@ -20,13 +20,6 @@ extension StoryNode {
     }
 }
 
-private extension String {
-    func replacingStoryTextMarkers() -> String {
-        replacingOccurrences(of: "[br]", with: "\n")
-            .replacingOccurrences(of: "[sp]", with: " ")
-    }
-}
-
 struct StoryTitleCardView: View {
     let node: StoryNode
 

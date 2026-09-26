@@ -18,6 +18,8 @@ export interface RawSheets {
   assetCatalog: RawRow[];
   choices: RawRow[];
   interactions: RawRow[];
+  reactionConditions: RawRow[];
+  reactionLines: RawRow[];
   /** Event scenario lines from the intentionally named `senarios` tab. */
   scenarios: RawRow[];
   events: RawRow[];
@@ -33,6 +35,8 @@ export interface SheetSnapshot {
     asset_catalog: string[][];
     choices: string[][];
     interactions: string[][];
+    reaction_conditions: string[][];
+    reaction_lines: string[][];
     senarios: string[][];
     events: string[][];
   };
@@ -143,12 +147,40 @@ export interface NormalizedEventRow {
   storyCategory?: string;
 }
 
+export interface ReactionCondition {
+  conditionId: string;
+  label: string;
+  triggerType: string;
+  conditionKey: string;
+  operator: string;
+  value: string;
+  priority: number;
+  active: boolean;
+  note?: string;
+}
+
+export interface ReactionLine {
+  lineId: string;
+  conditionId: string;
+  text: string;
+  strength: string;
+  premiumOnly: boolean;
+  weight: number;
+  active: boolean;
+  note?: string;
+}
+
+export type NormalizedReactionCondition = ReactionCondition & { __row: number };
+export type NormalizedReactionLine = ReactionLine & { __row: number };
+
 export interface NormalizedSheets {
   daily: NormalizedScenarioRow[];
   dailyCatalog: NormalizedDailyCatalogRow[];
   assetCatalog: NormalizedAssetCatalogRow[];
   choices: NormalizedChoiceRow[];
   interactions: NormalizedInteractionRow[];
+  reactionConditions: NormalizedReactionCondition[];
+  reactionLines: NormalizedReactionLine[];
   scenarios: NormalizedScenarioRow[];
   events: NormalizedEventRow[];
 }
@@ -233,5 +265,7 @@ export interface StoryContentBundle {
   scenarios: StoryScenario[];
   choiceGroups: StoryChoiceGroup[];
   interactions: InteractionComment[];
+  reactionConditions: ReactionCondition[];
+  reactionLines: ReactionLine[];
   events: StoryEvent[];
 }

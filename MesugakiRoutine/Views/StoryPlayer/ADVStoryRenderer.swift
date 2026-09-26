@@ -920,11 +920,7 @@ enum ADVTextLayout {
 
     /// `[br]` と既存の改行を優先し、それぞれの行を18文字以内に収める。
     static func formatted(_ source: String) -> String {
-        let normalized = source
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-            .replacingOccurrences(of: "[br]", with: "\n")
-            .replacingOccurrences(of: "[sp]", with: " ")
+        let normalized = source.replacingStoryTextMarkers()
 
         return normalized
             .split(separator: "\n", omittingEmptySubsequences: false)

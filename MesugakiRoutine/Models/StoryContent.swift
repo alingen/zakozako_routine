@@ -389,18 +389,34 @@ struct StoryContentBundle: Codable, Hashable {
     let scenarios: [StoryScenario]
     let choiceGroups: [StoryChoiceGroup]
     let interactions: [InteractionComment]
+    let reactionConditions: [ReactionCondition]
+    let reactionLines: [ReactionLine]
     let events: [StoryEvent]
 
     init(
         scenarios: [StoryScenario],
         choiceGroups: [StoryChoiceGroup],
         interactions: [InteractionComment] = [],
+        reactionConditions: [ReactionCondition] = [],
+        reactionLines: [ReactionLine] = [],
         events: [StoryEvent]
     ) {
         self.scenarios = scenarios
         self.choiceGroups = choiceGroups
         self.interactions = interactions
+        self.reactionConditions = reactionConditions
+        self.reactionLines = reactionLines
         self.events = events
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        scenarios = try values.decode([StoryScenario].self, forKey: .scenarios)
+        choiceGroups = try values.decode([StoryChoiceGroup].self, forKey: .choiceGroups)
+        interactions = try values.decode([InteractionComment].self, forKey: .interactions)
+        reactionConditions = try values.decodeIfPresent([ReactionCondition].self, forKey: .reactionConditions) ?? []
+        reactionLines = try values.decodeIfPresent([ReactionLine].self, forKey: .reactionLines) ?? []
+        events = try values.decode([StoryEvent].self, forKey: .events)
     }
 }
 
@@ -413,6 +429,7 @@ struct InteractionComment: Codable, Hashable, Identifiable {
     let touchArea: String?
     let weight: Int
     let active: Bool
+    var displayText: String { text.replacingStoryTextMarkers() }
 
     init(
         id: String,

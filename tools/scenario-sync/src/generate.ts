@@ -25,6 +25,9 @@ export function generate(data: NormalizedSheets): StoryContentBundle {
   const enabledCatalog = data.dailyCatalog.filter((row) => row.enabled);
   const enabledDailyIds = new Set(enabledCatalog.map((row) => row.scenarioId));
   const dailyCatalogById = new Map(enabledCatalog.map((row) => [row.scenarioId, row]));
+  const activeReactionIDs = new Set(
+    data.reactionConditions.filter((row) => row.active).map((row) => row.conditionId),
+  );
 
   return {
     _generated: GENERATED_MARKER,
@@ -36,6 +39,14 @@ export function generate(data: NormalizedSheets): StoryContentBundle {
       data.choices.filter((row) => enabledDailyIds.has(row.dailyId)),
     ),
     interactions: generateInteractions(data.interactions),
+    reactionConditions: [...data.reactionConditions]
+      .filter((row) => row.active)
+      .sort((a, b) => compareText(a.conditionId, b.conditionId))
+      .map(({ __row, ...condition }) => condition),
+    reactionLines: [...data.reactionLines]
+      .filter((row) => activeReactionIDs.has(row.conditionId))
+      .sort((a, b) => compareText(a.lineId, b.lineId))
+      .map(({ __row, ...line }) => line),
     events: generateEvents(data.events),
   };
 }

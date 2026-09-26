@@ -57,6 +57,7 @@ final class HomeViewModel {
 
     /// Home上部で莉央が話している一言。
     private(set) var rioComment: InteractionComment?
+    private(set) var prohibitionReactionText: String?
     /// `rioComment` を選んだときの状態。状態が変わったら選び直す。
     private var rioCommentMood: RioHomeMood?
 
@@ -157,6 +158,31 @@ final class HomeViewModel {
 
     // MARK: - やらないこと
 
+    @discardableResult
+    func recordPromiseUrge(_ behavior: BlockedBehavior) -> Bool {
+        guard let dependencies else { return false }
+        prohibitionReactionText = nil
+        do {
+            let now = Date.now
+            let event = try dependencies.blockedBehaviorRepository.recordUrge(behavior, now: now)
+            selectProhibitionReaction(eventID: event.id, now: now)
+            blockedBehaviorOperationErrorMessage = nil
+            return true
+        } catch {
+            blockedBehaviorOperationErrorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    private func selectProhibitionReaction(eventID: UUID, now: Date) {
+        guard let dependencies, let content = dependencies.storyContentRepository,
+              let context = try? dependencies.reactionContextProvider.current(now: now) else { return }
+        prohibitionReactionText = dependencies.interactionReactionService.select(
+            conditions: content.reactionConditions, lines: content.reactionLines,
+            interactions: content.interactions, context: context, trigger: .action(eventID), now: now
+        )?.displayText
+    }
+
     func promiseUsage(for behavior: BlockedBehavior, now: Date = .now) -> PromiseUsage {
         PromiseUsage(
             used: behavior.usageInCurrentPeriod(now: now),
@@ -169,6 +195,7 @@ final class HomeViewModel {
     @discardableResult
     func recordPromiseFailure(_ behavior: BlockedBehavior) -> Bool {
         guard let dependencies else { return false }
+        prohibitionReactionText = nil
         do {
             let now = Date.now
             let didRecord: Bool
@@ -188,6 +215,12 @@ final class HomeViewModel {
             }
             if didRecord {
                 news.enqueue(.failure(behavior, now: now))
+                if behavior.trackingKind == .manual,
+                   let event = try dependencies.userActionEventRepository.fetchAll().last(where: {
+                       $0.eventType == .prohibitionFailed && $0.targetID == behavior.id && $0.occurredAt == now
+                   }) {
+                    selectProhibitionReaction(eventID: event.id, now: now)
+                }
             }
             blockedBehaviorOperationErrorMessage = nil
             reload()

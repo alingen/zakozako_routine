@@ -3,8 +3,6 @@ import SwiftUI
 /// 交流画面の莉央のひとこと。ホームや煽りと同じピンクの吹き出しで、白い操作部品と見分ける。
 /// 莉央本人が大きく映っているので、名札やアバターは付けない。
 struct InteractionCharacterSpeechBubble: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     let text: String
     /// 読み上げで誰の言葉かを伝えるための名前。
     var speakerName: String = "莉央"
@@ -14,8 +12,8 @@ struct InteractionCharacterSpeechBubble: View {
             .font(.body.weight(.semibold))
             .foregroundStyle(AppColor.text)
             .multilineTextAlignment(.leading)
-            // 大きな文字サイズでは行数を制限せず、全文を読めるようにする。
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+            // CMSの[br]と長いリアクションを省略せず、既存の吹き出しの高さだけ合わせる。
+            .lineLimit(nil)
             .minimumScaleFactor(0.86)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 18)

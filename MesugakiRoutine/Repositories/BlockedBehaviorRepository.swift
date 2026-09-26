@@ -167,18 +167,15 @@ final class BlockedBehaviorRepository {
     }
 
     /// 「負けそう…」を押した事実。日別の勝敗や消費回数は変えない。
-    func recordUrge(_ behavior: BlockedBehavior, now: Date = .now) throws {
+    @discardableResult
+    func recordUrge(_ behavior: BlockedBehavior, now: Date = .now) throws -> UserActionEvent {
         guard behavior.isActive, behavior.masteredAt == nil else {
             throw BlockedBehaviorRepositoryError.inactiveBehavior
         }
-        try performMutation {
-            context.insert(UserActionEvent(
-                eventType: .prohibitionUrge,
-                targetType: .prohibition,
-                targetID: behavior.id,
-                occurredAt: now
-            ))
-        }
+        let event = UserActionEvent(eventType: .prohibitionUrge, targetType: .prohibition,
+            targetID: behavior.id, occurredAt: now)
+        try performMutation { context.insert(event) }
+        return event
     }
 
     /// Device Activity 拡張から届いた、上限超過または1日の監視完了を保存する。

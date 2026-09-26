@@ -38,11 +38,13 @@ final class InteractionViewModel {
     private var todayPlaybackKey: String?
 
     func recordInteractionScreenOpen(context: ModelContext, now: Date = .now) {
+        if dependencies == nil { dependencies = AppDependencies(context: context) }
         do {
             try UserActionEventRepository(context: context).record(
                 .interactionScreenOpened,
                 occurredAt: now
             )
+            selectComment(trigger: .interactionOpened, touchArea: "character", now: now)
         } catch {
             loadError = "交流画面への来訪を記録できませんでした: \(error.localizedDescription)"
         }
@@ -273,19 +275,27 @@ final class InteractionViewModel {
                 loadError = "莉央へのタップを記録できませんでした: \(error.localizedDescription)"
             }
         }
+        selectComment(trigger: .characterTapped, touchArea: touchArea, now: now, calendar: calendar)
+    }
+
+    private func selectComment(
+        trigger: ReactionTrigger, touchArea: String, now: Date, calendar: Calendar = .current
+    ) {
         guard let dependencies, let content = dependencies.storyContentRepository else {
             interactionComment = nil
             return
         }
-        let profileValues = (try? dependencies.storyStateRepository.profileValues()) ?? [:]
-        interactionComment = InteractionCommentSelector.select(
-            from: content.interactions,
-            touchArea: touchArea,
-            now: now,
-            calendar: calendar,
-            profileValues: profileValues,
-            excluding: interactionComment?.id
-        )
+        do {
+            let context = try dependencies.reactionContextProvider.current(now: now, calendar: calendar)
+            let profileValues = try dependencies.storyStateRepository.profileValues()
+            interactionComment = dependencies.interactionReactionService.select(
+                conditions: content.reactionConditions, lines: content.reactionLines,
+                interactions: content.interactions, context: context, trigger: trigger,
+                touchArea: touchArea, profileValues: profileValues, now: now, calendar: calendar
+            )
+        } catch {
+            loadError = "莉央のリアクションを更新できませんでした: \(error.localizedDescription)"
+        }
     }
 
     @discardableResult

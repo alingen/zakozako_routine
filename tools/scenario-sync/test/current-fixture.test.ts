@@ -50,6 +50,8 @@ const raw = hasCurrentFixture
       assetCatalog: [],
       choices: [],
       interactions: [],
+      reactionConditions: [],
+      reactionLines: [],
       scenarios: [],
       events: [],
     };
@@ -493,7 +495,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     });
     expect(smallEvent).toMatchObject({
       eventType: 'small_event',
-      title: '３問クイズ',
+      title: '3問クイズ',
       entryScenarioId: 'small_001',
       priority: 104,
       chapterId: 'chapter_01',
@@ -817,6 +819,8 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       scenarios: [...normalized.data.scenarios].reverse(),
       choices: [...normalized.data.choices].reverse(),
       interactions: [...normalized.data.interactions].reverse(),
+      reactionConditions: [...normalized.data.reactionConditions].reverse(),
+      reactionLines: [...normalized.data.reactionLines].reverse(),
       events: [...normalized.data.events].reverse(),
     };
     const content = serialize(bundle);
