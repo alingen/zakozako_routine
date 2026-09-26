@@ -30,6 +30,44 @@ struct InteractionCharacterSpeechBubble: View {
     }
 }
 
+/// 莉央をタップした位置に一瞬だけ出る小さなきらめき。飾りなので Yellow(accent)と白で描く。
+/// 視差効果を減らす設定では、広がらずにその場で消える。
+struct InteractionTapSparkle: View {
+    struct Burst: Identifiable {
+        let id = UUID()
+        let location: CGPoint
+    }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isSpread = false
+    @State private var isFaded = false
+
+    private let pieces: [(offset: CGSize, size: CGFloat, color: Color)] = [
+        (CGSize(width: -14, height: -16), 13, AppColor.accent),
+        (CGSize(width: 15, height: -10), 10, .white),
+        (CGSize(width: 2, height: 16), 8, AppColor.accent),
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(pieces.indices, id: \.self) { index in
+                let piece = pieces[index]
+                Image(systemName: "sparkle")
+                    .font(.system(size: piece.size, weight: .bold))
+                    .foregroundStyle(piece.color)
+                    .shadow(color: AppColor.text.opacity(0.18), radius: 1.5)
+                    .offset(isSpread && !reduceMotion ? piece.offset : .zero)
+                    .scaleEffect(isSpread ? 1 : 0.4)
+            }
+        }
+        .opacity(isFaded ? 0 : 1)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.3)) { isSpread = true }
+            withAnimation(.easeIn(duration: 0.25).delay(0.3)) { isFaded = true }
+        }
+    }
+}
+
 /// 今日の会話の入口。状態は説明文ではなく、バッジとボタンの色で示す。
 struct TodayConversationDockButton: View {
     let title: String
@@ -212,11 +250,34 @@ struct InteractionProgressMiniCard: View {
             // タップでストーリー一覧へ移れることを示す。
             HStack(alignment: .center, spacing: 4) {
                 // すりガラスの上なので muted ではなく本文色にする(muted は白地の上だけ)。
-                Text(progress.nextStoryText)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(AppColor.text)
-                    .lineLimit(isAccessibilitySize ? nil : 2)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 3) {
+                    // 次に読む話の題名。もう読めるときは NEW を添え、「読めます」の文は省く。
+                    if let nextStoryTitle = progress.nextStoryTitle {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            if progress.nextStoryIsNew {
+                                Text("NEW")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 1)
+                                    .background(AppColor.primary, in: Capsule())
+                                    .fixedSize()
+                            }
+                            // 幅188ptでは題名が1行に収まりにくいので、2行まで出す。
+                            Text(nextStoryTitle)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(isAccessibilitySize ? 3 : 2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    if !progress.nextStoryIsNew || progress.nextStoryTitle == nil {
+                        Text(progress.nextStoryText)
+                            .font(.caption.weight(.medium))
+                            .lineLimit(isAccessibilitySize ? nil : 2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .foregroundStyle(AppColor.text)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
@@ -234,6 +295,17 @@ struct InteractionProgressMiniCard: View {
         }
         .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 5)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(progress.chapterTitle)、\(progress.completedCount)話読了、全\(progress.totalCount)話。\(progress.nextStoryText)")
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        var parts = ["\(progress.chapterTitle)、\(progress.completedCount)話読了、全\(progress.totalCount)話。"]
+        if let nextStoryTitle = progress.nextStoryTitle {
+            parts.append(progress.nextStoryIsNew ? "新しい話、\(nextStoryTitle)。" : "次は\(nextStoryTitle)。")
+        }
+        if !progress.nextStoryIsNew || progress.nextStoryTitle == nil {
+            parts.append(progress.nextStoryText)
+        }
+        return parts.joined()
     }
 }

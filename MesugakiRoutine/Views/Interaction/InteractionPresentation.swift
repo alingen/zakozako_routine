@@ -175,6 +175,10 @@ struct InteractionStoryProgressPresentation: Equatable {
     let completedCount: Int
     let totalCount: Int
     let nextStoryText: String
+    /// 次に読む話の題名(「第2話 ○○」)。読み終えたときは nil。
+    var nextStoryTitle: String? = nil
+    /// 次の話がもう読めて、まだ開いていないとき true。ミニカードに NEW を出す。
+    var nextStoryIsNew = false
 
     var progressFraction: Double {
         guard totalCount > 0 else { return 0 }
@@ -211,7 +215,11 @@ struct InteractionStoryProgressPresentation: Equatable {
             chapterTitle: chapter.title,
             completedCount: completedCount,
             totalCount: chapter.stories.count,
-            nextStoryText: nextStoryText
+            nextStoryText: nextStoryText,
+            nextStoryTitle: nextStory.map { story in
+                [story.episodeLabel, story.title].compactMap { $0 }.joined(separator: " ")
+            },
+            nextStoryIsNew: nextStory.map { $0.isUnlocked && $0.isNew } ?? false
         )
     }
 

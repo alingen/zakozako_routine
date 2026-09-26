@@ -5,7 +5,12 @@ import SwiftUI
 struct InteractionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var viewModel = InteractionViewModel()
+    /// タップしたときに莉央が跳ねる量(上がマイナス)。
+    @State private var rioHopOffset: CGFloat = 0
+    /// タップした位置に出す小さなきらめき。
+    @State private var tapSparkles: [InteractionTapSparkle.Burst] = []
     @State private var onboardingPlaybackKeyInPlayer: String?
     @State private var autoPlayedStoryEventID: String?
     @State private var isVisible = false
@@ -72,7 +77,7 @@ struct InteractionView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: artworkWidth)
-                        .offset(y: artworkTop)
+                        .offset(y: artworkTop + rioHopOffset)
                         .frame(
                             width: proxy.size.width,
                             height: visualHeight,
@@ -108,8 +113,20 @@ struct InteractionView: View {
                     x: proxy.size.width * 0.46,
                     y: proxy.size.height * 0.55 + artworkDrop * 0.5
                 )
+                // ボタンの動作はそのままに、きらめきを出す位置だけ受け取る。
+                .simultaneousGesture(
+                    SpatialTapGesture(coordinateSpace: .named(Self.coordinateSpace))
+                        .onEnded { addTapSparkle(at: $0.location) }
+                )
                 .accessibilityLabel("莉央")
                 .accessibilityHint("タップすると莉央が話します")
+
+                ForEach(tapSparkles) { burst in
+                    InteractionTapSparkle()
+                        .position(burst.location)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
@@ -183,6 +200,7 @@ struct InteractionView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            .coordinateSpace(name: Self.coordinateSpace)
         }
         // バーは隠したまま、遷移先の戻るボタンに「交流」と出すためのタイトル。
         .navigationTitle("交流")
@@ -308,9 +326,33 @@ struct InteractionView: View {
         .accessibilityHint("思い出のコレクションを開きます")
     }
 
+    private static let coordinateSpace = "interactionScreen"
+
     private func showNextHomeDialogue() {
+        hopRio()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
             viewModel.selectInteractionComment(touchArea: "character")
+        }
+    }
+
+    /// タップに応えて、莉央を6ptだけ跳ねさせる。視差効果を減らす設定では動かさない。
+    private func hopRio() {
+        guard !reduceMotion else { return }
+        withAnimation(.easeOut(duration: 0.11)) {
+            rioHopOffset = -6
+        } completion: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
+                rioHopOffset = 0
+            }
+        }
+    }
+
+    private func addTapSparkle(at location: CGPoint) {
+        let burst = InteractionTapSparkle.Burst(location: location)
+        tapSparkles.append(burst)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
+            tapSparkles.removeAll { $0.id == burst.id }
         }
     }
 
