@@ -780,18 +780,20 @@ struct ADVTextWindow: View {
         }
         .overlay(alignment: .topLeading) {
             if let displaySpeakerName {
+                // 名前がセリフより目立たないよう、本文より一段小さい文字にする。
                 Text(displaySpeakerName)
-                    .font(.title3.bold())
+                    .font(.headline.bold())
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 7)
-                    // 名札は交流の吹き出しと同じカプセル型。莉央は Primary、主人公は本文色の地にして見分ける。
+                    .padding(.vertical, 5)
+                    // 名札は交流の吹き出しと同じカプセル型。莉央は Primary、主人公は muted の地にして控えめに見分ける
+                    // (白い文字との差は 4.50:1)。
                     .background {
                         Capsule()
-                            .fill(isProtagonist ? AppColor.text : AppColor.primary)
+                            .fill(isProtagonist ? AppColor.muted : AppColor.primary)
                     }
-                    .offset(y: -19)
+                    .offset(y: -16)
             }
         }
         .overlay(alignment: .bottomTrailing) {

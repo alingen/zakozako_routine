@@ -477,6 +477,30 @@ final class InteractionStoryProgressPresentationTests: XCTestCase {
         XCTAssertEqual(progress.nextStoryText, "すべてのストーリーを読み終えました")
     }
 
+    func testPrologueIsCountedSeparatelyLikeTheStoryList() {
+        let stories = [
+            StoryListItemPresentation(
+                id: "prologue", title: "prologue", chapterId: "1", episodeOrder: 0,
+                backgroundAssetId: nil, isUnlocked: true, isNew: false, isRead: true, conditions: []
+            ),
+            StoryListItemPresentation(
+                id: "ep1", title: "ep1", chapterId: "1", episodeOrder: 1,
+                backgroundAssetId: nil, isUnlocked: true, isNew: false, isRead: true, conditions: []
+            ),
+            StoryListItemPresentation(
+                id: "ep2", title: "ep2", chapterId: "1", episodeOrder: 2,
+                backgroundAssetId: nil, isUnlocked: true, isNew: false, isRead: false, conditions: []
+            ),
+        ]
+        let progress = InteractionStoryProgressPresentation.make(
+            chapters: [chapter("1", stories: stories)],
+            evaluations: []
+        )
+        XCTAssertEqual(progress.chapterTitle, "チャプター 1")
+        XCTAssertEqual(progress.completedCount, 1)
+        XCTAssertEqual(progress.totalCount, 2)
+    }
+
     func testUnlockedUnreadStoryShowsAvailabilityNotRemainingDays() {
         let progress = InteractionStoryProgressPresentation.make(
             chapters: [chapter("1", stories: [story("next", isUnlocked: true)])],

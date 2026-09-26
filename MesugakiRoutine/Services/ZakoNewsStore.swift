@@ -7,7 +7,6 @@ final class ZakoNewsStore {
     static let shared = ZakoNewsStore(repository: ZakoNewsRepository())
     let repository: any ZakoNewsServing
     private(set) var rotation = ZakoNewsRotation()
-    private(set) var latestSharedPost: ZakoNewsPost?
     private(set) var errorMessage: String?
     private(set) var isLoading = false
     private(set) var pendingPublications: [ZakoNewsPublication]
@@ -53,7 +52,10 @@ final class ZakoNewsStore {
                 let id = try await repository.publish(publication)
                 pendingPublications.removeAll { $0.id == publication.id }
                 persistPending()
-                latestSharedPost = try? await repository.feed(before: nil, ids: [id], mine: false).first
+                // 送れた自分の投稿はホームの先頭に出す(ひとことはその行から添えられる)。あとは通常の自動送りに任せる。
+                if let post = try? await repository.feed(before: nil, ids: [id], mine: false).first {
+                    rotation.showFirst(post)
+                }
                 errorMessage = nil
             } catch {
                 errorMessage = "記録は保存済みです。速報を共有できませんでした。接続後に再送できます。"
@@ -102,13 +104,11 @@ final class ZakoNewsStore {
         let post = try await repository.feed(before: nil, ids: [id], mine: false).first
         if let post {
             rotation.replace(post)
-            if latestSharedPost?.id == id { latestSharedPost = post }
         } else { remove(id) }
         return post
     }
     func remove(_ id: UUID) {
         rotation.remove(id)
-        if latestSharedPost?.id == id { latestSharedPost = nil }
     }
     func didBlock() async throws {
         // Resolve all cached IDs server-side. No client-side author identifier needed.
@@ -117,6 +117,5 @@ final class ZakoNewsStore {
         cursor = nil; exhausted = false
         await refreshIfNeeded(force: true)
     }
-    func clearHint() { latestSharedPost = nil }
     private func persistPending() { defaults.set(try? JSONEncoder().encode(pendingPublications), forKey: pendingKey) }
 }

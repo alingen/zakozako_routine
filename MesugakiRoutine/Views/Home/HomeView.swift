@@ -10,7 +10,7 @@ struct HomeView: View {
     @State private var selectedNewsPost: ZakoNewsPost?
     @State private var showsNewsFeed = false
     @State private var homeIsVisible = false
-    @GestureState private var homeIsInteracting = false
+    @State private var homeIsScrolling = false
     @State private var editingRoutine: Routine?
     @State private var editingBlockedBehavior: BlockedBehavior?
     @State private var activeTimer: ActiveRoutineTimer?
@@ -58,7 +58,7 @@ struct HomeView: View {
     }
 
     private var canRotateNews: Bool {
-        homeIsVisible && scenePhase == .active && !homeIsInteracting
+        homeIsVisible && scenePhase == .active && !homeIsScrolling
             && selectedNewsPost == nil && !showsNewsFeed && appDialog == nil
             && editingRoutine == nil && editingBlockedBehavior == nil
             && !isPresentingNewRoutine && !isPresentingNewBlockedBehavior
@@ -73,7 +73,10 @@ struct HomeView: View {
             todayPromiseSection
             zakoBulletinSection
         }
-        .simultaneousGesture(DragGesture(minimumDistance: 0).updating($homeIsInteracting) { _, state, _ in state = true })
+        // 端末の大きさで List の余白が16/20ptに変わらないよう、他の画面(.padding())と同じ16ptに固定する。
+        .contentMargins(.horizontal, 16, for: .scrollContent)
+        // スクロール中は速報を切り替えない。List 全体に DragGesture を付けるとスクロールやタップを奪うため、スクロールの状態を見る。
+        .pausesWhileScrolling($homeIsScrolling)
         .sheet(item: $selectedNewsPost) { post in ZakoNewsDetailView(post: post) }
         .sheet(isPresented: $showsNewsFeed) { ZakoNewsFeedSheet() }
         .task(id: canRotateNews) {
@@ -358,10 +361,10 @@ struct HomeView: View {
                 .foregroundStyle(AppColor.primary)
                 // 44pt のタップ領域を確保しつつ、見た目の位置は右端に揃える。
                 .padding(.vertical, -8)
-                .padding(.trailing, -8)
+                .padding(.trailing, -12)
                 .accessibilityLabel("約束を追加")
             }
-            .textCase(nil)
+            .homeSectionHeaderStyle()
         }
     }
 
@@ -466,7 +469,7 @@ struct HomeView: View {
             }
         } header: {
             homeSectionTitle("やらないこと")
-                .textCase(nil)
+                .homeSectionHeaderStyle()
         }
     }
 
@@ -636,16 +639,8 @@ struct HomeView: View {
         Section {
             // 約束・やらないことのカードと同じ幅・角丸に揃える。
             VStack(alignment: .leading, spacing: 8) {
+                // ひとことの案内は、自分の投稿の行(「＋ ひとことを添える」)が受け持つ。
                 ZakoBulletinFeedView(items: news.rotation.visible) { selectedNewsPost = $0 }
-                if let post = news.latestSharedPost {
-                    HStack {
-                        Button("ひとことを添える") { selectedNewsPost = post }
-                            .font(.footnote).tint(AppColor.primary)
-                        Spacer()
-                        Button { news.clearHint() } label: { Image(systemName: "xmark") }
-                            .font(.caption).accessibilityLabel("ひとことの案内を閉じる")
-                    }
-                }
                 if let message = news.errorMessage {
                     Text(message).font(.caption).foregroundStyle(AppColor.muted)
                     Button("再試行") { Task { await news.sendPending(); await news.refreshIfNeeded(force: true) } }
@@ -658,17 +653,31 @@ struct HomeView: View {
                 .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+                        .stroke(AppColor.border, lineWidth: 1)
                 }
-                .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
                 .routineListRowStyle()
         } header: {
             HStack {
                 homeSectionTitle("みんなのざこ速報")
                 Spacer(minLength: 8)
-                Button("もっと見る") { showsNewsFeed = true }
-                    .font(.caption).textCase(nil).tint(AppColor.muted)
-            }.textCase(nil)
+                // 背景色の上なので本文色にし、44pt のタップ範囲を取りつつ見た目の位置は右端にそろえる。
+                Button {
+                    showsNewsFeed = true
+                } label: {
+                    HStack(spacing: 2) {
+                        Text("すべて見る")
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(AppColor.text)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, -8)
+                .accessibilityLabel("みんなのざこ速報をすべて見る")
+            }.homeSectionHeaderStyle()
         }
     }
 
@@ -929,4 +938,18 @@ enum BlockedBehaviorTauntKind {
         ],
         inMemory: true
     )
+}
+
+private extension View {
+    /// スクロール中かどうかを知らせる。iOS 17 では取得できないため、常に止まっている扱いにする。
+    @ViewBuilder
+    func pausesWhileScrolling(_ isScrolling: Binding<Bool>) -> some View {
+        if #available(iOS 18.0, *) {
+            onScrollPhaseChange { _, phase in
+                isScrolling.wrappedValue = phase != .idle
+            }
+        } else {
+            self
+        }
+    }
 }

@@ -107,9 +107,15 @@ struct RoutineEditView: View {
 
     private var detailsForm: some View {
         Form {
-            ZakoNewsSharingSection(isOn: $viewModel.shareToZakoNews, title: viewModel.title)
+            ZakoNewsSharingSection(isOn: $viewModel.shareToZakoNews)
             Section("約束") {
                 TextField("タイトル", text: $viewModel.title)
+                    // オンボーディングと同じ長さ(28文字)までにする。ざこ速報の上限(80文字)にも収まる。
+                    .onChange(of: viewModel.title) { _, value in
+                        if value.count > ItemTitleLimit.maxLength {
+                            viewModel.title = String(value.prefix(ItemTitleLimit.maxLength))
+                        }
+                    }
             }
 
             Section {

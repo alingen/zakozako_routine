@@ -46,22 +46,27 @@ struct StoryCatalogView: View {
     private func entry(for group: StoryCatalogGroup) -> some View {
         if group.stories.count == 1, let story = group.stories.first {
             Button {
+                guard story.isUnlocked else { return }
                 onOpen(story.id)
             } label: {
                 StoryChapterCard(group: group)
             }
             .buttonStyle(.plain)
-            .disabled(!story.isUnlocked)
+            // .disabled だと全体が薄くなり、解放条件まで読めなくなる。押せなくするだけにする。
+            .accessibilityRemoveTraits(story.isUnlocked ? [] : .isButton)
             .accessibilityHint(story.isUnlocked ? "ストーリーを開きます" : "解放条件を達成すると開けます")
-        } else {
+        } else if group.isUnlocked {
             NavigationLink {
                 StoryChapterView(group: group, onOpen: onOpen)
             } label: {
                 StoryChapterCard(group: group)
             }
             .buttonStyle(.plain)
-            .disabled(!group.isUnlocked)
-            .accessibilityHint(group.isUnlocked ? "各話の一覧を開きます" : "解放条件を達成すると開けます")
+            .accessibilityHint("各話の一覧を開きます")
+        } else {
+            // 未解放の章はリンクにしない(.disabled だと解放条件まで薄くなるため)。
+            StoryChapterCard(group: group)
+                .accessibilityHint("解放条件を達成すると開けます")
         }
     }
 }
@@ -105,10 +110,16 @@ private struct StoryChapterCard: View {
                         .foregroundStyle(AppColor.muted)
                         .monospacedDigit()
                 } else {
-                    Label(group.unlockHint.map { "\($0)で解放" } ?? "未解放", systemImage: "lock.fill")
-                        .font(.caption)
-                        .foregroundStyle(AppColor.muted)
-                        .lineLimit(2)
+                    // 未解放のときにいちばん読ませたいのは解放条件なので、文字は本文色にする。
+                    Label {
+                        Text(group.unlockHint.map { "\($0)で解放" } ?? "未解放")
+                            .foregroundStyle(AppColor.text)
+                    } icon: {
+                        Image(systemName: "lock.fill")
+                            .foregroundStyle(AppColor.muted)
+                    }
+                    .font(.caption)
+                    .lineLimit(2)
                 }
             }
             .padding(.horizontal, 14)
@@ -180,7 +191,10 @@ private struct StoryListRow: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            guard item.isUnlocked else { return }
+            action()
+        } label: {
             HStack(alignment: .top, spacing: 12) {
                 StoryAssetView(
                     assetID: item.backgroundAssetId,
@@ -235,7 +249,8 @@ private struct StoryListRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!item.isUnlocked)
+        // .disabled だと全体が薄くなり、解放条件まで読めなくなる。押せなくするだけにする。
+        .accessibilityRemoveTraits(item.isUnlocked ? [] : .isButton)
         .accessibilityHint(item.isUnlocked ? "ストーリーを開きます" : "解放条件を達成すると開けます")
     }
 
@@ -251,14 +266,16 @@ private struct StoryListRow: View {
                     HStack(spacing: 5) {
                         Image(systemName: condition.isSatisfied ? "checkmark.circle.fill" : "circle")
                             .foregroundStyle(condition.isSatisfied ? AppColor.success : AppColor.muted)
+                        // 「あと何をすれば読めるか」なので、条件の文は本文色で読ませる。
                         Text(condition.text)
+                            .foregroundStyle(AppColor.text)
                         if let progressText = condition.progressText {
                             Text(progressText)
                                 .monospacedDigit()
+                                .foregroundStyle(AppColor.muted)
                         }
                     }
-                    .font(.caption2)
-                    .foregroundStyle(AppColor.muted)
+                    .font(.caption)
                 }
             }
         }

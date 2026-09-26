@@ -49,7 +49,6 @@ final class RoutineEditViewModel {
 
     var canSave: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && (!shareToZakoNews || ZakoNewsText.canShare(title: title))
     }
 
     /// 対象曜日を選べるか(1日の期間のときだけ)。

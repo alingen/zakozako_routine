@@ -12,17 +12,7 @@ struct RoutineLogView: View {
         ScrollView {
             VStack(spacing: 16) {
                 summarySection
-                monthHeader
-                weekdayHeader
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(Array(viewModel.daysInDisplayedMonth().enumerated()), id: \.offset) { _, date in
-                        if let date {
-                            dayCell(for: date)
-                        } else {
-                            Color.clear.frame(height: 44)
-                        }
-                    }
-                }
+                calendarSection
             }
             .padding()
         }
@@ -37,11 +27,12 @@ struct RoutineLogView: View {
     }
 
     private var summarySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        // 各行は最低44ptあるので、行の間は詰めてカレンダーを画面内に入れる。
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: "flame.fill")
                     .foregroundStyle(AppColor.accent)
-                Text("継続 \(viewModel.streakDays)日")
+                Text("連続 \(viewModel.streakDays)日")
                     .font(.headline)
             }
 
@@ -123,6 +114,26 @@ struct RoutineLogView: View {
         "\(behavior.title)、直近30日 \(behaviorRecordText)"
     }
 
+    /// やらないことの記録と同じく、月送り・曜日・日付を1枚の白いカードにまとめる。
+    private var calendarSection: some View {
+        VStack(spacing: 8) {
+            monthHeader
+            weekdayHeader
+            LazyVGrid(columns: columns, spacing: 6) {
+                ForEach(Array(viewModel.daysInDisplayedMonth().enumerated()), id: \.offset) { _, date in
+                    if let date {
+                        dayCell(for: date)
+                    } else {
+                        Color.clear.frame(height: 44)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
+    }
+
     private var monthHeader: some View {
         HStack {
             Button {
@@ -136,6 +147,7 @@ struct RoutineLogView: View {
             Spacer()
             Text(viewModel.displayedMonth, format: .dateTime.year().month(.wide))
                 .font(.headline)
+                .foregroundStyle(AppColor.text)
             Spacer()
             Button {
                 viewModel.goToNextMonth()
@@ -146,17 +158,18 @@ struct RoutineLogView: View {
             }
             .accessibilityLabel("次の月")
         }
+        // 矢印は「今押すべき操作」ではないので Primary にしない。
+        .foregroundStyle(AppColor.text)
     }
 
     private var weekdayHeader: some View {
         HStack {
             ForEach(viewModel.weekdaySymbols, id: \.self) { symbol in
-                // 背景色の上では muted だと読みにくいため本文色にする。
                 Text(symbol)
                     .font(.caption2)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
-                    .foregroundStyle(AppColor.text)
+                    .foregroundStyle(AppColor.muted)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -171,13 +184,7 @@ struct RoutineLogView: View {
             count: min(max(completed.count, 1), 3)
         )
         return VStack(spacing: 4) {
-            Text("\(day)")
-                .font(.subheadline)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-                .foregroundStyle(isToday ? Color.white : AppColor.text)
-                .frame(width: 28, height: 28)
-                .background(isToday ? AppColor.primary : Color.clear, in: Circle())
+            CalendarDayNumber(day: day, isToday: isToday)
             LazyVGrid(columns: iconColumns, spacing: 2) {
                 ForEach(completed, id: \.id) { routine in
                     Image(systemName: routine.iconName ?? routineIcon)
@@ -261,4 +268,25 @@ struct RoutineLogView: View {
         RoutineLogView()
     }
     .modelContainer(for: [Routine.self, BlockedBehavior.self], inMemory: true)
+}
+
+/// カレンダーの日付。今日は塗りつぶさず、太字と本文色の輪で示す
+/// (Primary は「今押すべき操作」専用で、赤い塗りは「負けた」の × と紛らわしいため)。
+struct CalendarDayNumber: View {
+    let day: Int
+    let isToday: Bool
+
+    var body: some View {
+        Text("\(day)")
+            .font(isToday ? .subheadline.weight(.semibold) : .subheadline)
+            .minimumScaleFactor(0.7)
+            .lineLimit(1)
+            .foregroundStyle(AppColor.text)
+            .frame(width: 28, height: 28)
+            .overlay {
+                if isToday {
+                    Circle().stroke(AppColor.text, lineWidth: 1.5)
+                }
+            }
+    }
 }

@@ -37,11 +37,12 @@ struct BlockedBehaviorRecordView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
+            // 記録の一覧と同じく Purple にそろえる(Primary は飾りに使わない)。
             Image(systemName: behavior.iconName ?? "nosign")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(AppColor.primary)
+                .foregroundStyle(AppColor.secondary)
                 .frame(width: 48, height: 48)
-                .background(AppColor.primarySoft, in: Circle())
+                .background(AppColor.secondary.opacity(0.12), in: Circle())
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -107,6 +108,8 @@ struct BlockedBehaviorRecordView: View {
             }
             .accessibilityLabel("次の月")
         }
+        // 矢印は「今押すべき操作」ではないので Primary にしない。
+        .foregroundStyle(AppColor.text)
     }
 
     private func moveMonth(by value: Int) {
@@ -137,7 +140,7 @@ struct BlockedBehaviorRecordView: View {
                 .font(.caption)
                 .foregroundStyle(AppColor.muted)
             Text(value)
-                .font(.title3.bold())
+                .font(.title2.bold())
                 .foregroundStyle(AppColor.text)
                 .monospacedDigit()
                 .lineLimit(1)
@@ -187,13 +190,7 @@ struct BlockedBehaviorRecordView: View {
         let isToday = calendar.isDate(day, inSameDayAs: AppDay.anchor(.now, calendar: calendar))
 
         return VStack(spacing: 4) {
-            Text("\(calendar.component(.day, from: day))")
-                .font(.subheadline)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-                .foregroundStyle(isToday ? Color.white : AppColor.text)
-                .frame(width: 28, height: 28)
-                .background(isToday ? AppColor.primary : Color.clear, in: Circle())
+            CalendarDayNumber(day: calendar.component(.day, from: day), isToday: isToday)
 
             outcomeMark(outcome)
                 .frame(height: 14)

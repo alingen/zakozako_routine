@@ -6,7 +6,8 @@ enum ZakoNewsConfiguration {
     static let nameLimit = 10
     static let batchSize = 20
     static let homeCount = 3
-    static let rotationSeconds: Double = 3
+    /// 「みんなもやってるな〜」と眺める程度の速さにする。
+    static let rotationSeconds: Double = 8
     static let refreshSeconds: Double = 60
     static let retentionSeconds: Double = 7 * 24 * 60 * 60
 }
@@ -25,7 +26,8 @@ enum ZakoNewsText {
         isValid(title, limit: ZakoNewsConfiguration.titleLimit)
             && isValid(name.isEmpty ? "名無し" : name, limit: ZakoNewsConfiguration.nameLimit)
     }
-    static let validationMessage = "公開する名前は10文字、項目名は80文字以内で、URL・改行を含めずに入力してください。"
+    /// 長さは入力欄で守るので、ここに来るのは名前か項目名に URL などが含まれるときだけ。
+    static let validationMessage = "名前か項目名にURLなどが含まれるため、ざこ速報には共有しませんでした。"
 }
 
 enum ZakoNewsReaction: String, Codable, CaseIterable, Identifiable {
@@ -71,11 +73,11 @@ struct ZakoNewsPost: Codable, Identifiable, Equatable {
         case cheerCount = "cheer_count", teaseCount = "tease_count", strongCount = "strong_count"
         case myReaction = "my_reaction"
     }
-    var line: String {
-        let who = "\(displayName)おにいさん"
-        return kind == "achievement"
-            ? "\(who)が「\(taskTitle)」を達成しました！"
-            : "\(who)が「\(taskTitle)」に負けました…"
+    var line: String { subjectText + resultText }
+    /// 定型で長くなりがちな「○○おにいさんが」。一覧ではここで改行する。
+    var subjectText: String { "\(displayName)おにいさんが" }
+    var resultText: String {
+        kind == "achievement" ? "「\(taskTitle)」を達成しました！" : "「\(taskTitle)」に負けました…"
     }
     var relativeTime: String {
         let seconds = max(0, Date.now.timeIntervalSince(occurredAt))
@@ -122,7 +124,9 @@ struct ZakoNewsPublication: Codable, Identifiable, Equatable {
     }
 
     private static func make(source: String, itemID: UUID, kind: String, title: String, now: Date) -> Self {
-        let name = AppSettingsStore.userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 制限を入れる前に一般で長い名前を入れていても共有できるよう、上限で切って送る。
+        let trimmed = AppSettingsStore.userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = String(String.UnicodeScalarView(trimmed.unicodeScalars.prefix(ZakoNewsConfiguration.nameLimit)))
         return Self(sourceKey: source, itemID: itemID, kind: kind,
                     displayName: name.isEmpty ? "名無し" : name, title: title, occurredAt: now)
     }
@@ -149,6 +153,14 @@ struct ZakoNewsRotation {
         let next = pending.removeFirst()
         seen.insert(next.id)
         visible.insert(next, at: 0)
+        visible = Array(visible.prefix(ZakoNewsConfiguration.homeCount))
+    }
+    /// 指定の投稿をすぐ先頭に出す(自分の投稿を送れた直後など)。表示中の件数は変えない。
+    mutating func showFirst(_ post: ZakoNewsPost) {
+        visible.removeAll { $0.id == post.id }
+        pending.removeAll { $0.id == post.id }
+        seen.insert(post.id)
+        visible.insert(post, at: 0)
         visible = Array(visible.prefix(ZakoNewsConfiguration.homeCount))
     }
     mutating func reconcile(_ allowed: [ZakoNewsPost]) {

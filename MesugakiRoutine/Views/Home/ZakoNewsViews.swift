@@ -13,16 +13,44 @@ struct ZakoNewsFeedSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if posts.isEmpty && !loading { Text("まだ速報はありません").foregroundStyle(AppColor.muted) }
-                ForEach(posts) { post in
-                    Button { selected = post } label: { ZakoNewsRow(post: post) }.buttonStyle(.plain)
+            // ホームと同じく白いカードで1件ずつ並べ、最後の1件が見えたら続きを自動で読み込む。
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    if posts.isEmpty && !loading && errorMessage == nil {
+                        Text("まだ速報はありません")
+                            .font(.subheadline)
+                            .foregroundStyle(AppColor.text)
+                            .frame(maxWidth: .infinity, minHeight: 120)
+                    }
+                    ForEach(posts) { post in
+                        Button { selected = post } label: {
+                            ZakoNewsRow(post: post, showsMineBadge: !mine)
+                                .padding(.horizontal, 14)
+                                .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
+                        }
+                        .buttonStyle(.plain)
+                        .onAppear {
+                            guard post.id == posts.last?.id, hasMore, errorMessage == nil else { return }
+                            Task { await load(reset: false) }
+                        }
+                    }
+                    if loading { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
+                    if let errorMessage {
+                        VStack(spacing: 8) {
+                            Text(errorMessage).font(.footnote).foregroundStyle(AppColor.error)
+                            Button("もう一度読み込む") { Task { await load(reset: posts.isEmpty) } }
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppColor.text)
+                                .frame(minHeight: 44)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
                 }
-                if loading { ProgressView().frame(maxWidth: .infinity) }
-                if let errorMessage { Text(errorMessage).font(.footnote).foregroundStyle(AppColor.error) }
-                if hasMore && !loading { Button("さらに読み込む") { Task { await load(reset: false) } } }
+                .padding()
             }
-            .appScreenBackground().navigationTitle(mine ? "自分の速報" : "みんなのざこ速報")
+            .background(AppColor.background)
+            .navigationTitle(mine ? "自分の速報" : "みんなのざこ速報")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("閉じる") { dismiss() } } }
             .refreshable { await load(reset: true) }
@@ -54,55 +82,47 @@ struct ZakoNewsDetailView: View {
     @State private var showBlock = false
     @State private var showDelete = false
     @State private var showReport = false
+    @State private var detent: PresentationDetent = .medium
+    /// 開いた時点で自分の投稿のひとことが空なら、入力欄を応援より上に置く(保存後も並びは変えない)。
+    @State private var commentFirst = false
+    @FocusState private var isCommentFocused: Bool
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section { Text(post.line).font(.headline); if !post.comment.isEmpty { Text(post.comment) } }
-                Section("応援") {
-                    ForEach(ZakoNewsReaction.allCases) { reaction in
-                        Button {
-                            run {
-                                try await store.repository.react(postID: post.id,
-                                    reaction: post.myReaction == reaction.rawValue ? nil : reaction.rawValue)
-                                try await reload()
-                            }
-                        } label: {
-                            HStack {
-                                Text(reaction.title); Spacer()
-                                Text("\(post.count(for: reaction))").monospacedDigit()
-                                if post.myReaction == reaction.rawValue { Image(systemName: "checkmark.circle.fill") }
-                            }
-                        }.tint(post.myReaction == reaction.rawValue ? AppColor.primary : AppColor.text)
+            // 設定画面のような Form ではなく、一覧と同じ組み方の投稿カード → 応援 → (自分の投稿なら)ひとこと、の順に置く。
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    postCard
+                    if post.isMine && commentFirst { commentCard }
+                    reactionButtons
+                    if post.isMine && !commentFirst { commentCard }
+                    if let errorMessage {
+                        Text(errorMessage).font(.footnote).foregroundStyle(AppColor.error)
+                    }
+                    if let reportMessage {
+                        Text(reportMessage).font(.footnote).foregroundStyle(AppColor.text)
                     }
                 }
-                if post.isMine {
-                    Section {
-                        TextField("ひとことを添える", text: $comment)
-                        Text("\(comment.unicodeScalars.count)/\(ZakoNewsConfiguration.commentLimit)").font(.caption).foregroundStyle(AppColor.muted)
-                        Button("ひとことを保存") {
-                            run {
-                                try await store.repository.comment(postID: post.id, text: comment)
-                                try await reload(); reportMessage = "ひとことを保存しました"
-                            }
-                        }.disabled(!ZakoNewsText.isValid(comment, limit: ZakoNewsConfiguration.commentLimit, allowEmpty: true))
-                    } header: { Text("ひとこと") } footer: {
-                        Text("みんなに公開されます。\(ZakoNewsConfiguration.commentLimit)文字以内・改行とURL不可。個人情報は入力しないでください。")
-                    }
-                    Section { Button("速報から削除", role: .destructive) { showDelete = true } }
-                } else {
-                    Section {
-                        Button("通報する") { showReport = true }
-                        Button("このユーザーをブロックする", role: .destructive) { showBlock = true }
-                    }
-                }
-                if let errorMessage { Text(errorMessage).foregroundStyle(AppColor.error).font(.footnote) }
-                if let reportMessage { Text(reportMessage).font(.footnote).foregroundStyle(AppColor.muted) }
-                if working { ProgressView() }
+                .padding()
             }
-            .disabled(working).appScreenBackground().navigationTitle("ざこ速報").navigationBarTitleDisplayMode(.inline)
+            .background(AppColor.background)
+            .overlay { if working { ProgressView() } }
+            .disabled(working).navigationTitle("ざこ速報").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("閉じる") { dismiss() }.disabled(working) } }
-            .onAppear { comment = post.comment }
+            .onAppear {
+                comment = post.comment
+                commentFirst = post.isMine && post.comment.isEmpty
+            }
+            .task {
+                // ひとことを書きに来た人のために、シートが開ききってから入力欄に合わせる。
+                guard commentFirst else { return }
+                try? await Task.sleep(for: .milliseconds(450))
+                isCommentFocused = true
+            }
+            // キーボードで隠れないよう、入力中はシートを全画面に広げる。
+            .onChange(of: isCommentFocused) { _, focused in
+                if focused { withAnimation { detent = .large } }
+            }
             .task { run { try await reload() } }
             .confirmationDialog("通報理由を選んでください", isPresented: $showReport, titleVisibility: .visible) {
                 ForEach(ZakoNewsReportReason.allCases) { reason in
@@ -133,8 +153,145 @@ struct ZakoNewsDetailView: View {
                     }
                 }
             } message: { Text("習慣の達成・失敗記録は消えません。") }
-        }.presentationDragIndicator(.visible)
+        }
+        // 中身が少ないので半分の高さで開く(ひとことを書くときは引き上げられる)。
+        .presentationDetents([.medium, .large], selection: $detent)
+        .presentationDragIndicator(.visible)
     }
+
+    // MARK: - 投稿
+
+    /// 一覧の行と同じ組み方(アイコン＋「○○おにいさんが」＋結果)に、ひとことと時刻を添える。
+    /// 通報・ブロック・削除は常に見せる必要がないので、右下の「…」にまとめる。
+    private var postCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 12) {
+                ZakoNewsKindIcon(post: post)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(post.subjectText).font(.subheadline).foregroundStyle(AppColor.muted)
+                    Text(post.resultText).font(.subheadline.weight(.semibold)).foregroundStyle(AppColor.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !post.comment.isEmpty {
+                        Text("「\(post.comment)」").font(.subheadline).foregroundStyle(AppColor.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+            }
+            HStack {
+                Text(post.relativeTime).font(.caption).foregroundStyle(AppColor.muted)
+                    .padding(.leading, 52)
+                Spacer(minLength: 0)
+                moreMenu
+            }
+        }
+        .padding(.leading, 16)
+        .padding([.top, .trailing], 16)
+        .padding(.bottom, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            if post.isMine {
+                Button("速報から削除", systemImage: "trash", role: .destructive) { showDelete = true }
+            } else {
+                Button("通報する", systemImage: "exclamationmark.bubble") { showReport = true }
+                Button("このユーザーをブロックする", systemImage: "nosign", role: .destructive) { showBlock = true }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(AppColor.muted)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .padding(.trailing, -10)
+        .accessibilityLabel(post.isMine ? "削除などの操作" : "通報・ブロック")
+    }
+
+    // MARK: - 応援
+
+    /// 応援は横並びのカプセル。押すと数とその場の見た目が変わる。選んだものは Purple(特別感)で示す。
+    private var reactionButtons: some View {
+        HStack(spacing: 8) {
+            ForEach(ZakoNewsReaction.allCases) { reaction in
+                let isSelected = post.myReaction == reaction.rawValue
+                Button {
+                    run {
+                        try await store.repository.react(postID: post.id, reaction: isSelected ? nil : reaction.rawValue)
+                        try await reload()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(reaction.title)
+                        Text("\(post.count(for: reaction))").monospacedDigit()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(isSelected ? AppColor.secondary : AppColor.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(isSelected ? AppColor.secondary.opacity(0.12) : AppColor.surface, in: Capsule())
+                    .overlay(Capsule().stroke(isSelected ? AppColor.secondary : AppColor.border, lineWidth: 1))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(reaction.title)、\(post.count(for: reaction))件")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+    }
+
+    // MARK: - ひとこと(自分の投稿のみ)
+
+    private var commentCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ひとこと").font(.headline).foregroundStyle(AppColor.text)
+            TextField("ひとことを添える", text: $comment)
+                .focused($isCommentFocused)
+                .submitLabel(.done)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(AppColor.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            HStack(alignment: .firstTextBaseline) {
+                Text("みんなに公開されます。\(ZakoNewsConfiguration.commentLimit)文字以内・改行とURL不可。個人情報は入力しないでください。")
+                    .font(.caption).foregroundStyle(AppColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Text("\(comment.unicodeScalars.count)/\(ZakoNewsConfiguration.commentLimit)")
+                    .font(.caption.monospacedDigit()).foregroundStyle(AppColor.muted)
+            }
+            Button {
+                run {
+                    try await store.repository.comment(postID: post.id, text: comment)
+                    try await reload(); reportMessage = "ひとことを保存しました"
+                }
+            } label: {
+                Text("ひとことを保存")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(canSaveComment ? AppColor.primary : AppColor.muted, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSaveComment)
+            .padding(.top, 4)
+        }
+        .padding()
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
+    }
+
+    private var canSaveComment: Bool {
+        comment != post.comment
+            && ZakoNewsText.isValid(comment, limit: ZakoNewsConfiguration.commentLimit, allowEmpty: true)
+    }
+
     private func run(_ action: @escaping @MainActor () async throws -> Void) {
         guard !working else { return }; working = true; errorMessage = nil
         Task { @MainActor in

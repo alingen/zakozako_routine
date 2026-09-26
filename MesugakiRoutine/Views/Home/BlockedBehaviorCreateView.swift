@@ -148,9 +148,15 @@ struct BlockedBehaviorCreateView: View {
 
     private var detailsForm: some View {
         Form {
-            ZakoNewsSharingSection(isOn: $draft.shareToZakoNews, title: draft.title)
+            ZakoNewsSharingSection(isOn: $draft.shareToZakoNews)
             Section("やらないこと") {
                 TextField("例: YouTubeを見ない", text: $draft.title)
+                    // オンボーディングと同じ長さ(28文字)までにする。ざこ速報の上限(80文字)にも収まる。
+                    .onChange(of: draft.title) { _, value in
+                        if value.count > ItemTitleLimit.maxLength {
+                            draft.title = String(value.prefix(ItemTitleLimit.maxLength))
+                        }
+                    }
             }
 
             Section("アイコン") {

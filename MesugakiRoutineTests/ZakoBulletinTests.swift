@@ -24,6 +24,21 @@ final class ZakoBulletinTests: XCTestCase {
         XCTAssertEqual(rotation.seen.count, 5)
     }
 
+    func testShowFirstPutsOwnPostInFrontWithoutDuplicatesOrGrowing() {
+        let posts = (0..<5).map { post("\($0)") }
+        var rotation = ZakoNewsRotation()
+        rotation.append(posts)
+        let mine = post("自分")
+        rotation.showFirst(mine)
+        XCTAssertEqual(rotation.visible.map(\.id), [mine, posts[0], posts[1]].map(\.id))
+        // すでに待ち行列にある投稿を先頭に出しても、二重に並ばない。
+        rotation.showFirst(posts[3])
+        XCTAssertEqual(rotation.visible.map(\.id), [posts[3], mine, posts[0]].map(\.id))
+        XCTAssertFalse(rotation.pending.contains { $0.id == posts[3].id })
+        rotation.advance()
+        XCTAssertEqual(rotation.visible.first?.id, posts[4].id)
+    }
+
     func testRotationReconciliationRemovesBlockedDeletedAndHidden() {
         let posts = (0..<8).map { post("\($0)") }
         var rotation = ZakoNewsRotation(); rotation.append(posts)

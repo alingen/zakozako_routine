@@ -821,7 +821,7 @@ struct OnboardingSetupView: View {
         Binding(
             get: { stateStore.draft.habitTitle },
             set: { value in
-                stateStore.draft.habitTitle = String(value.prefix(28))
+                stateStore.draft.habitTitle = String(value.prefix(ItemTitleLimit.maxLength))
                 stateStore.draft.selectedGoalID = nil
                 stateStore.draft.goalText = ""
                 stateStore.draft.routineTitle = ""
@@ -833,7 +833,7 @@ struct OnboardingSetupView: View {
         Binding(
             get: { stateStore.draft.routineTitle },
             set: { value in
-                let limited = String(value.prefix(28))
+                let limited = String(value.prefix(ItemTitleLimit.maxLength))
                 stateStore.draft.routineTitle = limited
                 stateStore.draft.goalText = limited
             }
@@ -847,7 +847,7 @@ struct OnboardingSetupView: View {
                 stateStore.selectBlockedBehavior(
                     OnboardingBlockedBehaviorDraft(
                         selectionID: OnboardingBlockedBehaviorDraft.customID,
-                        title: String(value.prefix(28)),
+                        title: String(value.prefix(ItemTitleLimit.maxLength)),
                         iconName: "hand.raised"
                     )
                 )

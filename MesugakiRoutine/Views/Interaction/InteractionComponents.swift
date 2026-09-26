@@ -189,7 +189,7 @@ struct InteractionProgressMiniCard: View {
                     .lineLimit(isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
-                Text("\(progress.completedCount) / \(progress.totalCount)")
+                Text("\(progress.completedCount) / \(progress.totalCount)話")
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .fixedSize()
@@ -199,12 +199,9 @@ struct InteractionProgressMiniCard: View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule().fill(AppColor.secondary.opacity(0.14))
+                    // ストーリーの色(Purple)の単色で塗る。
                     Capsule()
-                        .fill(LinearGradient(
-                            colors: [AppColor.primarySoft, AppColor.primary],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ))
+                        .fill(AppColor.secondary)
                         .frame(width: proxy.size.width * progress.progressFraction)
                 }
             }
@@ -214,9 +211,10 @@ struct InteractionProgressMiniCard: View {
 
             // タップでストーリー一覧へ移れることを示す。
             HStack(alignment: .center, spacing: 4) {
+                // すりガラスの上なので muted ではなく本文色にする(muted は白地の上だけ)。
                 Text(progress.nextStoryText)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(AppColor.muted)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(AppColor.text)
                     .lineLimit(isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
@@ -229,9 +227,9 @@ struct InteractionProgressMiniCard: View {
         .padding(12)
         // 大きな文字サイズでは幅を広げて、章名と進み具合が切れないようにする。
         .frame(width: isAccessibilitySize ? 260 : 188)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(.white.opacity(0.9))
         }
         .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 5)

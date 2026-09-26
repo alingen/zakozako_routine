@@ -171,7 +171,6 @@ struct BlockedBehaviorDraft: Equatable {
     }
 
     var canSave: Bool {
-        guard !shareToZakoNews || ZakoNewsText.canShare(title: title) else { return false }
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return false
         }

@@ -44,14 +44,15 @@ struct RoutineTaskRow: View {
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(
-                    isHighlighted ? AppColor.primary : AppColor.border.opacity(0.72),
+                    isHighlighted ? AppColor.primary : AppColor.border,
                     lineWidth: isHighlighted ? 2.5 : 1
                 )
         }
+        // カードは他の画面と同じく枠線だけにし、影は案内中(ハイライト)のときだけ付ける。
         .shadow(
-            color: isHighlighted ? AppColor.primary.opacity(0.16) : AppColor.text.opacity(0.035),
-            radius: isHighlighted ? 12 : 7,
-            y: isHighlighted ? 4 : 3
+            color: isHighlighted ? AppColor.primary.opacity(0.16) : .clear,
+            radius: isHighlighted ? 12 : 0,
+            y: isHighlighted ? 4 : 0
         )
         .animation(.easeInOut(duration: 0.2), value: isCompleted)
         .accessibilityElement(children: .contain)
@@ -121,21 +122,19 @@ struct RoutineTaskRow: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
 
+                // タイマーボタンの時計と意味がぶつからないよう、きっかけは文字だけにする。
                 if let cueText, !cueText.isEmpty {
-                    HStack(spacing: 3) {
-                        Image(systemName: "clock")
-                        Text(cueText)
-                    }
-                        .font(.caption2)
+                    Text(cueText)
+                        .font(.caption)
                         .foregroundStyle(AppColor.muted)
                         .lineLimit(1)
                 }
 
-                HStack(spacing: 4) {
+                HStack(spacing: 0) {
                     StreakText(text: streakText, isActive: hasStreak)
 
                     if let progressText {
-                        Text("・ \(progressText)")
+                        Text("・\(progressText)")
                             .foregroundStyle(AppColor.muted)
                     }
                 }
@@ -239,9 +238,8 @@ struct BlockedBehaviorTaskRow: View {
         .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+                .stroke(AppColor.border, lineWidth: 1)
         }
-        .shadow(color: AppColor.text.opacity(0.035), radius: 7, y: 3)
         .accessibilityElement(children: .contain)
     }
 
@@ -325,41 +323,20 @@ struct BlockedBehaviorTaskRow: View {
         }
     }
 
-    /// 約束の完了ボタン(赤い塗り)と区別するため、メニューは白地＋枠線の控えめな見た目にする。
+    /// 「線で描いた丸」は約束の完了ボタンだけの意味にするため、メニューは枠を持たずグリフだけにする。
+    /// 負けたことは左の輪・状態の文・莉央の反応で伝えるので、ここは状態で形を変えない。
+    /// 50pt の枠は、上の約束カードの完了ボタンと中心の縦線をそろえるために残す。
     private var stateButton: some View {
         Button(action: onAction) {
-            ZStack {
-                Circle()
-                    .fill(AppColor.surface)
-
-                Circle()
-                    .stroke(
-                        needsRepair ? AppColor.error : AppColor.border,
-                        lineWidth: isFailed ? 0 : 2.5
-                    )
-
-                Image(systemName: stateIconName)
-                    .font(.system(size: isFailed ? 32 : 19, weight: .bold))
-                    .foregroundStyle(stateIconColor)
-            }
-            .frame(width: 50, height: 50)
-            .contentShape(Circle())
+            Image(systemName: needsRepair ? "arrow.clockwise" : "ellipsis")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(needsRepair ? AppColor.error : AppColor.muted)
+                .frame(width: 50, height: 50)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(RoutineCompletionPressStyle())
+        .buttonStyle(GlyphPressStyle())
         .accessibilityLabel(actionAccessibilityLabel)
-        .accessibilityHint(needsRepair ? "タップして許可を確認" : "タップして選択肢を表示")
-    }
-
-    private var stateIconName: String {
-        if isFailed { return "nosign" }
-        if needsRepair { return "arrow.clockwise" }
-        return "ellipsis"
-    }
-
-    private var stateIconColor: Color {
-        if needsRepair { return AppColor.error }
-        if isFailed { return AppColor.primary }
-        return AppColor.muted
+        .accessibilityHint(needsRepair ? "タップして許可を確認" : "タップして「負けそう」「負けました」を選ぶ")
     }
 
     private var actionAccessibilityLabel: String {
@@ -663,7 +640,7 @@ struct AddRoutineTaskRow: View {
             .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+                    .stroke(AppColor.border, lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
@@ -700,7 +677,7 @@ struct AddBlockedBehaviorTaskRow: View {
             .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(AppColor.border.opacity(0.72), lineWidth: 1)
+                    .stroke(AppColor.border, lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
@@ -730,12 +707,31 @@ private struct RoutineCompletionPressStyle: ButtonStyle {
     }
 }
 
+/// 枠のないグリフのボタン。縮むだけでは手ごたえが弱いので、押している間は薄くする。
+private struct GlyphPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.4 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.9 : 1)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+    }
+}
+
 extension View {
     /// 今日の約束カードを、List の標準背景・区切り線から独立させる。
+    /// 左右の余白は List 側(`contentMargins`)に任せ、カードの外端を他の画面と同じ16ptにそろえる。
     func routineListRowStyle() -> some View {
-        listRowInsets(EdgeInsets(top: 5, leading: 14, bottom: 5, trailing: 14))
+        listRowInsets(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
+    }
+
+    /// ホームのセクション見出し。左右の端を、カードの内側(14pt)にあるアイコン・完了ボタンの端にそろえる。
+    func homeSectionHeaderStyle() -> some View {
+        textCase(nil)
+            .listRowInsets(EdgeInsets(top: 12, leading: 14, bottom: 8, trailing: 14))
     }
 }
 

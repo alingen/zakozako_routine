@@ -162,6 +162,7 @@ struct StoryCatalogGroup: Identifiable, Hashable {
 
 /// The current main chapter's read stories, not a mock day count or a lifetime total.
 /// A chapter advances only after all of its stories have been read.
+/// ストーリー一覧と同じ数字になるよう、プロローグは章から切り出して数える(`StoryCatalogGroup`)。
 struct InteractionStoryProgressPresentation: Equatable {
     let chapterTitle: String
     let completedCount: Int
@@ -184,9 +185,9 @@ struct InteractionStoryProgressPresentation: Equatable {
         chapters: [StoryChapterPresentation],
         evaluations: [StoryEventUnlockEvaluation]
     ) -> Self {
-        let nonemptyChapters = chapters.filter { !$0.stories.isEmpty }
-        guard let chapter = nonemptyChapters.first(where: { $0.stories.contains { !$0.isRead } })
-            ?? nonemptyChapters.last else { return .empty }
+        let groups = StoryCatalogGroup.groups(from: chapters)
+        guard let chapter = groups.first(where: { $0.stories.contains { !$0.isRead } })
+            ?? groups.last else { return .empty }
 
         let completedCount = chapter.stories.filter(\.isRead).count
         let nextStory = chapter.stories.first { !$0.isRead }

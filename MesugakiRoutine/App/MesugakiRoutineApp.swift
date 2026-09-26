@@ -44,6 +44,11 @@ struct MesugakiRoutineApp: App {
     @State private var hasRecordedCurrentActivation = false
 
     init() {
+        // 画面タイトルも本文色にそろえる(標準の純粋な黒だと、見出しの AppColor.text と色が違って見える)。
+        let titleColor = UIColor(AppColor.text)
+        UINavigationBar.appearance().titleTextAttributes = [.foregroundColor: titleColor]
+        UINavigationBar.appearance().largeTitleTextAttributes = [.foregroundColor: titleColor]
+
         let schema = Schema([
             Routine.self,
             BlockedBehavior.self,

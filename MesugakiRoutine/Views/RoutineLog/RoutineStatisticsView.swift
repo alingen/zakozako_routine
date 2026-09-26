@@ -21,8 +21,12 @@ struct RoutineStatisticsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            routineHeader
-            yearPicker
+            // やらないことの記録と同じ並び: 見出しカード → 期間送り → 数字 → 内容。
+            VStack(spacing: 16) {
+                routineHeader
+                yearPicker
+            }
+            .padding([.horizontal, .top])
 
             TabView(selection: $selectedYear) {
                 ForEach(availableYears, id: \.self) { year in
@@ -45,11 +49,13 @@ struct RoutineStatisticsView: View {
 
     private var routineHeader: some View {
         HStack(spacing: 12) {
+            // 記録の一覧と同じく、約束のアイコンは Purple にそろえる。
             Image(systemName: routine.iconName ?? "checkmark.circle.fill")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(AppColor.primary)
+                .foregroundStyle(AppColor.secondary)
                 .frame(width: 48, height: 48)
-                .background(AppColor.primarySoft, in: Circle())
+                .background(AppColor.secondary.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(routine.title)
@@ -60,13 +66,12 @@ struct RoutineStatisticsView: View {
                     .font(.caption)
                     .foregroundStyle(AppColor.muted)
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        // 補足の muted 文字が読めるよう、年送りと同じ白い帯に載せる。
-        .background(AppColor.surface)
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
     }
 
     private var yearPicker: some View {
@@ -77,12 +82,13 @@ struct RoutineStatisticsView: View {
                 Image(systemName: "chevron.left")
                     .frame(width: 44, height: 44)
             }
+            .foregroundStyle(selectedYear == availableYears.first ? AppColor.muted : AppColor.text)
             .disabled(selectedYear == availableYears.first)
             .accessibilityLabel("前年")
 
             Spacer()
             Text(verbatim: "\(selectedYear)年")
-                .font(.title3.bold())
+                .font(.headline)
                 .foregroundStyle(AppColor.text)
                 .contentTransition(.numericText())
             Spacer()
@@ -93,14 +99,9 @@ struct RoutineStatisticsView: View {
                 Image(systemName: "chevron.right")
                     .frame(width: 44, height: 44)
             }
+            .foregroundStyle(selectedYear == availableYears.last ? AppColor.muted : AppColor.text)
             .disabled(selectedYear == availableYears.last)
             .accessibilityLabel("翌年")
-        }
-        .foregroundStyle(AppColor.primary)
-        .padding(.horizontal, 8)
-        .background(AppColor.surface)
-        .overlay(alignment: .bottom) {
-            Divider().overlay(AppColor.border)
         }
     }
 
@@ -120,7 +121,7 @@ struct RoutineStatisticsView: View {
                         .foregroundStyle(AppColor.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
-                        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 14))
+                        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
                 monthlyChart(statistics)
                 weekdayChart(statistics)
@@ -137,7 +138,7 @@ struct RoutineStatisticsView: View {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(spacing: 12) {
                     metric(
-                        value: "\(statistics.longestStreak)",
+                        value: "\(statistics.longestStreak)日",
                         label: "最高連続",
                         detail: nil
                     )
@@ -155,19 +156,17 @@ struct RoutineStatisticsView: View {
                     )
                 }
             } else {
-                HStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 0) {
                     metric(
-                        value: "\(statistics.longestStreak)",
+                        value: "\(statistics.longestStreak)日",
                         label: "最高連続",
                         detail: nil
                     )
-                    Divider().frame(height: 56)
                     metric(
                         value: percentage(statistics.completionRate),
                         label: "達成率",
                         detail: "\(statistics.completedCount)/\(statistics.applicableCount)"
                     )
-                    Divider().frame(height: 56)
                     metric(
                         value: "\(statistics.completedCount)回",
                         label: "完了",
@@ -176,29 +175,29 @@ struct RoutineStatisticsView: View {
                 }
             }
         }
-        .padding(.vertical, 16)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppColor.border))
+        .padding(.vertical, 14)
+        .padding(.horizontal, 8)
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
         .accessibilityElement(children: .combine)
     }
 
+    /// やらないことの記録と同じく「項目名(上) / 値(下)」で並べる。
     private func metric(value: String, label: String, detail: String?) -> some View {
         VStack(spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(AppColor.muted)
             Text(value)
                 .font(.title2.bold())
                 .foregroundStyle(AppColor.text)
+                .monospacedDigit()
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppColor.muted)
             if let detail {
                 Text(detail)
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(AppColor.muted)
-            } else {
-                Text(" ")
-                    .font(.caption2)
             }
         }
         .frame(maxWidth: .infinity)
@@ -211,39 +210,20 @@ struct RoutineStatisticsView: View {
             if chartData.isEmpty {
                 emptyMessage("この年の対象期間はありません")
             } else {
+                // 達成は Purple の単色で表す(ホームの完了と同じ)。1〜2か月分でも読めるよう棒にする。
                 Chart(chartData) { item in
-                    AreaMark(
+                    BarMark(
                         x: .value("月", item.month),
-                        y: .value("達成率", item.completionRate * 100)
+                        y: .value("達成率", item.completionRate * 100),
+                        width: .fixed(16)
                     )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [AppColor.primary.opacity(0.28), AppColor.primary.opacity(0.03)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .interpolationMethod(.monotone)
-
-                    LineMark(
-                        x: .value("月", item.month),
-                        y: .value("達成率", item.completionRate * 100)
-                    )
-                    .foregroundStyle(AppColor.primary)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                    .interpolationMethod(.monotone)
-
-                    PointMark(
-                        x: .value("月", item.month),
-                        y: .value("達成率", item.completionRate * 100)
-                    )
-                    .foregroundStyle(AppColor.primary)
-                    .symbolSize(28)
+                    .foregroundStyle(AppColor.secondary)
+                    .cornerRadius(4)
                 }
-                .chartXScale(domain: 1...12)
+                .chartXScale(domain: 0.5...12.5)
                 .chartYScale(domain: 0...100)
                 .chartXAxis {
-                    AxisMarks(values: [1, 4, 7, 10, 12]) { value in
+                    AxisMarks(values: [1, 4, 7, 10]) { value in
                         AxisGridLine().foregroundStyle(AppColor.border)
                         AxisTick().foregroundStyle(AppColor.muted)
                         AxisValueLabel {
@@ -254,7 +234,7 @@ struct RoutineStatisticsView: View {
                     }
                 }
                 .chartYAxis {
-                    AxisMarks(values: [0, 50, 100]) { value in
+                    AxisMarks(position: .leading, values: [0, 50, 100]) { value in
                         AxisGridLine().foregroundStyle(AppColor.border)
                         AxisValueLabel {
                             if let rate = value.as(Int.self) {
@@ -280,7 +260,7 @@ struct RoutineStatisticsView: View {
                         x: .value("曜日", weekdayLabel(item.weekday)),
                         y: .value("完了数", item.completedCount)
                     )
-                    .foregroundStyle(AppColor.primary.gradient)
+                    .foregroundStyle(AppColor.secondary)
                     .cornerRadius(4)
                 }
                 .chartYAxis {
@@ -306,13 +286,7 @@ struct RoutineStatisticsView: View {
                         x: .value("時刻", item.hour),
                         y: .value("完了数", item.completedCount)
                     )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [AppColor.secondary.opacity(0.25), AppColor.secondary.opacity(0.02)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                    .foregroundStyle(AppColor.secondary.opacity(0.14))
                     .interpolationMethod(.monotone)
 
                     LineMark(
@@ -359,8 +333,8 @@ struct RoutineStatisticsView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppColor.border))
+        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
     }
 
     private func emptyMessage(_ message: String) -> some View {
