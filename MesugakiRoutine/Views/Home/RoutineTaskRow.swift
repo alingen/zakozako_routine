@@ -454,9 +454,10 @@ private struct RoutineCompletionButton: View {
                     .scaleEffect(reduceMotion ? 1 : displayedFillProgress)
                     .opacity(displayedFillProgress)
 
+                // 未完了の丸は「今押すべき操作」なので Primary の線にする(白地で 4.6:1)。
                 Circle()
                     .stroke(
-                        displayedFillProgress > 0 ? fillColor : AppColor.border,
+                        displayedFillProgress > 0 ? fillColor : AppColor.primary,
                         lineWidth: 2.5
                     )
 

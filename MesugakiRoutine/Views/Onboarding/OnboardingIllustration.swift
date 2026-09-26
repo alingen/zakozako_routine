@@ -458,10 +458,11 @@ struct OnboardingPromiseTaskCard: View {
 
     private var taskDetails: some View {
         HStack(spacing: 10) {
+            // ホームの約束カードと同じく、達成したら Purple で満たす。
             RoutineProgressPie(
                 progress: isChecked ? 1 : 0,
                 size: 46,
-                tint: AppColor.primary,
+                tint: isChecked ? AppColor.secondary : AppColor.primary,
                 centerSystemImage: iconName
             )
 
@@ -499,10 +500,11 @@ private struct OnboardingPromiseCheck: View {
 
     var body: some View {
         ZStack {
+            // ホームの完了ボタンと同じく、未完了は Primary の線、達成は Purple の塗り。
             Circle()
-                .fill(isChecked ? AppColor.primary : AppColor.surface)
+                .fill(isChecked ? AppColor.secondary : AppColor.surface)
             Circle()
-                .stroke(isChecked ? AppColor.primary : AppColor.border, lineWidth: 2.5)
+                .stroke(isChecked ? AppColor.secondary : AppColor.primary, lineWidth: 2.5)
             if isChecked {
                 Image(systemName: "checkmark")
                     .font(.system(size: size * 0.42, weight: .bold))
