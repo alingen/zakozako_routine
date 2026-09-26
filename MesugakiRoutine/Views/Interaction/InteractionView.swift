@@ -55,7 +55,7 @@ struct InteractionView: View {
                     .ignoresSafeArea()
 
                 ZStack(alignment: .top) {
-                    Image("rio_interaction_background")
+                    Image("bg_rio_room")
                         .resizable()
                         .scaledToFill()
                         .frame(
@@ -63,9 +63,9 @@ struct InteractionView: View {
                             height: backgroundHeight,
                             alignment: .top
                         )
-                        .offset(y: -proxy.safeAreaInsets.top + 60 )
+                        .clipped()
+                        .offset(y: -proxy.safeAreaInsets.top)
                         .ignoresSafeArea(edges: .bottom)
-                        .scaleEffect(1.2)
 
                     Image("rio_interaction_home")
                         .resizable()
