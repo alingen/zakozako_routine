@@ -46,6 +46,9 @@ struct InteractionView: View {
             // (iPhone 13 mini では従来と同じ大きさ・位置になる値)
             let artworkWidth = min(proxy.size.width * 1.8, proxy.size.height)
             let artworkTop = proxy.size.height * 0.2435
+            // 吹き出しは莉央の顔のすぐ下(あごの少し下、スカーフの結び目の高さ)から下へ伸ばす。
+            // あごは立ち絵の上端から幅の約22%の位置にある。
+            let bubbleTop = artworkTop + artworkWidth * 0.32
 
             ZStack(alignment: .top) {
                 AppColor.background
@@ -80,14 +83,14 @@ struct InteractionView: View {
                 .accessibilityHidden(true)
                 .allowsHitTesting(false)
 
+                // 時刻が読めるよう上端だけ薄く重ねる。部屋の色と窓の光は消さない。
                 LinearGradient(
                     colors: [
-                        AppColor.background.opacity(0.44),
+                        AppColor.background.opacity(0.16),
                         .clear,
-                        AppColor.background.opacity(0.18),
                     ],
                     startPoint: .top,
-                    endPoint: .bottom
+                    endPoint: .center
                 )
                 .allowsHitTesting(false)
 
@@ -121,20 +124,31 @@ struct InteractionView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, proxy.size.height * 0.10)
 
-                    Spacer(minLength: 16)
+                    Spacer(minLength: 0)
+                }
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                .frame(width: proxy.size.width, height: proxy.size.height)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    // 上端は顔を基準に固定し、下のバーから積まない(行数が変わっても書き出しの位置が動かない)。
+                    // 大きな文字で入りきらないときだけ、優先度を上げたこの余白が縮んで上に持ち上がる。
+                    Color.clear
+                        .frame(maxHeight: bubbleTop)
+                        .layoutPriority(1)
 
                     if let homeDialogue {
                         InteractionCharacterSpeechBubble(text: homeDialogue, speakerName: "莉央")
-                            .frame(width: min(340, proxy.size.width - 48))
+                            .frame(width: min(300, proxy.size.width - 32))
                             .padding(.leading, 16)
-                            .padding(.bottom, 16)
                             .id(viewModel.interactionComment?.id)
                             .transition(
-                                .scale(scale: 0.94, anchor: .bottomLeading)
+                                .scale(scale: 0.94, anchor: .top)
                                     .combined(with: .opacity)
                             )
                             .allowsHitTesting(false)
                     }
+
+                    Spacer(minLength: 16)
 
                     // 入口は1本のバーに3つだけ並べ、莉央の見える範囲を広く取る。
                     InteractionDock {

@@ -127,14 +127,16 @@ struct InteractionDockItem: View {
     var isEnabled = true
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
+            // アイコンは淡いピンクの丸い地に載せ、丸いボタンが並ぶリズムを作る(CLAUDE.md の primarySoft の役割)。
             Image(systemName: kind.symbol)
-                .font(.system(size: 24, weight: .medium))
+                .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(isEnabled ? kind.tint : AppColor.muted)
-                .frame(width: 44, height: 30)
+                .frame(width: 40, height: 40)
+                .background(isEnabled ? AppColor.primarySoft : AppColor.border, in: Circle())
                 .overlay(alignment: .topTrailing) {
                     indicator
-                        .offset(x: 6, y: -4)
+                        .offset(x: 6, y: -2)
                 }
 
             // 「スト/ーリー」のような不自然な折り返しを避け、大きな文字サイズでは1行のまま縮める。
