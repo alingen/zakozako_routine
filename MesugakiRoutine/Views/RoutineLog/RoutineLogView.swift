@@ -119,7 +119,7 @@ struct RoutineLogView: View {
         VStack(spacing: 8) {
             monthHeader
             weekdayHeader
-            LazyVGrid(columns: columns, spacing: 6) {
+            LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(Array(viewModel.daysInDisplayedMonth().enumerated()), id: \.offset) { _, date in
                     if let date {
                         dayCell(for: date)
@@ -179,24 +179,31 @@ struct RoutineLogView: View {
         let isToday = calendar.isDate(date, inSameDayAs: AppDay.anchor(.now, calendar: calendar))
         let day = calendar.component(.day, from: date)
         let completed = viewModel.completedRoutines(on: date)
-        let iconColumns = Array(
-            repeating: GridItem(.flexible(), spacing: 1),
-            count: min(max(completed.count, 1), 3)
-        )
         return VStack(spacing: 4) {
             CalendarDayNumber(day: day, isToday: isToday)
-            LazyVGrid(columns: iconColumns, spacing: 2) {
-                ForEach(completed, id: \.id) { routine in
-                    Image(systemName: routine.iconName ?? routineIcon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(AppColor.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 14, alignment: .top)
+            completionDots(count: completed.count)
+                // やらないことの記録の ○/✕ と同じ高さに固定し、約束の数で行の高さを変えない。
+                .frame(height: 14)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(calendarAccessibilityLabel(for: date, completed: completed))
+    }
+
+    /// 達成した約束の数を点で表す。11ptの絵柄は小さい端末で見分けられず、4件以上で折り返すため。
+    private func completionDots(count: Int) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<min(count, 3), id: \.self) { _ in
+                Circle()
+                    .fill(AppColor.secondary)
+                    .frame(width: 6, height: 6)
+            }
+            if count > 3 {
+                Image(systemName: "plus")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(AppColor.secondary)
+            }
+        }
     }
 
     @ViewBuilder

@@ -104,6 +104,7 @@ private struct DebugSettingsView: View {
                 numberField("累積達成日数", value: $cumulativeAchievementDays)
 
                 Toggle("連続達成日数を上書き", isOn: $isContinuousOverrideEnabled)
+                    .tint(AppColor.primary)
                 if isContinuousOverrideEnabled {
                     numberField("連続達成日数", value: $continuousAchievementDays)
                 } else {

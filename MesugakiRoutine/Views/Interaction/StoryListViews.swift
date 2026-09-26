@@ -39,6 +39,8 @@ struct StoryCatalogView: View {
         }
         .background(AppColor.background)
         .navigationTitle("ストーリー")
+        // 他の階層の画面(章・達成状況など)と同じく小さな題名にそろえる。
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     /// 1話だけの入口(プロローグ)はすぐ再生し、章は各話の一覧を開く。
@@ -164,23 +166,35 @@ private struct StoryChapterCard: View {
     }
 }
 
-/// 章の中の各話の一覧。
+/// 章の中の各話の一覧。ストーリー一覧と同じく、白いカード(角丸20・枠1pt)に各話を区切り線で並べる。
 struct StoryChapterView: View {
     let group: StoryCatalogGroup
     let onOpen: (String) -> Void
 
     var body: some View {
-        List {
-            Section {
-                ForEach(group.stories) { story in
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(Array(group.stories.enumerated()), id: \.element.id) { index, story in
+                    if index > 0 {
+                        // 区切り線の左端は本文の先頭(サムネイルの右)にそろえる。
+                        Rectangle()
+                            .fill(AppColor.border)
+                            .frame(height: 1)
+                            .padding(.leading, StoryListRow.textLeading)
+                    }
                     StoryListRow(item: story) {
                         onOpen(story.id)
                     }
                 }
             }
-            .appCardRow()
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(AppColor.border, lineWidth: 1)
+            }
+            .padding()
         }
-        .appScreenBackground()
+        .background(AppColor.background)
         .navigationTitle(group.title)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -190,19 +204,26 @@ private struct StoryListRow: View {
     let item: StoryListItemPresentation
     let action: () -> Void
 
+    /// SE でも6話以上入るよう、行の高さを約84pt(サムネイル60＋上下12)に抑える。
+    private static let thumbnailSize: CGFloat = 60
+    private static let horizontalPadding: CGFloat = 16
+    private static let spacing: CGFloat = 12
+    /// 本文の先頭の位置。区切り線の左端に使う。
+    static let textLeading = horizontalPadding + thumbnailSize + spacing
+
     var body: some View {
         Button {
             guard item.isUnlocked else { return }
             action()
         } label: {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: Self.spacing) {
                 StoryAssetView(
                     assetID: item.backgroundAssetId,
                     purpose: .background,
                     contentMode: .fill,
                     cornerRadius: 0
                 )
-                .frame(width: 68, height: 68)
+                .frame(width: Self.thumbnailSize, height: Self.thumbnailSize)
                 .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .saturation(item.isUnlocked ? 1 : 0)
@@ -234,18 +255,15 @@ private struct StoryListRow: View {
                         conditionSummary
                     }
                 }
-                // 区切り線の左端を、どの行も本文の先頭にそろえる。
-                .alignmentGuide(.listRowSeparatorLeading) { dimensions in
-                    dimensions[.leading]
-                }
 
                 Spacer(minLength: 6)
                 // 行全体がタップ対象なので、シェブロンは目立たせず muted にする。
                 Image(systemName: item.isUnlocked ? "chevron.right" : "lock.fill")
                     .foregroundStyle(AppColor.muted)
-                    .padding(.top, 22)
+                    .padding(.top, 20)
             }
-            .padding(.vertical, 5)
+            .padding(.horizontal, Self.horizontalPadding)
+            .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -26,6 +26,8 @@ struct NotificationSettingsView: View {
                         set: { viewModel.setNotificationsEnabled($0) }
                     )
                 )
+                // ナビゲーションの tint は本文色なので、トグルの ON は Primary を明示する。
+                .tint(AppColor.primary)
                 if viewModel.notificationsEnabled {
                     Picker(
                         "通知タイミング",

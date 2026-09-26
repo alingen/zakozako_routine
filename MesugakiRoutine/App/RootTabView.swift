@@ -205,6 +205,9 @@ struct RootTabView: View {
                         onOnboardingReportTargetFrameChange: updateOnboardingReportTargetFrame
                     )
                 }
+                // 戻るボタンや「閉じる」などナビバーの項目は本文色にする(Primary は今押すべき操作と莉央だけ)。
+                // タブの選択色は TabView の tint(Primary)のまま。
+                .tint(AppColor.text)
                 .background {
                     GeometryReader { proxy in
                         Color.clear
@@ -220,6 +223,7 @@ struct RootTabView: View {
                 NavigationStack {
                     RoutineLogView()
                 }
+                .tint(AppColor.text)
                 .tabItem {
                     Label("記録", systemImage: "list.bullet.clipboard")
                 }
@@ -235,6 +239,7 @@ struct RootTabView: View {
                         onStoryEventAutoPlayEnded: finishStoryEventAutoPlay
                     )
                 }
+                .tint(AppColor.text)
                 .tabItem {
                     Label("交流", systemImage: "sparkles")
                 }
@@ -243,6 +248,7 @@ struct RootTabView: View {
                 NavigationStack {
                     SettingsView()
                 }
+                .tint(AppColor.text)
                 .tabItem {
                     Label("設定", systemImage: "gearshape")
                 }
