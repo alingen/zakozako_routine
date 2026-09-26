@@ -34,6 +34,7 @@ struct RoutineLogView: View {
                     .foregroundStyle(AppColor.accent)
                 Text("連続 \(viewModel.streakDays)日")
                     .font(.headline)
+                    .foregroundStyle(AppColor.text)
             }
 
             Text("直近30日の記録")

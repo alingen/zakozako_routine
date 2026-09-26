@@ -76,13 +76,14 @@ struct RioChallengeView: View {
 
     private func challengeCard(_ challenge: RioChallenge) -> some View {
         VStack(spacing: 12) {
+            // 見出しは控えめにして、お題の本文を主役にする(白地なので muted を使える)。
             Text("莉央からのお題")
-                .font(.headline)
-                .foregroundStyle(AppColor.text)
+                .font(.subheadline)
+                .foregroundStyle(AppColor.muted)
                 .accessibilityAddTraits(.isHeader)
 
             Text(challenge.text)
-                .font(.title3.weight(.semibold))
+                .font(.title2.weight(.bold))
                 .foregroundStyle(AppColor.text)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)

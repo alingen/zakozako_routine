@@ -112,12 +112,13 @@ struct RoutineStatisticsView: View {
                 yearPicker(for: year)
                 headlineStatistics(statistics)
                 if routine.progressStatisticsArchiveData != nil {
+                    // ボタンや入力欄に見えないよう、入れ物に入れず補足の文として置く。
+                    // 背景色の上なので muted ではなく本文色にする。
                     Text("設定変更前の実績は、当時の達成ルールで集計しています")
                         .font(.caption)
-                        .foregroundStyle(AppColor.muted)
+                        .foregroundStyle(AppColor.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .padding(.horizontal, 4)
                 }
                 monthlyChart(statistics)
                 weekdayChart(statistics)
@@ -277,23 +278,17 @@ struct RoutineStatisticsView: View {
             if statistics.completedCount == 0 {
                 emptyMessage("この年の達成記録はありません")
             } else {
+                // 月ごとと同じく Purple 単色の棒にする。曲線だと数回の記録でも大きな山に見えるため。
                 Chart(statistics.hours) { item in
-                    AreaMark(
+                    BarMark(
                         x: .value("時刻", item.hour),
-                        y: .value("完了数", item.completedCount)
-                    )
-                    .foregroundStyle(AppColor.secondary.opacity(0.14))
-                    .interpolationMethod(.monotone)
-
-                    LineMark(
-                        x: .value("時刻", item.hour),
-                        y: .value("完了数", item.completedCount)
+                        y: .value("完了数", item.completedCount),
+                        width: .fixed(6)
                     )
                     .foregroundStyle(AppColor.secondary)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                    .interpolationMethod(.monotone)
+                    .cornerRadius(3)
                 }
-                .chartXScale(domain: 0...23)
+                .chartXScale(domain: -0.5...23.5)
                 .chartXAxis {
                     AxisMarks(values: [0, 6, 12, 18, 23]) { value in
                         AxisGridLine().foregroundStyle(AppColor.border)

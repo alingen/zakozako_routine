@@ -14,7 +14,7 @@ struct ZakoNewsFeedSheet: View {
 
     var body: some View {
         NavigationStack {
-            // ホームと同じく白いカードで1件ずつ並べ、最後の1件が見えたら続きを自動で読み込む。
+            // ホームと同じ組み方(1枚の白いカードに区切り線で並べる)にし、最後の1件が見えたら続きを自動で読み込む。
             ScrollView {
                 LazyVStack(spacing: 8) {
                     if posts.isEmpty && !loading && errorMessage == nil {
@@ -23,18 +23,25 @@ struct ZakoNewsFeedSheet: View {
                             .foregroundStyle(AppColor.text)
                             .frame(maxWidth: .infinity, minHeight: 120)
                     }
-                    ForEach(posts) { post in
-                        Button { selected = post } label: {
-                            ZakoNewsRow(post: post, showsMineBadge: !mine)
-                                .padding(.horizontal, 14)
-                                .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
+                    if !posts.isEmpty {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(posts.enumerated()), id: \.element.id) { index, post in
+                                // 区切り線は本文の先頭(アイコン40＋間12)から。
+                                if index > 0 { Divider().padding(.leading, 52) }
+                                Button { selected = post } label: {
+                                    ZakoNewsRow(post: post, showsMineBadge: !mine)
+                                }
+                                .buttonStyle(.plain)
+                                .onAppear {
+                                    guard post.id == posts.last?.id, hasMore, errorMessage == nil else { return }
+                                    Task { await load(reset: false) }
+                                }
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .onAppear {
-                            guard post.id == posts.last?.id, hasMore, errorMessage == nil else { return }
-                            Task { await load(reset: false) }
-                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 4)
+                        .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
                     }
                     // 引っ張って更新しているときは上のぐるぐるだけにする(下にも出すと中身が動いて更新が取り消される)。
                     if loading && !isRefreshing { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
