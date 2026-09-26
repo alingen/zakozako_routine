@@ -9,6 +9,7 @@ struct ZakoNewsFeedSheet: View {
     @State private var cursor: ZakoNewsPost?
     @State private var hasMore = true
     @State private var loading = false
+    @State private var isRefreshing = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -35,7 +36,8 @@ struct ZakoNewsFeedSheet: View {
                             Task { await load(reset: false) }
                         }
                     }
-                    if loading { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
+                    // 引っ張って更新しているときは上のぐるぐるだけにする(下にも出すと中身が動いて更新が取り消される)。
+                    if loading && !isRefreshing { ProgressView().frame(maxWidth: .infinity, minHeight: 44) }
                     if let errorMessage {
                         VStack(spacing: 8) {
                             Text(errorMessage).font(.footnote).foregroundStyle(AppColor.error)
@@ -53,21 +55,34 @@ struct ZakoNewsFeedSheet: View {
             .navigationTitle(mine ? "自分の速報" : "みんなのざこ速報")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("閉じる") { dismiss() } } }
-            .refreshable { await load(reset: true) }
+            .refreshable {
+                // 画面の更新で refreshable の処理が取り消されても通信を最後まで終えられるよう、別の Task で読み込む。
+                isRefreshing = true
+                await Task { await load(reset: true) }.value
+                isRefreshing = false
+            }
             .task { await load(reset: true) }
             .sheet(item: $selected, onDismiss: { Task { await load(reset: true) } }) { post in ZakoNewsDetailView(post: post) }
         }.presentationDragIndicator(.visible)
     }
     private func load(reset: Bool) async {
         guard !loading else { return }; loading = true
-        if reset { posts = []; cursor = nil; hasMore = true }
         defer { loading = false }
         do {
             let page = try await store.repository.feed(before: reset ? nil : cursor, ids: nil, mine: mine)
-            let known = Set(posts.map(\.id))
-            posts.append(contentsOf: page.filter { !known.contains($0.id) })
+            // 最初から読み直すときも、取得できてから入れ替える(先に空にすると画面が消えて更新が取り消される)。
+            if reset {
+                posts = page
+            } else {
+                let known = Set(posts.map(\.id))
+                posts.append(contentsOf: page.filter { !known.contains($0.id) })
+            }
             cursor = page.last; hasMore = page.count == ZakoNewsConfiguration.batchSize; errorMessage = nil
-        } catch { errorMessage = "速報を読み込めませんでした。もう一度お試しください。" }
+        } catch {
+            // 取り消されただけなら失敗扱いにしない。
+            if error is CancellationError || (error as? URLError)?.code == .cancelled || Task.isCancelled { return }
+            errorMessage = "速報を読み込めませんでした。もう一度お試しください。"
+        }
     }
 }
 

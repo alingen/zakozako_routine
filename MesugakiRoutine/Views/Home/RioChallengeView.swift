@@ -9,13 +9,21 @@ struct RioChallengeView: View {
     @State private var isRevealed = false
 
     let taunt: String
+    /// タブの中身が受け取る下側の余白(タブバー＋ホームインジケーター)。タブバーに重ならないよう、この上で止める。
+    var tabContentBottomInset: CGFloat = 0
     let onDismiss: () -> Void
     var catalog: RioChallengeCatalog = .bundled
 
+    /// ホーム上部の莉央(見出しの下端はセーフエリアから約105pt)と重ならないよう、少し離した位置から置く。
+    private let homeHeaderClearance: CGFloat = 128
+
     var body: some View {
         GeometryReader { proxy in
+            // ホーム上部の莉央の下からタブバーの上(16pt空ける)までの間で、全体を縦の中央に置く。
+            // 大きな文字で収まらないときは、上から並べてスクロールできる。
+            let tabBarHeight = max(0, tabContentBottomInset - proxy.safeAreaInsets.bottom)
+            let topReserve: CGFloat = dynamicTypeSize.isAccessibilitySize ? 24 : homeHeaderClearance
             ScrollView {
-                // 下に寄せて、セリフとお題を一続きに読ませる(ホームの莉央とも重ならない)。
                 VStack(spacing: 12) {
                     RioSpeechRow {
                         VStack(alignment: .leading, spacing: 10) {
@@ -39,9 +47,9 @@ struct RioChallengeView: View {
                 }
                 .frame(maxWidth: 480)
                 .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 16)
-                .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .bottom)
+                .padding(.top, topReserve)
+                .padding(.bottom, tabBarHeight + 16)
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .center)
             }
             .scrollBounceBehavior(.basedOnSize)
             .contentShape(Rectangle())

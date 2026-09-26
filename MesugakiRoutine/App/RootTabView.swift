@@ -62,6 +62,8 @@ struct RootTabView: View {
     @State private var blockedBehaviorTaunt: BlockedBehaviorTauntRequest?
     @State private var onboardingState = OnboardingStateStore()
     @State private var selectedTab: RootTab = .home
+    /// タブの中身が受け取る下側の余白(タブバー＋ホームインジケーター)。全面に重ねる画面がタブバーを避けるのに使う。
+    @State private var tabContentBottomInset: CGFloat = 0
     @State private var openTodayConversationRequest = false
     @State private var openStoryEventRequest: String?
     @State private var isOnboardingConversationPlaying = false
@@ -201,6 +203,13 @@ struct RootTabView: View {
                         onOnboardingReportTargetFrameChange: updateOnboardingReportTargetFrame
                     )
                 }
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear { tabContentBottomInset = proxy.safeAreaInsets.bottom }
+                            .onChange(of: proxy.safeAreaInsets.bottom) { _, inset in tabContentBottomInset = inset }
+                    }
+                }
                 .tabItem {
                     Label("ホーム", systemImage: "house")
                 }
@@ -264,6 +273,7 @@ struct RootTabView: View {
                     if blockedBehaviorTaunt.offersChallenge {
                         RioChallengeView(
                             taunt: blockedBehaviorTaunt.text,
+                            tabContentBottomInset: tabContentBottomInset,
                             onDismiss: dismissBlockedBehaviorTaunt
                         )
                     } else {
