@@ -95,14 +95,14 @@ final class ZakoBulletinTests: XCTestCase {
         XCTAssertEqual(first.sourceKey, second.sourceKey)
     }
 
-    func testNetworkFailureDoesNotUndoRecordsAndExplicitFailurePostsBelowLimit() async throws {
+    func testNetworkFailureDoesNotUndoRecordsAndExplicitFailurePosts() async throws {
         let container = try makeContainer()
         let backend = MockNewsBackend(); backend.fails = true
         let (store, defaults, suite) = makeStore(backend)
         defer { defaults.removePersistentDomain(forName: suite) }
         let context = container.mainContext
         let routine = try RoutineRepository(context: context).create(title: "本を読む", shareToZakoNews: true)
-        let blocked = try XCTUnwrap(BlockedBehaviorRepository(context: context).create(title: "SNS", limitCount: 3, shareToZakoNews: true))
+        let blocked = try XCTUnwrap(BlockedBehaviorRepository(context: context).create(title: "SNS", shareToZakoNews: true))
         let home = HomeViewModel(news: store); home.configure(context: context)
         XCTAssertTrue(home.advanceRoutine(routine))
         XCTAssertTrue(home.recordPromiseFailure(blocked))
@@ -137,6 +137,29 @@ final class ZakoBulletinTests: XCTestCase {
             occurredAt: now, kind: .thresholdExceeded), for: behavior)
         home.reload()
         XCTAssertTrue(store.pendingPublications.isEmpty)
+    }
+
+    func testUseWithinAllowanceDoesNotPostUntilItFails() throws {
+        let container = try makeContainer()
+        let backend = MockNewsBackend()
+        let (store, defaults, suite) = makeStore(backend)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let context = container.mainContext
+        let blocked = try XCTUnwrap(BlockedBehaviorRepository(context: context)
+            .create(title: "SNS", allowedCount: 2, shareToZakoNews: true))
+        let home = HomeViewModel(news: store); home.configure(context: context)
+
+        XCTAssertTrue(home.recordPromiseFailure(blocked))
+        XCTAssertTrue(home.recordPromiseFailure(blocked))
+        XCTAssertEqual(blocked.usageEvents.count, 2)
+        XCTAssertTrue(store.pendingPublications.isEmpty, "Uses within the allowance are not failures")
+        XCTAssertNil(home.prohibitionReactionText)
+        XCTAssertFalse(home.promiseUsage(for: blocked).failed)
+
+        XCTAssertTrue(home.recordPromiseFailure(blocked))
+        XCTAssertEqual(blocked.usageEvents.count, 3)
+        XCTAssertEqual(store.pendingPublications.count, 1)
+        XCTAssertTrue(home.promiseUsage(for: blocked).failed)
     }
 
     func testRotationNeverFetchesAndRefreshIsThrottled() async {

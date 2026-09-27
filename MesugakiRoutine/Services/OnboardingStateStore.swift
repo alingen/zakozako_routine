@@ -139,10 +139,11 @@ struct OnboardingBlockedBehaviorDraft: Codable, Equatable, Sendable {
     /// 追加前の保存データをそのまま復元できるよう、Screen Time項目はoptionalで保持する。
     var screenTimeLimitMinutes: Int? = nil
     var screenTimeSelectionData: Data? = nil
-    // Optionalのまま追加し、旧版の下書きは従来の「1日1回で失敗」に復元する。
+    // Optionalのまま追加し、旧版の下書きは従来の「1回でもやったら失敗」に復元する。
     var quitCompletely: Bool? = nil
     var limitPeriod: HabitPeriod? = nil
-    var limitCount: Int? = nil
+    /// 期間内に許される回数(「N回まで」)。旧版の下書きの「N回で失敗」(limitCount)は読み込まない。
+    var allowedCount: Int? = nil
 
     var trimmedTitle: String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -157,12 +158,12 @@ struct OnboardingBlockedBehaviorDraft: Codable, Equatable, Sendable {
     var effectiveLimitPeriod: HabitPeriod {
         usesScreenTime || isQuitCompletely ? .day : (limitPeriod ?? .day)
     }
-    var effectiveLimitCount: Int {
-        usesScreenTime || isQuitCompletely ? 1 : min(max(limitCount ?? 1, 1), 50)
+    var effectiveAllowedCount: Int {
+        usesScreenTime || isQuitCompletely ? 0 : min(max(allowedCount ?? 1, 1), 50)
     }
     var manualLimitSummary: String {
         isQuitCompletely ? "1回でもやったら失敗"
-            : "\(effectiveLimitPeriod.pickerLabel) \(effectiveLimitCount)回で失敗"
+            : BlockedBehaviorLimitText.rule(period: effectiveLimitPeriod, allowedCount: effectiveAllowedCount)
     }
     var effectiveScreenTimeLimitMinutes: Int {
         min(max(screenTimeLimitMinutes ?? 20, 5), 720)
@@ -535,7 +536,7 @@ final class OnboardingStateStore {
               selection.shouldCreate, !selection.usesScreenTime else { return }
         selection.quitCompletely = quitCompletely
         selection.limitPeriod = period
-        selection.limitCount = min(max(count, 1), 50)
+        selection.allowedCount = min(max(count, 1), 50)
         draft.blockedBehavior = selection
     }
 

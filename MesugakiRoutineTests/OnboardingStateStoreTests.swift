@@ -485,13 +485,13 @@ final class OnboardingStateStoreTests: XCTestCase {
                 store = OnboardingStateStore(defaults: defaults)
                 XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
                 XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitPeriod, .week)
-                XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 3)
+                XCTAssertEqual(store.draft.blockedBehavior?.effectiveAllowedCount, 3)
                 XCTAssertTrue(store.advanceSetup())
                 XCTAssertTrue(store.retreatSetup())
                 XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
                 XCTAssertTrue(store.retreatSetup())
                 XCTAssertEqual(store.blockedBehaviorStage, .awaitingSelection)
-                XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 3)
+                XCTAssertEqual(store.draft.blockedBehavior?.effectiveAllowedCount, 3)
                 XCTAssertTrue(store.advanceSetup())
                 XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
             }
@@ -502,18 +502,18 @@ final class OnboardingStateStoreTests: XCTestCase {
         let old = try JSONDecoder().decode(OnboardingBlockedBehaviorDraft.self,
             from: Data(#"{"selectionID":"onboarding-smoking","title":"タバコを吸う"}"#.utf8))
         XCTAssertEqual(old.effectiveLimitPeriod, .day)
-        XCTAssertEqual(old.effectiveLimitCount, 1)
+        XCTAssertEqual(old.effectiveAllowedCount, 0)
         withDefaults { defaults in
             let store = OnboardingStateStore(defaults: defaults)
             store.goToSetupStep(.blockedBehaviorSelection)
             store.selectBlockedBehavior(old)
             store.updateBlockedBehaviorLimit(quitCompletely: false, period: .month, count: 200)
-            XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 50)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveAllowedCount, 50)
             store.updateBlockedBehaviorLimit(quitCompletely: false, period: .week, count: 0)
-            XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 1)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveAllowedCount, 1)
             store.updateBlockedBehaviorLimit(quitCompletely: true, period: .week, count: 3)
             XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitPeriod, .day)
-            XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 1)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveAllowedCount, 0)
         }
     }
 

@@ -62,13 +62,14 @@ struct BlockedBehaviorRecordView: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppColor.border))
     }
 
-    /// 「1日1回まで」「1日20分まで」のような決まりの説明。
+    /// 「完全にやめる」「1日2回まで」「1日20分まで」のような決まりの説明。
     private var ruleText: String {
         switch behavior.trackingKind {
         case .screenTime:
             return "1日\(formattedMinutes(behavior.screenTimeLimitMinutes))まで"
         case .manual:
-            return "\(behavior.limitPeriod.pickerLabel)\(behavior.effectiveLimit)回まで"
+            if behavior.limitPeriod == .day && behavior.allowedCount == 0 { return "完全にやめる" }
+            return BlockedBehaviorLimitText.rule(period: behavior.limitPeriod, allowedCount: behavior.allowedCount)
         }
     }
 

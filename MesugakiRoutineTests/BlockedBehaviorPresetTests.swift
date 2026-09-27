@@ -38,7 +38,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
             XCTAssertFalse(preset.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             XCTAssertTrue(BlockedBehaviorIcon.all.contains(preset.iconName), preset.iconName)
             XCTAssertNotNil(UIImage(systemName: preset.iconName), preset.iconName)
-            XCTAssertGreaterThanOrEqual(preset.limitRule.failureCount, 1)
+            XCTAssertGreaterThanOrEqual(preset.limitRule.allowedCount, 0)
         }
     }
 
@@ -89,7 +89,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertEqual(draft.iconName, preset.iconName)
         XCTAssertTrue(draft.isQuitCompletely)
         XCTAssertEqual(draft.effectiveLimitPeriod, .day)
-        XCTAssertEqual(draft.effectiveLimitCount, 1)
+        XCTAssertEqual(draft.effectiveAllowedCount, 0)
     }
 
     func testAllPresetsDefaultToQuitCompletely() {
@@ -288,7 +288,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertNil(draft.iconName)
         XCTAssertTrue(draft.isQuitCompletely)
         XCTAssertEqual(draft.limitPeriod, .day)
-        XCTAssertEqual(draft.limitCount, 1)
+        XCTAssertEqual(draft.allowedCount, 1)
         XCTAssertEqual(draft.trackingKind, .manual)
         XCTAssertEqual(draft.screenTimeLimitMinutes, 20)
         XCTAssertEqual(draft.screenTimeSelection, FamilyActivitySelection())
@@ -330,12 +330,12 @@ final class BlockedBehaviorPresetTests: XCTestCase {
             title: draft.title,
             iconName: draft.iconName,
             limitPeriod: draft.effectiveLimitPeriod,
-            limitCount: draft.effectiveLimitCount
+            allowedCount: draft.effectiveAllowedCount
         ))
         XCTAssertEqual(saved.title, draft.title)
         XCTAssertEqual(saved.iconName, draft.iconName)
         XCTAssertEqual(saved.limitPeriod, .day)
-        XCTAssertEqual(saved.limitCount, 1)
+        XCTAssertEqual(saved.allowedCount, 0)
 
         XCTAssertNil(repository.create(title: "2件目"))
         XCTAssertEqual(try context.fetch(FetchDescriptor<BlockedBehavior>()).count, 1)
@@ -349,7 +349,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
             title: "SNSを見ない",
             iconName: "bubble.left.and.bubble.right",
             limitPeriod: .week,
-            limitCount: 3,
+            allowedCount: 3,
             currentStreakDays: 5
         )
 
@@ -359,7 +359,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertEqual(draft.iconName, "bubble.left.and.bubble.right")
         XCTAssertFalse(draft.isQuitCompletely)
         XCTAssertEqual(draft.limitPeriod, .week)
-        XCTAssertEqual(draft.limitCount, 3)
+        XCTAssertEqual(draft.allowedCount, 3)
         XCTAssertEqual(draft.trackingKind, .manual)
         XCTAssertTrue(draft.canSave)
     }
@@ -381,7 +381,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
             title: "夜にゲームをしない",
             iconName: "gamecontroller.fill",
             limitPeriod: .week,
-            limitCount: 3,
+            allowedCount: 3,
             trackingKind: .manual,
             screenTimeLimitMinutes: nil,
             screenTimeSelectionData: nil,
@@ -396,7 +396,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertEqual(persisted.title, "夜にゲームをしない")
         XCTAssertEqual(persisted.iconName, "gamecontroller.fill")
         XCTAssertEqual(persisted.limitPeriod, .week)
-        XCTAssertEqual(persisted.limitCount, 3)
+        XCTAssertEqual(persisted.allowedCount, 3)
         XCTAssertEqual(persisted.usageEvents, [eventDate])
         XCTAssertEqual(persisted.currentStreakDays, 4)
         XCTAssertEqual(persisted.updatedAt, updatedAt)
@@ -412,49 +412,49 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertTrue(try context.fetch(FetchDescriptor<BlockedBehavior>()).isEmpty)
     }
 
-    func testRecordFailureConsumesOneCountAndFailsOnlyAtConfiguredLimit() throws {
+    func testRecordFailureAllowsConfiguredCountAndFailsOnTheNextUse() throws {
         let container = try makeContainer()
         let repository = BlockedBehaviorRepository(context: container.mainContext)
-        let behavior = try XCTUnwrap(repository.create(title: "コーヒーを飲まない", limitCount: 10))
+        let behavior = try XCTUnwrap(repository.create(title: "コーヒーを飲まない", allowedCount: 10))
         let now = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 12))
         )
 
-        XCTAssertEqual(try repository.recordFailure(behavior, now: now), .recorded)
+        XCTAssertEqual(try repository.recordFailure(behavior, now: now), .usedWithinAllowance)
         XCTAssertEqual(behavior.usageInCurrentPeriod(now: now), 1)
         XCTAssertFalse(behavior.exceededLimit(on: now))
 
-        for offset in 1..<9 {
+        for offset in 1..<10 {
             XCTAssertEqual(
                 try repository.recordFailure(
                     behavior,
                     now: now.addingTimeInterval(TimeInterval(offset))
                 ),
-                .recorded
+                .usedWithinAllowance
             )
         }
-        let ninthFailureTime = now.addingTimeInterval(8)
-        XCTAssertEqual(behavior.usageInCurrentPeriod(now: ninthFailureTime), 9)
-        XCTAssertFalse(behavior.exceededLimit(on: ninthFailureTime))
+        let tenthUseTime = now.addingTimeInterval(9)
+        XCTAssertEqual(behavior.usageInCurrentPeriod(now: tenthUseTime), 10)
+        XCTAssertFalse(behavior.exceededLimit(on: tenthUseTime))
 
-        let tenthFailureTime = now.addingTimeInterval(9)
+        let eleventhUseTime = now.addingTimeInterval(10)
         XCTAssertEqual(
-            try repository.recordFailure(behavior, now: tenthFailureTime),
+            try repository.recordFailure(behavior, now: eleventhUseTime),
             .recorded
         )
 
-        XCTAssertEqual(behavior.usageInCurrentPeriod(now: tenthFailureTime), 10)
-        XCTAssertTrue(behavior.exceededLimit(on: tenthFailureTime))
-        XCTAssertEqual(behavior.updatedAt, tenthFailureTime)
+        XCTAssertEqual(behavior.usageInCurrentPeriod(now: eleventhUseTime), 11)
+        XCTAssertTrue(behavior.exceededLimit(on: eleventhUseTime))
+        XCTAssertEqual(behavior.updatedAt, eleventhUseTime)
 
         XCTAssertEqual(
             try repository.recordFailure(
                 behavior,
-                now: tenthFailureTime.addingTimeInterval(1)
+                now: eleventhUseTime.addingTimeInterval(1)
             ),
             .alreadyRecorded
         )
-        XCTAssertEqual(behavior.usageEvents.count, 10)
+        XCTAssertEqual(behavior.usageEvents.count, 11)
     }
 
     func testRecordFailureAddsOneEventAndStopsAtLimit() throws {
@@ -464,11 +464,11 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         let now = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 12))
         )
-        let behavior = try XCTUnwrap(repository.create(title: "SNSを見ない", limitCount: 3))
+        let behavior = try XCTUnwrap(repository.create(title: "SNSを見ない", allowedCount: 2))
         behavior.usageEvents = [now.addingTimeInterval(-60)]
         try context.save()
 
-        XCTAssertEqual(try repository.recordFailure(behavior, now: now), .recorded)
+        XCTAssertEqual(try repository.recordFailure(behavior, now: now), .usedWithinAllowance)
         XCTAssertEqual(behavior.usageInCurrentPeriod(now: now), 2)
         XCTAssertEqual(behavior.usageEvents.count, 2)
 
@@ -534,7 +534,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
     func testRecordFailurePersistsForAnotherModelContext() throws {
         let container = try makeContainer()
         let repository = BlockedBehaviorRepository(context: container.mainContext)
-        let behavior = try XCTUnwrap(repository.create(title: "甘いものをたべない", limitCount: 3))
+        let behavior = try XCTUnwrap(repository.create(title: "甘いものをたべない", allowedCount: 2))
         let behaviorID = behavior.id
         let now = try XCTUnwrap(
             Calendar.current.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 12))

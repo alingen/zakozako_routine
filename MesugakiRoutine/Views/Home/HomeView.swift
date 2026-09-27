@@ -795,11 +795,23 @@ struct HomeView: View {
         if usage.failed {
             return behavior.trackingKind == .screenTime
                 ? "今日は時間上限を超えました"
-                : "\(usage.periodLabel)は上限に達しました"
+                : "\(usage.periodLabel)は上限を超えました"
         }
-        return behavior.trackingKind == .screenTime
-            ? "今日は\(formattedScreenTimeLimit(behavior.screenTimeLimitMinutes))まで"
-            : "\(usage.periodLabel)はあと\(usage.remaining)回"
+        if behavior.trackingKind == .screenTime {
+            return "今日は\(formattedScreenTimeLimit(behavior.screenTimeLimitMinutes))まで"
+        }
+        return promiseAllowanceText(behavior: behavior, usage: usage)
+    }
+
+    /// 回数の決まりで、あと何回までOKか。完全にやめる(1日0回)は約束の名前で分かるので出さない。
+    private func promiseAllowanceText(behavior: BlockedBehavior, usage: PromiseUsage) -> String? {
+        guard behavior.trackingKind == .manual, !usage.failed else { return nil }
+        if usage.allowed == 0 {
+            return behavior.limitPeriod == .day ? nil : "\(usage.periodLabel)は1回でもやったら失敗"
+        }
+        return usage.remaining > 0
+            ? "\(usage.periodLabel)はあと\(usage.remaining)回まで"
+            : "\(usage.periodLabel)は次やったら失敗"
     }
 
     private func formattedScreenTimeLimit(_ minutes: Int) -> String {
@@ -813,14 +825,14 @@ struct HomeView: View {
     private func presentBlockedBehaviorActions(for behavior: BlockedBehavior) {
         appDialog = AppDialogRequest(
             title: "「\(behavior.title)」",
-            message: nil,
+            message: promiseAllowanceText(behavior: behavior, usage: viewModel.promiseUsage(for: behavior)),
             actions: [
                 AppDialogAction("負けそう…") {
                     guard viewModel.recordPromiseUrge(behavior) else { return .dismiss }
                     guard let taunt = nextTaunt(for: .struggling) else { return .dismiss }
                     return .showTaunt(taunt)
                 },
-                // 次に確認画面があるので、ここでは塗らない。Error の塗りは確認画面の「負けました…」だけ。
+                // 次に確認画面があるので、ここでは塗らない。Error の塗りは確認画面の「負けました」だけ。
                 AppDialogAction("負けました", style: .caution) {
                     .replace(failureConfirmation(for: behavior))
                 },
@@ -852,14 +864,34 @@ struct HomeView: View {
     }
 
     private func failureConfirmation(for behavior: BlockedBehavior) -> AppDialogRequest {
-        AppDialogRequest(
+        let usage = viewModel.promiseUsage(for: behavior)
+        // 許された回数の内なら失敗ではないので、1回分の記録として確かめる(速報・莉央の反応も出ない)。
+        if behavior.trackingKind == .manual, !usage.nextUseFails {
+            let remainingAfter = usage.remaining - 1
+            return AppDialogRequest(
+                title: "1回分を記録しますか？",
+                message: remainingAfter > 0
+                    ? "記録すると、\(usage.periodLabel)はあと\(remainingAfter)回までです。"
+                    : "記録すると、\(usage.periodLabel)は次やったら失敗です。",
+                actions: [
+                    AppDialogAction("まだ耐える") {
+                        .dismiss
+                    },
+                    AppDialogAction("記録する") {
+                        _ = viewModel.recordPromiseFailure(behavior)
+                        return .dismiss
+                    },
+                ]
+            )
+        }
+        return AppDialogRequest(
             title: "本当に負けましたか？",
             message: "「\(behavior.title)」の失敗を記録します。",
             actions: [
                 AppDialogAction("まだ耐える") {
                     .dismiss
                 },
-                AppDialogAction("負けました…", style: .destructive) {
+                AppDialogAction("負けました", style: .destructive) {
                     guard viewModel.recordPromiseFailure(behavior) else {
                         return .dismiss
                     }

@@ -64,7 +64,7 @@ struct ProgressCircle: View {
         .frame(width: size, height: size)
         .animation(.easeInOut(duration: 0.25), value: clamped)
         .animation(.easeInOut(duration: 0.25), value: failed)
-        .accessibilityValue(failed ? "上限に達しました" : "\(Int((clamped * 100).rounded()))パーセント")
+        .accessibilityValue(failed ? "上限を超えました" : "\(Int((clamped * 100).rounded()))パーセント")
     }
 }
 

@@ -87,7 +87,7 @@ final class ReactionContextTests: XCTestCase {
         let context = container.mainContext
         let behavior = BlockedBehavior(
             title: "夜更かししない",
-            limitCount: 2,
+            allowedCount: 1,
             createdAt: try date(2026, 9, 26, 4)
         )
         context.insert(behavior)
@@ -98,7 +98,7 @@ final class ReactionContextTests: XCTestCase {
         try blocked.recordUrge(behavior, now: date(2026, 9, 27, 3, 59))
         try blocked.recordUrge(behavior, now: date(2026, 9, 27, 4))
         try blocked.recordUrge(behavior, now: date(2026, 9, 27, 4, 1))
-        XCTAssertEqual(try blocked.recordFailure(behavior, now: date(2026, 9, 27, 4, 2), calendar: calendar), .recorded)
+        XCTAssertEqual(try blocked.recordFailure(behavior, now: date(2026, 9, 27, 4, 2), calendar: calendar), .usedWithinAllowance)
         XCTAssertEqual(try blocked.recordFailure(behavior, now: date(2026, 9, 27, 4, 3), calendar: calendar), .recorded)
         XCTAssertEqual(try blocked.recordFailure(behavior, now: date(2026, 9, 27, 4, 4), calendar: calendar), .alreadyRecorded)
         try events.record(.interactionScreenOpened, occurredAt: date(2026, 9, 27, 4, 5))
@@ -110,12 +110,12 @@ final class ReactionContextTests: XCTestCase {
             calendar: calendar
         )
         XCTAssertEqual(actual.todayProhibitionUrgeCount, 2)
-        XCTAssertEqual(actual.todayProhibitionFailCount, 2)
+        XCTAssertEqual(actual.todayProhibitionFailCount, 1)
         XCTAssertEqual(actual.todayProhibitionOutcome, .lost)
         XCTAssertEqual(actual.todayInteractionOpenCount, 2)
         XCTAssertEqual(actual.todayCharacterTapCount, 1)
         XCTAssertEqual(behavior.usageEvents.count, 2)
-        XCTAssertEqual(try events.fetchAll().filter { $0.targetID == behavior.id }.count, 5)
+        XCTAssertEqual(try events.fetchAll().filter { $0.targetID == behavior.id }.count, 4)
     }
 
     func testActionHistoryPersistsAcrossModelContainerReopen() throws {

@@ -355,7 +355,7 @@ struct RootTabView: View {
                         && $0.isActive
                         && $0.masteredAt == nil
                         && $0.limitPeriod == blockedBehavior.effectiveLimitPeriod
-                        && $0.effectiveLimit == blockedBehavior.effectiveLimitCount
+                        && $0.allowedCount == blockedBehavior.effectiveAllowedCount
                         && $0.trackingKind == trackingKind
                         && (!blockedBehavior.usesScreenTime
                             || ($0.screenTimeLimitMinutes
@@ -410,7 +410,7 @@ struct RootTabView: View {
                         title: blockedBehavior.trimmedTitle,
                         iconName: blockedBehavior.iconName,
                         limitPeriod: blockedBehavior.effectiveLimitPeriod,
-                        limitCount: blockedBehavior.effectiveLimitCount,
+                        allowedCount: blockedBehavior.effectiveAllowedCount,
                         trackingKind: trackingKind,
                         screenTimeLimitMinutes: blockedBehavior.usesScreenTime
                             ? blockedBehavior.effectiveScreenTimeLimitMinutes

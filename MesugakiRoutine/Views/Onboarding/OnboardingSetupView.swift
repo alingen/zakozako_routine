@@ -686,7 +686,7 @@ struct OnboardingSetupView: View {
                     }
                     .accessibilityIdentifier("onboarding.blockedBehavior.limitPeriod")
                     Stepper(
-                        value: manualLimitBinding(\.limitCount, default: 1),
+                        value: manualLimitBinding(\.allowedCount, default: 1),
                         in: 1...50
                     ) {
                         Text(stateStore.draft.blockedBehavior?.manualLimitSummary ?? "")
@@ -704,8 +704,8 @@ struct OnboardingSetupView: View {
             }
 
             systemFootnote(stateStore.draft.blockedBehavior?.isQuitCompletely == false
-                ? "設定した回数に達すると、その期間は失敗になります。行った回数はホームから報告できます。"
-                : "1回でもやってしまったら、その日は失敗になります。")
+                ? BlockedBehaviorLimitText.countedFootnote + "行った回数はホームから報告できます。"
+                : BlockedBehaviorLimitText.quitFootnote)
         }
     }
 
@@ -918,7 +918,7 @@ struct OnboardingSetupView: View {
                 stateStore.updateBlockedBehaviorLimit(
                     quitCompletely: selection.isQuitCompletely,
                     period: selection.limitPeriod ?? .day,
-                    count: selection.limitCount ?? 1
+                    count: selection.allowedCount ?? 1
                 )
             }
         )

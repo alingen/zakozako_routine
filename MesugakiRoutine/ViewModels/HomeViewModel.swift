@@ -5,16 +5,18 @@ import Observation
 /// 「やらないこと」カードに出す、現在の期間の消費状況(Streaks風: 残り回数が減っていく)。
 struct PromiseUsage {
     let used: Int
-    /// 実効上限(1未満は1)。
-    let limit: Int
-    /// 残り回数。
-    var remaining: Int { max(limit - used, 0) }
+    /// 期間内に許される回数。0 は「1回でもやったら失敗」。
+    let allowed: Int
+    /// あと何回までOKか。
+    var remaining: Int { max(allowed - used, 0) }
     /// 「今日 / 今週 / 今月」
     let periodLabel: String
-    /// 左アイコンの塗り具合 0.0〜1.0(残り / 上限)。満タンからスタートし、失敗記録で減る。
-    var fraction: Double { limit > 0 ? Double(remaining) / Double(limit) : 0 }
-    /// 上限に達した(残り0)= 失敗。
-    var failed: Bool { used >= limit }
+    /// 左アイコンの塗り具合 0.0〜1.0(失敗までの残り / 失敗になる回数)。満タンからスタートし、報告で減る。
+    var fraction: Double { failed ? 0 : Double(allowed + 1 - used) / Double(allowed + 1) }
+    /// 許された回数を超えた = 失敗。
+    var failed: Bool { used > allowed }
+    /// 次の1回で失敗になる。
+    var nextUseFails: Bool { used >= allowed }
 }
 
 @Observable
@@ -265,12 +267,13 @@ final class HomeViewModel {
     func promiseUsage(for behavior: BlockedBehavior, now: Date = .now) -> PromiseUsage {
         PromiseUsage(
             used: behavior.usageInCurrentPeriod(now: now),
-            limit: behavior.effectiveLimit,
+            allowed: behavior.allowedCount,
             periodLabel: behavior.limitPeriod.currentUnitLabel
         )
     }
 
-    /// 最終確認後に「負けました」1回分を記録する。上限到達後は重複記録しない。
+    /// 最終確認後に「負けました」1回分を記録する。失敗した後は重複記録しない。
+    /// ざこ速報と莉央の反応は、許された回数を超えて失敗になった1回だけ。
     @discardableResult
     func recordPromiseFailure(_ behavior: BlockedBehavior) -> Bool {
         guard let dependencies else { return false }
@@ -337,7 +340,7 @@ final class HomeViewModel {
             title: title,
             iconName: draft.iconName,
             limitPeriod: draft.effectiveLimitPeriod,
-            limitCount: draft.effectiveLimitCount,
+            allowedCount: draft.effectiveAllowedCount,
             trackingKind: draft.trackingKind,
             screenTimeLimitMinutes: draft.trackingKind == .screenTime
                 ? draft.screenTimeLimitMinutes
@@ -375,7 +378,7 @@ final class HomeViewModel {
         let previousSharing = behavior.shareToZakoNews
         let previousIconName = behavior.iconName
         let previousLimitPeriod = behavior.limitPeriod
-        let previousLimitCount = behavior.limitCount
+        let previousAllowedCount = behavior.allowedCount
         let previousTrackingKind = behavior.trackingKind
         let previousScreenTimeLimitMinutes = behavior.screenTimeLimitMinutes
         let previousScreenTimeSelectionData = behavior.screenTimeSelectionData
@@ -389,7 +392,7 @@ final class HomeViewModel {
             title: title,
             iconName: draft.iconName,
             limitPeriod: draft.effectiveLimitPeriod,
-            limitCount: draft.effectiveLimitCount,
+            allowedCount: draft.effectiveAllowedCount,
             trackingKind: draft.trackingKind,
             screenTimeLimitMinutes: draft.trackingKind == .screenTime
                 ? draft.screenTimeLimitMinutes
@@ -417,7 +420,7 @@ final class HomeViewModel {
                     title: previousTitle,
                     iconName: previousIconName,
                     limitPeriod: previousLimitPeriod,
-                    limitCount: previousLimitCount,
+                    allowedCount: previousAllowedCount,
                     trackingKind: previousTrackingKind,
                     screenTimeLimitMinutes: previousScreenTimeLimitMinutes,
                     screenTimeSelectionData: previousScreenTimeSelectionData,

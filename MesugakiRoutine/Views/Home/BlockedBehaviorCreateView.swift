@@ -246,18 +246,22 @@ struct BlockedBehaviorCreateView: View {
                                 Text(period.pickerLabel).tag(period)
                             }
                         }
+                        // 0 は旧仕様の「週に1回で失敗」などを引き継いだときのため。
                         Stepper(
-                            "\(draft.limitPeriod.pickerLabel) \(draft.limitCount) 回で失敗",
-                            value: $draft.limitCount,
-                            in: 1...50
+                            BlockedBehaviorLimitText.rule(
+                                period: draft.limitPeriod,
+                                allowedCount: draft.allowedCount
+                            ),
+                            value: $draft.allowedCount,
+                            in: 0...50
                         )
                     }
                 } header: {
                     Text("上限設定")
                 } footer: {
                     Text(draft.isQuitCompletely
-                         ? "1回でもやってしまったら、その日は失敗になります。"
-                         : "設定した回数に達すると、その期間は失敗になります。")
+                         ? BlockedBehaviorLimitText.quitFootnote
+                         : BlockedBehaviorLimitText.countedFootnote)
                 }
             }
 

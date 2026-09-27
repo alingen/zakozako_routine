@@ -20,7 +20,7 @@ final class BlockedBehaviorHistoryTests: XCTestCase {
         let behavior = BlockedBehavior(
             title: "夜食を食べない",
             limitPeriod: .day,
-            limitCount: 1,
+            allowedCount: 0,
             usageEvents: [date(3)],
             createdAt: date(1, 10)
         )
@@ -82,7 +82,7 @@ final class BlockedBehaviorHistoryTests: XCTestCase {
         let behavior = BlockedBehavior(
             title: "課金しない",
             limitPeriod: .month,
-            limitCount: 2,
+            allowedCount: 1,
             usageEvents: [date(3), date(10)],
             createdAt: date(1, 10)
         )
