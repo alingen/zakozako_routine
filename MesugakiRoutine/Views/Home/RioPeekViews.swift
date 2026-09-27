@@ -14,7 +14,11 @@ enum RioMiniAsset {
     static let point = "mini_point"
     /// 画像の上端から「縁の線」(カードの上端に合わせる線)までの割合。
     static let pointEdgeRatio: CGFloat = 0.805
-    /// 縁をつかんで覗く(正方形)。まだ使っていない。
+    /// 縁にあごをのせて斜め左下を指差す(横長 1774×887)。上の余白が少ないカード(一番上)の P2 で使う。
+    static let pointLeft = "mini_point_left"
+    static let pointLeftAspectRatio: CGFloat = 887.0 / 1774.0
+    static let pointLeftEdgeRatio: CGFloat = 0.834
+    /// 縁をつかみ、頬に指を当てて値踏みする顔で覗く(正方形)。ホームを開いたときの「本人への話」で使う。
     static let grabTheEdge = "mini_grab_the_edge"
     /// 画面の上端をつかんで逆さまにぶら下がる(画像の上端が縁、1448×1086)。放置で上から見にくるときに使う。
     static let peekAbove = "mini_peek_above"
@@ -60,13 +64,28 @@ enum RioPeekTiming {
 /// 右端の列(完了ボタンの丸・「…」)の幅。莉央も吹き出しもここには乗せない。
 enum RioPeekLayout {
     static let protectedTrailingWidth: CGFloat = 72
+    /// タイマー付きの約束では、完了ボタンの左に時計ボタン(46pt＋間8pt)が並ぶので、そこまで避ける。
+    static let protectedTrailingWidthWithTimer: CGFloat = 126
     static let screenMargin: CGFloat = 16
+}
+
+private struct RioProtectedTrailingWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat = RioPeekLayout.protectedTrailingWidth
+}
+
+extension EnvironmentValues {
+    /// 莉央と吹き出しを載せない右端の幅。画面にタイマー付きの約束があるときは広げる。
+    var rioProtectedTrailingWidth: CGFloat {
+        get { self[RioProtectedTrailingWidthKey.self] }
+        set { self[RioProtectedTrailingWidthKey.self] = newValue }
+    }
 }
 
 /// P1「ひょこっ」: 約束を達成したとき、タブバーの上あたりに左から横に滑り込んで耳打ちする。
 /// 吹き出しは顔の右に出し、下の約束カードに被せる(右端の列は避ける)。
 struct RioPopUpReaction: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.rioProtectedTrailingWidth) private var protectedTrailingWidth
 
     let reaction: RioReaction
     /// 層の幅(画面幅)。吹き出しの幅の上限を決める。
@@ -88,7 +107,7 @@ struct RioPopUpReaction: View {
 
     private var bubbleLeading: CGFloat { imageWidth * 0.72 }
     private var bubbleMaxWidth: CGFloat {
-        max(150, containerWidth - RioPeekLayout.screenMargin - RioPeekLayout.protectedTrailingWidth - bubbleLeading)
+        max(110, containerWidth - RioPeekLayout.screenMargin - protectedTrailingWidth - bubbleLeading)
     }
 
     var body: some View {
@@ -175,17 +194,145 @@ struct RioPopUpReaction: View {
     }
 }
 
-/// P2「ちょこん」で出す内容。どの約束カードの上に出すか。
+/// ホームを開いたとき、本人に向けた話(久しぶり・途切れた・守れた)をするときの内容。
+struct RioGrabPeekRequest: Identifiable, Equatable {
+    let id = UUID()
+    let text: String
+}
+
+/// ホームを開いたときの「本人への話」: タブバーの上端を縁に見立てて、mini_grab_the_edge(縁をつかみ、
+/// 頬に指を当てて値踏みする顔)がせり上がり、右上に吹き出しを出す。特定のカードの話ではないので指差さない。
+/// 左から中央寄りに置き、右端の列(完了ボタン・時計ボタン)にはかからない。
+struct RioEdgeGrabPeek: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.rioProtectedTrailingWidth) private var protectedTrailingWidth
+
+    let request: RioGrabPeekRequest
+    let containerWidth: CGFloat
+    /// 縁にする線(層の下端=タブバーの上端)の、層の上端からの位置。
+    let bottomEdge: CGFloat
+    let dismissTrigger: Int
+    let onFinished: () -> Void
+
+    @State private var isRisen = false
+    @State private var showsBubble = false
+    @State private var isFinishing = false
+
+    private let imageWidth: CGFloat = 120
+    private let imageLeading: CGFloat = 32
+    /// 素材の縁の線は上から約77%。縁をつかむこぶしまで見せるため約81%で切る。
+    private var heightAboveEdge: CGFloat { imageWidth * 0.81 }
+    private var imageTop: CGFloat { bottomEdge - heightAboveEdge }
+    private var faceCenter: CGPoint {
+        CGPoint(x: imageLeading + imageWidth * 0.48, y: imageTop + imageWidth * 0.5)
+    }
+    private var bubbleLeading: CGFloat { imageLeading + imageWidth * 0.78 }
+    private var bubbleMaxWidth: CGFloat {
+        max(110, containerWidth - RioPeekLayout.screenMargin - protectedTrailingWidth - bubbleLeading)
+    }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Image(RioMiniAsset.grabTheEdge)
+                .resizable()
+                .frame(width: imageWidth, height: imageWidth)
+                .offset(y: isRisen || reduceMotion ? 0 : heightAboveEdge + 4)
+                .opacity(reduceMotion && !isRisen ? 0 : 1)
+                // 縁(タブバーの上端)より下は描かない。
+                .frame(width: imageWidth, height: heightAboveEdge, alignment: .top)
+                .clipped()
+                .offset(x: imageLeading, y: imageTop)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            Circle()
+                .fill(Color.clear)
+                .contentShape(Circle())
+                .frame(width: 88, height: 88)
+                .offset(x: faceCenter.x - 44, y: faceCenter.y - 44)
+                .onTapGesture { finish() }
+                .gesture(
+                    DragGesture(minimumDistance: 12)
+                        .onEnded { value in if value.translation.height > 16 { finish() } }
+                )
+                .allowsHitTesting(isRisen)
+                .accessibilityElement()
+                .accessibilityLabel("莉央、\(request.text)")
+                .accessibilityHint("ダブルタップで下がる")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { finish() }
+
+            // 吹き出しの左下を、頭の右上に合わせる。点(1pt)の overlay にして、ほかの部品の位置に影響させない。
+            Color.clear
+                .frame(width: 1, height: 1)
+                .overlay(alignment: .bottomLeading) {
+                    if showsBubble {
+                        RioPeekBubble(text: request.text)
+                            .frame(width: bubbleMaxWidth, alignment: .bottomLeading)
+                            .onTapGesture { finish() }
+                            .accessibilityHidden(true)
+                            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottomLeading)))
+                    }
+                }
+                .offset(x: bubbleLeading, y: imageTop + imageWidth * 0.35)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .task(id: request.id) { await runLifecycle() }
+        .onChange(of: dismissTrigger) { _, _ in finish() }
+    }
+
+    private func runLifecycle() async {
+        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.42, dampingFraction: 0.74)) {
+            isRisen = true
+        }
+        try? await Task.sleep(for: .milliseconds(250))
+        withAnimation(.easeOut(duration: 0.15)) { showsBubble = true }
+        do {
+            try await Task.sleep(for: .seconds(RioPeekTiming.bubbleSeconds(for: request.text) + 1))
+        } catch { return }
+        withAnimation(.easeOut(duration: 0.2)) { showsBubble = false }
+        do {
+            try await Task.sleep(for: .seconds(RioPeekTiming.lingerSeconds))
+        } catch { return }
+        finish()
+    }
+
+    private func finish() {
+        guard !isFinishing else { return }
+        isFinishing = true
+        withAnimation(.easeIn(duration: RioPeekTiming.sinkSeconds)) {
+            showsBubble = false
+            isRisen = false
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(RioPeekTiming.sinkSeconds))
+            onFinished()
+        }
+    }
+}
+
+/// P2「ちょこん」で出す内容。どの約束カードの上に、どちらの構図で出すか。
 struct RioCardPeekRequest: Identifiable, Equatable {
+    /// 指差す構図。カードの上の余白で使い分ける。
+    enum Style: Equatable {
+        /// 縁から身を乗り出して斜め右下を指差す(mini_point)。上に約100ptの余白が要る。
+        case leanOver
+        /// 縁にあごをのせて斜め左下を指差す横長の構図(mini_point_left)。上は約50ptで足り、一番上のカードにも出せる。
+        /// 吹き出しは莉央の左の見出しの行に1行で出すので、短いセリフだけにする。
+        case chinOnEdge
+    }
+
     let id = UUID()
     let routineID: UUID
     let text: String
+    var style: Style = .leanOver
 }
 
 /// P2「ちょこん」: 未達成の約束カードの上端から身を乗り出し、カードを指差して「これ、まだでしょ？」とつつく。
 /// まず縁の線より上だけ見せてせり上がり(カードの後ろから出てくる)、そのあと縁の下へ指先を出す。
 struct RioCardPeek: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.rioProtectedTrailingWidth) private var protectedTrailingWidth
 
     let request: RioCardPeekRequest
     /// 対象カードの位置(この層の座標)。
@@ -198,34 +345,61 @@ struct RioCardPeek: View {
     @State private var showsBubble = false
     @State private var isFinishing = false
 
-    /// 表示する素材の幅(正方形)。顔の幅が約45ptになる。
+    /// 表示する素材の幅。どちらの構図でも顔の幅が約35〜45ptになる。
     static let imageWidth: CGFloat = 124
-    /// 縁の線(カードの上端)より上に出る高さ。これより上に余白があるカードだけを対象にする。
-    static var heightAboveEdge: CGFloat { imageWidth * RioMiniAsset.pointEdgeRatio }
 
+    /// 縁の線(カードの上端)より上に出る高さ。これより上に余白があるカードだけを対象にする。
+    static func heightAboveEdge(_ style: RioCardPeekRequest.Style) -> CGFloat {
+        switch style {
+        case .leanOver: return imageWidth * RioMiniAsset.pointEdgeRatio
+        case .chinOnEdge: return imageWidth * RioMiniAsset.pointLeftAspectRatio * RioMiniAsset.pointLeftEdgeRatio
+        }
+    }
+
+    private var style: RioCardPeekRequest.Style { request.style }
     private var imageWidth: CGFloat { Self.imageWidth }
-    private var edgeY: CGFloat { Self.heightAboveEdge }
-    /// 素材の左端。指先(画像の左から約91%)がカードのタイトルの頭あたりを指すように置く。
-    private var imageLeading: CGFloat { cardFrame.minX - 8 }
+    private var imageHeight: CGFloat {
+        style == .leanOver ? imageWidth : imageWidth * RioMiniAsset.pointLeftAspectRatio
+    }
+    private var assetName: String { style == .leanOver ? RioMiniAsset.point : RioMiniAsset.pointLeft }
+    private var edgeY: CGFloat { Self.heightAboveEdge(style) }
+    /// 素材の左端。
+    /// - leanOver: 指先(画像の左から約91%)がカードのタイトルの頭あたりを指すように置く。
+    /// - chinOnEdge: 指先(画像の左から約25%)がカードの中ほど(左から約57%)を指すように置く。
+    ///   莉央は見出しの「1 / 3」の上に来るが、「＋」と右端の列にはかからない。
+    private var imageLeading: CGFloat {
+        switch style {
+        case .leanOver: return cardFrame.minX - 8
+        case .chinOnEdge: return cardFrame.minX + cardFrame.width * 0.57 - imageWidth * 0.25
+        }
+    }
     private var imageTop: CGFloat { cardFrame.minY - edgeY }
+    /// 顔の中心(画像に対する割合)。当たり判定に使う。
+    private var faceCenter: CGPoint {
+        style == .leanOver
+            ? CGPoint(x: imageLeading + imageWidth * 0.47, y: imageTop + imageHeight * 0.42)
+            : CGPoint(x: imageLeading + imageWidth * 0.54, y: imageTop + imageHeight * 0.59)
+    }
 
     private var bubbleLeading: CGFloat { imageLeading + imageWidth * 0.72 }
     private var bubbleMaxWidth: CGFloat {
-        max(140, cardFrame.maxX - RioPeekLayout.protectedTrailingWidth - bubbleLeading)
+        max(110, cardFrame.maxX - protectedTrailingWidth - bubbleLeading)
     }
+    /// chinOnEdge の吹き出しの右端(莉央の髪の左端の少し左)。
+    private var leftBubbleTrailing: CGFloat { imageLeading + imageWidth * 0.17 }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Image(RioMiniAsset.point)
+            Image(assetName)
                 .resizable()
-                .frame(width: imageWidth, height: imageWidth)
+                .frame(width: imageWidth, height: imageHeight)
                 .offset(y: isRisen || reduceMotion ? 0 : edgeY + 4)
                 .opacity(reduceMotion && !isRisen ? 0 : 1)
                 // せり上がる間は縁の線で切ってカードの後ろにいるように見せ、出きってから指先を縁の下へ出す。
                 .mask(alignment: .top) {
-                    Rectangle().frame(height: showsFinger ? imageWidth : edgeY)
+                    Rectangle().frame(height: showsFinger ? imageHeight : edgeY)
                 }
-                .frame(width: imageWidth, height: imageWidth, alignment: .top)
+                .frame(width: imageWidth, height: imageHeight, alignment: .top)
                 .offset(x: imageLeading, y: imageTop)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
@@ -233,8 +407,11 @@ struct RioCardPeek: View {
             Circle()
                 .fill(Color.clear)
                 .contentShape(Circle())
-                .frame(width: 84, height: 84)
-                .offset(x: imageLeading + imageWidth * 0.47 - 42, y: imageTop + imageWidth * 0.42 - 42)
+                .frame(width: style == .leanOver ? 84 : 64, height: style == .leanOver ? 84 : 64)
+                .offset(
+                    x: faceCenter.x - (style == .leanOver ? 42 : 32),
+                    y: faceCenter.y - (style == .leanOver ? 42 : 32)
+                )
                 .onTapGesture { finish() }
                 .allowsHitTesting(isRisen)
                 .accessibilityElement()
@@ -243,20 +420,37 @@ struct RioCardPeek: View {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { finish() }
 
-            // 吹き出しの左下を、髪の右の「縁の線の少し上」に合わせる。
-            // 点(1pt)の overlay にして、吹き出しの高さがほかの部品の位置に影響しないようにする。
-            Color.clear
-                .frame(width: 1, height: 1)
-                .overlay(alignment: .bottomLeading) {
-                    if showsBubble {
-                        RioPeekBubble(text: request.text)
-                            .frame(width: bubbleMaxWidth, alignment: .bottomLeading)
-                            .onTapGesture { finish() }
-                            .accessibilityHidden(true)
-                            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottomLeading)))
+            // 吹き出しは点(1pt)の overlay にして、吹き出しの高さがほかの部品の位置に影響しないようにする。
+            if style == .leanOver {
+                // 左下を、髪の右の「縁の線の少し上」に合わせる。
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .overlay(alignment: .bottomLeading) {
+                        if showsBubble {
+                            RioPeekBubble(text: request.text)
+                                .frame(width: bubbleMaxWidth, alignment: .bottomLeading)
+                                .onTapGesture { finish() }
+                                .accessibilityHidden(true)
+                                .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottomLeading)))
+                        }
                     }
-                }
-                .offset(x: bubbleLeading, y: cardFrame.minY - 22)
+                    .offset(x: bubbleLeading, y: cardFrame.minY - 22)
+            } else {
+                // 右端を莉央の左に、縦の中央を見出しの行に合わせて1行で出す(見出しの文字は数秒だけ隠れる)。
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .overlay(alignment: .trailing) {
+                        if showsBubble {
+                            RioPeekBubble(text: request.text)
+                                .lineLimit(1)
+                                .fixedSize()
+                                .onTapGesture { finish() }
+                                .accessibilityHidden(true)
+                                .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .trailing)))
+                        }
+                    }
+                    .offset(x: leftBubbleTrailing, y: cardFrame.minY - 24)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task(id: request.id) { await runLifecycle() }
@@ -308,6 +502,19 @@ enum RioCardPeekSchedule {
     }
 }
 
+/// 約束を追加した直後の反応は1日1回まで(午前4時区切り)。
+enum RioRoutineAddedSchedule {
+    private static let key = "rioRoutineAdded.lastShownDay"
+
+    static func hasShown(on day: Date, defaults: UserDefaults = .standard) -> Bool {
+        (defaults.object(forKey: key) as? Date) == day
+    }
+
+    static func markShown(on day: Date, defaults: UserDefaults = .standard) {
+        defaults.set(day, forKey: key)
+    }
+}
+
 /// ホームの約束カードの位置(グローバル座標)。P2 で顔を出すカードを決めるのに使う。
 struct HomeRoutineRowFramesKey: PreferenceKey {
     static var defaultValue: [UUID: CGRect] = [:]
@@ -328,6 +535,8 @@ struct RioIdlePeekRequest: Identifiable, Equatable {
 
     let id = UUID()
     let kind: Kind
+    /// タップしたときに言う CMS の条件のセリフ。未指定なら表示先に合う reaction_lines を抽選。
+    var preferredText: String? = nil
     let shownAt = Date()
 }
 
@@ -351,10 +560,12 @@ enum RioIdlePeekEnding {
 /// 見出しの「＋」と右端の列にはかからないよう、顔の中心を画面幅の約25%に置く。
 struct RioIdleAbovePeek: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.rioProtectedTrailingWidth) private var protectedTrailingWidth
 
     let request: RioIdlePeekRequest
     let containerWidth: CGFloat
     let dismissTrigger: Int
+    var onTalk: () -> String? = { nil }
     let onFinished: (RioIdlePeekEnding) -> Void
 
     @State private var isShown = false
@@ -371,7 +582,7 @@ struct RioIdleAbovePeek: View {
     private var imageLeading: CGFloat { max(8, containerWidth * 0.25 - imageWidth * 0.52) }
     private var bubbleLeading: CGFloat { imageLeading + imageWidth * 0.86 }
     private var bubbleMaxWidth: CGFloat {
-        max(150, containerWidth - RioPeekLayout.screenMargin - RioPeekLayout.protectedTrailingWidth - bubbleLeading)
+        max(110, containerWidth - RioPeekLayout.screenMargin - protectedTrailingWidth - bubbleLeading)
     }
 
     var body: some View {
@@ -445,13 +656,7 @@ struct RioIdleAbovePeek: View {
 
     private func talk() {
         guard bubbleText == nil, !isFinishing else { return }
-        let text: String?
-        if case let .above(title?) = request.kind, Bool.random() {
-            text = RioCopy.random(group: "home_idle_above_routine", routineTitle: title)
-        } else {
-            text = RioCopy.random(group: "home_idle_above")
-        }
-        guard let text else { finish(.talked); return }
+        guard let text = request.preferredText ?? onTalk() else { finish(.talked); return }
         withAnimation(.easeOut(duration: 0.15)) { bubbleText = text }
         AccessibilityNotification.Announcement("莉央、\(text)").post()
         Task { @MainActor in
@@ -485,6 +690,7 @@ struct RioIdleRightPeek: View {
     let cardFrame: CGRect
     let containerWidth: CGFloat
     let dismissTrigger: Int
+    var onTalk: () -> String? = { nil }
     let onFinished: (RioIdlePeekEnding) -> Void
 
     @State private var isShown = false
@@ -563,7 +769,7 @@ struct RioIdleRightPeek: View {
 
     private func talk() {
         guard bubbleText == nil, !isFinishing else { return }
-        guard let text = RioCopy.random(group: "home_idle_right") else { finish(.talked); return }
+        guard let text = request.preferredText ?? onTalk() else { finish(.talked); return }
         withAnimation(.easeOut(duration: 0.15)) { bubbleText = text }
         AccessibilityNotification.Announcement("莉央、\(text)").post()
         Task { @MainActor in

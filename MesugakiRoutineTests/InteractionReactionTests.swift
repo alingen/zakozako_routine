@@ -76,7 +76,8 @@ final class InteractionReactionTests: XCTestCase {
         XCTAssertTrue(try matches(context(total: 4)).contains("routine_none_completed"))
         XCTAssertFalse(try matches(context()).contains("routine_none_completed"))
         let one = context([fact(now)], total: 4, completed: 1)
-        XCTAssertTrue(try matches(one).isSuperset(of: ["routine_one_completed", "routine_today_first_completed", "routine_completed_just_now", "routine_first_completion"]))
+        XCTAssertTrue(try matches(one).isSuperset(of: ["routine_one_completed", "routine_today_first_completed", "routine_completed_just_now"]))
+        XCTAssertFalse(try matches(one).contains("routine_first_completion"))
         let half = context([fact(now), fact(now)], total: 4, completed: 2)
         XCTAssertTrue(try matches(half).isSuperset(of: ["routine_half_completed", "routine_remaining_two"]))
         XCTAssertTrue(try matches(context([fact(now)], total: 2, completed: 1)).contains("routine_remaining_one"))
@@ -100,6 +101,62 @@ final class InteractionReactionTests: XCTestCase {
         XCTAssertFalse(try matches(ctx, trigger: .homeUpdated, now: now.addingTimeInterval(121))
             .contains("routine_completed_just_now"))
         XCTAssertTrue(try matches(context(total: 2), trigger: .homeUpdated).contains("noon_zero"))
+    }
+
+    func testFirstCompletionRequiresTheRoutineJustCompletedAtHome() throws {
+        let newRoutine = UUID()
+        let existingRoutine = UUID()
+        let ctx = context([
+            fact(now.addingTimeInterval(-60), id: newRoutine),
+            fact(offset(-1, from: now), id: existingRoutine),
+            fact(now, id: existingRoutine),
+        ], total: 2, completed: 2)
+        XCTAssertTrue(try matches(ctx, trigger: .routineCompleted(newRoutine)).contains("routine_first_completion"))
+        XCTAssertFalse(try matches(ctx, trigger: .routineCompleted(existingRoutine)).contains("routine_first_completion"))
+        XCTAssertFalse(try matches(ctx, trigger: .routineCompleted(UUID())).contains("routine_first_completion"))
+        for trigger in [ReactionTrigger.homeUpdated, .interactionOpened, .characterTapped] {
+            // 当日中でも「初達成」の操作がなければ再生しない。
+            XCTAssertFalse(try matches(ctx, trigger: trigger).contains("routine_first_completion"))
+            XCTAssertFalse(try matches(ctx, trigger: trigger, now: date(27, 23)).contains("routine_first_completion"))
+        }
+        // 既存の「今達成」「今日最初の達成」は、新しい完了トリガーでも維持する。
+        XCTAssertTrue(try matches(context([fact(now, id: newRoutine)], total: 2, completed: 1),
+            trigger: .routineCompleted(newRoutine)).isSuperset(of: [
+                "routine_first_completion", "routine_completed_just_now", "routine_today_first_completed",
+            ]))
+    }
+
+    func testFirstCompletionUsesFourAMBoundaryAndExcludesFutureOrIncompleteRecords() throws {
+        let id = UUID()
+        let before = date(28, 3, 59)
+        let ctx = context([fact(before, id: id)], total: 1, completed: 1, now: before)
+        XCTAssertTrue(try matches(ctx, trigger: .routineCompleted(id), now: before).contains("routine_first_completion"))
+        XCTAssertFalse(try matches(ctx, trigger: .routineCompleted(id), now: date(28, 4)).contains("routine_first_completion"))
+        XCTAssertFalse(try matches(context([fact(now.addingTimeInterval(1), id: id)]),
+            trigger: .routineCompleted(id)).contains("routine_first_completion"))
+        XCTAssertFalse(try matches(context([fact(nil, id: id)]),
+            trigger: .routineCompleted(id)).contains("routine_first_completion"))
+        let previouslyCompleted = context([fact(date(26, 12), id: id), fact(now, id: id)], total: 1, completed: 1)
+        XCTAssertFalse(try matches(previouslyCompleted, trigger: .routineCompleted(id)).contains("routine_first_completion"))
+    }
+
+    func testHomeFirstCompletionCannotLeakToOtherCompletionsOrOpening() {
+        let newRoutine = UUID()
+        let existingRoutine = UUID()
+        let ctx = context([fact(now, id: newRoutine), fact(now, id: existingRoutine),
+            fact(offset(-1, from: now), id: existingRoutine)], total: 2, completed: 2)
+        let conditions = [condition("routine_first_completion", priority: 999)]
+        let lines = [line("first", condition: "routine_first_completion")]
+        let service = InteractionReactionService(defaults: defaults())
+        func selected(_ routineID: UUID? = nil) -> String? {
+            service.selectHomeReaction(candidates: ["routine_first_completion"],
+                conditions: conditions, lines: lines, context: ctx, completedRoutineID: routineID,
+                now: now, calendar: calendar)?.conditionID
+        }
+        XCTAssertNil(selected())
+        XCTAssertNil(selected(existingRoutine))
+        XCTAssertEqual(selected(newRoutine), "routine_first_completion")
+        XCTAssertNil(selected(newRoutine)) // 達成の取り消し・再達成でも同日に繰り返さない。
     }
 
     func testHomeAndInteractionShareReactionConsumptionAndFallback() throws {
@@ -141,7 +198,8 @@ final class InteractionReactionTests: XCTestCase {
             let facts = (0..<days).map { fact(offset(-$0, from: now)) }
             let actual = try matches(context(facts, total: 1, completed: 1))
             XCTAssertTrue(actual.contains("streak_\(days)"), "Day \(days)")
-            XCTAssertTrue(actual.contains("streak_new_best"))
+            // 以前の記録がない連続は、自己ベスト更新として毎日は言わない。
+            XCTAssertFalse(actual.contains("streak_new_best"))
             if [10, 30, 50, 100].contains(days) { XCTAssertTrue(actual.contains("total_completion_milestone")) }
             XCTAssertFalse(try matches(context(facts, total: 1, now: offset(1, from: now)), now: offset(1, from: now)).contains("streak_\(days)"))
         }
@@ -239,10 +297,10 @@ final class InteractionReactionTests: XCTestCase {
     func testPriorityTieStrongPremiumAndPersistedConsumption() throws {
         let ctx = context([fact(now)], total: 4, completed: 1)
         let conditions = [condition("routine_one_completed", priority: 80),
-                          condition("routine_first_completion", priority: 80),
+                          condition("routine_today_first_completed", priority: 80),
                           condition("routine_yesterday_more", priority: 20)]
         let lines = conditions.map { line($0.id, condition: $0.id) }
-        for (random, expected) in [(0.0, "routine_one_completed"), (0.99, "routine_first_completion")] {
+        for (random, expected) in [(0.0, "routine_one_completed"), (0.99, "routine_today_first_completed")] {
             let store = defaults()
             let service = InteractionReactionService(defaults: store)
             let selected = service.select(conditions: conditions, lines: lines, interactions: [], context: ctx,
@@ -320,6 +378,76 @@ final class InteractionReactionTests: XCTestCase {
             context: ctx, now: now, calendar: calendar))
     }
 
+    func testHomeReactionPicksHighestPriorityCandidateOncePerDay() throws {
+        let conditions = try StoryContentRepository().reactionConditions
+        let lines = [line("seven", condition: "streak_7"), line("three", condition: "streak_3"),
+                     line("four", condition: "streak_4")]
+        let milestones: Set<String> = ["streak_3", "streak_7"]
+        let service = InteractionReactionService(defaults: defaults())
+
+        let seven = context((0..<7).map { fact(offset(-$0, from: now)) }, total: 1, completed: 1)
+        let first = service.selectHomeReaction(candidates: milestones, conditions: conditions, lines: lines,
+            context: seven, now: now, calendar: calendar, randomUnit: { 0 })
+        XCTAssertEqual(first?.comment.id, "seven")
+        XCTAssertEqual(first?.conditionID, "streak_7")
+        // 取り消してから達成し直しても、同じ日の同じ節目は出し直さない。
+        XCTAssertNil(service.selectHomeReaction(candidates: milestones, conditions: conditions, lines: lines,
+            context: seven, now: now, calendar: calendar))
+        // 候補に入れていない条件(streak_4)は、合っていても選ばない。
+        let four = context((0..<4).map { fact(offset(-$0, from: now)) }, total: 1, completed: 1)
+        XCTAssertNil(InteractionReactionService(defaults: defaults()).selectHomeReaction(
+            candidates: milestones, conditions: conditions, lines: lines, context: four, now: now, calendar: calendar))
+    }
+
+    func testHomeReactionReusableAndNonConsumingSelection() throws {
+        let conditions = try StoryContentRepository().reactionConditions
+        let lines = [line("done", condition: "routine_all_completed")]
+        let ctx = context([fact(now)], total: 1, completed: 1)
+        let service = InteractionReactionService(defaults: defaults())
+        let candidates: Set<String> = ["routine_all_completed"]
+        XCTAssertNotNil(service.selectHomeReaction(candidates: candidates, conditions: conditions, lines: lines,
+            context: ctx, now: now, calendar: calendar))
+        // 表示済みでも、reusable に入っていれば操作への返事として選べる。
+        XCTAssertNil(service.selectHomeReaction(candidates: candidates, conditions: conditions, lines: lines,
+            context: ctx, now: now, calendar: calendar))
+        XCTAssertNotNil(service.selectHomeReaction(candidates: candidates, reusable: candidates,
+            conditions: conditions, lines: lines, context: ctx, now: now, calendar: calendar))
+
+        // consume: false なら表示済みにしない。
+        let other = InteractionReactionService(defaults: defaults())
+        XCTAssertNotNil(other.selectHomeReaction(candidates: candidates, consume: false, conditions: conditions,
+            lines: lines, context: ctx, now: now, calendar: calendar))
+        XCTAssertNotNil(other.selectHomeReaction(candidates: candidates, conditions: conditions, lines: lines,
+            context: ctx, now: now, calendar: calendar))
+    }
+
+    func testNewBestOnlyOnTheDayThePreviousRecordIsBeaten() throws {
+        // 以前の最長は4日(17〜20日)。現在の連続とは未達日を挟む。
+        let oldRun = (0..<4).map { fact(offset(-7 - $0, from: now)) }
+        func current(_ days: Int) -> [RoutinePeriodFact] { (0..<days).map { fact(offset(-$0, from: now)) } }
+        XCTAssertFalse(try matches(context(oldRun + current(4), total: 1, completed: 1)).contains("streak_new_best"))
+        XCTAssertTrue(try matches(context(oldRun + current(5), total: 1, completed: 1)).contains("streak_new_best"))
+        XCTAssertFalse(try matches(context(oldRun + current(6), total: 1, completed: 1)).contains("streak_new_best"))
+        // 過去の記録がない初回の連続では言わない。
+        XCTAssertFalse(try matches(context(current(3), total: 1, completed: 1)).contains("streak_new_best"))
+        // 過去に短い連続があっても、3日未満の記録更新は言わない。
+        for previousBest in 1...2 {
+            let shortRun = (0..<previousBest).map { fact(offset(-10 - $0, from: now)) }
+            XCTAssertFalse(try matches(context(shortRun + current(previousBest + 1), total: 1, completed: 1))
+                .contains("streak_new_best"))
+        }
+        let threeDayRun = (0..<3).map { fact(offset(-10 - $0, from: now)) }
+        XCTAssertTrue(try matches(context(threeDayRun + current(4), total: 1, completed: 1)).contains("streak_new_best"))
+
+        let beaten = oldRun + current(5)
+        let beforeBoundary = date(28, 3, 59)
+        let afterBoundary = date(28, 4)
+        XCTAssertTrue(try matches(context(beaten, total: 1, completed: 1, now: beforeBoundary),
+            now: beforeBoundary).contains("streak_new_best"))
+        XCTAssertFalse(try matches(context(beaten, total: 1, now: afterBoundary),
+            now: afterBoundary).contains("streak_new_best"))
+    }
+
     func testDailyPoolStaysAtThreeAndRotatesAtFourAMAvoidingYesterday() {
         let store = defaults()
         let comments = (0..<9).map { InteractionComment(id: "i\($0)", text: "line \($0)") }
@@ -343,5 +471,82 @@ final class InteractionReactionTests: XCTestCase {
         XCTAssertEqual("A[br]B[sp]C/D".replacingStoryTextMarkers(), "A\nB C/D")
         XCTAssertEqual(ADVTextLayout.formatted("A[br]B[sp]C/D"), "A\nB C/D")
         XCTAssertEqual(InteractionComment(id: "x", text: "A[br]B").displayText, "A\nB")
+    }
+
+    func testDisplayTargetsDoNotLeakIntoGeneralCommentsOrCompletionPopups() throws {
+        let content = try StoryContentRepository()
+        let allDone = try XCTUnwrap(content.reactionConditions.first { $0.id == "routine_all_completed" })
+        let special = content.reactionLines.filter { $0.displayTarget == "home_idle_right" }
+        XCTAssertEqual(special.count, 2)
+        let ctx = context([fact(now)], total: 1, completed: 1)
+        let service = InteractionReactionService(defaults: defaults())
+        XCTAssertNil(service.select(conditions: [allDone], lines: special, interactions: [], context: ctx,
+            trigger: .homeUpdated, now: now, calendar: calendar))
+        XCTAssertNil(service.selectAllCompletedReaction(conditions: [allDone], lines: special,
+            context: ctx, now: now, calendar: calendar))
+        XCTAssertNil(service.selectHomeReaction(candidates: [allDone.id], conditions: [allDone],
+            lines: special, context: ctx, now: now, calendar: calendar))
+        XCTAssertNotNil(service.selectForPresentation(conditions: [allDone], lines: special,
+            context: ctx, target: .idleRight, now: now, calendar: calendar))
+        XCTAssertNil(service.selectForPresentation(conditions: [allDone], lines: special,
+            context: context(total: 1), target: .idleRight, now: now, calendar: calendar))
+    }
+
+    func testRoutineAddedAndTimerFinishedRequireExactFreshAction() throws {
+        let content = try StoryContentRepository()
+        for (type, id, target) in [
+            (UserActionEventType.routineAdded, "routine_added", ReactionDisplayTarget.routineAdded),
+            (.routineTimerFinished, "routine_timer_finished", .general),
+        ] {
+            let event = UserActionEvent(eventType: type, targetType: .routine, targetID: UUID(), occurredAt: now)
+            let ctx = context(total: 1, events: [event])
+            XCTAssertEqual(try matches(ctx, trigger: .action(event.id)), [id])
+            let service = InteractionReactionService(defaults: defaults())
+            func select(_ trigger: ReactionTrigger, time: Date? = nil) -> ReactionLine? {
+                service.selectForPresentation(conditions: content.reactionConditions, lines: content.reactionLines,
+                    context: ctx, target: target, trigger: trigger, conditionID: id, routineTitle: "読書",
+                    now: time ?? now, calendar: calendar)
+            }
+            XCTAssertEqual(select(.action(event.id))?.conditionId, id)
+            XCTAssertNil(select(.homeUpdated))
+            XCTAssertNil(select(.action(UUID())))
+            XCTAssertNil(select(.action(event.id), time: now.addingTimeInterval(121)))
+        }
+    }
+
+    func testMigratedPeeksRespectStateTemplateAndCompactLimits() throws {
+        let content = try StoryContentRepository()
+        let service = InteractionReactionService(defaults: defaults())
+        let ctx = context(total: 2)
+        let selected = try XCTUnwrap(service.selectForPresentation(
+            conditions: content.reactionConditions, lines: content.reactionLines, context: ctx,
+            target: .unfinishedPeek, routineTitle: "読書[br]", now: now, calendar: calendar))
+        XCTAssertTrue(selected.displayText(routineTitle: "読書[br]").contains("読書[br]"))
+        XCTAssertFalse(selected.displayText(routineTitle: "読書[br]").contains("{routine_title}"))
+        XCTAssertNil(service.selectForPresentation(conditions: content.reactionConditions,
+            lines: content.reactionLines, context: ctx, target: .unfinishedPeek, now: now, calendar: calendar))
+        let compact = try XCTUnwrap(service.selectForPresentation(
+            conditions: content.reactionConditions, lines: content.reactionLines, context: ctx,
+            target: .unfinishedTopPeek, now: now, calendar: calendar))
+        XCTAssertLessThanOrEqual(compact.displayText().count, 10)
+        XCTAssertFalse(compact.displayText().contains("\n"))
+        XCTAssertNil(service.selectForPresentation(conditions: content.reactionConditions,
+            lines: content.reactionLines, context: context(), target: .unfinishedTopPeek, now: now, calendar: calendar))
+    }
+
+    func testPresentationSelectionHonorsDisabledConditionAndWeight() {
+        var valid = line("valid", condition: "routine_one_completed")
+        valid.displayTarget = ReactionDisplayTarget.idleAbove.rawValue
+        var off = line("off", condition: valid.conditionId, active: false)
+        off.displayTarget = valid.displayTarget
+        var zero = line("zero", condition: valid.conditionId, weight: 0)
+        zero.displayTarget = valid.displayTarget
+        let service = InteractionReactionService(defaults: defaults())
+        let ctx = context([fact(now)], total: 2, completed: 1)
+        XCTAssertEqual(service.selectForPresentation(conditions: [condition(valid.conditionId)],
+            lines: [off, zero, valid], context: ctx, target: .idleAbove,
+            now: now, calendar: calendar)?.id, valid.id)
+        XCTAssertNil(service.selectForPresentation(conditions: [condition(valid.conditionId, active: false)],
+            lines: [valid], context: ctx, target: .idleAbove, now: now, calendar: calendar))
     }
 }

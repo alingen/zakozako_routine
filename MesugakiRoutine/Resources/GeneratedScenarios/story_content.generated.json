@@ -10967,6 +10967,17 @@
       "note": "completedAtを午前4時区切りの当日で集計。当日対象の約束があることも確認。"
     },
     {
+      "conditionId": "home_idle_tapped",
+      "label": "放置中に現れた莉央をタップ",
+      "triggerType": "event",
+      "conditionKey": "home_idle_tapped",
+      "operator": "event",
+      "value": "",
+      "priority": 20,
+      "active": true,
+      "note": "上から現れた莉央へのタップ。未達成があれば routine_remaining の同じ表示先も同優先度で抽選。"
+    },
+    {
       "conditionId": "interaction_after_all_completed",
       "label": "全達成直後に交流画面へ来た",
       "triggerType": "derived",
@@ -11154,12 +11165,23 @@
       "note": "同一targetID・同一アプリ日のurge後、その日の日別結果がkeptで確定してから判定。"
     },
     {
+      "conditionId": "routine_added",
+      "label": "約束を追加した直後",
+      "triggerType": "event",
+      "conditionKey": "routine_added",
+      "operator": "event",
+      "value": "",
+      "priority": 80,
+      "active": true,
+      "note": "ホームで新規作成した約束への返答。既存の1日1回制限を維持。{routine_title}=追加した約束名。"
+    },
+    {
       "conditionId": "routine_all_completed",
       "label": "すべて達成",
       "triggerType": "state",
       "conditionKey": "isAllCompleted",
       "operator": "==",
-      "value": "TRUE",
+      "value": "true",
       "priority": 80,
       "active": true,
       "note": "今日対象の全約束。"
@@ -11253,6 +11275,17 @@
       "note": "completedAtを午前4時区切りの当日で集計。当日対象の約束があることも確認。"
     },
     {
+      "conditionId": "routine_remaining",
+      "label": "未達成の約束が残っている",
+      "triggerType": "state",
+      "conditionKey": "remainingRoutineCount",
+      "operator": ">",
+      "value": "0",
+      "priority": 20,
+      "active": true,
+      "note": "未達成カード・放置中の声かけ共通。表示場所は reaction_lines.display_target で指定。"
+    },
+    {
       "conditionId": "routine_remaining_one",
       "label": "あと1個",
       "triggerType": "state",
@@ -11273,6 +11306,17 @@
       "priority": 60,
       "active": true,
       "note": "todayRoutineCount>0。"
+    },
+    {
+      "conditionId": "routine_timer_finished",
+      "label": "タイマーを完走した直後",
+      "triggerType": "event",
+      "conditionKey": "routine_timer_finished",
+      "operator": "event",
+      "value": "",
+      "priority": 80,
+      "active": true,
+      "note": "タイマー完走後、約束の目標回数がまだ未達のとき。完了・全達成なら既存の達成条件を優先。"
     },
     {
       "conditionId": "routine_today_first_completed",
@@ -11507,6 +11551,72 @@
       "note": "改行指定は[br]。表示処理はアプリ側で要確認。"
     },
     {
+      "lineId": "blocked_defeated_001",
+      "conditionId": "prohibition_failed",
+      "text": "ほんとに負けてきたの？w",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=blocked_defeated）。負けました",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "blocked_defeated_002",
+      "conditionId": "prohibition_failed",
+      "text": "わざわざ敗北報告しに来たんだ♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=blocked_defeated）。負けました",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "blocked_defeated_003",
+      "conditionId": "prohibition_failed",
+      "text": "うわ、大人なのに我慢できなかったんだ〜",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=blocked_defeated）。負けました",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "blocked_struggling_001",
+      "conditionId": "prohibition_urge",
+      "text": "よわよわメンタル出てきたね♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=blocked_struggling）。負けそう",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "blocked_struggling_002",
+      "conditionId": "prohibition_urge",
+      "text": "負けそうだから莉央ちゃんに助け求めにきたんだw",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=blocked_struggling）。負けそう",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "blocked_struggling_003",
+      "conditionId": "prohibition_urge",
+      "text": "はいはい、見ててあげるから我慢して〜",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=blocked_struggling）。負けそう",
+      "displayTarget": "general"
+    },
+    {
       "lineId": "evening_zero_001",
       "conditionId": "evening_zero",
       "text": "言い訳してけっきょくやらなそ〜w",
@@ -11514,6 +11624,292 @@
       "active": true,
       "strength": "normal",
       "premiumOnly": false
+    },
+    {
+      "lineId": "home_all_completed_001",
+      "conditionId": "routine_all_completed",
+      "text": "え、今日の約束ぜんぶ終わったの？…ふーん、やるじゃん♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_all_completed）。全達成ポップアップ",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_all_completed_002",
+      "conditionId": "routine_all_completed",
+      "text": "ぜんぶできたんだ？今日だけはざこって言わないであげる♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_all_completed）。全達成ポップアップ",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_all_completed_003",
+      "conditionId": "routine_all_completed",
+      "text": "今日のおにいさん、ちょっとだけかっこいいかもw",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_all_completed）。全達成ポップアップ",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_idle_above_001",
+      "conditionId": "home_idle_tapped",
+      "text": "…おでこ見た？",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_idle_above）。放置で上からぶら下がって来た莉央をタップしたとき",
+      "displayTarget": "home_idle_above"
+    },
+    {
+      "lineId": "home_idle_above_002",
+      "conditionId": "home_idle_tapped",
+      "text": "止まってるけど寝てる？w",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_idle_above）。放置で上からぶら下がって来た莉央をタップしたとき",
+      "displayTarget": "home_idle_above"
+    },
+    {
+      "lineId": "home_idle_above_routine_001",
+      "conditionId": "routine_remaining",
+      "text": "「{routine_title}」まだだよ？",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_idle_above_routine）。放置で上から来た莉央をタップしたとき(未達成の約束名入り)。{routine_title}=約束名",
+      "displayTarget": "home_idle_above"
+    },
+    {
+      "lineId": "home_idle_above_routine_002",
+      "conditionId": "routine_remaining",
+      "text": "ぼーっとしてないで「{routine_title}」やれば？",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_idle_above_routine）。放置で上から来た莉央をタップしたとき(未達成の約束名入り)。{routine_title}=約束名",
+      "displayTarget": "home_idle_above"
+    },
+    {
+      "lineId": "home_idle_right_001",
+      "conditionId": "routine_all_completed",
+      "text": "全部終わってんじゃん。…ふーん",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_idle_right）。全部達成後、放置で右から来た莉央をタップしたとき",
+      "displayTarget": "home_idle_right"
+    },
+    {
+      "lineId": "home_idle_right_002",
+      "conditionId": "routine_all_completed",
+      "text": "お〜w",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_idle_right）。全部達成後、放置で右から来た莉央をタップしたとき",
+      "displayTarget": "home_idle_right"
+    },
+    {
+      "lineId": "home_peek_unfinished_001",
+      "conditionId": "routine_remaining",
+      "text": "「{routine_title}」、まだでしょ？ざこ♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished）。ホームの未達成の約束カードの上から莉央が顔を出すとき。{routine_title}=約束名",
+      "displayTarget": "home_peek_unfinished"
+    },
+    {
+      "lineId": "home_peek_unfinished_002",
+      "conditionId": "routine_remaining",
+      "text": "ねえ、「{routine_title}」は？見なかったことにしてない？",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished）。ホームの未達成の約束カードの上から莉央が顔を出すとき。{routine_title}=約束名",
+      "displayTarget": "home_peek_unfinished"
+    },
+    {
+      "lineId": "home_peek_unfinished_003",
+      "conditionId": "routine_remaining",
+      "text": "「{routine_title}」やってないの、私知ってるからね♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished）。ホームの未達成の約束カードの上から莉央が顔を出すとき。{routine_title}=約束名",
+      "displayTarget": "home_peek_unfinished"
+    },
+    {
+      "lineId": "home_peek_unfinished_004",
+      "conditionId": "routine_remaining",
+      "text": "ほらほら、「{routine_title}」待ってるよ〜？",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished）。ホームの未達成の約束カードの上から莉央が顔を出すとき。{routine_title}=約束名",
+      "displayTarget": "home_peek_unfinished"
+    },
+    {
+      "lineId": "home_peek_unfinished_005",
+      "conditionId": "routine_remaining",
+      "text": "「{routine_title}」、今日はやらない日だっけ？w",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished）。ホームの未達成の約束カードの上から莉央が顔を出すとき。{routine_title}=約束名",
+      "displayTarget": "home_peek_unfinished"
+    },
+    {
+      "lineId": "home_peek_unfinished_top_001",
+      "conditionId": "routine_remaining",
+      "text": "これ、まだでしょ？",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished_top）。ホームを開いた直後、一番上の未達成カードの縁にあごをのせて指差すとき(1日1回)。見出しの行に1行で出すので10文字以内・約束名なし",
+      "displayTarget": "home_peek_unfinished_top"
+    },
+    {
+      "lineId": "home_peek_unfinished_top_002",
+      "conditionId": "routine_remaining",
+      "text": "ここ、まだだよ？",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished_top）。ホームを開いた直後、一番上の未達成カードの縁にあごをのせて指差すとき(1日1回)。見出しの行に1行で出すので10文字以内・約束名なし",
+      "displayTarget": "home_peek_unfinished_top"
+    },
+    {
+      "lineId": "home_peek_unfinished_top_003",
+      "conditionId": "routine_remaining",
+      "text": "一番上から逃げないの",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_peek_unfinished_top）。ホームを開いた直後、一番上の未達成カードの縁にあごをのせて指差すとき(1日1回)。見出しの行に1行で出すので10文字以内・約束名なし",
+      "displayTarget": "home_peek_unfinished_top"
+    },
+    {
+      "lineId": "home_routine_added_001",
+      "conditionId": "routine_added",
+      "text": "「{routine_title}」ね。…何日続くかな〜w",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_routine_added）。約束を追加した直後、新しいカードを莉央が指差すとき(1日1回)。{routine_title}=約束名",
+      "displayTarget": "home_routine_added"
+    },
+    {
+      "lineId": "home_routine_added_002",
+      "conditionId": "routine_added",
+      "text": "また増やすの？守れる数にしときなよ、ざこ",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_routine_added）。約束を追加した直後、新しいカードを莉央が指差すとき(1日1回)。{routine_title}=約束名",
+      "displayTarget": "home_routine_added"
+    },
+    {
+      "lineId": "home_routine_added_003",
+      "conditionId": "routine_added",
+      "text": "はいはい、見張っといてあげる",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_routine_added）。約束を追加した直後、新しいカードを莉央が指差すとき(1日1回)。{routine_title}=約束名",
+      "displayTarget": "home_routine_added"
+    },
+    {
+      "lineId": "home_routine_completed_001",
+      "conditionId": "routine_completed_just_now",
+      "text": "へぇ〜、ちゃんとやったんだ？ざこのくせに♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_routine_completed）。1つ達成ポップアップ",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_routine_completed_002",
+      "conditionId": "routine_completed_just_now",
+      "text": "はいはい、えらいえらい♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_routine_completed）。1つ達成ポップアップ",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_routine_completed_003",
+      "conditionId": "routine_completed_just_now",
+      "text": "おにいさんにしてはやるじゃん♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_routine_completed）。1つ達成ポップアップ",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_timer_finished_001",
+      "conditionId": "routine_timer_finished",
+      "text": "え、最後までやったの？ざこのくせに粘るじゃん♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_timer_finished）。タイマー完了",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_timer_finished_002",
+      "conditionId": "routine_timer_finished",
+      "text": "はい1回ぶんね〜。まだ終わりじゃないよ？w",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_timer_finished）。タイマー完了",
+      "displayTarget": "general"
+    },
+    {
+      "lineId": "home_timer_finished_003",
+      "conditionId": "routine_timer_finished",
+      "text": "途中でやめると思ってたのに、つまんな〜い♡",
+      "weight": 1,
+      "active": true,
+      "strength": "normal",
+      "premiumOnly": false,
+      "note": "rio_lines から移管（旧group_id=home_timer_finished）。タイマー完了",
+      "displayTarget": "general"
     },
     {
       "lineId": "noon_zero_001",
@@ -14525,54 +14921,6 @@
   ],
   "rioLines": [
     {
-      "lineId": "blocked_defeated_001",
-      "groupId": "blocked_defeated",
-      "text": "ほんとに負けてきたの？w",
-      "weight": 1,
-      "active": true,
-      "note": "負けました・reaction_linesに候補がない場合。ID順で循環"
-    },
-    {
-      "lineId": "blocked_defeated_002",
-      "groupId": "blocked_defeated",
-      "text": "わざわざ敗北報告しに来たんだ♡",
-      "weight": 1,
-      "active": true,
-      "note": "負けました・予備"
-    },
-    {
-      "lineId": "blocked_defeated_003",
-      "groupId": "blocked_defeated",
-      "text": "うわ、大人なのに我慢できなかったんだ〜",
-      "weight": 1,
-      "active": true,
-      "note": "負けました・予備"
-    },
-    {
-      "lineId": "blocked_struggling_001",
-      "groupId": "blocked_struggling",
-      "text": "よわよわメンタル出てきたね♡",
-      "weight": 1,
-      "active": true,
-      "note": "負けそう・reaction_linesに候補がない場合。ID順で循環"
-    },
-    {
-      "lineId": "blocked_struggling_002",
-      "groupId": "blocked_struggling",
-      "text": "負けそうだから莉央ちゃんに助け求めにきたんだw",
-      "weight": 1,
-      "active": true,
-      "note": "負けそう・予備"
-    },
-    {
-      "lineId": "blocked_struggling_003",
-      "groupId": "blocked_struggling",
-      "text": "はいはい、見ててあげるから我慢して〜",
-      "weight": 1,
-      "active": true,
-      "note": "負けそう・予備"
-    },
-    {
       "lineId": "challenge_intro_001",
       "groupId": "challenge_intro",
       "text": "じゃあこれやってきて〜",
@@ -14619,78 +14967,6 @@
       "weight": 1,
       "active": true,
       "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
-    },
-    {
-      "lineId": "home_all_completed_001",
-      "groupId": "home_all_completed",
-      "text": "え、今日の約束ぜんぶ終わったの？…ふーん、やるじゃん♡",
-      "weight": 1,
-      "active": true,
-      "note": "全達成ポップアップ・reaction_linesと従来interactionsに候補がない場合"
-    },
-    {
-      "lineId": "home_all_completed_002",
-      "groupId": "home_all_completed",
-      "text": "ぜんぶできたんだ？今日だけはざこって言わないであげる♡",
-      "weight": 1,
-      "active": true,
-      "note": "全達成ポップアップ・予備"
-    },
-    {
-      "lineId": "home_all_completed_003",
-      "groupId": "home_all_completed",
-      "text": "今日のおにいさん、ちょっとだけかっこいいかもw",
-      "weight": 1,
-      "active": true,
-      "note": "全達成ポップアップ・予備"
-    },
-    {
-      "lineId": "home_routine_completed_001",
-      "groupId": "home_routine_completed",
-      "text": "へぇ〜、ちゃんとやったんだ？ざこのくせに♡",
-      "weight": 1,
-      "active": true,
-      "note": "1つ達成ポップアップ・従来interactionsの候補がない場合"
-    },
-    {
-      "lineId": "home_routine_completed_002",
-      "groupId": "home_routine_completed",
-      "text": "はいはい、えらいえらい♡",
-      "weight": 1,
-      "active": true,
-      "note": "1つ達成ポップアップ・予備"
-    },
-    {
-      "lineId": "home_routine_completed_003",
-      "groupId": "home_routine_completed",
-      "text": "おにいさんにしてはやるじゃん♡",
-      "weight": 1,
-      "active": true,
-      "note": "1つ達成ポップアップ・予備"
-    },
-    {
-      "lineId": "home_timer_finished_001",
-      "groupId": "home_timer_finished",
-      "text": "え、最後までやったの？ざこのくせに粘るじゃん♡",
-      "weight": 1,
-      "active": true,
-      "note": "タイマー完了・従来interactionsの候補がない場合"
-    },
-    {
-      "lineId": "home_timer_finished_002",
-      "groupId": "home_timer_finished",
-      "text": "はい1回ぶんね〜。まだ終わりじゃないよ？w",
-      "weight": 1,
-      "active": true,
-      "note": "タイマー完了・予備"
-    },
-    {
-      "lineId": "home_timer_finished_003",
-      "groupId": "home_timer_finished",
-      "text": "途中でやめると思ってたのに、つまんな〜い♡",
-      "weight": 1,
-      "active": true,
-      "note": "タイマー完了・予備"
     },
     {
       "lineId": "memory_001",
@@ -15115,94 +15391,6 @@
       "weight": 1,
       "active": true,
       "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
-    },
-    {
-      "lineId": "home_peek_unfinished_001",
-      "groupId": "home_peek_unfinished",
-      "text": "「{routine_title}」、まだでしょ？ざこ♡",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
-    },
-    {
-      "lineId": "home_peek_unfinished_002",
-      "groupId": "home_peek_unfinished",
-      "text": "ねえ、「{routine_title}」は？見なかったことにしてない？",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
-    },
-    {
-      "lineId": "home_peek_unfinished_003",
-      "groupId": "home_peek_unfinished",
-      "text": "「{routine_title}」やってないの、莉央知ってるからね♡",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
-    },
-    {
-      "lineId": "home_peek_unfinished_004",
-      "groupId": "home_peek_unfinished",
-      "text": "ほらほら、「{routine_title}」待ってるよ〜？",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
-    },
-    {
-      "lineId": "home_peek_unfinished_005",
-      "groupId": "home_peek_unfinished",
-      "text": "「{routine_title}」、今日はやらない日だっけ？w",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
-    },
-    {
-      "lineId": "home_idle_above_001",
-      "groupId": "home_idle_above",
-      "text": "…デコ見た？今の忘れて",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】放置で上からぶら下がって来た莉央をタップしたとき"
-    },
-    {
-      "lineId": "home_idle_above_002",
-      "groupId": "home_idle_above",
-      "text": "止まってるけど寝てんの？",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】放置で上からぶら下がって来た莉央をタップしたとき"
-    },
-    {
-      "lineId": "home_idle_above_routine_001",
-      "groupId": "home_idle_above_routine",
-      "text": "「{routine_title}」まだだよ？",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】放置で上から来た莉央をタップしたとき(未達成の約束名入り)。{routine_title}=約束名"
-    },
-    {
-      "lineId": "home_idle_above_routine_002",
-      "groupId": "home_idle_above_routine",
-      "text": "ぼーっとしてないで「{routine_title}」やれば？",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】放置で上から来た莉央をタップしたとき(未達成の約束名入り)。{routine_title}=約束名"
-    },
-    {
-      "lineId": "home_idle_right_001",
-      "groupId": "home_idle_right",
-      "text": "全部終わってんじゃん。…ふーん",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】全部達成後、放置で右から来た莉央をタップしたとき"
-    },
-    {
-      "lineId": "home_idle_right_002",
-      "groupId": "home_idle_right",
-      "text": "ま、ちょっとはやるじゃん",
-      "weight": 1,
-      "active": true,
-      "note": "【仮・Sheets未登録】全部達成後、放置で右から来た莉央をタップしたとき"
     }
   ]
 }

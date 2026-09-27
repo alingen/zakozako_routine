@@ -513,7 +513,7 @@ function normalizeReactionLines(bag: IssueBag, rows: RawRow[]): NormalizedReacti
     sheet,
     rows,
     REACTION_LINE_COLUMNS,
-    REACTION_LINE_COLUMNS.filter((c) => c !== 'note'),
+    REACTION_LINE_COLUMNS.filter((c) => c !== 'note' && c !== 'display_target'),
   );
   return rows.flatMap((row) => {
     if (!booleanValue(bag, sheet, row, 'active', false)) return [];
@@ -533,6 +533,7 @@ function normalizeReactionLines(bag: IssueBag, rows: RawRow[]): NormalizedReacti
         strength: trimmed(row, 'strength') || 'normal',
         premiumOnly: booleanValue(bag, sheet, row, 'premium_only', false),
         note: optionalString(row, 'note'),
+        displayTarget: optionalString(row, 'display_target'),
       },
     ];
   });

@@ -13,9 +13,12 @@ final class UserActionEventRepository {
     @discardableResult
     func record(
         _ type: UserActionEventType,
+        targetType: UserActionTargetType? = nil,
+        targetID: UUID? = nil,
         occurredAt: Date = .now
     ) throws -> UserActionEvent {
-        let event = UserActionEvent(eventType: type, occurredAt: occurredAt)
+        let event = UserActionEvent(eventType: type, targetType: targetType,
+                                   targetID: targetID, occurredAt: occurredAt)
         do {
             try context.transaction {
                 context.insert(event)

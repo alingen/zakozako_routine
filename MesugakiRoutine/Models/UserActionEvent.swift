@@ -9,10 +9,14 @@ enum UserActionEventType: String {
     case interactionScreenOpened = "interaction_screen_opened"
     case characterTapped = "character_tapped"
     case appOpened = "app_opened"
+    case routineAdded = "routine_added"
+    case routineTimerFinished = "routine_timer_finished"
+    case homeIdleTapped = "home_idle_tapped"
 }
 
 enum UserActionTargetType: String {
     case prohibition
+    case routine
 }
 
 @Model

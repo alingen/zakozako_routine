@@ -37,7 +37,7 @@ export function snapshotToRawSheets(snapshot: SheetSnapshot): RawSheets {
   // A missing/renamed live header is a failed fetch, not permission to erase the catalog.
   for (const [tab, columns] of [
     ['reaction_conditions', REACTION_CONDITION_COLUMNS],
-    ['reaction_lines', REACTION_LINE_COLUMNS],
+    ['reaction_lines', REACTION_LINE_COLUMNS.filter((column) => column !== 'display_target')],
     ['rio_lines', RIO_LINE_COLUMNS],
   ] as const) {
     const header = snapshot.tabs[tab]?.find((row) =>

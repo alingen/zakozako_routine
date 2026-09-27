@@ -8,16 +8,16 @@ final class RioCopyTests: XCTestCase {
         XCTAssertEqual(line.displayText(routineTitle: "読書[br]"), "今日は読書[br]\nA B")
     }
 
-    func testBundledCopyAndFallbacksAreLoadedFromCMS() throws {
+    func testBundledCopyAndMigratedReactionsAreLoadedFromCMS() throws {
         let content = try StoryContentRepository()
-        XCTAssertEqual(content.rioLines.count, 85)
+        XCTAssertEqual(content.rioLines.count, 59)
         XCTAssertFalse(RioCopy.text("onboarding_intro_001").isEmpty)
         XCTAssertFalse(RioCopy.text("notification_not_started_001", routineTitle: "読書").contains("{routine_title}"))
         XCTAssertTrue(RioCopy.text("notification_not_started_001", routineTitle: "読書").contains("読書"))
         for group in ["home_routine_completed", "home_all_completed", "home_timer_finished",
                       "blocked_struggling", "blocked_defeated"] {
-            XCTAssertEqual(RioCopy.lines(group: group).count, 3)
-            XCTAssertTrue(RioCopy.lines(group: group).contains(try XCTUnwrap(RioCopy.random(group: group))))
+            XCTAssertTrue(RioCopy.lines(group: group).isEmpty)
+            XCTAssertEqual(content.reactionLines.filter { $0.id.hasPrefix(group + "_") }.count, 3)
         }
         XCTAssertEqual(RioCopy.text("missing"), "")
         XCTAssertNil(RioCopy.random(group: "missing"))

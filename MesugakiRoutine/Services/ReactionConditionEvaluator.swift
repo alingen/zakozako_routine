@@ -4,6 +4,8 @@ enum ReactionTrigger: Equatable {
     case homeUpdated
     case interactionOpened
     case characterTapped
+    /// ホームで今達成した約束。画面更新だけで達成操作を再現しない。
+    case routineCompleted(UUID)
     /// この呼び出しを起こした操作だけ。過去の失敗を即時イベントとして再生しない。
     case action(UUID)
 }
@@ -17,6 +19,8 @@ struct ReactionMatch {
 enum ReactionConditionEvaluator {
     /// ユーザー指定（2026-09-27）。「完全達成」は7アプリ日連続から。
     static let fullCompletionStreakDays = 7
+    /// 初回の連続や短いお試し期間は、自己ベスト更新として毎日取り上げない。
+    static let minimumPreviousBestStreakDays = 3
 
     static func matches(
         conditions: [ReactionCondition], context: ReactionContext, trigger: ReactionTrigger,
@@ -124,17 +128,27 @@ enum ReactionConditionEvaluator {
             case "interaction_after_prohibition_failed":
                 return recent(context.lastProhibitionFailedAt, range: condition.value)
             case "routine_first_completion":
-                return Dictionary(grouping: context.routinePeriodFacts, by: \.routineID).values.contains { facts in
-                    todayContains(facts.compactMap(\.completedAt).min())
-                }
+                guard case let .routineCompleted(routineID) = trigger else { return false }
+                let firstCompletion = context.routinePeriodFacts
+                    .filter { $0.routineID == routineID }
+                    .compactMap(\.completedAt)
+                    .min()
+                return todayContains(firstCompletion)
             case "routine_yesterday_more":
                 return context.todayRoutineCount > 0 && actualTodayCount > completionCount(on: yesterday)
             case "routine_yesterday_less":
                 return context.todayRoutineCount > 0 && actualTodayCount < completionCount(on: yesterday)
             case "streak_new_best":
-                return completedToday && context.currentStreak > RoutineStreak.overallBestStreak(
-                    completionDates: completedDates.filter { $0 < today }, calendar: calendar
+                // 記録を伸ばしている間ずっと「自己ベスト」にならないよう、今の連続が始まる前の最長を
+                // ちょうど1日上回った日だけにする。始めたばかりで最長が短い(3日未満)うちは言わない。
+                guard completedToday, context.currentStreak > 0,
+                      let runStart = calendar.date(byAdding: .day, value: -(context.currentStreak - 1), to: today)
+                else { return false }
+                let bestBeforeRun = RoutineStreak.overallBestStreak(
+                    completionDates: completedDates.filter { $0 < runStart }, calendar: calendar
                 )
+                return bestBeforeRun >= minimumPreviousBestStreakDays
+                    && context.currentStreak == bestBeforeRun + 1
             case "streak_one_to_best":
                 return completedToday && context.currentStreak == context.bestStreak - 1
             case "streak_broken", "streak_long_broken":
@@ -189,7 +203,8 @@ enum ReactionConditionEvaluator {
         }
 
         private func isScreenUpdate(_ trigger: ReactionTrigger) -> Bool {
-            trigger == .homeUpdated || trigger == .interactionOpened
+            if case .routineCompleted = trigger { return true }
+            return trigger == .homeUpdated || trigger == .interactionOpened
         }
 
         func run(endingOn day: Date) -> Int {

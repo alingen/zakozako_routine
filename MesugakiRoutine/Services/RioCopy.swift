@@ -1,6 +1,6 @@
 import Foundation
 
-/// rio_lines は固定案内・通知・予備リアクション・お題の正本。
+/// rio_lines は固定案内・通知・お題の正本。状況別の反応は reaction_lines を参照する。
 struct RioLine: Codable, Hashable, Identifiable {
     let lineId: String
     let groupId: String

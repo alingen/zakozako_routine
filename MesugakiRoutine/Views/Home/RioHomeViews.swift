@@ -1,27 +1,5 @@
 import SwiftUI
 
-/// Home上部の莉央の表情。コメントは共通のリアクション条件から選ぶ。
-enum RioHomeMood: Equatable {
-    /// 今日の約束にまだ手をつけていない(約束が0件の日も含む)。
-    case notStarted
-    /// いくつか達成した。
-    case inProgress
-    /// 今日の約束をぜんぶ達成した。
-    case allDone
-    /// 「やらないこと」に負けた。
-    case defeated
-
-    var portraitAssetName: String {
-        switch self {
-        case .notStarted: return "portrait_rio_mischievous_default"
-        case .inProgress: return "portrait_rio_smile"
-        case .allDone: return "portrait_rio_triumphant"
-        case .defeated: return "portrait_rio_unimpressed"
-        }
-    }
-
-}
-
 /// 約束を達成した瞬間の莉央の反応。
 enum RioReactionKind: Equatable {
     /// 約束を1つ、目標回数まで達成した。
@@ -38,22 +16,6 @@ enum RioReactionKind: Equatable {
         }
     }
 
-    /// シートの interactions でこの値を touch_area にした行があれば、下の既定文より優先する。
-    var commentTouchArea: String {
-        switch self {
-        case .routineCompleted: return "reaction_routine_completed"
-        case .allRoutinesCompleted: return "reaction_all_completed"
-        case .timerFinished: return "reaction_timer_finished"
-        }
-    }
-
-    var fallbackGroup: String {
-        switch self {
-        case .routineCompleted: return "home_routine_completed"
-        case .allRoutinesCompleted: return "home_all_completed"
-        case .timerFinished: return "home_timer_finished"
-        }
-    }
 }
 
 struct RioReaction: Identifiable, Equatable {

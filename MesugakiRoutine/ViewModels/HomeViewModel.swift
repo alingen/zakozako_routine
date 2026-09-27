@@ -55,28 +55,7 @@ final class HomeViewModel {
     /// Screen Time の権限取消・監視復元失敗を、カード内の再設定導線に表示する。
     private(set) var screenTimeMonitoringIssueMessage: String?
 
-    /// Home上部で莉央が話している一言。
-    private(set) var rioComment: InteractionComment?
     private(set) var prohibitionReactionText: String?
-    /// 条件・日付・時間帯が同じ再読み込みでは、表示中のコメントを維持する。
-    private struct RioCommentState: Equatable {
-        let day: Date
-        let hour: Int
-        let matchingKeys: [String]
-        let profileValues: [String: String]
-    }
-    private var rioCommentState: RioCommentState?
-
-    /// 今日の記録から決まる莉央の状態。負けた日は達成より優先してからかう。
-    var rioMood: RioHomeMood {
-        if let currentBehavior, promiseUsage(for: currentBehavior).failed {
-            return .defeated
-        }
-        if todayTotalCount > 0, todayCompletedCount == todayTotalCount {
-            return .allDone
-        }
-        return todayCompletedCount > 0 ? .inProgress : .notStarted
-    }
 
     private var dependencies: AppDependencies?
 
@@ -126,69 +105,134 @@ final class HomeViewModel {
         }
         currentBehavior = dependencies.blockedBehaviorRepository.fetchActive()
         masteredBehaviors = dependencies.blockedBehaviorRepository.fetchMastered()
-        updateRioComment(trigger: .homeUpdated)
         rescheduleNotifications()
     }
 
     // MARK: - 莉央
 
-    /// 交流と同じ条件判定・抽選・表示済み管理で、今の状態に合う一言へ切り替える。
-    func selectNextRioComment() {
-        let now = Date.now
-        _ = try? dependencies?.userActionEventRepository.record(.characterTapped, occurredAt: now)
-        updateRioComment(trigger: .characterTapped, now: now)
+    /// ホームのミニ莉央が使う CMS の反応条件。どれを出すかは条件の priority で決める(コードに順番を書かない)。
+    /// 交流画面が前提の条件(交流画面を開いた系・タップ系・時間帯の感想など)はここに入れない。
+    enum HomeReactionConditions {
+        static let streakMilestones: Set<String> = [
+            "streak_3", "streak_7", "streak_10", "streak_14", "streak_30", "streak_50", "streak_100",
+        ]
+        /// 全部達成したとき。全達成のお祝い(3種)は、交流画面で先に出ていても操作への返事として出す。
+        static let allCompleted: Set<String> = streakMilestones.union([
+            "routine_all_completed", "routine_all_completed_early", "routine_all_completed_late",
+            "streak_new_best", "total_completion_milestone",
+        ])
+        static let allCompletedReusable: Set<String> = [
+            "routine_all_completed", "routine_all_completed_early", "routine_all_completed_late",
+        ]
+        /// 1つ達成したとき(全部ではない)。新しい約束の初達成は、いま完了したのが新しい約束のときだけ足す。
+        static let completed: Set<String> = streakMilestones.union([
+            "routine_remaining_one", "routine_remaining_two", "routine_today_first_completed",
+            "routine_half_completed", "routine_yesterday_more",
+            "streak_return_next_day", "streak_return_after_days", "streak_one_to_best",
+            "streak_new_best", "total_completion_milestone",
+        ])
+        /// ホームを開いたとき、本人に向けて話す(縁をつかんで覗く)。
+        static let openingAboutYou: Set<String> = [
+            "app_return_after_absence", "streak_long_broken", "streak_broken", "prohibition_urge_then_kept",
+        ]
+        /// ホームを開いたとき、未達成カードを指差しながら言う(時間が遅いこと自体に意味がある夜だけ)。
+        static let openingAboutCard: Set<String> = ["evening_zero", "late_night_remaining"]
     }
 
-    private func updateRioComment(trigger: ReactionTrigger, now: Date = .now) {
-        guard let dependencies, let content = dependencies.storyContentRepository,
-              let context = try? dependencies.reactionContextProvider.current(now: now) else { return }
-        let profileValues = (try? dependencies.storyStateRepository.profileValues()) ?? [:]
-        let state = RioCommentState(
-            day: AppDay.startOfDay(for: now),
-            hour: Calendar.current.component(.hour, from: now),
-            matchingKeys: ReactionConditionEvaluator.matches(
-                conditions: content.reactionConditions, context: context,
-                trigger: .homeUpdated, now: now
-            ).map(\.consumptionKey).sorted(),
-            profileValues: profileValues
-        )
-        guard trigger == .characterTapped || rioComment == nil || rioCommentState != state else { return }
-        rioComment = dependencies.interactionReactionService.select(
-            conditions: content.reactionConditions, lines: content.reactionLines,
-            interactions: content.interactions, context: context, trigger: trigger,
-            profileValues: profileValues, now: now
-        )
-        rioCommentState = state
-    }
-
-    /// 全達成時は reaction_lines の「すべて達成」を優先する。
-    func makeRioReaction(_ kind: RioReactionKind) -> RioReaction {
-        let reactionComment: InteractionComment?
-        if kind == .allRoutinesCompleted,
+    /// 達成・タイマー完走も共通の条件とセリフから選ぶ。無効な条件を予備文で復活させない。
+    func makeRioReaction(_ kind: RioReactionKind, routine: Routine? = nil) -> RioReaction? {
+        var reactionComment: InteractionComment?
+        if kind != .timerFinished,
            let dependencies, let content = dependencies.storyContentRepository,
            let context = try? dependencies.reactionContextProvider.current() {
-            reactionComment = dependencies.interactionReactionService.selectAllCompletedReaction(
-                conditions: content.reactionConditions, lines: content.reactionLines, context: context
-            )
-        } else {
-            reactionComment = nil
+            var candidates = kind == .allRoutinesCompleted
+                ? HomeReactionConditions.allCompleted
+                : HomeReactionConditions.completed
+            // 完了対象のIDを渡し、初達成かどうかも同じ条件判定に委ねる。
+            if routine != nil {
+                candidates.insert("routine_first_completion")
+            }
+            reactionComment = dependencies.interactionReactionService.selectHomeReaction(
+                candidates: candidates,
+                reusable: kind == .allRoutinesCompleted ? HomeReactionConditions.allCompletedReusable : [],
+                conditions: content.reactionConditions, lines: content.reactionLines, context: context,
+                completedRoutineID: routine?.id
+            )?.comment
         }
-        let text = reactionComment?.displayText
-            ?? interactionComment(touchArea: kind.commentTouchArea, excluding: nil)?.displayText
-            ?? RioCopy.random(group: kind.fallbackGroup)
-            ?? ""
+        let text = reactionComment?.displayText ?? reactionText(
+            target: .general,
+            conditionID: kind == .timerFinished ? "routine_timer_finished" : kind == .allRoutinesCompleted
+                ? "routine_all_completed" : "routine_completed_just_now",
+            action: kind == .timerFinished ? .routineTimerFinished : nil,
+            routine: routine
+        )
+        guard let text else { return nil }
         return RioReaction(kind: kind, text: text)
     }
 
-    private func interactionComment(touchArea: String, excluding excludedID: String?) -> InteractionComment? {
+    /// ホームを開いたときの莉央のひとこと(CMS の条件)。
+    /// 本人に向けた話(久しぶり・途切れた・守れた)なら `aboutYou` が true で、縁をつかんで覗く姿で出す。
+    /// 呼んだ時点で表示済みにするので、実際に出すと決めてから呼ぶ。
+    func openingReaction(includeAboutCard: Bool) -> (text: String, aboutYou: Bool)? {
+        guard let dependencies, let content = dependencies.storyContentRepository,
+              let context = try? dependencies.reactionContextProvider.current() else { return nil }
+        let service = dependencies.interactionReactionService
+        if let aboutYou = service.selectHomeReaction(
+            candidates: HomeReactionConditions.openingAboutYou,
+            conditions: content.reactionConditions, lines: content.reactionLines, context: context
+        ) {
+            return (aboutYou.comment.displayText, true)
+        }
+        guard includeAboutCard, let aboutCard = service.selectHomeReaction(
+            candidates: HomeReactionConditions.openingAboutCard,
+            conditions: content.reactionConditions, lines: content.reactionLines, context: context
+        ) else { return nil }
+        return (aboutCard.comment.displayText, false)
+    }
+
+    /// 本人に向けた話(久しぶり・途切れた・守れた)がいま出せるか。表示済みにはしない。
+    func hasOpeningReactionAboutYou() -> Bool {
+        guard let dependencies, let content = dependencies.storyContentRepository,
+              let context = try? dependencies.reactionContextProvider.current() else { return false }
+        return dependencies.interactionReactionService.selectHomeReaction(
+            candidates: HomeReactionConditions.openingAboutYou, consume: false,
+            conditions: content.reactionConditions, lines: content.reactionLines, context: context
+        ) != nil
+    }
+
+    /// 放置で来た莉央をタップしたときの一言(CMS の条件)。雰囲気づくりの一言なので表示済みにしない。
+    /// 上から: 深夜なのに未達成、右から(全達成後): 数日連続で完全達成。合わなければ nil(rio_lines の予備を使う)。
+    func idleReactionText(fromAbove: Bool) -> String? {
+        guard let dependencies, let content = dependencies.storyContentRepository,
+              let context = try? dependencies.reactionContextProvider.current() else { return nil }
+        return dependencies.interactionReactionService.selectHomeReaction(
+            candidates: fromAbove ? ["late_night_remaining"] : ["routine_full_streak"], consume: false,
+            conditions: content.reactionConditions, lines: content.reactionLines, context: context
+        )?.comment.displayText
+    }
+
+    /// ミニ莉央も reaction_conditions / reaction_lines を参照する。
+    func reactionText(
+        target: ReactionDisplayTarget, conditionID: String? = nil,
+        action: UserActionEventType? = nil, routine: Routine? = nil,
+        routineTitle: String? = nil, now: Date = .now
+    ) -> String? {
         guard let dependencies, let content = dependencies.storyContentRepository else { return nil }
-        let profileValues = (try? dependencies.storyStateRepository.profileValues()) ?? [:]
-        return InteractionCommentSelector.select(
-            from: content.interactions,
-            touchArea: touchArea,
-            profileValues: profileValues,
-            excluding: excludedID
-        )
+        let trigger: ReactionTrigger
+        if let action {
+            guard let event = try? dependencies.userActionEventRepository.record(
+                action, targetType: routine == nil ? nil : .routine, targetID: routine?.id, occurredAt: now
+            ) else { return nil }
+            trigger = .action(event.id)
+        } else {
+            trigger = .homeUpdated
+        }
+        guard let context = try? dependencies.reactionContextProvider.current(now: now) else { return nil }
+        let title = routine?.title ?? routineTitle
+        return dependencies.interactionReactionService.selectForPresentation(
+            conditions: content.reactionConditions, lines: content.reactionLines, context: context,
+            target: target, trigger: trigger, conditionID: conditionID, routineTitle: title, now: now
+        )?.displayText(routineTitle: title)
     }
 
     // MARK: - やらないこと

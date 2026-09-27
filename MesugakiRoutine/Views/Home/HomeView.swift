@@ -21,8 +21,6 @@ struct HomeView: View {
     @State private var isPresentingNewRoutine = false
     @State private var isPresentingNewBlockedBehavior = false
     @State private var isShowingBlockedBehaviorDeleteError = false
-    @State private var nextStrugglingTauntIndex = 0
-    @State private var nextDefeatedTauntIndex = 0
     @State private var rioReaction: RioReaction?
     /// P2「ちょこん」: 未達成カードの上から顔を出している莉央。
     @State private var cardPeek: RioCardPeekRequest?
@@ -34,11 +32,16 @@ struct HomeView: View {
     @State private var rioLayerDismissTrigger = 0
     /// 放置で見にきた莉央(上から/右から)。
     @State private var idlePeek: RioIdlePeekRequest?
+    /// ホームを開いたとき、本人に向けた話(久しぶり・途切れた・守れた)をしにきた莉央。
+    @State private var grabPeek: RioGrabPeekRequest?
     /// 今回ホームを開いてから、頼んでいない介入(P2・放置)をもう出したか。開くたび1回まで。
     @State private var unrequestedPeekShownThisOpen = false
     /// 値を変えると、放置の10秒を数え直す(約束の報告など、ボタンの操作があったとき)。
     @State private var idleResetToken = 0
+    /// 約束の追加画面を開いたときにあった約束。閉じたあと、増えた約束を莉央が指差す。
+    @State private var routineIDsBeforeAdding: Set<UUID>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @Binding private var appDialog: AppDialogRequest?
     private let onboardingRoutineID: UUID?
@@ -120,7 +123,13 @@ struct HomeView: View {
         .appScreenBackground()
         .onPreferenceChange(HomeRoutineRowFramesKey.self) { routineRowFrames = $0 }
         // 莉央専用の層。莉央と吹き出し以外は下の一覧にタップが届く。
-        .overlay { rioLayer }
+        .overlay {
+            rioLayer
+                .environment(\.rioProtectedTrailingWidth, rioProtectedTrailingWidth)
+        }
+        .onChange(of: isPresentingNewRoutine) { _, presenting in
+            if presenting { routineIDsBeforeAdding = Set(viewModel.todayRoutines.map(\.id)) }
+        }
         .onChange(of: homeIsScrolling) { _, scrolling in
             // スクロールが始まったら、出ている莉央はすぐ引っ込む(操作を優先)。
             if scrolling { rioLayerDismissTrigger += 1 }
@@ -140,7 +149,10 @@ struct HomeView: View {
         .onChange(of: editingBlockedBehavior) { _, new in
             if new == nil { viewModel.reload() }
         }
-        .sheet(isPresented: $isPresentingNewRoutine, onDismiss: { viewModel.reload() }) {
+        .sheet(isPresented: $isPresentingNewRoutine, onDismiss: {
+            viewModel.reload()
+            presentRoutineAddedPeekIfNeeded()
+        }) {
             NavigationStack {
                 RoutineEditView(routine: nil)
             }
@@ -237,7 +249,8 @@ struct HomeView: View {
         // 放置の判定: 何も触らない状態が10秒続いたら、莉央が見にくる。
         // スクロール・シート・莉央の登場・ボタンの操作があると、キーが変わって数え直す。
         .task(id: idleWatchKey) {
-            guard canShowRioLayer, !homeIsScrolling, rioReaction == nil, cardPeek == nil, idlePeek == nil else { return }
+            guard canShowRioLayer, !homeIsScrolling, rioReaction == nil, cardPeek == nil, idlePeek == nil,
+                  grabPeek == nil else { return }
             do {
                 try await Task.sleep(for: .seconds(10))
             } catch { return }
@@ -326,6 +339,17 @@ struct HomeView: View {
                         }
                     )
                     .id(cardPeek.id)
+                } else if let grabPeek {
+                    RioEdgeGrabPeek(
+                        request: grabPeek,
+                        containerWidth: proxy.size.width,
+                        bottomEdge: proxy.size.height,
+                        dismissTrigger: rioLayerDismissTrigger,
+                        onFinished: {
+                            if self.grabPeek?.id == grabPeek.id { self.grabPeek = nil }
+                        }
+                    )
+                    .id(grabPeek.id)
                 } else if let idlePeek {
                     idlePeekView(idlePeek, containerWidth: proxy.size.width)
                 }
@@ -340,11 +364,14 @@ struct HomeView: View {
             if idlePeek?.id == request.id { idlePeek = nil }
         }
         switch request.kind {
-        case .above:
+        case let .above(title):
             RioIdleAbovePeek(
                 request: request,
                 containerWidth: containerWidth,
                 dismissTrigger: rioLayerDismissTrigger,
+                onTalk: {
+                    viewModel.reactionText(target: .idleAbove, action: .homeIdleTapped, routineTitle: title)
+                },
                 onFinished: onFinished
             )
             .id(request.id)
@@ -355,6 +382,7 @@ struct HomeView: View {
                     cardFrame: globalFrame.offsetBy(dx: -rioLayerFrame.minX, dy: -rioLayerFrame.minY),
                     containerWidth: containerWidth,
                     dismissTrigger: rioLayerDismissTrigger,
+                    onTalk: { viewModel.reactionText(target: .idleRight) },
                     onFinished: onFinished
                 )
                 .id(request.id)
@@ -362,17 +390,26 @@ struct HomeView: View {
         }
     }
 
+    /// 未達成でタイマー付きの約束があるときは時計ボタンが出るので、莉央が避ける右端の幅を広げる。
+    private var rioProtectedTrailingWidth: CGFloat {
+        let showsTimerButton = viewModel.todayRoutines.contains { routine in
+            routine.targetDurationMinutes != nil && !viewModel.todayProgress(for: routine).isCompletedToday
+        }
+        return showsTimerButton ? RioPeekLayout.protectedTrailingWidthWithTimer : RioPeekLayout.protectedTrailingWidth
+    }
+
     private var idleWatchKey: String {
         [
             "\(canShowRioLayer)", "\(homeIsScrolling)", "\(idleResetToken)",
             rioReaction?.id.uuidString ?? "-", cardPeek?.id.uuidString ?? "-", idlePeek?.id.uuidString ?? "-",
+            grabPeek?.id.uuidString ?? "-",
         ].joined(separator: "|")
     }
 
     /// 放置で見にくる。未達成の約束があれば上から、全部達成していれば達成済みカードの右から。
     private func presentIdlePeekIfNeeded() {
         guard canShowRioLayer, !homeIsScrolling, rioReaction == nil, cardPeek == nil, idlePeek == nil,
-              !unrequestedPeekShownThisOpen,
+              grabPeek == nil, !unrequestedPeekShownThisOpen,
               // 読み上げを聞いている時間と放置を見分けられないので、VoiceOver 中は来ない。
               !UIAccessibility.isVoiceOverRunning,
               RioUnrequestedPeekSchedule.canShow() else { return }
@@ -389,7 +426,11 @@ struct HomeView: View {
         }
         unrequestedPeekShownThisOpen = true
         RioUnrequestedPeekSchedule.markShown()
-        withAnimation(nil) { idlePeek = RioIdlePeekRequest(kind: kind) }
+        let fromAbove: Bool
+        if case .above = kind { fromAbove = true } else { fromAbove = false }
+        withAnimation(nil) {
+            idlePeek = RioIdlePeekRequest(kind: kind, preferredText: viewModel.idleReactionText(fromAbove: fromAbove))
+        }
         AccessibilityNotification.Announcement("莉央がのぞいています").post()
     }
 
@@ -411,26 +452,81 @@ struct HomeView: View {
             try? await Task.sleep(for: .milliseconds(900))
             let day = AppDay.startOfDay(for: .now)
             guard canShowRioLayer, !homeIsScrolling, rioReaction == nil, cardPeek == nil, idlePeek == nil,
-                  !RioCardPeekSchedule.hasShown(on: day) else { return }
+                  grabPeek == nil, !RioCardPeekSchedule.hasShown(on: day) else { return }
+
+            // 本人に向けた話(久しぶり・途切れた・守れた)があれば、カードではなく縁をつかんで話しにくる。
+            if viewModel.hasOpeningReactionAboutYou(),
+               let opening = viewModel.openingReaction(includeAboutCard: false), opening.aboutYou {
+                RioCardPeekSchedule.markShown(on: day)
+                unrequestedPeekShownThisOpen = true
+                RioUnrequestedPeekSchedule.markShown()
+                withAnimation(nil) { grabPeek = RioGrabPeekRequest(text: opening.text) }
+                AccessibilityNotification.Announcement("莉央、\(opening.text)").post()
+                return
+            }
 
             // 莉央が出る余白がカードの上にあり、下に隠れていないカードだけを候補にする。
+            // 上に余白があれば身を乗り出す構図、一番上のカードのように余白が少なければ縁にあごをのせる構図。
+            // あごをのせる構図は吹き出しを見出しの行に1行で出すので、大きな文字サイズでは使わない。
             let target = viewModel.todayRoutines
                 .filter { !viewModel.todayProgress(for: $0).isCompletedToday }
-                .compactMap { routine in routineRowFrames[routine.id].map { (routine, $0) } }
-                .filter { _, frame in
-                    frame.minY - rioLayerFrame.minY >= RioCardPeek.heightAboveEdge + 4
-                        && frame.minY <= rioLayerFrame.maxY - 160
+                .compactMap { routine -> (Routine, CGRect, RioCardPeekRequest.Style)? in
+                    guard let frame = routineRowFrames[routine.id],
+                          frame.minY <= rioLayerFrame.maxY - 160 else { return nil }
+                    let space = frame.minY - rioLayerFrame.minY
+                    if space >= RioCardPeek.heightAboveEdge(.leanOver) + 4 {
+                        return (routine, frame, .leanOver)
+                    }
+                    if space >= RioCardPeek.heightAboveEdge(.chinOnEdge), !dynamicTypeSize.isAccessibilitySize {
+                        return (routine, frame, .chinOnEdge)
+                    }
+                    return nil
                 }
                 .min { $0.1.minY < $1.1.minY }
-            guard let (routine, _) = target,
-                  let text = RioCopy.random(group: "home_peek_unfinished", routineTitle: routine.title) else { return }
+            guard let (routine, _, style) = target else { return }
+            // 夜の条件(夜なのに0件・深夜なのに未達成)に合えば、指差しのままそのセリフにする。
+            // あごをのせる構図は1行・10文字までなので、条件のセリフは使わない。
+            let conditionText = style == .leanOver ? viewModel.openingReaction(includeAboutCard: true)?.text : nil
+            guard let text = conditionText ?? viewModel.reactionText(
+                target: style == .leanOver ? .unfinishedPeek : .unfinishedTopPeek, routine: routine
+            ) else { return }
 
             RioCardPeekSchedule.markShown(on: day)
             // P2 も頼んでいない介入なので、今回開いた分の枠を使う。
             unrequestedPeekShownThisOpen = true
             RioUnrequestedPeekSchedule.markShown()
             withAnimation(nil) {
-                cardPeek = RioCardPeekRequest(routineID: routine.id, text: text)
+                cardPeek = RioCardPeekRequest(routineID: routine.id, text: text, style: style)
+            }
+            AccessibilityNotification.Announcement("莉央、\(text)").post()
+        }
+    }
+
+    /// 約束を追加した直後、新しいカードを莉央が指差してひとこと言う(1日1回、オンボーディング中は出さない)。
+    /// 指差す余白がないとき(一番上のカード・画面の外)は、左からの耳打ちで代わりにする。
+    private func presentRoutineAddedPeekIfNeeded() {
+        guard let before = routineIDsBeforeAdding else { return }
+        routineIDsBeforeAdding = nil
+        guard let added = viewModel.todayRoutines.first(where: { !before.contains($0.id) }) else { return }
+        Task { @MainActor in
+            // シートが閉じて、新しいカードの位置が決まるのを待つ。
+            try? await Task.sleep(for: .milliseconds(600))
+            let day = AppDay.startOfDay(for: .now)
+            guard onboardingRoutineID == nil, canShowRioLayer, rioReaction == nil,
+                  !RioRoutineAddedSchedule.hasShown(on: day),
+                  let text = viewModel.reactionText(target: .routineAdded, action: .routineAdded, routine: added)
+            else { return }
+            RioRoutineAddedSchedule.markShown(on: day)
+            // 操作への返事なので、頼んでいない介入の回数には数えない。出ているほかの莉央とは入れ替える。
+            cardPeek = nil
+            idlePeek = nil
+            grabPeek = nil
+            if let frame = routineRowFrames[added.id],
+               frame.minY - rioLayerFrame.minY >= RioCardPeek.heightAboveEdge(.leanOver) + 4,
+               frame.minY <= rioLayerFrame.maxY - 160 {
+                withAnimation(nil) { cardPeek = RioCardPeekRequest(routineID: added.id, text: text) }
+            } else {
+                rioReaction = RioReaction(kind: .routineCompleted, text: text)
             }
             AccessibilityNotification.Announcement("莉央、\(text)").post()
         }
@@ -454,10 +550,11 @@ struct HomeView: View {
         } else {
             return
         }
-        let reaction = viewModel.makeRioReaction(kind)
+        guard let reaction = viewModel.makeRioReaction(kind, routine: routine) else { return }
         // 「ちょこん」や放置で顔を出していたら、達成の反応に切り替える(同時に出すのは1体)。
         cardPeek = nil
         idlePeek = nil
+        grabPeek = nil
         rioReaction = reaction
         AccessibilityNotification.Announcement("莉央、\(reaction.text)").post()
     }
@@ -720,7 +817,8 @@ struct HomeView: View {
             actions: [
                 AppDialogAction("負けそう…") {
                     guard viewModel.recordPromiseUrge(behavior) else { return .dismiss }
-                    return .showTaunt(nextTaunt(for: .struggling))
+                    guard let taunt = nextTaunt(for: .struggling) else { return .dismiss }
+                    return .showTaunt(taunt)
                 },
                 // 次に確認画面があるので、ここでは塗らない。Error の塗りは確認画面の「負けました…」だけ。
                 AppDialogAction("負けました", style: .caution) {
@@ -765,29 +863,17 @@ struct HomeView: View {
                     guard viewModel.recordPromiseFailure(behavior) else {
                         return .dismiss
                     }
-                    return .showTaunt(nextTaunt(for: .defeated))
+                    guard let taunt = nextTaunt(for: .defeated) else { return .dismiss }
+                    return .showTaunt(taunt)
                 },
             ]
         )
     }
 
-    private func nextTaunt(for kind: BlockedBehaviorTauntKind) -> BlockedBehaviorTauntRequest {
-        let messages = kind.messages
-        guard !messages.isEmpty else {
-            return BlockedBehaviorTauntRequest(text: viewModel.prohibitionReactionText ?? "",
-                                              offersChallenge: kind == .struggling)
-        }
-        let index: Int
-        switch kind {
-        case .struggling:
-            index = nextStrugglingTauntIndex % messages.count
-            nextStrugglingTauntIndex = (nextStrugglingTauntIndex + 1) % messages.count
-        case .defeated:
-            index = nextDefeatedTauntIndex % messages.count
-            nextDefeatedTauntIndex = (nextDefeatedTauntIndex + 1) % messages.count
-        }
+    private func nextTaunt(for kind: BlockedBehaviorTauntKind) -> BlockedBehaviorTauntRequest? {
+        guard let text = viewModel.prohibitionReactionText, !text.isEmpty else { return nil }
         return BlockedBehaviorTauntRequest(
-            text: viewModel.prohibitionReactionText ?? messages[index],
+            text: text,
             offersChallenge: kind == .struggling
         )
     }
@@ -1063,12 +1149,6 @@ enum BlockedBehaviorTauntKind {
     case struggling
     case defeated
 
-    var messages: [String] {
-        switch self {
-        case .struggling: return RioCopy.lines(group: "blocked_struggling")
-        case .defeated: return RioCopy.lines(group: "blocked_defeated")
-        }
-    }
 }
 
 #Preview {

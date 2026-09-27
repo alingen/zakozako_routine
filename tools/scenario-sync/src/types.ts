@@ -170,6 +170,7 @@ export interface ReactionLine {
   weight: number;
   active: boolean;
   note?: string;
+  displayTarget?: string;
 }
 
 export type NormalizedReactionCondition = ReactionCondition & { __row: number };

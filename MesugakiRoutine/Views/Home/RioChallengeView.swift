@@ -146,6 +146,6 @@ struct RioChallengeView: View {
     ZStack {
         AppColor.background.ignoresSafeArea()
         Color.black.opacity(0.48).ignoresSafeArea()
-        RioChallengeView(taunt: RioCopy.text("blocked_struggling_001"), onDismiss: {})
+        RioChallengeView(taunt: RioCopy.text("challenge_intro_001"), onDismiss: {})
     }
 }

@@ -1,6 +1,7 @@
 import { IssueBag } from './issues.js';
 import { checkReachability } from './reachability.js';
 import {
+  REACTION_DISPLAY_TARGETS,
   KNOWN_ASSET_TYPES,
   KNOWN_COMMANDS,
   KNOWN_EVENT_TYPES,
@@ -112,6 +113,21 @@ function validateReactions(data: NormalizedSheets, issues: IssueBag): void {
       issues.error('invalid_reaction_weight', 'weight must be nonnegative', { at });
     if (!['normal', 'strong'].includes(row.strength))
       issues.error('invalid_reaction_strength', 'strength must be normal or strong', { at });
+    const target = row.displayTarget ?? 'general';
+    if (!(REACTION_DISPLAY_TARGETS as readonly string[]).includes(target)) {
+      issues.error('invalid_reaction_display_target', 'Unknown display_target', { at });
+    }
+    const tokens = row.text.match(/\{[^{}]+\}/g) ?? [];
+    if (tokens.some((token) => token !== '{routine_title}')) {
+      issues.error('invalid_reaction_placeholder', 'Only {routine_title} is supported', { at });
+    }
+    if (tokens.length && !['home_routine_added', 'home_peek_unfinished', 'home_idle_above'].includes(target)) {
+      issues.error('reaction_placeholder_without_title', 'This display_target cannot supply a routine title', { at });
+    }
+    if (target === 'home_peek_unfinished_top' &&
+        ([...row.text.replaceAll('[sp]', ' ')].length > 10 || /\[br\]|[\r\n]/.test(row.text))) {
+      issues.error('reaction_compact_text_too_long', 'Compact peek requires one line of at most 10 characters', { at });
+    }
   }
 }
 
