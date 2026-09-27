@@ -15115,6 +15115,46 @@
       "weight": 1,
       "active": true,
       "note": "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
+    },
+    {
+      "lineId": "home_peek_unfinished_001",
+      "groupId": "home_peek_unfinished",
+      "text": "「{routine_title}」、まだでしょ？ざこ♡",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
+    },
+    {
+      "lineId": "home_peek_unfinished_002",
+      "groupId": "home_peek_unfinished",
+      "text": "ねえ、「{routine_title}」は？見なかったことにしてない？",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
+    },
+    {
+      "lineId": "home_peek_unfinished_003",
+      "groupId": "home_peek_unfinished",
+      "text": "「{routine_title}」やってないの、莉央知ってるからね♡",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
+    },
+    {
+      "lineId": "home_peek_unfinished_004",
+      "groupId": "home_peek_unfinished",
+      "text": "ほらほら、「{routine_title}」待ってるよ〜？",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
+    },
+    {
+      "lineId": "home_peek_unfinished_005",
+      "groupId": "home_peek_unfinished",
+      "text": "「{routine_title}」、今日はやらない日だっけ？w",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
     }
   ]
 }

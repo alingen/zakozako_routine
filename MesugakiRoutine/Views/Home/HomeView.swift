@@ -24,6 +24,14 @@ struct HomeView: View {
     @State private var nextStrugglingTauntIndex = 0
     @State private var nextDefeatedTauntIndex = 0
     @State private var rioReaction: RioReaction?
+    /// P2「ちょこん」: 未達成カードの上から顔を出している莉央。
+    @State private var cardPeek: RioCardPeekRequest?
+    /// 約束カードの位置(グローバル座標)。
+    @State private var routineRowFrames: [UUID: CGRect] = [:]
+    /// 莉央の層の位置(グローバル座標)。カードの位置をこの層の座標に直すのに使う。
+    @State private var rioLayerFrame: CGRect = .zero
+    /// 値を変えると、層に出ている莉央が途中でも引っ込む。
+    @State private var rioLayerDismissTrigger = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Binding private var appDialog: AppDialogRequest?
@@ -66,9 +74,17 @@ struct HomeView: View {
             && onboardingRoutineID == nil
     }
 
+    /// 莉央の層を出してよい状態か。シート・タイマー・編集・ダイアログ・オンボーディング中は出さない。
+    private var canShowRioLayer: Bool {
+        homeIsVisible && scenePhase == .active
+            && selectedNewsPost == nil && !showsNewsFeed && appDialog == nil
+            && editingRoutine == nil && editingBlockedBehavior == nil
+            && !isPresentingNewRoutine && !isPresentingNewBlockedBehavior
+            && presentedTimer == nil && onboardingRoutineID == nil
+    }
+
     var body: some View {
         List {
-            rioHeaderSection
             todayRoutinesSection
             todayPromiseSection
             zakoBulletinSection
@@ -96,35 +112,15 @@ struct HomeView: View {
             }
         }
         .appScreenBackground()
-        .overlay(alignment: .bottom) {
-            if let rioReaction {
-                Button {
-                    dismissRioReaction()
-                } label: {
-                    RioReactionToast(reaction: rioReaction)
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-                .id(rioReaction.id)
-                .transition(
-                    reduceMotion
-                        ? .opacity
-                        : .move(edge: .bottom).combined(with: .opacity)
-                )
-            }
+        .onPreferenceChange(HomeRoutineRowFramesKey.self) { routineRowFrames = $0 }
+        // 莉央専用の層。莉央と吹き出し以外は下の一覧にタップが届く。
+        .overlay { rioLayer }
+        .onChange(of: homeIsScrolling) { _, scrolling in
+            // スクロールが始まったら、出ている莉央はすぐ引っ込む(操作を優先)。
+            if scrolling { rioLayerDismissTrigger += 1 }
         }
-        // 画面をふさがない一言なので、数秒で自動的に下げる。
-        .task(id: rioReaction?.id) {
-            guard let id = rioReaction?.id else { return }
-            do {
-                try await Task.sleep(for: .seconds(3))
-            } catch {
-                return
-            }
-            if rioReaction?.id == id {
-                dismissRioReaction()
-            }
+        .onChange(of: canShowRioLayer) { _, canShow in
+            if !canShow { rioLayerDismissTrigger += 1 }
         }
         .navigationDestination(item: $editingRoutine) { routine in
             RoutineEditView(routine: routine)
@@ -228,12 +224,14 @@ struct HomeView: View {
             viewModel.reload()
             siriLaunchCoordinator.pendingOpenTodayRoutines = false
             refreshActiveTimer(at: .now)
+            presentCardPeekIfNeeded()
         }
         .onDisappear { homeIsVisible = false }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active, presentedTimer == nil {
                 viewModel.reload()
                 refreshActiveTimer(at: .now)
+                presentCardPeekIfNeeded()
             }
         }
         .task(id: hiddenTimerWatcherID) {
@@ -280,17 +278,68 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - 0. 今日の莉央
+    // MARK: - 0. 莉央の層
 
-    @ViewBuilder
-    private var rioHeaderSection: some View {
-        if let comment = viewModel.rioComment {
-            Section {
-                RioHomeHeader(mood: viewModel.rioMood, text: comment.displayText) {
-                    viewModel.selectNextRioComment()
+    /// 一覧の上に重ねる莉央。同時に出すのは1体だけで、達成の反応(P1)を「ちょこん」(P2)より優先する。
+    private var rioLayer: some View {
+        GeometryReader { proxy in
+            ZStack {
+                Color.clear
+                    .allowsHitTesting(false)
+                    .onAppear { rioLayerFrame = proxy.frame(in: .global) }
+                    .onChange(of: proxy.frame(in: .global)) { _, frame in rioLayerFrame = frame }
+
+                if let rioReaction {
+                    RioPopUpReaction(
+                        reaction: rioReaction,
+                        containerWidth: proxy.size.width,
+                        dismissTrigger: rioLayerDismissTrigger,
+                        onFinished: {
+                            if self.rioReaction?.id == rioReaction.id { self.rioReaction = nil }
+                        }
+                    )
+                    .id(rioReaction.id)
+                } else if let cardPeek, let globalFrame = routineRowFrames[cardPeek.routineID] {
+                    RioCardPeek(
+                        request: cardPeek,
+                        cardFrame: globalFrame.offsetBy(dx: -rioLayerFrame.minX, dy: -rioLayerFrame.minY),
+                        dismissTrigger: rioLayerDismissTrigger,
+                        onFinished: {
+                            if self.cardPeek?.id == cardPeek.id { self.cardPeek = nil }
+                        }
+                    )
+                    .id(cardPeek.id)
                 }
-                .routineListRowStyle()
             }
+        }
+    }
+
+    /// P2「ちょこん」: ホームを開いた直後、画面内でいちばん上の未達成カードから顔を出す(1日1回)。
+    private func presentCardPeekIfNeeded() {
+        Task { @MainActor in
+            // カードの位置が決まるのを待つ。
+            try? await Task.sleep(for: .milliseconds(900))
+            let day = AppDay.startOfDay(for: .now)
+            guard canShowRioLayer, !homeIsScrolling, rioReaction == nil, cardPeek == nil,
+                  !RioCardPeekSchedule.hasShown(on: day) else { return }
+
+            // 莉央が出る余白がカードの上にあり、下に隠れていないカードだけを候補にする。
+            let target = viewModel.todayRoutines
+                .filter { !viewModel.todayProgress(for: $0).isCompletedToday }
+                .compactMap { routine in routineRowFrames[routine.id].map { (routine, $0) } }
+                .filter { _, frame in
+                    frame.minY - rioLayerFrame.minY >= RioCardPeek.heightAboveEdge + 4
+                        && frame.minY <= rioLayerFrame.maxY - 160
+                }
+                .min { $0.1.minY < $1.1.minY }
+            guard let (routine, _) = target,
+                  let text = RioCopy.random(group: "home_peek_unfinished", routineTitle: routine.title) else { return }
+
+            RioCardPeekSchedule.markShown(on: day)
+            withAnimation(nil) {
+                cardPeek = RioCardPeekRequest(routineID: routine.id, text: text)
+            }
+            AccessibilityNotification.Announcement("莉央、\(text)").post()
         }
     }
 
@@ -313,16 +362,14 @@ struct HomeView: View {
             return
         }
         let reaction = viewModel.makeRioReaction(kind)
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
-            rioReaction = reaction
-        }
+        // 「ちょこん」で顔を出していたら、下から飛び出す反応に切り替える(同時に出すのは1体)。
+        cardPeek = nil
+        rioReaction = reaction
         AccessibilityNotification.Announcement("莉央、\(reaction.text)").post()
     }
 
     private func dismissRioReaction() {
-        withAnimation(.easeOut(duration: 0.2)) {
-            rioReaction = nil
-        }
+        rioReaction = nil
     }
 
     // MARK: - 1. 今日の約束
@@ -339,6 +386,15 @@ struct HomeView: View {
 
             ForEach(viewModel.todayRoutines) { routine in
                 routineListRow(routine)
+                    // 莉央の層が「ちょこん」で顔を出す位置を決めるため、カードの位置を知らせる。
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: HomeRoutineRowFramesKey.self,
+                                value: [routine.id: proxy.frame(in: .global)]
+                            )
+                        }
+                    }
                     .routineListRowStyle()
             }
         } header: {
