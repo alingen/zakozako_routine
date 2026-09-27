@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-26T18:15:40.851Z",
+  "fetchedAt": "2026-09-27T05:35:01.432Z",
   "sheetId": "1Ifkw0X4TIOxe0f9EpZpZEGIexLg-xoXG8c-ro4I5MBM",
   "source": "public-xlsx",
   "tabs": {
@@ -10614,6 +10614,33 @@
         "公開可能",
         "true",
         "アプリに収録済み。原音：ゲームコントローラー.mp3。約6.50秒、44.1kHz・ステレオ。ゲーム操作の演出用。"
+      ],
+      [
+        "mini_grab_the_edge",
+        "image",
+        "ミニ莉央・縁をつかむ",
+        "mini_grab_the_edge",
+        "公開可能",
+        "true",
+        "Assets.xcassetsに収録済み。1254×1254px、透過PNG。画面の縁をつかむミニイラスト。"
+      ],
+      [
+        "mini_whisper",
+        "image",
+        "ミニ莉央・ささやき",
+        "mini_whisper",
+        "公開可能",
+        "true",
+        "Assets.xcassetsに収録済み。1060×1484px、透過PNG。ささやくミニイラスト。"
+      ],
+      [
+        "mini_point",
+        "image",
+        "ミニ莉央・指さし",
+        "mini_point",
+        "公開可能",
+        "true",
+        "Assets.xcassetsに収録済み。1254×1254px、透過PNG。指さしのミニイラスト。"
       ]
     ],
     "choices": [
