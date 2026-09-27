@@ -14,8 +14,15 @@ enum RioMiniAsset {
     static let point = "mini_point"
     /// 画像の上端から「縁の線」(カードの上端に合わせる線)までの割合。
     static let pointEdgeRatio: CGFloat = 0.805
-    /// 縁をつかんで覗く(正方形)。P3・P4 用。
+    /// 縁をつかんで覗く(正方形)。まだ使っていない。
     static let grabTheEdge = "mini_grab_the_edge"
+    /// 画面の上端をつかんで逆さまにぶら下がる(画像の上端が縁、1448×1086)。放置で上から見にくるときに使う。
+    static let peekAbove = "mini_peek_above"
+    static let peekAboveAspectRatio: CGFloat = 1086.0 / 1448.0
+    /// 右の縁から顔を出す(右端の約97%が縁、1086×1448)。放置で右から見にくるときに使う。
+    static let peekRight = "mini_peek_right"
+    static let peekRightAspectRatio: CGFloat = 1448.0 / 1086.0
+    static let peekRightEdgeRatio: CGFloat = 0.967
 }
 
 /// 層の上に出す莉央の吹き出し。ホームや煽りと同じピンクで、下のカードに被っても読めるよう薄い影を付ける。
@@ -307,5 +314,324 @@ struct HomeRoutineRowFramesKey: PreferenceKey {
 
     static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
         value.merge(nextValue()) { $1 }
+    }
+}
+
+/// 放置で見にくる莉央(上から/右から)。未達成が残っていれば上から催促、全部終わっていれば右からからかう。
+struct RioIdlePeekRequest: Identifiable, Equatable {
+    enum Kind: Equatable {
+        /// 上からぶら下がる。未達成の約束名があればセリフに使う。
+        case above(unfinishedRoutineTitle: String?)
+        /// 右の縁から、達成済みカードの高さで顔を出す。
+        case right(routineID: UUID)
+    }
+
+    let id = UUID()
+    let kind: Kind
+    let shownAt = Date()
+}
+
+/// 放置で来た莉央の共通の流れ。来たときは無言で、タップされたら一言話して帰る。12秒触られなければ黙って帰る。
+private struct RioIdlePeekLifecycle {
+    static let silentStaySeconds: Double = 12
+    static let slideSeconds: Double = 0.25
+}
+
+/// 放置で来た莉央が帰るとき、ユーザーがすぐ払ったかどうか(続けてすぐ払われたらその日は来ない)。
+enum RioIdlePeekEnding {
+    /// タップして話した(かまってもらえた)。
+    case talked
+    /// 何もされずに時間で帰った。
+    case timedOut
+    /// スワイプ・スクロールなどで払われた。`quickly` は出てから2秒以内。
+    case dismissed(quickly: Bool)
+}
+
+/// 放置パターン「上から」: 安全領域の上端(ステータスバーの下)をつかみ、逆さまにぶら下がって覗き込む。
+/// 見出しの「＋」と右端の列にはかからないよう、顔の中心を画面幅の約25%に置く。
+struct RioIdleAbovePeek: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let request: RioIdlePeekRequest
+    let containerWidth: CGFloat
+    let dismissTrigger: Int
+    let onFinished: (RioIdlePeekEnding) -> Void
+
+    @State private var isShown = false
+    @State private var swing: Double = 0
+    @State private var bubbleText: String?
+    @State private var isFinishing = false
+
+    private let imageWidth: CGFloat = 124
+    private var imageHeight: CGFloat { imageWidth * RioMiniAsset.peekAboveAspectRatio }
+    /// 顔の中心(画像の左から約52%・上から約38%)。
+    private var faceCenter: CGPoint {
+        CGPoint(x: imageLeading + imageWidth * 0.52, y: imageHeight * 0.38)
+    }
+    private var imageLeading: CGFloat { max(8, containerWidth * 0.25 - imageWidth * 0.52) }
+    private var bubbleLeading: CGFloat { imageLeading + imageWidth * 0.86 }
+    private var bubbleMaxWidth: CGFloat {
+        max(150, containerWidth - RioPeekLayout.screenMargin - RioPeekLayout.protectedTrailingWidth - bubbleLeading)
+    }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Image(RioMiniAsset.peekAbove)
+                .resizable()
+                .frame(width: imageWidth, height: imageHeight)
+                // 縁(上端)をつかんだ手を支点に、下りてきて小さく揺れて止まる。
+                .rotationEffect(.degrees(swing), anchor: .top)
+                .offset(y: isShown || reduceMotion ? 0 : -imageHeight - 4)
+                .opacity(reduceMotion && !isShown ? 0 : 1)
+                // 縁より上(ステータスバーの側)には描かない。
+                .frame(width: imageWidth, height: imageHeight, alignment: .top)
+                .clipped()
+                .offset(x: imageLeading)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            Rectangle()
+                .fill(Color.clear)
+                .contentShape(Rectangle())
+                .frame(width: imageWidth * 0.7, height: imageHeight * 0.8)
+                .offset(x: imageLeading + imageWidth * 0.15)
+                .onTapGesture { talk() }
+                .gesture(
+                    DragGesture(minimumDistance: 12)
+                        .onEnded { value in
+                            if value.translation.height < -16 { finish(.dismissed(quickly: isQuick)) }
+                        }
+                )
+                .allowsHitTesting(isShown && bubbleText == nil)
+                .accessibilityElement()
+                .accessibilityLabel("莉央がのぞいている")
+                .accessibilityHint("ダブルタップで話しかける")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { talk() }
+
+            Color.clear
+                .frame(width: 1, height: 1)
+                .overlay(alignment: .leading) {
+                    if let bubbleText {
+                        RioPeekBubble(text: bubbleText)
+                            .frame(width: bubbleMaxWidth, alignment: .leading)
+                            .onTapGesture { finish(.talked) }
+                            .accessibilityHidden(true)
+                            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .leading)))
+                    }
+                }
+                .offset(x: bubbleLeading, y: faceCenter.y)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .task(id: request.id) { await arrive() }
+        .onChange(of: dismissTrigger) { _, _ in finish(.dismissed(quickly: isQuick)) }
+    }
+
+    private var isQuick: Bool { Date().timeIntervalSince(request.shownAt) < 2 }
+
+    private func arrive() async {
+        if reduceMotion {
+            withAnimation(.easeOut(duration: 0.15)) { isShown = true }
+        } else {
+            swing = -7
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) { isShown = true }
+            withAnimation(.interpolatingSpring(stiffness: 90, damping: 6).delay(0.15)) { swing = 0 }
+        }
+        do {
+            try await Task.sleep(for: .seconds(RioIdlePeekLifecycle.silentStaySeconds))
+        } catch { return }
+        if bubbleText == nil { finish(.timedOut) }
+    }
+
+    private func talk() {
+        guard bubbleText == nil, !isFinishing else { return }
+        let text: String?
+        if case let .above(title?) = request.kind, Bool.random() {
+            text = RioCopy.random(group: "home_idle_above_routine", routineTitle: title)
+        } else {
+            text = RioCopy.random(group: "home_idle_above")
+        }
+        guard let text else { finish(.talked); return }
+        withAnimation(.easeOut(duration: 0.15)) { bubbleText = text }
+        AccessibilityNotification.Announcement("莉央、\(text)").post()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(RioPeekTiming.bubbleSeconds(for: text)))
+            finish(.talked)
+        }
+    }
+
+    private func finish(_ ending: RioIdlePeekEnding) {
+        guard !isFinishing else { return }
+        isFinishing = true
+        withAnimation(.easeIn(duration: RioIdlePeekLifecycle.slideSeconds)) {
+            bubbleText = nil
+            isShown = false
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(RioIdlePeekLifecycle.slideSeconds))
+            onFinished(ending)
+        }
+    }
+}
+
+/// 放置パターン「右から」: 全部達成したあと、達成済みカードの高さで右の縁から顔を出してからかう。
+/// 完了ボタンの列を覆うが、全部終わっていてその列の役目が済んだときだけ出す。
+/// 当たり判定は見えている体全体にして、下のチェックを誤って取り消させない(1回目のタップは莉央への反応)。
+struct RioIdleRightPeek: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let request: RioIdlePeekRequest
+    /// 顔の高さを合わせる達成済みカードの位置(この層の座標)。
+    let cardFrame: CGRect
+    let containerWidth: CGFloat
+    let dismissTrigger: Int
+    let onFinished: (RioIdlePeekEnding) -> Void
+
+    @State private var isShown = false
+    @State private var bubbleText: String?
+    @State private var isFinishing = false
+
+    private let imageWidth: CGFloat = 104
+    private var imageHeight: CGFloat { imageWidth * RioMiniAsset.peekRightAspectRatio }
+    /// 素材の縁の線を画面の右端に合わせる。
+    private var imageLeading: CGFloat { containerWidth - imageWidth * RioMiniAsset.peekRightEdgeRatio }
+    /// 顔(素材の上から約42%)をカードの縦の中央に合わせる。
+    private var imageTop: CGFloat { cardFrame.midY - imageHeight * 0.42 }
+    private var faceLeft: CGFloat { imageLeading + imageWidth * 0.36 }
+    private var bubbleMaxWidth: CGFloat { max(150, faceLeft - 8 - RioPeekLayout.screenMargin) }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Image(RioMiniAsset.peekRight)
+                .resizable()
+                .frame(width: imageWidth, height: imageHeight)
+                .offset(x: isShown || reduceMotion ? 0 : imageWidth)
+                .opacity(reduceMotion && !isShown ? 0 : 1)
+                .offset(x: imageLeading, y: imageTop)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+
+            Rectangle()
+                .fill(Color.clear)
+                .contentShape(Rectangle())
+                .frame(width: containerWidth - faceLeft, height: imageHeight * 0.9)
+                .offset(x: faceLeft, y: imageTop + imageHeight * 0.05)
+                .onTapGesture { talk() }
+                .gesture(
+                    DragGesture(minimumDistance: 12)
+                        .onEnded { value in
+                            if value.translation.width > 16 { finish(.dismissed(quickly: isQuick)) }
+                        }
+                )
+                .allowsHitTesting(isShown)
+                .accessibilityElement()
+                .accessibilityLabel("莉央がのぞいている")
+                .accessibilityHint("ダブルタップで話しかける")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { talk() }
+
+            // 吹き出しは顔の左(画面の内側)に出す。右端を顔の左に合わせる。
+            Color.clear
+                .frame(width: 1, height: 1)
+                .overlay(alignment: .trailing) {
+                    if let bubbleText {
+                        RioPeekBubble(text: bubbleText)
+                            .frame(width: bubbleMaxWidth, alignment: .trailing)
+                            .onTapGesture { finish(.talked) }
+                            .accessibilityHidden(true)
+                            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .trailing)))
+                    }
+                }
+                .offset(x: faceLeft - 4, y: imageTop + imageHeight * 0.42)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .task(id: request.id) { await arrive() }
+        .onChange(of: dismissTrigger) { _, _ in finish(.dismissed(quickly: isQuick)) }
+    }
+
+    private var isQuick: Bool { Date().timeIntervalSince(request.shownAt) < 2 }
+
+    private func arrive() async {
+        withAnimation(reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.4, dampingFraction: 0.72)) {
+            isShown = true
+        }
+        do {
+            try await Task.sleep(for: .seconds(RioIdlePeekLifecycle.silentStaySeconds))
+        } catch { return }
+        if bubbleText == nil { finish(.timedOut) }
+    }
+
+    private func talk() {
+        guard bubbleText == nil, !isFinishing else { return }
+        guard let text = RioCopy.random(group: "home_idle_right") else { finish(.talked); return }
+        withAnimation(.easeOut(duration: 0.15)) { bubbleText = text }
+        AccessibilityNotification.Announcement("莉央、\(text)").post()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(RioPeekTiming.bubbleSeconds(for: text)))
+            finish(.talked)
+        }
+    }
+
+    private func finish(_ ending: RioIdlePeekEnding) {
+        guard !isFinishing else { return }
+        isFinishing = true
+        withAnimation(.easeIn(duration: RioIdlePeekLifecycle.slideSeconds)) {
+            bubbleText = nil
+            isShown = false
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(RioIdlePeekLifecycle.slideSeconds))
+            onFinished(ending)
+        }
+    }
+}
+
+/// 頼んでいない介入(P2・放置)の回数の決まり: 開くたび1回、1日3回まで、20分空ける、
+/// 出てすぐ払われるのが2回続いたらその日はもう来ない。1日は午前4時区切り。
+enum RioUnrequestedPeekSchedule {
+    private static let dayKey = "rioUnrequestedPeek.day"
+    private static let countKey = "rioUnrequestedPeek.count"
+    private static let lastShownKey = "rioUnrequestedPeek.lastShownAt"
+    private static let quickDismissStreakKey = "rioUnrequestedPeek.quickDismissStreak"
+
+    static let dailyLimit = 3
+    static let minimumInterval: TimeInterval = 20 * 60
+
+    static func canShow(now: Date = .now, defaults: UserDefaults = .standard) -> Bool {
+        resetIfNewDay(now: now, defaults: defaults)
+        guard defaults.integer(forKey: countKey) < dailyLimit,
+              defaults.integer(forKey: quickDismissStreakKey) < 2 else { return false }
+        if let last = defaults.object(forKey: lastShownKey) as? Date,
+           now.timeIntervalSince(last) < minimumInterval {
+            return false
+        }
+        return true
+    }
+
+    static func markShown(now: Date = .now, defaults: UserDefaults = .standard) {
+        resetIfNewDay(now: now, defaults: defaults)
+        defaults.set(defaults.integer(forKey: countKey) + 1, forKey: countKey)
+        defaults.set(now, forKey: lastShownKey)
+    }
+
+    static func record(_ ending: RioIdlePeekEnding, now: Date = .now, defaults: UserDefaults = .standard) {
+        resetIfNewDay(now: now, defaults: defaults)
+        switch ending {
+        case .dismissed(quickly: true):
+            defaults.set(defaults.integer(forKey: quickDismissStreakKey) + 1, forKey: quickDismissStreakKey)
+        case .talked:
+            defaults.set(0, forKey: quickDismissStreakKey)
+        case .timedOut, .dismissed(quickly: false):
+            break
+        }
+    }
+
+    private static func resetIfNewDay(now: Date, defaults: UserDefaults) {
+        let day = AppDay.startOfDay(for: now)
+        guard (defaults.object(forKey: dayKey) as? Date) != day else { return }
+        defaults.set(day, forKey: dayKey)
+        defaults.set(0, forKey: countKey)
+        defaults.set(0, forKey: quickDismissStreakKey)
+        defaults.removeObject(forKey: lastShownKey)
     }
 }

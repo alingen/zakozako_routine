@@ -15155,6 +15155,54 @@
       "weight": 1,
       "active": true,
       "note": "【仮・Sheets未登録】ホームを開いた直後、未達成の約束カードの上から莉央が顔を出す(1日1回)。{routine_title}=約束名"
+    },
+    {
+      "lineId": "home_idle_above_001",
+      "groupId": "home_idle_above",
+      "text": "…デコ見た？今の忘れて",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】放置で上からぶら下がって来た莉央をタップしたとき"
+    },
+    {
+      "lineId": "home_idle_above_002",
+      "groupId": "home_idle_above",
+      "text": "止まってるけど寝てんの？",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】放置で上からぶら下がって来た莉央をタップしたとき"
+    },
+    {
+      "lineId": "home_idle_above_routine_001",
+      "groupId": "home_idle_above_routine",
+      "text": "「{routine_title}」まだだよ？",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】放置で上から来た莉央をタップしたとき(未達成の約束名入り)。{routine_title}=約束名"
+    },
+    {
+      "lineId": "home_idle_above_routine_002",
+      "groupId": "home_idle_above_routine",
+      "text": "ぼーっとしてないで「{routine_title}」やれば？",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】放置で上から来た莉央をタップしたとき(未達成の約束名入り)。{routine_title}=約束名"
+    },
+    {
+      "lineId": "home_idle_right_001",
+      "groupId": "home_idle_right",
+      "text": "全部終わってんじゃん。…ふーん",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】全部達成後、放置で右から来た莉央をタップしたとき"
+    },
+    {
+      "lineId": "home_idle_right_002",
+      "groupId": "home_idle_right",
+      "text": "ま、ちょっとはやるじゃん",
+      "weight": 1,
+      "active": true,
+      "note": "【仮・Sheets未登録】全部達成後、放置で右から来た莉央をタップしたとき"
     }
   ]
 }

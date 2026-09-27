@@ -10,7 +10,7 @@ final class RioCopyTests: XCTestCase {
 
     func testBundledCopyAndFallbacksAreLoadedFromCMS() throws {
         let content = try StoryContentRepository()
-        XCTAssertEqual(content.rioLines.count, 79)
+        XCTAssertEqual(content.rioLines.count, 85)
         XCTAssertFalse(RioCopy.text("onboarding_intro_001").isEmpty)
         XCTAssertFalse(RioCopy.text("notification_not_started_001", routineTitle: "読書").contains("{routine_title}"))
         XCTAssertTrue(RioCopy.text("notification_not_started_001", routineTitle: "読書").contains("読書"))
