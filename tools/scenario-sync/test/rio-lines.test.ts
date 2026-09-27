@@ -74,7 +74,10 @@ describe('rio_lines CMS', () => {
     expect(lines).toHaveLength(59);
     const bundled = JSON.parse(
       readFileSync(
-        join(REPO_ROOT, 'MesugakiRoutine/Resources/GeneratedScenarios/story_content.generated.json'),
+        join(
+          REPO_ROOT,
+          'MesugakiRoutine/Resources/GeneratedScenarios/story_content.generated.json',
+        ),
         'utf8',
       ),
     );
@@ -82,21 +85,23 @@ describe('rio_lines CMS', () => {
     expect(bundled.reactionLines).toEqual(generated.reactionLines);
     expect(bundled.reactionConditions).toEqual(generated.reactionConditions);
     expect(lines.some((row) => /^(home_|blocked_)/.test(row.groupId))).toBe(false);
-    expect(generated.reactionLines.filter((row) => row.displayTarget === 'home_routine_added')).toHaveLength(3);
-    const compactPeekLines = generated.reactionLines.filter((row) => row.displayTarget === 'home_peek_unfinished_top');
+    expect(
+      generated.reactionLines.filter((row) => row.displayTarget === 'home_routine_added'),
+    ).toHaveLength(3);
+    const compactPeekLines = generated.reactionLines.filter(
+      (row) => row.displayTarget === 'home_peek_unfinished_top',
+    );
     expect(compactPeekLines).toHaveLength(3);
     for (const row of compactPeekLines) {
       expect([...row.text].length).toBeLessThanOrEqual(10);
       expect(row.text).not.toContain('{routine_title}');
     }
     const ids = new Set(lines.map((row) => row.lineId));
-    const moved = loadSnapshot().tabs.rio_lines.slice(3).filter((row) => row[5]?.startsWith('移管済み:'));
-    expect(moved).toHaveLength(32);
-    for (const row of moved) {
-      expect(row[4]).toBe('false');
-      expect(ids.has(row[0]!)).toBe(false);
-      expect(generated.reactionLines.find((line) => line.lineId === row[0])?.text).toBe(row[2]);
-    }
+    // reaction_lines へ移した旧行(「移管済み:」の無効行)はシートから片付けた。rio_lines に残さない。
+    const moved = loadSnapshot()
+      .tabs.rio_lines.slice(3)
+      .filter((row) => row[5]?.startsWith('移管済み:'));
+    expect(moved).toHaveLength(0);
     function sources(dir: string): string[] {
       return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
         const path = join(dir, entry.name);
@@ -114,7 +119,9 @@ describe('rio_lines CMS', () => {
     for (const id of referenced) expect(ids.has(id), id).toBe(true);
     const groups = new Set(lines.map((row) => row.groupId));
     const referencedGroups = sources(join(REPO_ROOT, 'MesugakiRoutine')).flatMap((text) =>
-      [...text.matchAll(/RioCopy\.(?:random|lines)\(group:\s*"([^"]+)"/g)].map((match) => match[1]!),
+      [...text.matchAll(/RioCopy\.(?:random|lines)\(group:\s*"([^"]+)"/g)].map(
+        (match) => match[1]!,
+      ),
     );
     for (const group of referencedGroups) expect(groups.has(group), group).toBe(true);
     expect(lines.some((row) => row.note?.includes('Sheets未登録'))).toBe(false);

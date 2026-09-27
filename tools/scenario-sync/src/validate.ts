@@ -121,12 +121,25 @@ function validateReactions(data: NormalizedSheets, issues: IssueBag): void {
     if (tokens.some((token) => token !== '{routine_title}')) {
       issues.error('invalid_reaction_placeholder', 'Only {routine_title} is supported', { at });
     }
-    if (tokens.length && !['home_routine_added', 'home_peek_unfinished', 'home_idle_above'].includes(target)) {
-      issues.error('reaction_placeholder_without_title', 'This display_target cannot supply a routine title', { at });
+    if (
+      tokens.length &&
+      !['home_routine_added', 'home_peek_unfinished', 'home_idle_above'].includes(target)
+    ) {
+      issues.error(
+        'reaction_placeholder_without_title',
+        'This display_target cannot supply a routine title',
+        { at },
+      );
     }
-    if (target === 'home_peek_unfinished_top' &&
-        ([...row.text.replaceAll('[sp]', ' ')].length > 10 || /\[br\]|[\r\n]/.test(row.text))) {
-      issues.error('reaction_compact_text_too_long', 'Compact peek requires one line of at most 10 characters', { at });
+    if (
+      target === 'home_peek_unfinished_top' &&
+      ([...row.text.replaceAll('[sp]', ' ')].length > 10 || /\[br\]|[\r\n]/.test(row.text))
+    ) {
+      issues.error(
+        'reaction_compact_text_too_long',
+        'Compact peek requires one line of at most 10 characters',
+        { at },
+      );
     }
   }
 }

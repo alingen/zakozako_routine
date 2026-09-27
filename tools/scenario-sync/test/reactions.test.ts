@@ -27,30 +27,50 @@ const line = {
 
 describe('production reactions CMS', () => {
   it('accepts an optional display target and scoped routine-title template', () => {
-    const result = normalize(sheets({
-      reactionConditions: [condition],
-      reactionLines: [{ ...line, display_target: 'home_routine_added', text: '{routine_title}[br]A[sp]B' }],
-    }));
+    const result = normalize(
+      sheets({
+        reactionConditions: [condition],
+        reactionLines: [
+          { ...line, display_target: 'home_routine_added', text: '{routine_title}[br]A[sp]B' },
+        ],
+      }),
+    );
     expect(result.issues.errors).toEqual([]);
     expect(validate(result.data).issues.errors).toEqual([]);
     expect(generate(result.data).reactionLines[0]?.displayTarget).toBe('home_routine_added');
   });
 
   it('rejects unknown display targets, unsafe templates and overflowing compact copy', () => {
-    const result = normalize(sheets({
-      reactionConditions: [condition],
-      reactionLines: [
-        { ...line, line_id: 'unknown', display_target: 'wrong' },
-        { ...line, line_id: 'general_template', text: '{routine_title}' },
-        { ...line, line_id: 'bad_template', text: '{unsupported}' },
-        { ...line, line_id: 'compact', display_target: 'home_peek_unfinished_top', text: '12345678901' },
-        { ...line, line_id: 'multiline', display_target: 'home_peek_unfinished_top', text: 'A[br]B' },
-      ],
-    }));
-    expect(validate(result.data).issues.errors.map((e) => e.code)).toEqual(expect.arrayContaining([
-      'invalid_reaction_display_target', 'reaction_placeholder_without_title',
-      'invalid_reaction_placeholder', 'reaction_compact_text_too_long',
-    ]));
+    const result = normalize(
+      sheets({
+        reactionConditions: [condition],
+        reactionLines: [
+          { ...line, line_id: 'unknown', display_target: 'wrong' },
+          { ...line, line_id: 'general_template', text: '{routine_title}' },
+          { ...line, line_id: 'bad_template', text: '{unsupported}' },
+          {
+            ...line,
+            line_id: 'compact',
+            display_target: 'home_peek_unfinished_top',
+            text: '12345678901',
+          },
+          {
+            ...line,
+            line_id: 'multiline',
+            display_target: 'home_peek_unfinished_top',
+            text: 'A[br]B',
+          },
+        ],
+      }),
+    );
+    expect(validate(result.data).issues.errors.map((e) => e.code)).toEqual(
+      expect.arrayContaining([
+        'invalid_reaction_display_target',
+        'reaction_placeholder_without_title',
+        'invalid_reaction_placeholder',
+        'reaction_compact_text_too_long',
+      ]),
+    );
   });
 
   it('keeps strong/premium metadata and text markers; ignores inactive rows', () => {

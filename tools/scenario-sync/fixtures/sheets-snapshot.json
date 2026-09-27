@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-27T07:05:32.168Z",
+  "fetchedAt": "2026-09-27T12:24:01.803Z",
   "sheetId": "1Ifkw0X4TIOxe0f9EpZpZEGIexLg-xoXG8c-ro4I5MBM",
   "source": "public-xlsx",
   "tabs": {
@@ -31953,26 +31953,10 @@
     ],
     "reaction_conditions": [
       [
-        "reaction_conditions — リアクション条件",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
+        "reaction_conditions — リアクション条件"
       ],
       [
-        "実装済みのキーを使用。derivedはnote参照。未対応はactive=FALSE。",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
+        "実装済みのキーを使用。derivedはnote参照。未対応はactive=FALSE。"
       ],
       [
         "condition_id",
@@ -31991,7 +31975,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "20",
         "true",
         "completedAtを午前4時区切りの当日で集計。当日対象の約束があることも確認。"
@@ -32002,7 +31986,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "60",
         "true",
         "completedAtを午前4時区切りの当日で集計。当日対象の約束があることも確認。"
@@ -32013,7 +31997,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "60",
         "true",
         "completedAtを午前4時区切りの当日で数え、今回が当日1件目。"
@@ -32024,7 +32008,7 @@
         "derived",
         "todayCompletedCount",
         "derived",
-        "",
+        null,
         "60",
         "true",
         "todayRoutineCount>0 かつ達成率が概ね50%（例40〜60%）。"
@@ -32057,7 +32041,7 @@
         "state",
         "isAllCompleted",
         "==",
-        "true",
+        "TRUE",
         "80",
         "true",
         "今日対象の全約束。"
@@ -32069,7 +32053,7 @@
         "allCompletedAt",
         "between",
         "04:00-10:00",
-        "80",
+        "85",
         "true",
         "仮の時刻帯。午前4時区切りの当日、isAllCompletedも必要。"
       ],
@@ -32080,7 +32064,7 @@
         "allCompletedAt",
         "between",
         "00:00-04:00",
-        "80",
+        "85",
         "true",
         "仮の時刻帯。午前4時前は前アプリ日。isAllCompletedも必要。"
       ],
@@ -32101,7 +32085,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "80",
         "true",
         "同じroutineIDの最初のcompletedAtが当日。"
@@ -32112,7 +32096,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "60",
         "false",
         "履歴から算出可能だが「毎回」の対象期間・必要回数が未定。セリフの{routine_name}差し込みも未対応。"
@@ -32123,7 +32107,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "60",
         "true",
         "completedAtを午前4時区切りで集計し前日と比較。週・月の完了重複に注意。"
@@ -32134,7 +32118,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "60",
         "true",
         "completedAtを午前4時区切りで集計し前日と比較。"
@@ -32145,7 +32129,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "60",
         "false",
         "履歴から達成率は算出可能。ただし「苦手」の判定期間・閾値が未定。"
@@ -32201,7 +32185,7 @@
         "currentStreak",
         "==",
         "7",
-        "80",
+        "90",
         "true",
         "いずれかの約束を達成した日の連続数。 節目の当日完了時に評価（昨日の連続数の持ち越し表示に注意）。"
       ],
@@ -32212,7 +32196,7 @@
         "currentStreak",
         "==",
         "10",
-        "80",
+        "90",
         "true",
         "いずれかの約束を達成した日の連続数。 節目の当日完了時に評価（昨日の連続数の持ち越し表示に注意）。"
       ],
@@ -32223,7 +32207,7 @@
         "currentStreak",
         "==",
         "14",
-        "80",
+        "90",
         "true",
         "いずれかの約束を達成した日の連続数。 節目の当日完了時に評価（昨日の連続数の持ち越し表示に注意）。"
       ],
@@ -32266,7 +32250,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "100",
         "true",
         "当日までの連続記録が前日までの歴代最高を超える。bestStreak単独比較では不可。"
@@ -32277,7 +32261,7 @@
         "derived",
         "currentStreak",
         "derived",
-        "",
+        null,
         "80",
         "true",
         "currentStreak == bestStreak-1 かつ currentStreak<bestStreak。未達成日の扱いに注意。"
@@ -32288,7 +32272,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "80",
         "true",
         "完了日の連続を比較し途切れた直後のみ。currentStreak単独では不可。"
@@ -32299,7 +32283,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "100",
         "true",
         "途切れる直前の連続が7日以上（仮）。"
@@ -32310,7 +32294,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "80",
         "true",
         "前日未達・前々日以前に達成、当日再達成。"
@@ -32321,7 +32305,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "80",
         "true",
         "直前達成から2アプリ日以上空けて当日達成。"
@@ -32343,7 +32327,7 @@
         "derived",
         "totalCompletionDays",
         "derived",
-        "",
+        null,
         "60",
         "false",
         "「多い」「短い」の閾値が未定。currentStreakとの比較が必要。"
@@ -32354,7 +32338,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "80",
         "true",
         "日ごとの対象約束がすべて完了した日を連続集計。"
@@ -32365,7 +32349,7 @@
         "event",
         "prohibition_urge",
         "event",
-        "",
+        null,
         "100",
         "true",
         "UserActionEvent.eventTypeRawValue。"
@@ -32376,7 +32360,7 @@
         "event",
         "prohibition_failed",
         "event",
-        "",
+        null,
         "100",
         "true",
         "手動操作のみ。Screen Time自動上限超過はこのイベントに含まれない。"
@@ -32387,7 +32371,7 @@
         "derived",
         "prohibition_urge",
         "derived",
-        "",
+        null,
         "80",
         "true",
         "同一targetID・同一アプリ日のurge後、その日の日別結果がkeptで確定してから判定。"
@@ -32453,7 +32437,7 @@
         "derived",
         "prohibition_failed",
         "derived",
-        "",
+        null,
         "60",
         "false",
         "targetID別の履歴はあるが「いつも」の必要回数・期間が未定。"
@@ -32464,7 +32448,7 @@
         "derived",
         "todayProhibitionOutcome",
         "derived",
-        "",
+        null,
         "80",
         "false",
         "当日中はkept未確定。翌日の履歴評価なら可能。"
@@ -32473,9 +32457,9 @@
         "prohibition_kept_streak",
         "数日連続で守っている",
         "derived",
-        "",
+        null,
         "derived",
-        "",
+        null,
         "60",
         "false",
         "BlockedBehaviorHistoryに日別履歴あり。ただし当日分のkept未確定、連続日数の判定キー未整備。"
@@ -32486,7 +32470,7 @@
         "derived",
         "isAllCompleted",
         "derived",
-        "",
+        null,
         "100",
         "false",
         "禁止項目の当日keptは確定しない。翌日回顧なら判定可能。"
@@ -32508,7 +32492,7 @@
         "derived",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "60",
         "true",
         "completedAtを午前4時区切りの当日で集計。interaction_screen_opened時に0件を確認。"
@@ -32585,7 +32569,7 @@
         "calendar",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "40",
         "true",
         "completedAtを午前4時区切りの当日で集計。当日対象の約束があることも確認。"
@@ -32596,7 +32580,7 @@
         "calendar",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "40",
         "true",
         "completedAtを午前4時区切りの当日で集計。当日対象の約束があることも確認。"
@@ -32607,7 +32591,7 @@
         "calendar",
         "routinePeriodFacts",
         "derived",
-        "",
+        null,
         "40",
         "true",
         "completedAtを午前4時区切りの当日で集計。当日対象の約束があることも確認。"
@@ -32618,7 +32602,7 @@
         "calendar",
         "remainingRoutineCount",
         "derived",
-        "",
+        null,
         "40",
         "true",
         "nowが00:00〜03:59。午前4時前は前アプリ日。"
@@ -32651,7 +32635,7 @@
         "calendar",
         "now",
         "derived",
-        "",
+        null,
         "40",
         "true",
         "Calendar.weekdayで月曜を判定。午前4時境界で日付を決める。"
@@ -32660,9 +32644,9 @@
         "holiday",
         "休日",
         "calendar",
-        "",
+        null,
         "derived",
-        "",
+        null,
         "40",
         "false",
         "祝日を含む休日判定データ・カレンダーは未実装。週末のみならnowから判定可能。"
@@ -33220,68 +33204,14 @@
         null,
         null,
         "false"
-      ],
-      [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        "false"
-      ],
-      [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        "false"
-      ],
-      [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        "false"
-      ],
-      [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        "false"
       ]
     ],
     "reaction_lines": [
       [
-        "reaction_lines — 状況別セリフ",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
+        "reaction_lines — 状況別セリフ"
       ],
       [
-        "条件IDはreaction_conditions参照。display_target空欄/general=通常、home_*=専用吹き出し。{routine_title}=約束名。[br]/[sp]対応。strength/premium_onlyは現在メタデータのみ。",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
+        "条件IDはreaction_conditions参照。display_target空欄/general=通常、home_*=専用吹き出し。{routine_title}=約束名。[br]/[sp]対応。strength/premium_onlyは現在メタデータのみ。"
       ],
       [
         "line_id",
@@ -33311,8 +33241,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "routine_none_completed_003",
@@ -33321,8 +33250,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "noon_zero_001",
@@ -33331,8 +33259,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "evening_zero_001",
@@ -33341,8 +33268,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "routine_one_completed_001",
@@ -33371,8 +33297,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "routine_remaining_one_001",
@@ -33421,8 +33346,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "routine_completed_just_now_001",
@@ -33451,8 +33375,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "streak_2_001",
@@ -33571,8 +33494,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "prohibition_one_failed_002",
@@ -33601,8 +33523,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "prohibition_recovered_today_001",
@@ -33621,8 +33542,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "prohibition_urge_001",
@@ -33641,8 +33561,7 @@
         "normal",
         "false",
         "1",
-        "true",
-        ""
+        "true"
       ],
       [
         "prohibition_urge_004",
@@ -36579,9 +36498,19 @@
     ],
     "rio_lines": [
       [
+        "莉央の固定セリフ・お題",
+        "莉央の固定セリフ・お題",
+        "莉央の固定セリフ・お題",
+        "莉央の固定セリフ・お題",
+        "莉央の固定セリフ・お題",
         "莉央の固定セリフ・お題"
       ],
       [
+        "固定案内・お題・通知の正本。状況別セリフ32件はreaction_linesへ移管（旧行はactive=FALSE）。[br]/[sp]対応。同期・ビルド後に反映。",
+        "固定案内・お題・通知の正本。状況別セリフ32件はreaction_linesへ移管（旧行はactive=FALSE）。[br]/[sp]対応。同期・ビルド後に反映。",
+        "固定案内・お題・通知の正本。状況別セリフ32件はreaction_linesへ移管（旧行はactive=FALSE）。[br]/[sp]対応。同期・ビルド後に反映。",
+        "固定案内・お題・通知の正本。状況別セリフ32件はreaction_linesへ移管（旧行はactive=FALSE）。[br]/[sp]対応。同期・ビルド後に反映。",
+        "固定案内・お題・通知の正本。状況別セリフ32件はreaction_linesへ移管（旧行はactive=FALSE）。[br]/[sp]対応。同期・ビルド後に反映。",
         "固定案内・お題・通知の正本。状況別セリフ32件はreaction_linesへ移管（旧行はactive=FALSE）。[br]/[sp]対応。同期・ビルド後に反映。"
       ],
       [
@@ -36735,126 +36664,6 @@
         "1",
         "true",
         "莉央のお題の導入"
-      ],
-      [
-        "home_routine_completed_001",
-        "home_routine_completed",
-        "へぇ〜、ちゃんとやったんだ？ざこのくせに♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_routine_completed_001（condition_id=routine_completed_just_now）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_routine_completed_002",
-        "home_routine_completed",
-        "はいはい、えらいえらい♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_routine_completed_002（condition_id=routine_completed_just_now）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_routine_completed_003",
-        "home_routine_completed",
-        "おにいさんにしてはやるじゃん♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_routine_completed_003（condition_id=routine_completed_just_now）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_all_completed_001",
-        "home_all_completed",
-        "え、今日の約束ぜんぶ終わったの？…ふーん、やるじゃん♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_all_completed_001（condition_id=routine_all_completed）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_all_completed_002",
-        "home_all_completed",
-        "ぜんぶできたんだ？今日だけはざこって言わないであげる♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_all_completed_002（condition_id=routine_all_completed）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_all_completed_003",
-        "home_all_completed",
-        "今日のおにいさん、ちょっとだけかっこいいかもw",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_all_completed_003（condition_id=routine_all_completed）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_timer_finished_001",
-        "home_timer_finished",
-        "え、最後までやったの？ざこのくせに粘るじゃん♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_timer_finished_001（condition_id=routine_timer_finished）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_timer_finished_002",
-        "home_timer_finished",
-        "はい1回ぶんね〜。まだ終わりじゃないよ？w",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_timer_finished_002（condition_id=routine_timer_finished）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_timer_finished_003",
-        "home_timer_finished",
-        "途中でやめると思ってたのに、つまんな〜い♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_timer_finished_003（condition_id=routine_timer_finished）。編集は reaction_lines で行う。"
-      ],
-      [
-        "blocked_struggling_001",
-        "blocked_struggling",
-        "よわよわメンタル出てきたね♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.blocked_struggling_001（condition_id=prohibition_urge）。編集は reaction_lines で行う。"
-      ],
-      [
-        "blocked_struggling_002",
-        "blocked_struggling",
-        "負けそうだから莉央ちゃんに助け求めにきたんだw",
-        "1",
-        "false",
-        "移管済み: reaction_lines.blocked_struggling_002（condition_id=prohibition_urge）。編集は reaction_lines で行う。"
-      ],
-      [
-        "blocked_struggling_003",
-        "blocked_struggling",
-        "はいはい、見ててあげるから我慢して〜",
-        "1",
-        "false",
-        "移管済み: reaction_lines.blocked_struggling_003（condition_id=prohibition_urge）。編集は reaction_lines で行う。"
-      ],
-      [
-        "blocked_defeated_001",
-        "blocked_defeated",
-        "ほんとに負けてきたの？w",
-        "1",
-        "false",
-        "移管済み: reaction_lines.blocked_defeated_001（condition_id=prohibition_failed）。編集は reaction_lines で行う。"
-      ],
-      [
-        "blocked_defeated_002",
-        "blocked_defeated",
-        "わざわざ敗北報告しに来たんだ♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.blocked_defeated_002（condition_id=prohibition_failed）。編集は reaction_lines で行う。"
-      ],
-      [
-        "blocked_defeated_003",
-        "blocked_defeated",
-        "うわ、大人なのに我慢できなかったんだ〜",
-        "1",
-        "false",
-        "移管済み: reaction_lines.blocked_defeated_003（condition_id=prohibition_failed）。編集は reaction_lines で行う。"
       ],
       [
         "notification_in_progress_001",
@@ -37183,142 +36992,6 @@
         "1",
         "true",
         "莉央からのお題。カテゴリごとの抽選比率はアプリで維持。"
-      ],
-      [
-        "home_peek_unfinished_001",
-        "home_peek_unfinished",
-        "「{routine_title}」、まだでしょ？ざこ♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_001（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_peek_unfinished_002",
-        "home_peek_unfinished",
-        "ねえ、「{routine_title}」は？見なかったことにしてない？",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_002（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_peek_unfinished_003",
-        "home_peek_unfinished",
-        "「{routine_title}」やってないの、私知ってるからね♡",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_003（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_peek_unfinished_004",
-        "home_peek_unfinished",
-        "ほらほら、「{routine_title}」待ってるよ〜？",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_004（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_peek_unfinished_005",
-        "home_peek_unfinished",
-        "「{routine_title}」、今日はやらない日だっけ？w",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_005（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_idle_above_001",
-        "home_idle_above",
-        "…おでこ見た？",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_idle_above_001（condition_id=home_idle_tapped）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_idle_above_002",
-        "home_idle_above",
-        "止まってるけど寝てる？w",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_idle_above_002（condition_id=home_idle_tapped）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_idle_above_routine_001",
-        "home_idle_above_routine",
-        "「{routine_title}」まだだよ？",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_idle_above_routine_001（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_idle_above_routine_002",
-        "home_idle_above_routine",
-        "ぼーっとしてないで「{routine_title}」やれば？",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_idle_above_routine_002（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_idle_right_001",
-        "home_idle_right",
-        "全部終わってんじゃん。…ふーん",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_idle_right_001（condition_id=routine_all_completed）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_idle_right_002",
-        "home_idle_right",
-        "お〜w",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_idle_right_002（condition_id=routine_all_completed）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_routine_added_001",
-        "home_routine_added",
-        "「{routine_title}」ね。…何日続くかな〜w",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_routine_added_001（condition_id=routine_added）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_routine_added_002",
-        "home_routine_added",
-        "また増やすの？守れる数にしときなよ、ざこ",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_routine_added_002（condition_id=routine_added）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_routine_added_003",
-        "home_routine_added",
-        "はいはい、見張っといてあげる",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_routine_added_003（condition_id=routine_added）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_peek_unfinished_top_001",
-        "home_peek_unfinished_top",
-        "これ、まだでしょ？",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_top_001（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_peek_unfinished_top_002",
-        "home_peek_unfinished_top",
-        "ここ、まだだよ？",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_top_002（condition_id=routine_remaining）。編集は reaction_lines で行う。"
-      ],
-      [
-        "home_peek_unfinished_top_003",
-        "home_peek_unfinished_top",
-        "一番上から逃げないの",
-        "1",
-        "false",
-        "移管済み: reaction_lines.home_peek_unfinished_top_003（condition_id=routine_remaining）。編集は reaction_lines で行う。"
       ]
     ]
   }

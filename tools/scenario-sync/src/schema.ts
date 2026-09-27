@@ -138,8 +138,12 @@ export const REACTION_LINE_COLUMNS = [
 ] as const;
 
 export const REACTION_DISPLAY_TARGETS = [
-  'general', 'home_routine_added', 'home_peek_unfinished',
-  'home_peek_unfinished_top', 'home_idle_above', 'home_idle_right',
+  'general',
+  'home_routine_added',
+  'home_peek_unfinished',
+  'home_peek_unfinished_top',
+  'home_idle_above',
+  'home_idle_right',
 ] as const;
 
 export const REQUIRED_DAILY_COLUMNS = [

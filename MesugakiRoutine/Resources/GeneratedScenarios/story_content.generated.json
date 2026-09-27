@@ -11181,7 +11181,7 @@
       "triggerType": "state",
       "conditionKey": "isAllCompleted",
       "operator": "==",
-      "value": "true",
+      "value": "TRUE",
       "priority": 80,
       "active": true,
       "note": "今日対象の全約束。"
@@ -11193,7 +11193,7 @@
       "conditionKey": "allCompletedAt",
       "operator": "between",
       "value": "04:00-10:00",
-      "priority": 80,
+      "priority": 85,
       "active": true,
       "note": "仮の時刻帯。午前4時区切りの当日、isAllCompletedも必要。"
     },
@@ -11204,7 +11204,7 @@
       "conditionKey": "allCompletedAt",
       "operator": "between",
       "value": "00:00-04:00",
-      "priority": 80,
+      "priority": 85,
       "active": true,
       "note": "仮の時刻帯。午前4時前は前アプリ日。isAllCompletedも必要。"
     },
@@ -11369,7 +11369,7 @@
       "conditionKey": "currentStreak",
       "operator": "==",
       "value": "10",
-      "priority": 80,
+      "priority": 90,
       "active": true,
       "note": "いずれかの約束を達成した日の連続数。 節目の当日完了時に評価（昨日の連続数の持ち越し表示に注意）。"
     },
@@ -11391,7 +11391,7 @@
       "conditionKey": "currentStreak",
       "operator": "==",
       "value": "14",
-      "priority": 80,
+      "priority": 90,
       "active": true,
       "note": "いずれかの約束を達成した日の連続数。 節目の当日完了時に評価（昨日の連続数の持ち越し表示に注意）。"
     },
@@ -11457,7 +11457,7 @@
       "conditionKey": "currentStreak",
       "operator": "==",
       "value": "7",
-      "priority": 80,
+      "priority": 90,
       "active": true,
       "note": "いずれかの約束を達成した日の連続数。 節目の当日完了時に評価（昨日の連続数の持ち越し表示に注意）。"
     },
