@@ -108,7 +108,7 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
     ]
 
     /// 初回オンボーディングで、最初に見直す習慣として提示する候補。
-    /// 動画だけは続く内部画面で対象アプリと時間上限を設定し、Screen Time で自動判定する。
+    /// 動画・SNSは対象アプリと時間上限、その他は回数の上限を設定する。
     static let onboarding: [BlockedBehaviorPreset] = [
         BlockedBehaviorPreset(
             id: "onboarding-stop-watching-videos",
@@ -120,7 +120,9 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
         BlockedBehaviorPreset(
             id: "onboarding-view-social-media",
             title: "SNSを見る",
-            iconName: "bubble.left.and.bubble.right"
+            iconName: "bubble.left.and.bubble.right",
+            trackingKind: .screenTime,
+            screenTimeLimitMinutes: 20
         ),
         BlockedBehaviorPreset(
             id: "onboarding-smoking",

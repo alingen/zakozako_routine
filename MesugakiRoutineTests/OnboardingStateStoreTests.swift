@@ -1,4 +1,5 @@
 import FamilyControls
+import SwiftUI
 import XCTest
 @testable import MesugakiRoutine
 
@@ -368,13 +369,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             store.goToSetupStep(.blockedBehaviorSelection)
 
             finishBlockedBehaviorIntroduction(store)
-            store.selectBlockedBehavior(
-                OnboardingBlockedBehaviorDraft(
-                    selectionID: OnboardingBlockedBehaviorDraft.noneID,
-                    title: "特にない",
-                    iconName: "minus.circle"
-                )
-            )
+            XCTAssertEqual(store.draft.blockedBehavior, OnboardingBlockedBehaviorDraft.none)
 
             XCTAssertTrue(store.canContinue())
             XCTAssertTrue(store.advanceSetup())
@@ -395,12 +390,14 @@ final class OnboardingStateStoreTests: XCTestCase {
             finishBlockedBehaviorIntroduction(store)
             store.selectBlockedBehavior(
                 OnboardingBlockedBehaviorDraft(
-                    selectionID: "onboarding-view-social-media",
-                    title: "SNSを見る",
-                    iconName: "bubble.left.and.bubble.right"
+                    selectionID: "onboarding-smoking",
+                    title: "タバコを吸う",
+                    iconName: "lungs"
                 )
             )
 
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
             XCTAssertTrue(store.advanceSetup())
             XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
             XCTAssertEqual(store.setupStep, .blockedBehaviorSelection)
@@ -419,7 +416,7 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertTrue(store.advanceSetup())
             XCTAssertEqual(store.blockedBehaviorStage, .completed)
             XCTAssertEqual(store.setupStep, .confirmation)
-            XCTAssertEqual(store.draft.blockedBehavior?.title, "SNSを見る")
+            XCTAssertEqual(store.draft.blockedBehavior?.title, "タバコを吸う")
         }
     }
 
@@ -445,6 +442,138 @@ final class OnboardingStateStoreTests: XCTestCase {
             XCTAssertFalse(store.canContinue())
             XCTAssertFalse(store.advanceSetup())
             XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+        }
+    }
+
+    func testSocialMediaUsesScreenTimeAndPersistsTargetsAndTimeLimit() throws {
+        try withDefaults { defaults in
+            var store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            store.selectBlockedBehavior(OnboardingBlockedBehaviorDraft(
+                selectionID: OnboardingBlockedBehaviorDraft.screenTimeSocialMediaID,
+                title: "SNSを見る", iconName: "bubble.left.and.bubble.right"
+            ))
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+            XCTAssertFalse(store.canContinue())
+            XCTAssertFalse(store.advanceSetup())
+            let targets = try makeNonemptyScreenTimeSelectionData()
+            store.updateBlockedBehaviorScreenTimeConfiguration(selectionData: targets, limitMinutes: 30)
+            store = OnboardingStateStore(defaults: defaults)
+            XCTAssertEqual(store.blockedBehaviorStage, .screenTimeConfiguration)
+            XCTAssertEqual(store.draft.blockedBehavior?.screenTimeSelectionData, targets)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveScreenTimeLimitMinutes, 30)
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
+        }
+    }
+
+    func testEveryManualChoiceConfiguresLimitsAndRestoresThemOnBackAndRestart() {
+        let choices = BlockedBehaviorPreset.onboarding.filter { $0.trackingKind == .manual }
+            .map { OnboardingBlockedBehaviorDraft(selectionID: $0.id, title: $0.title, iconName: $0.iconName) }
+            + [OnboardingBlockedBehaviorDraft(selectionID: "custom", title: "ゲーム", iconName: nil)]
+        for choice in choices {
+            withDefaults { defaults in
+                var store = OnboardingStateStore(defaults: defaults)
+                store.goToSetupStep(.blockedBehaviorSelection)
+                finishBlockedBehaviorIntroduction(store)
+                store.selectBlockedBehavior(choice)
+                XCTAssertTrue(store.advanceSetup())
+                XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration, choice.selectionID)
+                store.updateBlockedBehaviorLimit(quitCompletely: false, period: .week, count: 3)
+                store = OnboardingStateStore(defaults: defaults)
+                XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
+                XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitPeriod, .week)
+                XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 3)
+                XCTAssertTrue(store.advanceSetup())
+                XCTAssertTrue(store.retreatSetup())
+                XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
+                XCTAssertTrue(store.retreatSetup())
+                XCTAssertEqual(store.blockedBehaviorStage, .awaitingSelection)
+                XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 3)
+                XCTAssertTrue(store.advanceSetup())
+                XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
+            }
+        }
+    }
+
+    func testManualLimitsPreserveLegacyDefaultsAndClampInvalidCounts() throws {
+        let old = try JSONDecoder().decode(OnboardingBlockedBehaviorDraft.self,
+            from: Data(#"{"selectionID":"onboarding-smoking","title":"タバコを吸う"}"#.utf8))
+        XCTAssertEqual(old.effectiveLimitPeriod, .day)
+        XCTAssertEqual(old.effectiveLimitCount, 1)
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            store.selectBlockedBehavior(old)
+            store.updateBlockedBehaviorLimit(quitCompletely: false, period: .month, count: 200)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 50)
+            store.updateBlockedBehaviorLimit(quitCompletely: false, period: .week, count: 0)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 1)
+            store.updateBlockedBehaviorLimit(quitCompletely: true, period: .week, count: 3)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitPeriod, .day)
+            XCTAssertEqual(store.draft.blockedBehavior?.effectiveLimitCount, 1)
+        }
+    }
+
+    func testPrologueCoversAppShellBeforePlayerOpensAndAfterRestart() {
+        withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            XCTAssertFalse(store.shouldCoverAppForPrologue)
+            store.beginInAppTutorial(createdRoutineID: UUID())
+            XCTAssertTrue(store.shouldCoverAppForPrologue)
+            let restored = OnboardingStateStore(defaults: defaults)
+            XCTAssertTrue(restored.shouldCoverAppForPrologue)
+            restored.completePrologue()
+            XCTAssertFalse(restored.shouldCoverAppForPrologue)
+        }
+    }
+
+    func testBlockedBehaviorScreensRenderOnCompactPhone() throws {
+        try withDefaults { defaults in
+            let store = OnboardingStateStore(defaults: defaults)
+            store.goToSetupStep(.blockedBehaviorSelection)
+            finishBlockedBehaviorIntroduction(store)
+            @MainActor func capture(_ name: String) throws {
+                let view = OnboardingSetupView(
+                    stateStore: store, onRequestScreenTimeAuthorization: {}, onConfirmPromise: {}
+                )
+                .preferredColorScheme(.light)
+                .frame(width: 375, height: 667)
+                // ScrollViewやPickerはImageRendererでは描画されないため、UIKit上で確認する。
+                let controller = UIHostingController(rootView: view)
+                let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 667))
+                window.rootViewController = controller
+                window.isHidden = false
+                defer { window.isHidden = true }
+                controller.view.frame = window.bounds
+                controller.view.setNeedsLayout()
+                controller.view.layoutIfNeeded()
+                let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+                    controller.view.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+                }
+                XCTAssertEqual(image.size.width, 375)
+                XCTAssertEqual(image.size.height, 667)
+                let attachment = XCTAttachment(image: image)
+                attachment.name = name
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+            try capture("onboarding-none-selected")
+            store.selectBlockedBehavior(OnboardingBlockedBehaviorDraft(
+                selectionID: "onboarding-smoking", title: "タバコを吸う", iconName: "lungs"
+            ))
+            XCTAssertTrue(store.advanceSetup())
+            store.updateBlockedBehaviorLimit(quitCompletely: false, period: .week, count: 3)
+            try capture("onboarding-manual-limit")
+            XCTAssertTrue(store.retreatSetup())
+            store.selectBlockedBehavior(OnboardingBlockedBehaviorDraft(
+                selectionID: OnboardingBlockedBehaviorDraft.screenTimeSocialMediaID,
+                title: "SNSを見る", iconName: "bubble.left.and.bubble.right"
+            ))
+            XCTAssertTrue(store.advanceSetup())
+            try capture("onboarding-social-screen-time")
         }
     }
 
@@ -547,6 +676,8 @@ final class OnboardingStateStoreTests: XCTestCase {
                 )
             )
             XCTAssertTrue(store.canContinue())
+            XCTAssertTrue(store.advanceSetup())
+            XCTAssertEqual(store.blockedBehaviorStage, .limitConfiguration)
             XCTAssertTrue(store.advanceSetup())
             XCTAssertEqual(store.blockedBehaviorStage, .postSelectionFirstMessage)
         }

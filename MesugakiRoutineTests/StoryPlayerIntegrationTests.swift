@@ -889,7 +889,7 @@ final class StoryPlayerIntegrationTests: XCTestCase {
     func testCloseResumeAndRestartKeepDurableEventState() async throws {
         let contentRepository = try makeGeneratedContentRepository()
         let stateRepository = try makeStateRepository()
-        let event = try XCTUnwrap(contentRepository.event(id: "event_middle_001"))
+        let event = try XCTUnwrap(contentRepository.event(id: RootTabView.firstStoryEventID))
         let scenario = try XCTUnwrap(contentRepository.scenario(id: event.entryScenarioId))
         let playbackKey = "integration:resume:middle_001"
         try stateRepository.markUnlocked(eventId: event.eventId, at: fixedNow)
@@ -903,6 +903,10 @@ final class StoryPlayerIntegrationTests: XCTestCase {
         )
         await firstPlayer.start()
         let firstNodeID = try XCTUnwrap(firstPlayer.currentNode?.nodeId)
+        // 冒頭の背景・立ち絵コマンドも訪問履歴に含まれる。
+        let initialVisitedNodeIDs = try XCTUnwrap(
+            stateRepository.checkpoint(for: playbackKey)
+        ).visitedNodeIds
         await firstPlayer.advance(expectedNodeId: firstNodeID)
         let resumableNodeID = try XCTUnwrap(firstPlayer.currentNode?.nodeId)
         XCTAssertNotEqual(resumableNodeID, firstNodeID)
@@ -930,7 +934,7 @@ final class StoryPlayerIntegrationTests: XCTestCase {
 
         XCTAssertEqual(resumedPlayer.currentNode?.nodeId, firstNodeID)
         let restartedCheckpoint = try XCTUnwrap(stateRepository.checkpoint(for: playbackKey))
-        XCTAssertEqual(restartedCheckpoint.visitedNodeIds, [firstNodeID])
+        XCTAssertEqual(restartedCheckpoint.visitedNodeIds, initialVisitedNodeIDs)
         XCTAssertFalse(restartedCheckpoint.isCompleted)
         let retainedProgress = try XCTUnwrap(
             stateRepository.eventProgress(for: event.eventId)

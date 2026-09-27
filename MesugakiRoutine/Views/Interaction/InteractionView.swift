@@ -270,7 +270,7 @@ struct InteractionView: View {
         ) { launch in
             StoryPlaybackContainerView(
                 launch: launch,
-                allowsSkip: autoPlayedStoryEventID != "event_middle_001"
+                allowsSkip: autoPlayedStoryEventID != RootTabView.firstStoryEventID
             ) {
                 viewModel.closePlayer()
             }

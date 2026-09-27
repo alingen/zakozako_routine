@@ -3,6 +3,7 @@ import Foundation
 /// CMSの日付メタデータから、そのアプリ日に表示する「今日の会話」を選ぶ。
 /// `calendar_date` の完全一致を優先し、なければ毎年繰り返す
 /// `calendar_month_day` を使う。継続日数や初回利用日には依存しない。
+/// 対象日の会話がない場合は、動作確認用の `daily_q003` を表示する。
 enum DailyConversationSchedule {
     static func scenario(
         on date: Date = .now,
@@ -16,6 +17,7 @@ enum DailyConversationSchedule {
 
         let calendarMonthDay = dateKey(on: date, format: "MM-dd", calendar: calendar)
         return scenarios.first { $0.calendarMonthDay == calendarMonthDay }
+            ?? scenarios.first { $0.scenarioId == "daily_q003" && $0.scenarioType == .daily && $0.enabled }
     }
 
     static func playbackKey(

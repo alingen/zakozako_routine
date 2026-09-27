@@ -63,7 +63,7 @@ struct OnboardingSetupView: View {
              .postSelectionSecondMessage,
              .systemExplanation:
             return true
-        case .waitingToPresent, .awaitingSelection, .screenTimeConfiguration, .completed:
+        case .waitingToPresent, .awaitingSelection, .screenTimeConfiguration, .limitConfiguration, .completed:
             return false
         }
     }
@@ -503,6 +503,9 @@ struct OnboardingSetupView: View {
         if stateStore.blockedBehaviorStage == .screenTimeConfiguration {
             screenTimeConfigurationPage
                 .transition(.move(edge: .trailing).combined(with: .opacity))
+        } else if stateStore.blockedBehaviorStage == .limitConfiguration {
+            manualLimitConfigurationPage
+                .transition(.move(edge: .trailing).combined(with: .opacity))
         } else {
             blockedBehaviorPresetPage
                 .transition(.opacity)
@@ -568,7 +571,11 @@ struct OnboardingSetupView: View {
 
     private var screenTimeConfigurationPage: some View {
         VStack(alignment: .leading, spacing: 22) {
-            onboardingTitle("動画を見る時間を決める")
+            onboardingTitle("使う時間の上限を決める")
+
+            Text(stateStore.draft.blockedBehavior?.trimmedTitle ?? "")
+                .font(.headline)
+                .foregroundStyle(AppColor.text)
 
             Text("使いすぎを防ぎたいアプリと、1日の上限時間を選んでください。")
                 .font(.body)
@@ -656,6 +663,52 @@ struct OnboardingSetupView: View {
         }
     }
 
+    private var manualLimitConfigurationPage: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            onboardingTitle("上限を決める")
+            Text(stateStore.draft.blockedBehavior?.trimmedTitle ?? "")
+                .font(.headline)
+                .foregroundStyle(AppColor.text)
+
+            VStack(alignment: .leading, spacing: 18) {
+                Picker("上限", selection: manualLimitBinding(\.quitCompletely, default: true)) {
+                    Text("完全にやめる").tag(true)
+                    Text("回数を決める").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("onboarding.blockedBehavior.limitMode")
+
+                if stateStore.draft.blockedBehavior?.isQuitCompletely == false {
+                    Picker("期間", selection: manualLimitBinding(\.limitPeriod, default: .day)) {
+                        ForEach(HabitPeriod.allCases) { period in
+                            Text(period.pickerLabel).tag(period)
+                        }
+                    }
+                    .accessibilityIdentifier("onboarding.blockedBehavior.limitPeriod")
+                    Stepper(
+                        value: manualLimitBinding(\.limitCount, default: 1),
+                        in: 1...50
+                    ) {
+                        Text(stateStore.draft.blockedBehavior?.manualLimitSummary ?? "")
+                            .font(.body.weight(.semibold))
+                    }
+                    .accessibilityIdentifier("onboarding.blockedBehavior.limitCount")
+                }
+            }
+            .padding(20)
+            .foregroundStyle(AppColor.text)
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(AppColor.border, lineWidth: 1)
+            }
+
+            systemFootnote(stateStore.draft.blockedBehavior?.isQuitCompletely == false
+                ? "設定した回数に達すると、その期間は失敗になります。行った回数はホームから報告できます。"
+                : "1回でもやってしまったら、その日は失敗になります。")
+        }
+    }
+
     private var confirmationPage: some View {
         VStack(spacing: 24) {
             VStack(spacing: 10) {
@@ -699,7 +752,7 @@ struct OnboardingSetupView: View {
                     title: blockedBehavior.trimmedTitle,
                     detail: blockedBehavior.usesScreenTime
                         ? "対象\(blockedBehavior.screenTimeTargetCount)項目・1日\(formattedScreenTimeDuration(blockedBehavior.effectiveScreenTimeLimitMinutes))まで"
-                        : nil
+                        : blockedBehavior.manualLimitSummary
                 )
             } else {
                 confirmationSummaryRow(
@@ -844,12 +897,28 @@ struct OnboardingSetupView: View {
         Binding(
             get: { stateStore.draft.blockedBehavior?.title ?? "" },
             set: { value in
-                stateStore.selectBlockedBehavior(
-                    OnboardingBlockedBehaviorDraft(
-                        selectionID: OnboardingBlockedBehaviorDraft.customID,
-                        title: String(value.prefix(ItemTitleLimit.maxLength)),
-                        iconName: "hand.raised"
-                    )
+                var selection = stateStore.draft.blockedBehavior
+                    ?? OnboardingBlockedBehaviorDraft(selectionID: OnboardingBlockedBehaviorDraft.customID,
+                                                       title: "", iconName: "hand.raised")
+                selection.title = String(value.prefix(ItemTitleLimit.maxLength))
+                stateStore.selectBlockedBehavior(selection)
+            }
+        )
+    }
+
+    private func manualLimitBinding<Value>(
+        _ keyPath: WritableKeyPath<OnboardingBlockedBehaviorDraft, Value?>,
+        default defaultValue: Value
+    ) -> Binding<Value> {
+        Binding(
+            get: { stateStore.draft.blockedBehavior?[keyPath: keyPath] ?? defaultValue },
+            set: { value in
+                guard var selection = stateStore.draft.blockedBehavior else { return }
+                selection[keyPath: keyPath] = value
+                stateStore.updateBlockedBehaviorLimit(
+                    quitCompletely: selection.isQuitCompletely,
+                    period: selection.limitPeriod ?? .day,
+                    count: selection.limitCount ?? 1
                 )
             }
         )
@@ -1027,20 +1096,17 @@ struct OnboardingSetupView: View {
 
     private func chooseBlockedBehavior(_ preset: BlockedBehaviorPreset) {
         let existing = stateStore.draft.blockedBehavior
-        let keepsScreenTimeConfiguration = existing?.selectionID == preset.id
-            && preset.trackingKind == .screenTime
+        if existing?.selectionID == preset.id {
+            focusedField = nil
+            return
+        }
         stateStore.selectBlockedBehavior(
             OnboardingBlockedBehaviorDraft(
                 selectionID: preset.id,
                 title: preset.title,
                 iconName: preset.iconName,
                 screenTimeLimitMinutes: preset.trackingKind == .screenTime
-                    ? (keepsScreenTimeConfiguration
-                        ? existing?.effectiveScreenTimeLimitMinutes
-                        : preset.screenTimeLimitMinutes)
-                    : nil,
-                screenTimeSelectionData: keepsScreenTimeConfiguration
-                    ? existing?.screenTimeSelectionData
+                    ? preset.screenTimeLimitMinutes
                     : nil
             )
         )
@@ -1048,14 +1114,14 @@ struct OnboardingSetupView: View {
     }
 
     private func chooseCustomBlockedBehavior() {
-        let existingTitle = stateStore.draft.blockedBehavior?.selectionID
-            == OnboardingBlockedBehaviorDraft.customID
-            ? stateStore.draft.blockedBehavior?.title ?? ""
-            : ""
+        if stateStore.draft.blockedBehavior?.selectionID == OnboardingBlockedBehaviorDraft.customID {
+            focusedField = .customBlockedBehavior
+            return
+        }
         stateStore.selectBlockedBehavior(
             OnboardingBlockedBehaviorDraft(
                 selectionID: OnboardingBlockedBehaviorDraft.customID,
-                title: existingTitle,
+                title: "",
                 iconName: "hand.raised"
             )
         )
@@ -1490,6 +1556,7 @@ private struct OnboardingBlockedBehaviorGuidanceView: View {
              .secondMessage,
              .awaitingSelection,
              .screenTimeConfiguration,
+             .limitConfiguration,
              .completed:
             return false
         }
@@ -1634,7 +1701,7 @@ private struct OnboardingBlockedBehaviorGuidanceView: View {
                 focusedContent = .secondMessage
             case .systemExplanation:
                 focusedContent = .explanation
-            case .waitingToPresent, .awaitingSelection, .screenTimeConfiguration, .completed:
+            case .waitingToPresent, .awaitingSelection, .screenTimeConfiguration, .limitConfiguration, .completed:
                 focusedContent = nil
             }
         }

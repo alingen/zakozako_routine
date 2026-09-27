@@ -57,7 +57,8 @@ private enum RootTab: Hashable {
 /// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
     private static let prologueEventID = "event_prologue_001"
-    private static let firstStoryEventID = "event_middle_001"
+    // CMSの第1話。解禁確認・再生・読了判定で同じIDを使う。
+    static let firstStoryEventID = "event_middle_001_1"
 
     @Environment(\.modelContext) private var modelContext
     @State private var appDialog: AppDialogRequest?
@@ -104,6 +105,16 @@ struct RootTabView: View {
                 .transition(.opacity)
             } else {
                 appShell
+
+                if onboardingState.shouldCoverAppForPrologue {
+                    // 交流タブのtaskがfullScreenCoverを開くより先にタブ本体が描かれる。
+                    // プレイヤーはこの幕より上に出るため、表示待ちと閉じる瞬間だけ黒が見える。
+                    Color.black
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                        .transition(.identity)
+                        .zIndex(7)
+                }
 
                 if isPresentingReportSpotlight {
                     OnboardingFirstReportSpotlightView(
@@ -343,8 +354,8 @@ struct RootTabView: View {
                         && $0.iconName == blockedBehavior.iconName
                         && $0.isActive
                         && $0.masteredAt == nil
-                        && $0.limitPeriod == .day
-                        && $0.effectiveLimit == 1
+                        && $0.limitPeriod == blockedBehavior.effectiveLimitPeriod
+                        && $0.effectiveLimit == blockedBehavior.effectiveLimitCount
                         && $0.trackingKind == trackingKind
                         && (!blockedBehavior.usesScreenTime
                             || ($0.screenTimeLimitMinutes
@@ -398,8 +409,8 @@ struct RootTabView: View {
                     guard let created = dependencies.blockedBehaviorRepository.create(
                         title: blockedBehavior.trimmedTitle,
                         iconName: blockedBehavior.iconName,
-                        limitPeriod: .day,
-                        limitCount: 1,
+                        limitPeriod: blockedBehavior.effectiveLimitPeriod,
+                        limitCount: blockedBehavior.effectiveLimitCount,
                         trackingKind: trackingKind,
                         screenTimeLimitMinutes: blockedBehavior.usesScreenTime
                             ? blockedBehavior.effectiveScreenTimeLimitMinutes

@@ -42,7 +42,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         }
     }
 
-    func testOnboardingCatalogUsesRequestedPresetsAndScreenTimeOnlyForVideo() {
+    func testOnboardingCatalogUsesScreenTimeForVideoAndSocialMedia() {
         XCTAssertEqual(
             BlockedBehaviorPreset.onboarding.map(\.title),
             [
@@ -62,7 +62,10 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertEqual(videoPreset?.trackingKind, .screenTime)
         XCTAssertEqual(videoPreset?.screenTimeLimitMinutes, 20)
 
-        let remainingPresets = BlockedBehaviorPreset.onboarding.dropFirst()
+        let socialPreset = BlockedBehaviorPreset.onboarding[1]
+        XCTAssertEqual(socialPreset.id, OnboardingBlockedBehaviorDraft.screenTimeSocialMediaID)
+        XCTAssertEqual(socialPreset.trackingKind, .screenTime)
+        let remainingPresets = BlockedBehaviorPreset.onboarding.dropFirst(2)
         XCTAssertTrue(remainingPresets.allSatisfy { $0.trackingKind == .manual })
         XCTAssertTrue(
             BlockedBehaviorPreset.onboarding.allSatisfy { $0.limitRule == .quitCompletely }
@@ -720,9 +723,10 @@ final class BlockedBehaviorPresetTests: XCTestCase {
         XCTAssertTrue(behavior.screenTimeVerifiedDays.isEmpty)
     }
 
-    func testBlockedBehaviorTauntCopyMatchesProductText() {
+    func testBlockedBehaviorTauntCopyIsPreservedInReactionLines() throws {
+        let lines = try StoryContentRepository().reactionLines
         XCTAssertEqual(
-            BlockedBehaviorTauntKind.struggling.messages,
+            lines.filter { $0.id.hasPrefix("blocked_struggling_") }.map(\.text),
             [
                 "よわよわメンタル出てきたね♡",
                 "負けそうだから莉央ちゃんに助け求めにきたんだw",
@@ -730,7 +734,7 @@ final class BlockedBehaviorPresetTests: XCTestCase {
             ]
         )
         XCTAssertEqual(
-            BlockedBehaviorTauntKind.defeated.messages,
+            lines.filter { $0.id.hasPrefix("blocked_defeated_") }.map(\.text),
             [
                 "ほんとに負けてきたの？w",
                 "わざわざ敗北報告しに来たんだ♡",
