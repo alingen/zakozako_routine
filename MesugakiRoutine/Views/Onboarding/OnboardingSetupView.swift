@@ -312,7 +312,7 @@ struct OnboardingSetupView: View {
                 .transition(.opacity)
             } else {
                 VStack(spacing: 22) {
-                    Text("あなたの名前を教えてください。")
+                    Text("名前を教えてください")
                         .font(.title2.weight(.bold))
                         .foregroundStyle(AppColor.text)
                         .multilineTextAlignment(.center)
@@ -878,12 +878,8 @@ struct OnboardingSetupView: View {
     }
 
     private var primaryButtonTitle: String {
-        switch stateStore.setupStep {
-        case .introduction:
-            return stateStore.introductionStage == .appIntroduction ? "次へ" : "はじめる"
-        case .confirmation: return "この約束ではじめる"
-        default: return "次へ"
-        }
+        // 名前の画面も、あとに設定が続くので「はじめる」ではなく「次へ」。
+        stateStore.setupStep == .confirmation ? "この約束ではじめる" : "次へ"
     }
 
     private var cueOptions: [OnboardingCueOption] {
