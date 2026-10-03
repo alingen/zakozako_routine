@@ -3,6 +3,8 @@ import SwiftData
 
 enum AppDialogActionStyle: Equatable {
     case standard
+    /// 押してほしい操作(1つだけ)。Primary で塗る。
+    case primary
     case destructive
     /// 次に確認画面が続く、失敗や取り消しにつながる操作。塗らずに白地＋枠線、文字だけ Error にする。
     case caution
@@ -513,14 +515,14 @@ struct RootTabView: View {
             title: "今日の会話をはじめる？",
             message: "莉央との最初の会話を楽しめます。あとから交流画面で読むこともできます。",
             actions: [
-                AppDialogAction("あとで読む") {
+                AppDialogAction("あとで読む", style: .cancel) {
                     isOnboardingConversationDialog = false
                     prepareOnboardingConversationIdentityIfNeeded()
                     onboardingState.completeConversationPrompt(with: .later)
                     prepareStoryUnlockPresentation()
                     return .dismiss
                 },
-                AppDialogAction("はじめる") {
+                AppDialogAction("はじめる", style: .primary) {
                     isOnboardingConversationDialog = false
                     prepareOnboardingConversationIdentityIfNeeded()
                     isOnboardingConversationPlaying = true
@@ -601,7 +603,7 @@ struct RootTabView: View {
                 // 「あとでやる」だけでは第一話を強制解禁しない。
                 onboardingState.completeStoryUnlockPresentation()
             } else {
-                presentOnboardingError("第一話の解禁状態を確認できませんでした。もう一度お試しください。")
+                presentOnboardingError("第1話の解禁状態を確認できませんでした。もう一度お試しください。")
             }
             return
         }
@@ -646,12 +648,12 @@ struct RootTabView: View {
                 $0.event.eventId == Self.firstStoryEventID
             })?.canPlay == true else {
                 handleUnavailableFirstStory(
-                    "第一話を開けませんでした。時間をおいて、もう一度お試しください。"
+                    "第1話を開けませんでした。時間をおいて、もう一度お試しください。"
                 )
                 return
             }
         } catch {
-            handleUnavailableFirstStory("第一話を開けませんでした。\n\(error.localizedDescription)")
+            handleUnavailableFirstStory("第1話を開けませんでした。\n\(error.localizedDescription)")
             return
         }
 
@@ -895,7 +897,7 @@ struct RootTabView: View {
                 onboardingState.leaveFirstStoryPlayback()
             } else {
                 handleUnavailableFirstStory(
-                    "第一話を開けませんでした。時間をおいて、もう一度お試しください。"
+                    "第1話を開けませんでした。時間をおいて、もう一度お試しください。"
                 )
             }
 
@@ -998,9 +1000,9 @@ struct RootTabView: View {
                     }
                 }
             }
-            // 最後が文字だけの「閉じる」(高さ44pt)のときは、見た目の上下の余白がそろうよう下を詰める。
+            // 文字だけの取り消し(高さ44pt)は常にいちばん下に置くので、あるときは見た目の上下の余白がそろうよう下を詰める。
             .padding([.horizontal, .top], 24)
-            .padding(.bottom, request.actions.last?.style == .cancel ? 12 : 24)
+            .padding(.bottom, request.actions.contains { $0.style == .cancel } ? 12 : 24)
             .frame(maxWidth: 420)
             // お題カードと同じ形(角丸20・横余白20)にそろえる。
             .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -1015,23 +1017,25 @@ struct RootTabView: View {
         }
     }
 
-    /// 取り消し以外の操作ボタン。破壊的な操作は塗り、通常の操作は白地＋枠線で区別する。
+    /// 取り消し以外の操作ボタン。押してほしい操作は Primary、破壊的な操作は Error で塗り、
+    /// 通常の操作は白地＋枠線で区別する。
     /// 確認画面が後に続く操作(caution)は、通常と同じ強さのまま文字だけ Error にする。
     @ViewBuilder
     private func dialogButtons(for request: AppDialogRequest) -> some View {
         ForEach(request.actions.filter { $0.style != .cancel }) { action in
             let isDestructive = action.style == .destructive
+            let fill: Color? = isDestructive ? AppColor.error : action.style == .primary ? AppColor.primary : nil
             Button(role: isDestructive ? .destructive : nil) {
                 handle(action.action())
             } label: {
                 Text(action.title)
                     .font(.headline)
-                    .foregroundStyle(isDestructive ? Color.white : action.style == .caution ? AppColor.error : AppColor.text)
+                    .foregroundStyle(fill != nil ? Color.white : action.style == .caution ? AppColor.error : AppColor.text)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(isDestructive ? AppColor.error : AppColor.surface, in: Capsule())
+                    .background(fill ?? AppColor.surface, in: Capsule())
                     .overlay {
-                        if !isDestructive {
+                        if fill == nil {
                             Capsule().stroke(AppColor.border, lineWidth: 1.5)
                         }
                     }
@@ -1377,26 +1381,22 @@ private struct OnboardingPostPrologueMessageView: View {
                     }
                     .frame(
                         maxWidth: 520,
-                        minHeight: dynamicTypeSize.isAccessibilitySize ? 210 : 150,
                         maxHeight: dynamicTypeSize.isAccessibilitySize ? 210 : 150,
                         alignment: .top
                     )
+                    .fixedSize(horizontal: false, vertical: true)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onContinue)
 
-                    Button("次へ", action: onContinue)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(AppColor.text)
-                        .padding(.horizontal, 20)
-                        .frame(minHeight: 44)
-                        .background(AppColor.surface.opacity(0.95), in: Capsule())
-                        .buttonStyle(.plain)
+                    OnboardingContinueButton(action: onContinue)
                         .accessibilityIdentifier("onboarding.prologueMessage.continue")
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                // 設定中の重ね画面と同じ高さに莉央を置き、場面ごとに位置が跳ばないようにする。
+                .padding(.top, OnboardingExplanationLayout.conversationTopInset(in: proxy.size))
+                .padding(.bottom, 12)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: proxy.size.height, alignment: .center)
+                .frame(minHeight: proxy.size.height, alignment: .top)
             }
             .scrollBounceBehavior(.basedOnSize)
         }

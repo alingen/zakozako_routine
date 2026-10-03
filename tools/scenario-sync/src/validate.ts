@@ -25,6 +25,9 @@ import type {
 } from './types.js';
 import { allScenarioRows } from './types.js';
 
+/** rio_lines で使える差し込み。{user_name} はユーザーの名前(未設定なら空)に置き換わる。 */
+const RIO_LINE_PLACEHOLDERS = new Set(['{routine_title}', '{user_name}']);
+
 export interface ValidateResult {
   issues: IssueBag;
 }
@@ -60,8 +63,12 @@ export function validate(data: NormalizedSheets): ValidateResult {
     rioLineIDs.add(row.lineId);
     if (row.weight < 0) issues.error('invalid_rio_weight', 'weight must be nonnegative', { at });
     const tokens = row.text.match(/\{[^{}]+\}/g) ?? [];
-    if (tokens.some((token) => token !== '{routine_title}')) {
-      issues.error('invalid_rio_placeholder', 'Only {routine_title} is supported', { at });
+    if (tokens.some((token) => !RIO_LINE_PLACEHOLDERS.has(token))) {
+      issues.error(
+        'invalid_rio_placeholder',
+        'Only {routine_title} and {user_name} are supported',
+        { at },
+      );
     }
     if (
       row.groupId.startsWith('challenge_') &&

@@ -70,6 +70,15 @@ final class RioCopyTests: XCTestCase {
         XCTAssertEqual(line.displayText(routineTitle: "読書[br]"), "今日は読書[br]\nA B")
     }
 
+    func testUserNamePlaceholderIsReplacedAndNeverShownRaw() {
+        let line = RioLine(lineId: "test", groupId: "onboarding_intro", text: "お、ざこの{user_name}おにいさん発見〜",
+                           weight: 1, active: true)
+        XCTAssertEqual(line.displayText(userName: " ゆうた "), "お、ざこのゆうたおにいさん発見〜")
+        XCTAssertEqual(line.displayText(), "お、ざこのおにいさん発見〜")
+        // 名前に含まれる [br] 等はコマンドとして解釈しない。
+        XCTAssertEqual(line.displayText(userName: "a[br]"), "お、ざこのa[br]おにいさん発見〜")
+    }
+
     func testBundledCopyAndMigratedReactionsAreLoadedFromCMS() throws {
         let content = try StoryContentRepository()
         XCTAssertEqual(content.rioLines.count, 59)

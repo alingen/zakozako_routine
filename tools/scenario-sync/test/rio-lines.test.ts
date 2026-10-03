@@ -60,6 +60,14 @@ describe('rio_lines CMS', () => {
     );
   });
 
+  it('accepts the user name placeholder', () => {
+    const result = normalize(
+      sheets({ rioLines: [{ ...line, text: 'お、ざこの{user_name}おにいさん発見〜' }] }),
+    );
+    const codes = validate(result.data).issues.errors.map((error) => error.code);
+    expect(codes).not.toContain('invalid_rio_placeholder');
+  });
+
   it('refuses a missing live header rather than erasing the fixed copy', () => {
     const snapshot = loadSnapshot();
     snapshot.tabs.rio_lines = [];

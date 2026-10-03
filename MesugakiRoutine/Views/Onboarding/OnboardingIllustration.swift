@@ -62,7 +62,7 @@ struct OnboardingIllustration: View {
                             completionCheck
                             Text("達成！")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundStyle(AppColor.primary)
+                                .foregroundStyle(AppColor.secondary)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -85,7 +85,7 @@ struct OnboardingIllustration: View {
                             completionCheck
                             Text("達成！")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundStyle(AppColor.primary)
+                                .foregroundStyle(AppColor.secondary)
                         }
                     }
                 }
@@ -154,9 +154,10 @@ struct OnboardingIllustration: View {
             ) {
                 ForEach(1...4, id: \.self) { day in
                     VStack(spacing: 5) {
+                        // 図解の地(Background)の上なので muted ではコントラストが足りない。
                         Text("\(day)日目")
-                            .font(.caption2)
-                            .foregroundStyle(AppColor.muted)
+                            .font(.caption)
+                            .foregroundStyle(AppColor.text)
                             .fixedSize(horizontal: false, vertical: true)
                         completionCheck
                     }
@@ -382,13 +383,14 @@ struct OnboardingIllustration: View {
             .font(.caption2.weight(.bold))
             .foregroundStyle(AppColor.surface)
             .frame(width: checkSize, height: checkSize)
-            .background(AppColor.primary, in: Circle())
+            // 達成の印はホームの完了と同じ Purple。Primary は「まだ押していない約束」の色なので使わない。
+            .background(AppColor.secondary, in: Circle())
     }
 
     private var flowArrow: some View {
         Image(systemName: "arrow.down")
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(AppColor.primary.opacity(0.75))
+            .foregroundStyle(AppColor.muted)
             .frame(maxWidth: .infinity)
     }
 

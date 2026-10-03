@@ -148,6 +148,7 @@ struct OnboardingSetupView: View {
             if showsRioIntroduction {
                 OnboardingRioIntroductionView(
                     stage: stateStore.introductionStage,
+                    userName: stateStore.draft.trimmedUserName,
                     onContinue: { stateStore.advanceSetup() },
                     onBack: { stateStore.retreatSetup() }
                 )
@@ -298,13 +299,16 @@ struct OnboardingSetupView: View {
                         .font(.title2.weight(.bold))
                         .foregroundStyle(AppColor.text)
 
-                    Text("毎日の小さな約束を達成して、キャラクターとの会話や物語を楽しむアプリです。")
+                    // 中央そろえの短い文は、言葉の途中で折り返さないよう意味の切れ目で改行する。
+                    Text("毎日の小さな約束を達成して、\n莉央との会話や物語を\n楽しむアプリです。")
                         .font(.title3)
                         .foregroundStyle(AppColor.text)
                         .lineSpacing(5)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .multilineTextAlignment(.center)
+                // 真ん中より少し上(画面の4割あたり)に置く。
+                .padding(.bottom, 96)
                 .transition(.opacity)
             } else {
                 VStack(spacing: 22) {
@@ -335,17 +339,21 @@ struct OnboardingSetupView: View {
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .accessibilityLabel("10文字中\(stateStore.draft.userName.count)文字入力済み")
 
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("10文字以内で入力してください")
-                                .fontWeight(.semibold)
-                            Text("※名前はアプリ内で公開されます")
-                            Text("※名前はあとから変更できます")
-                            Text("※本名、メールアドレス、電話番号などの個人情報を入力しないでください")
+                        // 入力前からエラーに見えないよう、ほかの画面の補足(systemFootnote)と同じ見た目にする。
+                        // 文字数の上限は右上の「0/10」で伝わるので、ここでは繰り返さない。
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("名前はアプリ内で公開されます。")
+                                Text("名前はあとから変更できます。")
+                                Text("本名、メールアドレス、電話番号などの個人情報は入力しないでください。")
+                            }
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: "info.circle")
                         }
-                        .font(.caption)
-                        .foregroundStyle(AppColor.error)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .font(.footnote)
+                        .foregroundStyle(AppColor.text)
                     }
                 }
                 .transition(.opacity)
@@ -665,7 +673,7 @@ struct OnboardingSetupView: View {
 
     private var manualLimitConfigurationPage: some View {
         VStack(alignment: .leading, spacing: 22) {
-            onboardingTitle("上限を決める")
+            onboardingTitle("上限はどうしますか？")
             Text(stateStore.draft.blockedBehavior?.trimmedTitle ?? "")
                 .font(.headline)
                 .foregroundStyle(AppColor.text)
@@ -678,20 +686,28 @@ struct OnboardingSetupView: View {
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("onboarding.blockedBehavior.limitMode")
 
-                if stateStore.draft.blockedBehavior?.isQuitCompletely == false {
-                    Picker("期間", selection: manualLimitBinding(\.limitPeriod, default: .day)) {
-                        ForEach(HabitPeriod.allCases) { period in
-                            Text(period.pickerLabel).tag(period)
+                if let blockedBehavior = stateStore.draft.blockedBehavior,
+                   !blockedBehavior.isQuitCompletely {
+                    // 期間と回数を「期間 1週間」「2回まで」の2行に分け、同じ言葉を繰り返さない。
+                    LabeledContent("期間") {
+                        Picker("期間", selection: manualLimitBinding(\.limitPeriod, default: .day)) {
+                            ForEach(HabitPeriod.allCases) { period in
+                                Text(limitPeriodName(period)).tag(period)
+                            }
                         }
+                        .labelsHidden()
+                        .tint(AppColor.text)
                     }
+                    .font(.body.weight(.semibold))
                     .accessibilityIdentifier("onboarding.blockedBehavior.limitPeriod")
                     Stepper(
                         value: manualLimitBinding(\.allowedCount, default: 1),
                         in: 1...50
                     ) {
-                        Text(stateStore.draft.blockedBehavior?.manualLimitSummary ?? "")
+                        Text("\(blockedBehavior.effectiveAllowedCount)回まで")
                             .font(.body.weight(.semibold))
                     }
+                    .accessibilityValue(blockedBehavior.manualLimitSummary)
                     .accessibilityIdentifier("onboarding.blockedBehavior.limitCount")
                 }
             }
@@ -788,9 +804,10 @@ struct OnboardingSetupView: View {
                 .background(AppColor.primarySoft, in: Circle())
 
             VStack(alignment: .leading, spacing: 5) {
+                // ラベルは飾りなので Primary を使わない(Primary は今押す操作と莉央だけ)。
                 Label(label, systemImage: labelIcon)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppColor.primary)
+                    .foregroundStyle(AppColor.text)
 
                 Text(title)
                     .font(.body.weight(.semibold))
@@ -833,11 +850,16 @@ struct OnboardingSetupView: View {
             .accessibilityIdentifier("onboarding.continue")
 
             if stateStore.setupStep == .confirmation {
-                Button("内容を変更する") {
+                // 塗りの「この約束ではじめる」だけを Primary にし、押すべき操作をはっきりさせる。
+                Button {
                     stateStore.goToSetupStep(.habitSelection)
+                } label: {
+                    Text("内容を変更する")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppColor.text)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppColor.primary)
                 .buttonStyle(.plain)
             }
         }
@@ -846,7 +868,13 @@ struct OnboardingSetupView: View {
         .padding(.top, 12)
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial)
+        // 地は画面と同じ Background にし、スクロールする中身との境目だけ細い線で示す。
+        .background(AppColor.background)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(AppColor.border)
+                .frame(height: 1)
+        }
     }
 
     private var primaryButtonTitle: String {
@@ -1197,6 +1225,14 @@ struct OnboardingSetupView: View {
         openURL(url)
     }
 
+    private func limitPeriodName(_ period: HabitPeriod) -> String {
+        switch period {
+        case .day: return "1日"
+        case .week: return "1週間"
+        case .month: return "1ヶ月"
+        }
+    }
+
     private func onboardingTitle(_ text: String) -> some View {
         Text(text)
             .font(.title2.weight(.bold))
@@ -1231,8 +1267,14 @@ private struct OnboardingRioIntroductionView: View {
     }
 
     let stage: OnboardingIntroductionStage
+    /// 名前はまだ保存前なので、入力中の名前を受け取って最初のセリフに差し込む。
+    let userName: String
     let onContinue: () -> Void
     let onBack: () -> Void
+
+    private var firstMessage: String {
+        RioCopy.text("onboarding_intro_001", userName: userName)
+    }
 
     private var showsSecondMessage: Bool {
         stage == .secondMessage || stage == .characterExplanation
@@ -1271,8 +1313,8 @@ private struct OnboardingRioIntroductionView: View {
                             ScrollViewReader { scrollProxy in
                                 ScrollView {
                                     VStack(alignment: .leading, spacing: 12) {
-                                        OnboardingRioBubble(text: RioCopy.text("onboarding_intro_001"))
-                                            .accessibilityLabel("莉央、\(RioCopy.text("onboarding_intro_001"))")
+                                        OnboardingRioBubble(text: firstMessage)
+                                            .accessibilityLabel("莉央、\(firstMessage)")
                                             .accessibilityFocused($focusedContent, equals: .firstMessage)
 
                                         if showsSecondMessage {
@@ -1319,15 +1361,8 @@ private struct OnboardingRioIntroductionView: View {
                         .contentShape(Rectangle())
                         .onTapGesture(perform: onContinue)
 
-                        Button(action: onContinue) {
-                            Text("次へ")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(AppColor.text)
-                                .padding(.horizontal, 20)
-                                .frame(minHeight: 44)
-                                .background(AppColor.surface.opacity(0.95), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
+                        OnboardingContinueButton(action: onContinue)
+                            .padding(.top, 8)
                         .opacity(showsExplanation ? 1 : 0)
                         .allowsHitTesting(showsExplanation)
                         .accessibilityHidden(!showsExplanation)
@@ -1472,13 +1507,8 @@ private struct OnboardingHabitSelectionIntroductionView: View {
                         .contentShape(Rectangle())
                         .onTapGesture(perform: continueFromMessageIfNeeded)
 
-                        Button("次へ", action: onContinue)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(AppColor.text)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: 44)
-                            .background(AppColor.surface.opacity(0.95), in: Capsule())
-                            .buttonStyle(.plain)
+                        OnboardingContinueButton(action: onContinue)
+                            .padding(.top, 8)
                             .opacity(showsExplanation ? 1 : 0)
                             .allowsHitTesting(showsExplanation)
                             .accessibilityHidden(!showsExplanation)
@@ -1666,13 +1696,8 @@ private struct OnboardingBlockedBehaviorGuidanceView: View {
                         .contentShape(Rectangle())
                         .onTapGesture(perform: continueFromMessageIfNeeded)
 
-                        Button("次へ", action: onContinue)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(AppColor.text)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: 44)
-                            .background(AppColor.surface.opacity(0.95), in: Capsule())
-                            .buttonStyle(.plain)
+                        OnboardingContinueButton(action: onContinue)
+                            .padding(.top, 8)
                             .opacity(showsExplanation ? 1 : 0)
                             .allowsHitTesting(showsExplanation)
                             .accessibilityHidden(!showsExplanation)
@@ -1829,7 +1854,8 @@ private struct OnboardingConfirmationGuidanceView: View {
                                         routineTitle: routineTitle,
                                         iconName: iconName
                                     ),
-                                    message: "休んだ日があっても、達成済みの記録や物語の進行は消えません。"
+                                    title: "できたらタップで報告",
+                                    message: "休んだ日があっても、\n達成済みの記録や物語の進行は消えません。"
                                 )
                                 .accessibilityFocused($focusedContent, equals: .explanation)
                                 .accessibilityIdentifier("onboarding.confirmation.explanation")
@@ -1840,13 +1866,8 @@ private struct OnboardingConfirmationGuidanceView: View {
                         .contentShape(Rectangle())
                         .onTapGesture(perform: continueFromMessageIfNeeded)
 
-                        Button("次へ", action: onContinue)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(AppColor.text)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: 44)
-                            .background(AppColor.surface.opacity(0.95), in: Capsule())
-                            .buttonStyle(.plain)
+                        OnboardingContinueButton(action: onContinue)
+                            .padding(.top, 8)
                             .opacity(showsExplanation ? 1 : 0)
                             .allowsHitTesting(showsExplanation)
                             .accessibilityHidden(!showsExplanation)
@@ -1987,13 +2008,8 @@ private struct OnboardingDelayedGuidanceView: View {
                         .contentShape(Rectangle())
                         .onTapGesture(perform: continueFromMessageIfNeeded)
 
-                        Button("次へ", action: onContinue)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(AppColor.text)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: 44)
-                            .background(AppColor.surface.opacity(0.95), in: Capsule())
-                            .buttonStyle(.plain)
+                        OnboardingContinueButton(action: onContinue)
+                            .padding(.top, 8)
                             .opacity(showsExplanation ? 1 : 0)
                             .allowsHitTesting(showsExplanation)
                             .accessibilityHidden(!showsExplanation)
@@ -2033,13 +2049,22 @@ private struct OnboardingDelayedGuidanceView: View {
 }
 
 /// 説明が現れる前から同じ高さを確保し、セリフや莉央の位置を動かさない。
-private enum OnboardingExplanationLayout {
+enum OnboardingExplanationLayout {
+    /// 重ね画面の上端から、戻るボタンの行を置くまでの余白。
+    static let backButtonRowTopPadding: CGFloat = 8
+    static let backButtonSize: CGFloat = 44
+
     static func spacing(in size: CGSize) -> CGFloat {
         size.height < 680 ? 12 : 20
     }
 
     static func conversationTopPadding(in size: CGSize) -> CGFloat {
         size.height < 680 ? 8 : min(48, size.height * 0.06)
+    }
+
+    /// 戻るボタンのない重ね画面(アプリ内の案内)でも、莉央の顔を設定中の重ね画面と同じ高さに置く。
+    static func conversationTopInset(in size: CGSize) -> CGFloat {
+        backButtonRowTopPadding + backButtonSize + spacing(in: size) + conversationTopPadding(in: size)
     }
 
     static func conversationToPanelSpacing(in size: CGSize) -> CGFloat {
@@ -2108,7 +2133,6 @@ private struct OnboardingExplanationPanel: View {
             }
         }
         .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .scaleEffect(0.95, anchor: .top)
         .accessibilityElement(children: .combine)
     }
 
@@ -2139,6 +2163,24 @@ private struct OnboardingExplanationPanel: View {
         }
         .padding(16)
         .contentShape(Rectangle())
+    }
+}
+
+/// 莉央のセリフや説明を重ねている間の「次へ」。その場で押せる唯一の操作なので、文字と幅を十分にとる。
+struct OnboardingContinueButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("次へ")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppColor.text)
+                .padding(.horizontal, 24)
+                .frame(minWidth: 120, minHeight: 44)
+                .background(AppColor.surface, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -2214,11 +2256,11 @@ private struct OnboardingHabitCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 Image(systemName: iconName)
-                    .font(.system(size: 25, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(isSelected ? Color.white : AppColor.primary)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 48, height: 48)
                     .background(isSelected ? AppColor.primary : AppColor.primarySoft, in: Circle())
 
                 Text(title)
@@ -2227,7 +2269,8 @@ private struct OnboardingHabitCard: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
             }
-            .frame(maxWidth: .infinity, minHeight: 116)
+            // 7枚(4段)が 13 mini の1画面に入る高さ。
+            .frame(maxWidth: .infinity, minHeight: 96)
             .padding(10)
             .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20))
             .overlay {
