@@ -115,6 +115,21 @@ describe('source normalization', () => {
     },
   );
 
+  it.each([
+    { args: '', expected: undefined },
+    { args: '{"action":"stop","fade_ms":0}', expected: { action: 'stop', fade_ms: 0 } },
+    { args: '{"action":"stop","fade_ms":1500}', expected: { action: 'stop', fade_ms: 1500 } },
+  ])('preserves the BGM stop duration, including explicit zero: $args', ({ args, expected }) => {
+    const result = process(sheets({ scenarios: [scenario({
+      scenario_type: 'prologue', message_type: 'action', ui_variant: 'scene_transition',
+      command: 'stop_bgm', command_args: args,
+    })] }));
+    expect(result.errors).toEqual([]);
+    const node = generate(result.data).scenarios[0]!.nodes[0]!;
+    expect(node.command).toBe('stop_bgm');
+    expect(node.commandArgs).toEqual(expected);
+  });
+
   it('preserves portrait_hesitate without arguments for its default duration', () => {
     const result = process(
       sheets({

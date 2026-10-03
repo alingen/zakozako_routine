@@ -65,6 +65,7 @@ export interface NormalizedScenarioRow {
   saveKey?: string;
   saveValue?: string;
   assetId?: string;
+  voiceAssetId?: string;
   minPhase?: number;
   maxPhase?: number;
   speakerName?: string;
@@ -212,7 +213,7 @@ export function allScenarioRows(data: NormalizedSheets): NormalizedScenarioRow[]
 export type StoryNode = Omit<
   NormalizedScenarioRow,
   '__row' | 'sourceSheet' | 'scenarioId' | 'scenarioType'
->;
+> & { voiceFileName?: string };
 
 export interface StoryScenario {
   scenarioId: string;

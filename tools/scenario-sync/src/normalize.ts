@@ -238,6 +238,7 @@ function normalizeScenarioRows(
       saveKey: optionalString(row, 'save_key'),
       saveValue: optionalString(row, 'save_value'),
       assetId: optionalString(row, 'asset_id'),
+      voiceAssetId: optionalString(row, 'voice_asset_id'),
       minPhase,
       maxPhase,
       speakerName: optionalString(row, 'speaker_name'),

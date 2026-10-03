@@ -66,7 +66,7 @@ struct ADVStoryRenderer: View {
 
     private var advancesFromTextWindow: Bool {
         switch node.uiVariant ?? .dialogue {
-        case .narration, .beat, .sceneTransition, .monologue:
+        case .narration, .fullscreenNarration, .beat, .sceneTransition, .monologue:
             return true
         case .dialogue:
             return node.messageType != .image
@@ -285,7 +285,7 @@ struct ADVStoryRenderer: View {
         switch node.uiVariant ?? .dialogue {
         case .titleCard:
             StoryTitleCardView(node: node)
-        case .narration, .beat, .sceneTransition, .monologue:
+        case .narration, .fullscreenNarration, .beat, .sceneTransition, .monologue:
             ADVTextWindow(
                 node: node,
                 maxWidth: textWindowMaxWidth,
@@ -605,6 +605,7 @@ private struct ADVAdvanceIndicator: View {
 }
 
 struct ADVTextWindow: View {
+    @Environment(\.storyVoicePlayback) private var voicePlayback
     let node: StoryNode
     let maxWidth: CGFloat
     let horizontalPadding: CGFloat
@@ -631,9 +632,7 @@ struct ADVTextWindow: View {
     }
 
     private var protagonistDisplayName: String {
-        let nickname = AppSettingsStore.userName
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return nickname.isEmpty ? "主人公" : nickname
+        node.protagonistDisplayName(userName: AppSettingsStore.userName)
     }
 
     private var displaySpeakerName: String? {
@@ -731,7 +730,13 @@ struct ADVTextWindow: View {
             String(isPlaybackPaused),
             String(isAutomationAvailable),
             String(isTextRevealEnabled),
+            String(waitsForVoice),
         ].joined(separator: "|")
+    }
+
+    private var waitsForVoice: Bool {
+        playbackMode == .auto && !hasNextPage
+            && (voicePlayback?.awaitsCompletion(for: node) ?? false)
     }
 
     private var windowBorderOpacity: Double {
@@ -861,6 +866,11 @@ struct ADVTextWindow: View {
 
     private func revealCurrentPage() async {
         guard isTextRevealEnabled, !isPlaybackPaused else { return }
+        if playbackMode == .fastForward {
+            voicePlayback?.suppress(nodeID: node.nodeId)
+        } else {
+            voicePlayback?.start(node: node)
+        }
         let characterCount = currentPage.count
 
         guard !revealsImmediately else {
@@ -887,6 +897,7 @@ struct ADVTextWindow: View {
 
     private func automaticallyContinueIfNeeded() async {
         guard isPageFullyRevealed,
+              !waitsForVoice,
               isTextRevealEnabled,
               !isPlaybackPaused,
               isAutomationAvailable,

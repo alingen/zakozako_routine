@@ -3,21 +3,68 @@ import SwiftData
 import SwiftUI
 
 @MainActor
-private final class StoryBGMPlaybackController: ObservableObject {
-    private var player: AVAudioPlayer?
-    private var currentState: StoryBGMPlaybackState?
+protocol StoryBGMAudioPlayer: AnyObject {
+    var volume: Float { get set }
+    var numberOfLoops: Int { get set }
+    func prepareToPlay() -> Bool
+    func play() -> Bool
+    func setVolume(_ volume: Float, fadeDuration duration: TimeInterval)
+    func stop()
+}
 
-    func synchronize(with state: StoryBGMPlaybackState?) {
+extension AVAudioPlayer: StoryBGMAudioPlayer {}
+
+@MainActor
+final class StoryBGMPlaybackController: ObservableObject {
+    private var player: (any StoryBGMAudioPlayer)?
+    private var currentState: StoryBGMPlaybackState?
+    private var fadingPlayers: [UUID: (player: any StoryBGMAudioPlayer, task: Task<Void, Never>)] = [:]
+    private let makePlayer: (String) throws -> (any StoryBGMAudioPlayer)?
+    private let configureAudioSession: () throws -> Void
+    private let sleep: StoryPlayerSleep
+
+    init(
+        makePlayer: @escaping (String) throws -> (any StoryBGMAudioPlayer)? = { assetID in
+            guard let url = storyAudioURL(for: assetID) else { return nil }
+            return try AVAudioPlayer(contentsOf: url)
+        },
+        configureAudioSession: @escaping () throws -> Void = {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        },
+        sleep: @escaping StoryPlayerSleep = { milliseconds in
+            try await Task.sleep(for: .milliseconds(milliseconds))
+        }
+    ) {
+        self.makePlayer = makePlayer
+        self.configureAudioSession = configureAudioSession
+        self.sleep = sleep
+    }
+
+    func synchronize(with update: StoryBGMPlaybackUpdate) {
+        if update.events.isEmpty {
+            // Restoring a checkpoint starts only its final BGM, not past audio commands.
+            guard update.state != currentState else { return }
+            if let state = update.state { play(state) } else { stop() }
+        } else {
+            for event in update.events {
+                switch event {
+                case .play(let state): play(state)
+                case .stop(let fadeMilliseconds): stop(fadeMilliseconds: fadeMilliseconds)
+                }
+            }
+        }
+    }
+
+    private func play(_ state: StoryBGMPlaybackState) {
         guard state != currentState else { return }
         stop()
-        guard let state, let url = storyAudioURL(for: state.assetID) else { return }
 
         do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-            let player = try AVAudioPlayer(contentsOf: url)
+            try configureAudioSession()
+            guard let player = try makePlayer(state.assetID) else { return }
             player.numberOfLoops = state.loop ? -1 : 0
             player.volume = state.fadeMilliseconds > 0 ? 0 : state.volume
-            player.prepareToPlay()
+            _ = player.prepareToPlay()
             guard player.play() else { return }
             if state.fadeMilliseconds > 0 {
                 player.setVolume(
@@ -33,18 +80,71 @@ private final class StoryBGMPlaybackController: ObservableObject {
         }
     }
 
-    func stop() {
-        player?.stop()
+    func stop(fadeMilliseconds: UInt64 = StoryBGMPlaybackState.defaultStopFadeMilliseconds) {
+        let outgoing = player
         player = nil
         currentState = nil
+
+        if fadeMilliseconds == 0 {
+            outgoing?.stop()
+            for fade in fadingPlayers.values {
+                fade.task.cancel()
+                fade.player.stop()
+            }
+            fadingPlayers.removeAll()
+            return
+        }
+
+        // Repeated cleanup calls must not restart an already-running fade.
+        guard let outgoing else { return }
+        outgoing.setVolume(0, fadeDuration: TimeInterval(fadeMilliseconds) / 1_000)
+        let id = UUID()
+        let sleep = sleep
+        let task = Task { @MainActor [weak self] in
+            do { try await sleep(fadeMilliseconds) } catch { }
+            guard !Task.isCancelled else { return }
+            // Retain this specific player through view dismissal. Never stop a newer track.
+            outgoing.stop()
+            self?.fadingPlayers.removeValue(forKey: id)
+        }
+        fadingPlayers[id] = (outgoing, task)
     }
 }
 
 @MainActor
-private final class StorySoundEffectPlaybackController: NSObject, ObservableObject, AVAudioPlayerDelegate {
-    private var players: [AVAudioPlayer] = []
-    private var loopingPlayers: [String: AVAudioPlayer] = [:]
+protocol StorySoundEffectAudioPlayer: AnyObject {
+    var volume: Float { get set }
+    var numberOfLoops: Int { get set }
+    var currentTime: TimeInterval { get set }
+    var isPlaying: Bool { get }
+    func prepareToPlay() -> Bool
+    func play() -> Bool
+    func stop()
+}
+
+extension AVAudioPlayer: StorySoundEffectAudioPlayer {}
+
+@MainActor
+final class StorySoundEffectPlaybackController: NSObject, ObservableObject, AVAudioPlayerDelegate {
+    private var players: [(assetID: String, player: any StorySoundEffectAudioPlayer)] = []
+    private var loopingPlayers: [String: any StorySoundEffectAudioPlayer] = [:]
     private var textWindowClickPlayer: AVAudioPlayer?
+    private let makePlayer: (String) throws -> (any StorySoundEffectAudioPlayer)?
+    private let configureAudioSession: () throws -> Void
+
+    init(
+        makePlayer: @escaping (String) throws -> (any StorySoundEffectAudioPlayer)? = { assetID in
+            guard let url = storyAudioURL(for: assetID) else { return nil }
+            return try AVAudioPlayer(contentsOf: url)
+        },
+        configureAudioSession: @escaping () throws -> Void = {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+        }
+    ) {
+        self.makePlayer = makePlayer
+        self.configureAudioSession = configureAudioSession
+        super.init()
+    }
 
     func playTextWindowClick() {
         do {
@@ -65,26 +165,30 @@ private final class StorySoundEffectPlaybackController: NSObject, ObservableObje
         }
     }
 
-    func play(_ effects: [StorySoundEffectPlayback]) {
-        guard !effects.isEmpty else { return }
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-        } catch {
-            return
-        }
-
-        for effect in effects {
-            guard let url = storyAudioURL(for: effect.assetID) else { continue }
-            do {
-                let player = try AVAudioPlayer(contentsOf: url)
-                player.volume = effect.volume
-                player.delegate = self
-                player.prepareToPlay()
-                if player.play() {
-                    players.append(player)
+    func play(_ events: [StorySoundEffectEvent]) {
+        for event in events {
+            switch event {
+            case .stop(let assetID):
+                // Stop every overlapping one-shot of this asset, but leave other sounds alone.
+                // Loops are controlled by synchronizeLooping, not this transient queue.
+                for entry in players where entry.assetID == assetID {
+                    entry.player.stop()
                 }
-            } catch {
-                continue
+                players.removeAll { $0.assetID == assetID }
+            case .play(let effect):
+                do {
+                    try configureAudioSession()
+                    guard let player = try makePlayer(effect.assetID) else { continue }
+                    player.volume = effect.volume
+                    (player as? AVAudioPlayer)?.delegate = self
+                    _ = player.prepareToPlay()
+                    if player.play() {
+                        players.append((effect.assetID, player))
+                    }
+                } catch {
+                    // A failed play must not discard a later stop in the same batch.
+                    continue
+                }
             }
         }
     }
@@ -96,7 +200,7 @@ private final class StorySoundEffectPlaybackController: NSObject, ObservableObje
         }
         guard !effects.isEmpty else { return }
         do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
+            try configureAudioSession()
         } catch {
             return
         }
@@ -110,12 +214,11 @@ private final class StorySoundEffectPlaybackController: NSObject, ObservableObje
                 }
                 continue
             }
-            guard let url = storyAudioURL(for: assetID) else { continue }
             do {
-                let player = try AVAudioPlayer(contentsOf: url)
+                guard let player = try makePlayer(assetID) else { continue }
                 player.numberOfLoops = -1
                 player.volume = effect.volume
-                player.prepareToPlay()
+                _ = player.prepareToPlay()
                 if player.play() {
                     loopingPlayers[assetID] = player
                 }
@@ -126,7 +229,7 @@ private final class StorySoundEffectPlaybackController: NSObject, ObservableObje
     }
 
     func stop() {
-        players.forEach { $0.stop() }
+        players.forEach { $0.player.stop() }
         players = []
         loopingPlayers.values.forEach { $0.stop() }
         loopingPlayers = [:]
@@ -136,7 +239,7 @@ private final class StorySoundEffectPlaybackController: NSObject, ObservableObje
 
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor [weak self] in
-            self?.players.removeAll { $0 === player }
+            self?.players.removeAll { $0.player === player }
         }
     }
 }
@@ -326,8 +429,8 @@ struct StoryPlaybackContainerView: View {
         .task(id: shouldRunCompletionFade && player?.sceneTransition == nil) {
             await runCompletionFadeIfNeeded()
         }
-        .onChange(of: player?.bgmPlaybackState) { _, state in
-            bgmPlayback.synchronize(with: state)
+        .onChange(of: player?.bgmPlaybackUpdate, initial: true) { _, _ in
+            synchronizeBGMAudio()
         }
         .onChange(of: player?.loopingSoundEffects, initial: true) { _, effects in
             soundEffectPlayback.synchronizeLooping(with: effects ?? [:])
@@ -341,6 +444,7 @@ struct StoryPlaybackContainerView: View {
             #if DEBUG
             transitionDiagnostics.update(isActive: false)
             #endif
+            synchronizeBGMAudio()
             player?.close()
             bgmPlayback.stop()
             soundEffectPlayback.stop()
@@ -381,7 +485,16 @@ struct StoryPlaybackContainerView: View {
         AppOrientationController.set(usesLandscapePresentation ? .landscape : .portrait)
     }
 
+    private func synchronizeBGMAudio() {
+        guard let player else { return }
+        bgmPlayback.synchronize(with: StoryBGMPlaybackUpdate(
+            state: player.bgmPlaybackState,
+            events: player.consumePendingBGMEvents()
+        ))
+    }
+
     private func prepare() async {
+        synchronizeBGMAudio()
         player?.close()
         bgmPlayback.stop()
         soundEffectPlayback.stop()
@@ -514,6 +627,7 @@ struct StoryPlaybackContainerView: View {
             isHesitating: player.isHesitating,
             availableChoices: player.availableChoices,
             isTyping: player.isTyping,
+            isWaitingForChatExit: player.isWaitingForChatExit,
             isModalPresented: player.isModalPresented,
             isCompleted: player.isCompleted,
             isCurrentNodeTerminal: player.isCurrentNodeTerminal,
@@ -545,6 +659,7 @@ struct StoryPlaybackContainerView: View {
             String(snapshot.visibleLogNodes.count),
             String(snapshot.availableChoices.count),
             String(snapshot.isTyping),
+            String(snapshot.isWaitingForChatExit),
             String(snapshot.isModalPresented),
         ].joined(separator: "|")
     }

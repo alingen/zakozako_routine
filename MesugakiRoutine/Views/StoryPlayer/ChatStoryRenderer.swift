@@ -2,6 +2,7 @@ import SwiftUI
 
 /// チャット表示専用のrenderer。表示済みnode列を受け取り、進行処理はcallbackへ返す。
 struct ChatStoryRenderer: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let node: StoryNode
     let scenarioType: StoryScenarioType
     var isTerminalNode = false
@@ -10,6 +11,7 @@ struct ChatStoryRenderer: View {
     var cgAssetID: String?
     var choices: [StoryChoice] = []
     var isTyping = false
+    var isWaitingForChatExit = false
     var isModalPresented = false
     let onAdvance: () -> Void
     let onPresentNode: () -> Void
@@ -23,7 +25,7 @@ struct ChatStoryRenderer: View {
 
     private var effectivePortrait: String? { portraitAssetID ?? node.portrait }
     private var effectiveCG: String? { cgAssetID ?? node.cg }
-    private var canAdvance: Bool { choices.isEmpty && !isModalPresented && !isTyping }
+    private var canAdvance: Bool { choices.isEmpty && !isModalPresented && !isTyping && !isWaitingForChatExit }
     private var usesEventChatFlow: Bool {
         switch scenarioType {
         case .prologue, .smallEvent, .middleEvent, .largeEvent:
@@ -39,14 +41,21 @@ struct ChatStoryRenderer: View {
             )
     }
     private var shouldAutomaticallyPresentNode: Bool {
-        guard canAdvance else { return false }
+        guard canAdvance, !usesFullscreenNarration else { return false }
         if usesEventChatFlow {
             return !isWaitingToSendPlayerMessage
         }
         return node.isRioSpeaker && node.messageType == .text
     }
-    private var shouldAutoAdvance: Bool {
+    var shouldAutoAdvance: Bool {
         shouldAutomaticallyPresentNode && !waitsForTerminalAdvance
+            && !requiresManualNarrationAdvance
+    }
+    private var requiresManualNarrationAdvance: Bool {
+        EventChatSystemPresentationPolicy.requiresManualAdvance(node: node, scenarioType: scenarioType)
+    }
+    private var usesFullscreenNarration: Bool {
+        EventChatSystemPresentationPolicy.usesFullscreenNarration(node: node)
     }
     private var isWaitingToSendPlayerMessage: Bool {
         ChatStoryPresentationPolicy.isUnsentPlayerMessage(node: node, canAdvance: canAdvance)
@@ -63,7 +72,7 @@ struct ChatStoryRenderer: View {
     private var isWaitingForSystemMessage: Bool {
         shouldAutomaticallyPresentNode
             && usesEventChatFlow
-            && node.normalizedSpeakerKey == "system"
+            && EventChatSystemPresentationPolicy.usesInlineNarration(node: node)
             && node.messageType == .text
             && revealedSystemNodeID != node.nodeId
     }
@@ -81,15 +90,21 @@ struct ChatStoryRenderer: View {
         ChatStoryPresentationPolicy.manualAdvanceLabel(
             node: node,
             scenarioType: scenarioType,
-            isInitialEventPlayerMessage: isInitialEventPlayerMessage
+            isInitialEventPlayerMessage: isInitialEventPlayerMessage,
+            isTerminalNode: isTerminalNode
         )
     }
 
     private var manualAdvanceSymbol: String {
-        node.isPlayerSpeaker ? "paperplane.fill" : "chevron.right"
+        if isCloseButton { return "xmark" }
+        return node.isPlayerSpeaker ? "paperplane.fill" : "chevron.right"
     }
 
-    private let rioResponsePauseNanoseconds: UInt64 = 700_000_000
+    private var isCloseButton: Bool {
+        waitsForTerminalAdvance && !node.isPlayerSpeaker
+    }
+
+    private let rioResponsePauseNanoseconds: UInt64 = 350_000_000
     private let defaultRioTypingDurationMilliseconds = 600
     private let automaticContentDelayNanoseconds: UInt64 = 900_000_000
 
@@ -130,16 +145,6 @@ struct ChatStoryRenderer: View {
                 scenarioType: scenarioType
             )
         }
-    }
-
-    private var activeEventSystemNode: StoryNode? {
-        guard EventChatSystemPresentationPolicy.usesADVTextWindow(
-            node: node,
-            scenarioType: scenarioType
-        ), renderedNodes.contains(where: { $0.nodeId == node.nodeId }) else {
-            return nil
-        }
-        return node
     }
 
     var body: some View {
@@ -187,7 +192,7 @@ struct ChatStoryRenderer: View {
                         .padding(16)
                     }
                     .onAppear { scrollToLatest(proxy) }
-                    .onChange(of: renderedNodes.count) { _, _ in scrollToLatest(proxy) }
+                    .onChange(of: chatHistoryNodes.count) { _, _ in scrollToLatest(proxy) }
                     .onChange(of: isTyping) { _, _ in scrollToLatest(proxy) }
                     .onChange(of: isShowingRioTyping) { _, _ in scrollToLatest(proxy) }
                 }
@@ -196,24 +201,25 @@ struct ChatStoryRenderer: View {
                 .clipped()
 
                 actionArea
+                    .opacity(usesFullscreenNarration ? 0 : 1)
+                    .allowsHitTesting(!usesFullscreenNarration)
+                    .accessibilityHidden(usesFullscreenNarration)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: usesFullscreenNarration)
             }
+            .allowsHitTesting(!usesFullscreenNarration)
+            .accessibilityHidden(usesFullscreenNarration)
 
-            if let activeEventSystemNode {
-                ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.46)
-                        .ignoresSafeArea()
-
-                    ADVTextWindow(
-                        node: activeEventSystemNode,
-                        maxWidth: .infinity,
-                        horizontalPadding: 32,
-                        onAdvance: canAdvance ? { _ in advanceFromEventSystemText() } : nil,
-                        onTextWindowTap: onTextWindowTap,
-                        backgroundStyle: .baseColor
-                    )
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 101)
-                }
+            if usesFullscreenNarration {
+                FullscreenChatNarrationView(
+                    node: node,
+                    canAdvance: canAdvance,
+                    onPresentNode: onPresentNode,
+                    onAdvance: {
+                        // このモードは最後の行もタップで終了する。別の「閉じる」は挟まない。
+                        onTextWindowTap()
+                        onAdvance()
+                    }
+                )
                 .transition(.opacity)
                 .zIndex(1)
             }
@@ -225,6 +231,7 @@ struct ChatStoryRenderer: View {
                     .zIndex(2)
             }
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: usesFullscreenNarration)
         .task(id: node.nodeId) {
             guard shouldAutomaticallyPresentNode else { return }
             do {
@@ -258,6 +265,8 @@ struct ChatStoryRenderer: View {
                     onPresentNode()
                 } else {
                     onPresentNode()
+                    // 中大イベントの地の文は下部ボタンで進める。本文自体はタップ不可。
+                    guard !requiresManualNarrationAdvance else { return }
                     try await Task<Never, Never>.sleep(
                         nanoseconds: automaticContentDelayNanoseconds
                     )
@@ -401,7 +410,7 @@ struct ChatStoryRenderer: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(manualAdvanceLabel)
-        .accessibilityHint("会話を次へ進めます")
+        .accessibilityHint(isCloseButton ? "会話を終了してメニューに戻ります" : "会話を次へ進めます")
     }
 
     @ViewBuilder
@@ -432,9 +441,108 @@ struct ChatStoryRenderer: View {
         }
     }
 
-    private func advanceFromEventSystemText() {
-        onPresentNode()
-        onAdvance()
+}
+
+private struct FullscreenNarrationAdvanceIndicator: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var offset: CGFloat = -2
+
+    var body: some View {
+        Image(systemName: "chevron.down")
+            .font(.callout.bold())
+            .foregroundStyle(.white.opacity(0.6))
+            .frame(width: 24, height: 20)
+            .offset(y: offset)
+            .onAppear {
+                guard !reduceMotion else {
+                    offset = 0
+                    return
+                }
+                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+                    offset = 2
+                }
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+/// チャットを残したまま読む重要な地の文。連続する行の間は暗幕を維持する。
+struct FullscreenChatNarrationView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let node: StoryNode
+    let canAdvance: Bool
+    let onPresentNode: () -> Void
+    let onAdvance: () -> Void
+
+    @State private var hasEntered = false
+    @State private var displayedText = ""
+    @State private var isTextVisible = false
+    @State private var readyNodeID: String?
+
+    var body: some View {
+        ZStack {
+            // 下の吹き出しの文字が透けて白文字と重ならない濃さにする。
+            Color.black.opacity(0.80)
+                .ignoresSafeArea()
+
+            GeometryReader { proxy in
+                ScrollView {
+                    Text(displayedText)
+                        .font(.system(size: 22, weight: .semibold, design: .serif))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(8)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 24)
+                        .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                        .opacity(isTextVisible ? 1 : 0)
+                }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            // ADVのテキストウィンドウと同じく、タップで次へ進めることを示す。
+            FullscreenNarrationAdvanceIndicator()
+                .padding(.bottom, 32)
+                .opacity(readyNodeID == node.nodeId && canAdvance ? 1 : 0)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: readyNodeID)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard canAdvance, readyNodeID == node.nodeId else { return }
+            onAdvance()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isTextVisible ? displayedText : "ナレーション")
+        .accessibilityHint("ダブルタップで次へ進みます")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction {
+            guard canAdvance, readyNodeID == node.nodeId else { return }
+            onAdvance()
+        }
+        .task(id: node.nodeId) {
+            let nodeID = node.nodeId
+            readyNodeID = nil
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                isTextVisible = false
+            }
+            let delay = hasEntered ? 0.18 : 0.35
+            hasEntered = true
+            do {
+                // 最初は操作UIが消えるのを待つ。以降は地の文のみを短く切り替える。
+                if !reduceMotion { try await Task.sleep(for: .seconds(delay)) }
+                try Task.checkCancellation()
+                displayedText = node.storyDisplayText
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                    isTextVisible = true
+                }
+                onPresentNode()
+                if !reduceMotion { try await Task.sleep(for: .seconds(0.18)) }
+                try Task.checkCancellation()
+                readyNodeID = nodeID
+                AccessibilityNotification.Announcement(node.storyDisplayText).post()
+            } catch { return }
+        }
     }
 }
 
@@ -479,8 +587,13 @@ enum ChatStoryPresentationPolicy {
     static func manualAdvanceLabel(
         node: StoryNode,
         scenarioType: StoryScenarioType,
-        isInitialEventPlayerMessage: Bool = false
+        isInitialEventPlayerMessage: Bool = false,
+        isTerminalNode: Bool = false
     ) -> String {
+        if isTerminalNode, !node.isPlayerSpeaker,
+           StoryCompletionPresentationPolicy.returnsToMenuAutomatically(after: scenarioType) {
+            return "閉じる"
+        }
         guard node.isPlayerSpeaker else { return "次へ" }
         switch scenarioType {
         case .prologue, .smallEvent, .middleEvent, .largeEvent:
@@ -495,24 +608,38 @@ enum ChatStoryPresentationPolicy {
 }
 
 enum EventChatSystemPresentationPolicy {
-    static func usesADVTextWindow(
-        node: StoryNode,
-        scenarioType: StoryScenarioType
-    ) -> Bool {
-        guard isMiddleOrLargeEvent(scenarioType),
-              !node.storyDisplayText.isEmpty else {
-            return false
-        }
+    /// `screen_mode=chat` の描画側から利用する。画面モードは直前のsceneから継承してもよい。
+    static func usesFullscreenNarration(node: StoryNode) -> Bool {
+        node.uiVariant == .fullscreenNarration
+            && node.messageType == .text
+            && !node.storyDisplayText.isEmpty
+    }
+
+    static func usesInlineNarration(node: StoryNode) -> Bool {
+        guard node.uiVariant != .fullscreenNarration,
+              node.messageType == .text,
+              !node.storyDisplayText.isEmpty else { return false }
         return isSystemLike(node) || node.uiVariant == .narration
+    }
+
+    /// 地の文のうち心の声は区切り線なしで出す。区切り線は場面転換・時間経過・endに限る。
+    static func usesInlineMonologue(node: StoryNode) -> Bool {
+        guard usesInlineNarration(node: node) else { return false }
+        if node.uiVariant == .narration { return true }
+        return node.uiVariant == nil && node.normalizedSpeakerKey == "narrator"
+    }
+
+    static func requiresManualAdvance(node: StoryNode, scenarioType: StoryScenarioType) -> Bool {
+        isMiddleOrLargeEvent(scenarioType) && usesInlineNarration(node: node)
     }
 
     static func omitsFromChatHistory(
         node: StoryNode,
         scenarioType: StoryScenarioType
     ) -> Bool {
+        if node.uiVariant == .fullscreenNarration { return true }
         guard isMiddleOrLargeEvent(scenarioType) else { return false }
-        return usesADVTextWindow(node: node, scenarioType: scenarioType)
-            || (isSystemLike(node) && node.storyDisplayText.isEmpty)
+        return isSystemLike(node) && node.storyDisplayText.isEmpty
     }
 
     private static func isMiddleOrLargeEvent(
@@ -566,7 +693,8 @@ struct ChatStoryCompletionView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(visibleNodes.filter {
-                                !ChatStoryPresentationPolicy.isChoicePlaceholder(
+                                $0.uiVariant != .fullscreenNarration
+                                && !ChatStoryPresentationPolicy.isChoicePlaceholder(
                                     node: $0,
                                     scenarioType: scenarioType
                                 )
@@ -648,11 +776,14 @@ private struct StoryChatBubble: View {
     }
 
     private var isChatSystemMessage: Bool {
-        ChatStoryPresentationPolicy.usesChatCompletion(for: scenarioType) && isSystem
+        EventChatSystemPresentationPolicy.usesInlineNarration(node: node)
+            || (ChatStoryPresentationPolicy.usesChatCompletion(for: scenarioType) && isSystem)
     }
 
     var body: some View {
-        if isChatSystemMessage {
+        if EventChatSystemPresentationPolicy.usesInlineMonologue(node: node) {
+            ChatMonologueView(text: node.storyDisplayText)
+        } else if isChatSystemMessage {
             chatSystemMessage
         } else if isSystem {
             HStack {
@@ -705,7 +836,7 @@ private struct StoryChatBubble: View {
         switch node.uiVariant ?? .dialogue {
         case .titleCard:
             StoryTitleCardView(node: node)
-        case .narration, .beat:
+        case .narration, .fullscreenNarration, .beat:
             StoryNarrationView(node: node)
         case .sceneTransition:
             StorySceneTransitionView(node: node)
@@ -765,6 +896,27 @@ private struct StoryChatBubble: View {
     }
 }
 
+/// チャット中の主人公の心の声。直前の発言への反応なので、区切り線は付けず会話の流れに置く。
+private struct ChatMonologueView: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(AppColor.text)
+            .multilineTextAlignment(.center)
+            .lineSpacing(4)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 280)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity)
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(text)
+    }
+}
+
+/// 場面転換・時間経過・会話の終わりを示す区切り。
 private struct ChatSystemMessageView: View {
     let text: String
 
@@ -776,7 +928,7 @@ private struct ChatSystemMessageView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppColor.secondary)
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .layoutPriority(1)
 
             divider
@@ -787,13 +939,13 @@ private struct ChatSystemMessageView: View {
         .contentShape(Rectangle())
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("場面転換。\(text)")
+        .accessibilityLabel(text)
     }
 
     private var divider: some View {
         Rectangle()
             .fill(AppColor.secondary.opacity(0.45))
-            .frame(maxWidth: .infinity)
+            .frame(minWidth: 20, maxWidth: .infinity)
             .frame(height: 1)
             .accessibilityHidden(true)
     }

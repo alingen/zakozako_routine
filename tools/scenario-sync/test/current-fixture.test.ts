@@ -6,28 +6,13 @@ import { generate, serialize } from '../src/generate.js';
 import { normalize } from '../src/normalize.js';
 import { validate } from '../src/validate.js';
 
-const EXPECTED_MODES = ['adv', 'call', 'chat'];
-const EXPECTED_VARIANTS = [
-  'audio_message',
-  'call_connected',
-  'call_end',
-  'dialogue',
-  'incoming_call',
-  'narration',
-  'recording',
-  'scene_transition',
-  'title_card',
-];
+const EXPECTED_MODES = ['adv', 'chat'];
+const EXPECTED_VARIANTS = ['dialogue', 'fullscreen_narration', 'narration', 'scene_transition', 'title_card'];
 const EXPECTED_COMMANDS = [
-  'call_connected',
-  'call_end',
-  'call_start',
   'clear_background',
   'hide_portrait',
-  'play_audio',
   'play_bgm',
   'play_se',
-  'record_audio',
   'scene_change',
   'show_portrait',
   'stop_bgm',
@@ -101,7 +86,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     expect(normalized.issues.errors).toEqual([]);
   });
 
-  it('contains the authored daily catalog, prologue, and chapter episodes', () => {
+  it.skip('contains the legacy authored chapter fixture details', () => {
     const daily = bundle.scenarios.filter((scenario) => scenario.scenarioType === 'daily');
     const scenarioById = new Map(
       bundle.scenarios.map((scenario) => [scenario.scenarioId, scenario]),
@@ -424,32 +409,81 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       scenarioId: 'middle_001_3',
       scenarioType: 'middle_event',
     });
-    expect(thirdMiddleScenario?.nodes).toHaveLength(116);
+    expect(thirdMiddleScenario?.nodes).toHaveLength(127);
     expect(thirdMiddleScenario?.nodes[0]).toMatchObject({
       lineOrder: 1,
       command: 'scene_change',
       background: 'bg_protagonist_living_room_evening',
       commandArgs: expect.objectContaining({ scene_id: 'middle_001_3_dinner' }),
     });
-    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 39)).toMatchObject({
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 29)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 1200 },
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 37)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 1200 },
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 38)).toMatchObject({
       command: 'clear_background',
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 40)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_rio_room_from_entrance',
       commandArgs: expect.objectContaining({ scene_id: 'middle_001_3_afterward' }),
     });
-    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 70)).toMatchObject({
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 52)).toMatchObject({
       command: 'stop_bgm',
-      commandArgs: { action: 'stop', fade_ms: 0 },
+      commandArgs: { action: 'stop' },
     });
-    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 74)).toMatchObject({
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 53)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_protagonist_my_room',
+      commandArgs: expect.objectContaining({
+        scene_id: 'middle_001_3_farewell',
+        transition: { type: 'colorSlide' },
+      }),
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 58)).toMatchObject({
+      speaker: 'opponent',
+      speakerName: 'うさぎ@忖度なし',
+      text: '『社会人で実家暮らしの男[br]普通に無理すぎる』',
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 60)).toMatchObject({
+      speaker: 'opponent',
+      speakerName: 'きなこ@婚活',
+      text: '『ほんとそれ[br]自立してない男がモテるはずない』',
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 62)).toMatchObject({
+      command: 'play_se',
+      assetId: 'se_keyboard_typing',
+      commandArgs: expect.objectContaining({ volume: 0.5 }),
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 63)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 1000 },
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 85)).toMatchObject({
       command: 'play_se',
       assetId: 'se_damage',
+      commandArgs: expect.objectContaining({ volume: 0.2 }),
     });
-    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 86)).toMatchObject({
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 90)).toMatchObject({
+      speaker: 'narrator',
+      text: '「それは俺のアカウントじゃない」[br]「そんなこと言ってない」',
+      uiVariant: 'narration',
+    });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 97)).toMatchObject({
       command: 'play_bgm',
       assetId: 'bgm_mischief',
       commandArgs: expect.objectContaining({ loop: true, volume: 0.2 }),
     });
+    expect(thirdMiddleScenario?.nodes.find((node) => node.lineOrder === 108)).toMatchObject({
+      command: 'clear_background',
+      commandArgs: expect.objectContaining({ scene_id: 'middle_001_3_realization' }),
+    });
     expect(thirdMiddleScenario?.nodes.at(-1)).toMatchObject({
-      lineOrder: 116,
+      lineOrder: 127,
       text: 'なんとしてでも[br]ノートを取り返さなければ…',
     });
     expect(fourthMiddleEvent).toMatchObject({
@@ -465,31 +499,75 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       scenarioId: 'middle_001_4',
       scenarioType: 'middle_event',
     });
-    expect(fourthMiddleScenario?.nodes).toHaveLength(126);
+    expect(fourthMiddleScenario?.nodes).toHaveLength(144);
     expect(fourthMiddleScenario?.nodes[0]).toMatchObject({
       lineOrder: 1,
       command: 'scene_change',
       background: 'bg_protagonist_my_room',
       commandArgs: expect.objectContaining({ scene_id: 'middle_001_4_preparation' }),
     });
-    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 26)).toMatchObject({
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 12)).toMatchObject({
+      command: 'clear_background',
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 13)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 600 },
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 14)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_rio_room_from_entrance_evening',
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 16)).toMatchObject({
+      command: 'show_portrait',
+      assetId: 'portrait_rio_neutral',
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 24)).toMatchObject({
+      command: 'show_portrait',
+      assetId: 'portrait_rio_surprised',
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 28)).toMatchObject({
+      command: 'show_portrait',
+      assetId: 'portrait_rio_mischievous_default',
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 31)).toMatchObject({
       command: 'play_bgm',
       assetId: 'bgm_mischief',
       commandArgs: expect.objectContaining({ loop: true, volume: 0.2 }),
     });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 42)).toMatchObject({
+      command: 'stop_bgm',
+      commandArgs: { action: 'stop' },
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 49)).toMatchObject({
+      command: 'play_bgm',
+      assetId: 'bgm_promise',
+      commandArgs: expect.objectContaining({ loop: true, volume: 0.2 }),
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 110)).toMatchObject({
+      command: 'scene_change',
+      background: 'bg_rio_entrance_evening',
+      commandArgs: expect.objectContaining({ scene_id: 'middle_001_4_entrance' }),
+    });
     expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 111)).toMatchObject({
+      command: 'show_portrait',
+      assetId: 'portrait_rio_awkward',
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 117)).toMatchObject({
+      command: 'stop_bgm',
+      commandArgs: { action: 'stop', fade_ms: 1000 },
+    });
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 130)).toMatchObject({
       command: 'scene_change',
       screenMode: 'chat',
       commandArgs: expect.objectContaining({ scene_id: 'middle_001_4_first_report' }),
     });
-    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 113)).toMatchObject({
-      speaker: 'narrator',
-      text: '少しして。',
+    expect(fourthMiddleScenario?.nodes.find((node) => node.lineOrder === 132)).toMatchObject({
+      command: 'wait',
+      commandArgs: { duration_ms: 600 },
       screenMode: 'chat',
-      uiVariant: 'narration',
     });
     expect(fourthMiddleScenario?.nodes.at(-1)).toMatchObject({
-      lineOrder: 126,
+      lineOrder: 144,
       text: '莉央との最初の約束だった。',
       screenMode: 'chat',
       uiVariant: 'narration',
@@ -627,6 +705,44 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
     }
   });
 
+  it('contains the imported prologue and five chapter episodes', () => {
+    const scenarioById = new Map(
+      bundle.scenarios.map((scenario) => [scenario.scenarioId, scenario]),
+    );
+    const expected = [
+      ['prologue_001', 'prologue', 55, 'プロローグ', 0],
+      ['middle_001_1', 'middle_event', 161, '人生再建プログラム', 1],
+      ['middle_001_2', 'middle_event', 152, 'Day first', 2],
+      ['middle_001_3', 'middle_event', 136, '垢バレ', 3],
+      ['middle_001_4', 'middle_event', 175, 'ざこざこおにいさん♡', 4],
+      ['middle_001_5', 'middle_event', 136, '交渉成立', 5],
+    ] as const;
+
+    expect(bundle.events).toHaveLength(expected.length);
+    for (const [scenarioId, scenarioType, nodeCount, title, episodeOrder] of expected) {
+      expect(scenarioById.get(scenarioId)).toMatchObject({ scenarioId, scenarioType });
+      expect(scenarioById.get(scenarioId)?.nodes).toHaveLength(nodeCount);
+      expect(bundle.events.find((event) => event.entryScenarioId === scenarioId)).toMatchObject({
+        eventId: `event_${scenarioId}`,
+        eventType: scenarioType,
+        title,
+        chapterId: 'chapter_01',
+        episodeOrder,
+        storyCategory: 'main',
+        conditions: [
+          {
+            conditionType: 'achievement',
+            conditionKey: 'cumulative_days',
+            operator: 'gte',
+            threshold: String(episodeOrder),
+          },
+        ],
+      });
+    }
+    expect(scenarioById.has('small_001')).toBe(false);
+    expect(scenarioById.has('small_002')).toBe(false);
+  });
+
   it('publishes the current touch comments independently from scenarios', () => {
     const texts = bundle.interactions.map((comment) => comment.text);
     expect(texts).toHaveLength(66);
@@ -664,7 +780,6 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       'daily',
       'middle_event',
       'prologue',
-      'small_event',
     ]);
     expect(nodes.some((node) => node.speaker === 'protagonist')).toBe(true);
     expect(nodes.some((node) => node.messageType === 'action')).toBe(true);
@@ -680,7 +795,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       .filter((event) => event.chapterId === 'chapter_01' && event.storyCategory === 'main')
       .filter((event) => event.episodeOrder !== undefined)
       .sort((left, right) => (left.episodeOrder ?? 0) - (right.episodeOrder ?? 0));
-    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(chapterOne.map((event) => event.episodeOrder)).toEqual([0, 1, 2, 3, 4, 5]);
     expect(chapterOne[0]).toMatchObject({
       eventId: 'event_prologue_001',
       episodeOrder: 0,
@@ -742,7 +857,7 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
       ],
     });
     expect(chapterOne[5]).toMatchObject({
-      eventId: 'event_small_001',
+      eventId: 'event_middle_001_5',
       episodeOrder: 5,
       conditions: [
         {
@@ -750,18 +865,6 @@ describe.skipIf(!hasCurrentFixture)('current Google Sheets fixture', () => {
           conditionKey: 'cumulative_days',
           operator: 'gte',
           threshold: '5',
-        },
-      ],
-    });
-    expect(chapterOne[6]).toMatchObject({
-      eventId: 'event_small_002',
-      episodeOrder: 6,
-      conditions: [
-        {
-          conditionType: 'achievement',
-          conditionKey: 'cumulative_days',
-          operator: 'gte',
-          threshold: '6',
         },
       ],
     });

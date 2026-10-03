@@ -184,6 +184,15 @@ function validateAssetReferences(
   const audioTypes = new Set(['bgm', 'se', 'voice']);
 
   for (const row of scenarioRows) {
+    if (row.voiceAssetId) {
+      references.push({
+        id: row.voiceAssetId,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'voice_asset_id',
+        expectedTypes: one('voice'),
+      });
+    }
     if (row.background) {
       references.push({
         id: row.background,
@@ -652,6 +661,23 @@ function validateScenarioRows(
           );
         }
       }
+    }
+
+    if (
+      row.uiVariant === 'fullscreen_narration' &&
+      (row.messageType !== 'text' ||
+        !row.text?.trim() ||
+        row.choiceId ||
+        (row.screenMode && row.screenMode !== 'chat'))
+    ) {
+      issues.error(
+        'invalid_fullscreen_narration',
+        'fullscreen_narration requires chat text without choices',
+        {
+          at: { sheet, row: row.__row, column: 'ui_variant' },
+          fix: 'Use screen_mode=chat, message_type=text, nonempty text, and no choice_id',
+        },
+      );
     }
 
     if (sheet === 'senarios') {

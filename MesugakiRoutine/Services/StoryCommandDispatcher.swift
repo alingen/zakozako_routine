@@ -7,10 +7,24 @@ enum StoryCallPresentationState: String, Equatable {
 }
 
 struct StoryBGMPlaybackState: Equatable {
+    static let defaultStopFadeMilliseconds: UInt64 = 1_000
+
     let assetID: String
     let loop: Bool
     let fadeMilliseconds: UInt64
     let volume: Float
+}
+
+enum StoryBGMEvent: Equatable {
+    case play(StoryBGMPlaybackState)
+    case stop(fadeMilliseconds: UInt64)
+}
+
+/// Keep ordered commands as well as the final state: SwiftUI can coalesce a stop
+/// and the next play (including the same track) into a single update.
+struct StoryBGMPlaybackUpdate: Equatable {
+    let state: StoryBGMPlaybackState?
+    let events: [StoryBGMEvent]
 }
 
 struct StorySoundEffectPlayback: Equatable {
@@ -23,6 +37,12 @@ struct StorySoundEffectPlayback: Equatable {
         self.volume = volume
         self.loop = loop
     }
+}
+
+/// Ordered transient audio events. Loop playback is restored separately from story state.
+enum StorySoundEffectEvent: Equatable {
+    case play(StorySoundEffectPlayback)
+    case stop(assetID: String)
 }
 
 /// A small, UI-independent vocabulary of effects produced by CMS commands.
@@ -43,7 +63,7 @@ enum StoryCommandEffect: Equatable {
     case playAudio(String?)
     case recordAudio(String?)
     case playBGM(StoryBGMPlaybackState)
-    case stopBGM
+    case stopBGM(fadeMilliseconds: UInt64)
     case playSoundEffect(StorySoundEffectPlayback)
     case stopSoundEffect(String)
 }
@@ -81,8 +101,10 @@ struct StoryCommandDispatcher {
                 in: node.commandArgs,
                 keys: ["background", "background_asset_id", "asset_id"]
             ) ?? normalized(node.background)
-            let screenMode = firstString(in: node.commandArgs, keys: ["screen_mode"])
-                .map(StoryScreenMode.init(rawValue:))
+            // Manuscript @scene commands use `screen`; imported rows may
+            // instead carry only their row-level screenMode.
+            let screenMode = firstString(in: node.commandArgs, keys: ["screen_mode", "screen"])
+                .map(StoryScreenMode.init(rawValue:)) ?? node.screenMode
             var effects: [StoryCommandEffect] = []
             if let background { effects.append(.setBackground(background)) }
             if let screenMode { effects.append(.setScreenMode(screenMode)) }
@@ -187,7 +209,12 @@ struct StoryCommandDispatcher {
             )
 
         case "stop_bgm":
-            return StoryCommandDispatchResult(effect: .stopBGM)
+            let rawFade = node.commandArgs?["fade_ms"].flatMap(number(from:))
+                ?? Double(StoryBGMPlaybackState.defaultStopFadeMilliseconds)
+            let fade = rawFade.isFinite ? rawFade : Double(StoryBGMPlaybackState.defaultStopFadeMilliseconds)
+            return StoryCommandDispatchResult(
+                effect: .stopBGM(fadeMilliseconds: UInt64(max(0, min(fade, 10_000)).rounded()))
+            )
 
         case "play_se":
             guard let assetID = firstString(

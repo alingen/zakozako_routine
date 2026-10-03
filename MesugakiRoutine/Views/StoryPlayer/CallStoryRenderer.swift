@@ -127,7 +127,7 @@ struct CallStoryRenderer: View {
             StoryTypingView(node: node)
         case .monologue:
             StoryMonologueView(node: node)
-        case .narration, .beat:
+        case .narration, .fullscreenNarration, .beat:
             StoryNarrationView(node: node)
         case .titleCard:
             StoryTitleCardView(node: node)

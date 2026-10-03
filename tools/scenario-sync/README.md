@@ -146,6 +146,30 @@ story_content.generated.json
   `command_args={"action":"play","asset_id":"se_keyboard_typing","loop":true,"volume":1}`、
   停止行を `command_args={"action":"stop","asset_id":"se_keyboard_typing"}` とします。
 - BGMは `play_bgm`／`stop_bgm` で制御します。
+  `stop_bgm` はデフォルトで **1,000ms（1秒）のフェードアウト**になります。
+  `command_args={"fade_ms":1500}` のように停止までの時間を指定できます（最大10,000ms）。
+  急に止める場合は `command_args={"fade_ms":0}` と明示します。
+  原稿の `@bgm` 記法では通常停止が `@bgm {"action":"stop"}`、
+  即時停止が `@bgm {"action":"stop","fade_ms":0}` です。
+  フェードはセリフの進行を止めません。待ちたい場合は別途 `@wait` を指定します。
+  BGMの切り替え・イベント終了・画面を閉じる際も、再生中の曲は原則1秒でフェードアウトします。
+
+### ADVのセリフボイス
+
+- 新しい素材シートは不要です。`asset_catalog` に `asset_type=voice` として登録し、
+  `file_name` に音声ファイル名（例 `rio_take_001.m4a`）を指定します。
+- `senarios` に任意列 `voice_asset_id` を追加し、読み上げたいセリフ行に素材の `asset_id` を記入します。
+  空欄・列自体がない既存原稿はボイスなしで動きます。`daily` も同じ列を取り込めますが、
+  今回の自動再生対象はADVのテキストウィンドウのみです。
+- 生成JSONの `voiceAssetId` と `voiceFileName` に変換されます。未登録・無効・voice以外の素材は同期時にエラーです。
+- ファイルは `MesugakiRoutine/Resources/Audio` に配置してビルド対象に含めます（追加後に `xcodegen generate`）。
+  対応拡張子は m4a / mp3 / wav / caf / aac。シートへの記入だけでは音声ファイルは配信されません。
+  `file_name` 空欄時は `asset_id` と同名の音声ファイルを探します。
+- ボイスはテキスト表示開始時に一度だけ再生。全文表示タップや同じセリフ内の改ページでは再開しません。
+  手動で次のセリフへ進む、早送り、スキップ、画面を閉じる操作で停止します。
+  オートは最終ページの全文表示とボイス終了の両方を待ち、従来の読書用待ち時間を置いて進みます。
+  ログ表示・アプリが非アクティブになった場合も停止し、同じ行のボイスは再開しません。
+  未収録・再生失敗でもオートを止めません。BGM・SEと同じく消音モードに従います。
 
 ### interactions（7列）
 
@@ -186,6 +210,27 @@ story_content.generated.json
 - 同じ `event_id` の複数行は条件のAND配列になります。条件以外のmetadataは全行で一致させます。
 - `entry_scenario_id` は `senarios.scenario_id` を参照し、`event_type` と参照先の
   `scenario_type` を一致させます。
+
+### チャットの全画面ナレーション
+
+重要な地の文には `screen_mode=chat`、`message_type=text`、
+`speaker=narrator`、`ui_variant=fullscreen_narration` を指定します。
+`text` に表示する文章を入れてください。`[br]` は改行、`[sp]` はスペースになります。
+
+| line_order | speaker | message_type | text | screen_mode | ui_variant |
+| --- | --- | --- | --- | --- | --- |
+| 20 | narrator | text | それが。 | chat | fullscreen_narration |
+| 21 | narrator | text | 莉央との最初の約束だった。 | chat | fullscreen_narration |
+
+操作UIを約350msでフェードアウトし、暗くしたチャットの中央に白い地の文を表示します。
+1行（node）を1枚としてタップで進みます。連続する全画面ナレーションの間はチャットと暗幕を維持します。
+最後のnodeならタップで終了し、中大イベント等は既存の暗転終了へ進みます。
+続きがあれば次のnodeの表示モードに戻ります。チャットの吹き出しには残さず、イベントログには残します。
+通常の `ui_variant=narration` や話者 `narrator` / `system` のテキストは、チャット内の区切り線付き表示になります。
+アバターや吹き出し、暗幕は付けず、本文はタップ不可です。中大イベント・プロローグは下部の「次へ／閉じる」で進めます。
+全文を表示してチャット履歴に残すので、長い地の文も省略しません。
+原稿からシートへ変換する外部ツールでは、
+この `ui_variant` を出力するように対応が必要です（このリポジトリには原稿パーサーはありません）。
 
 ### 背景を黒に戻す
 

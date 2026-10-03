@@ -34,6 +34,11 @@ export function generate(data: NormalizedSheets): StoryContentBundle {
     scenarios: generateScenarios(
       [...data.daily.filter((row) => enabledDailyIds.has(row.scenarioId)), ...data.scenarios],
       dailyCatalogById,
+      new Map(
+        data.assetCatalog
+          .filter((row) => row.enabled && row.assetType === 'voice')
+          .map((row) => [row.assetId, row.fileName]),
+      ),
     ),
     choiceGroups: generateChoiceGroups(
       data.choices.filter((row) => enabledDailyIds.has(row.dailyId)),
@@ -57,6 +62,7 @@ export function generate(data: NormalizedSheets): StoryContentBundle {
 function generateScenarios(
   rows: NormalizedScenarioRow[],
   dailyCatalogById: ReadonlyMap<string, NormalizedDailyCatalogRow>,
+  voiceFiles: ReadonlyMap<string, string | undefined>,
 ): StoryScenario[] {
   return [...groupBy(rows, (row) => row.scenarioId)]
     .map(([scenarioId, scenarioRows]) => {
@@ -72,13 +78,16 @@ function generateScenarios(
         calendarMonthDay: catalog?.calendarMonthDay,
         status: catalog?.status,
         enabled: catalog?.enabled,
-        nodes: ordered.map(mapNode),
+        nodes: ordered.map((row) => mapNode(row, voiceFiles)),
       };
     })
     .sort((left, right) => compareText(left.scenarioId, right.scenarioId));
 }
 
-function mapNode(row: NormalizedScenarioRow): StoryNode {
+function mapNode(
+  row: NormalizedScenarioRow,
+  voiceFiles: ReadonlyMap<string, string | undefined>,
+): StoryNode {
   return {
     lineOrder: row.lineOrder,
     nodeId: row.nodeId,
@@ -90,6 +99,8 @@ function mapNode(row: NormalizedScenarioRow): StoryNode {
     saveKey: row.saveKey,
     saveValue: row.saveValue,
     assetId: row.assetId,
+    voiceAssetId: row.voiceAssetId,
+    voiceFileName: row.voiceAssetId ? voiceFiles.get(row.voiceAssetId) : undefined,
     minPhase: row.minPhase,
     maxPhase: row.maxPhase,
     speakerName: row.speakerName,
