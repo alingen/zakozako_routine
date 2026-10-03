@@ -206,6 +206,8 @@ struct ChatStoryRenderer: View {
                     .accessibilityHidden(usesFullscreenNarration)
                     .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: usesFullscreenNarration)
             }
+            // 全画面の地の文の下で、吹き出しの文字が白文字と重なって読めないようにぼかす。
+            .blur(radius: usesFullscreenNarration ? 6 : 0)
             .allowsHitTesting(!usesFullscreenNarration)
             .accessibilityHidden(usesFullscreenNarration)
 
@@ -482,8 +484,8 @@ struct FullscreenChatNarrationView: View {
 
     var body: some View {
         ZStack {
-            // 下の吹き出しの文字が透けて白文字と重ならない濃さにする。
-            Color.black.opacity(0.80)
+            // 下のチャットはぼかしてあるので、白文字が読める濃さにする。
+            Color.black.opacity(0.75)
                 .ignoresSafeArea()
 
             GeometryReader { proxy in

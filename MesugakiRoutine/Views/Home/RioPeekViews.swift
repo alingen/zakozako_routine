@@ -1,6 +1,40 @@
 import SwiftUI
 import UIKit
 
+/// 広報撮影用。通常表示・リリースビルドには適用しない。
+enum RioPromotionalCapture {
+    static let storageKey = "debug.rioPromotionalCapture"
+    /// 13 miniの狭い本文幅でも「あははっキモ〜w」を1行に収める。
+    static let textScale: CGFloat = 1.6
+    /// 撮影専用の固定セリフ。通常のCMS抽選には混ぜない。
+    static let idleText = "まさかここから負けるなんて\nないよね〜♡"
+
+    static func listTopInset(for kind: RioIdlePeekRequest.Kind?, enabled: Bool) -> CGFloat {
+        guard enabled, case .above = kind else { return 0 }
+        // 上からの立ち絵と、撮影用に拡大した吹き出しのためのスペース。
+        return 100
+    }
+
+    static func isEnabled(_ requested: Bool) -> Bool {
+        #if DEBUG
+        return requested
+        #else
+        return false
+        #endif
+    }
+}
+
+private struct RioPromotionalCaptureKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var rioPromotionalCapture: Bool {
+        get { self[RioPromotionalCaptureKey.self] }
+        set { self[RioPromotionalCaptureKey.self] = newValue }
+    }
+}
+
 // ホームの一覧の上に重ねる、莉央専用の層の部品。
 // 莉央は「道具の外の枠」ではなく、約束カードの上に顔を出してちょっかいを出す。
 // ただし操作は邪魔しない: 完了ボタンのある右端の列は覆わず、スクロールや吹き出し・莉央のタップですぐ引っ込む。
@@ -31,20 +65,30 @@ enum RioMiniAsset {
 
 /// 層の上に出す莉央の吹き出し。ホームや煽りと同じピンクで、下のカードに被っても読めるよう薄い影を付ける。
 struct RioPeekBubble: View {
+    @Environment(\.rioPromotionalCapture) private var promotionalCapture
+    @ScaledMetric(relativeTo: .subheadline) private var fontSize: CGFloat = 15
     let text: String
+    private var scale: CGFloat { promotionalCapture ? 2 : 1 }
 
     var body: some View {
         Text(text)
-            .font(.subheadline.weight(.semibold))
+            .font(promotionalCapture ? .system(size: fontSize * RioPromotionalCapture.textScale, weight: .semibold) : .subheadline.weight(.semibold))
             .foregroundStyle(AppColor.text)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 12 * scale)
+            .padding(.vertical, 10 * scale)
             .background {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 16 * scale, style: .continuous)
                     .fill(AppColor.primarySoft)
                     .shadow(color: AppColor.text.opacity(0.14), radius: 10, y: 3)
+            }
+            .overlay {
+                if promotionalCapture {
+                    RoundedRectangle(cornerRadius: 16 * scale, style: .continuous)
+                        .strokeBorder(AppColor.primary, lineWidth: 3)
+                        .allowsHitTesting(false)
+                }
             }
     }
 }
@@ -331,6 +375,7 @@ struct RioCardPeekRequest: Identifiable, Equatable {
 /// P2「ちょこん」: 未達成の約束カードの上端から身を乗り出し、カードを指差して「これ、まだでしょ？」とつつく。
 /// まず縁の線より上だけ見せてせり上がり(カードの後ろから出てくる)、そのあと縁の下へ指先を出す。
 struct RioCardPeek: View {
+    @Environment(\.rioPromotionalCapture) private var promotionalCapture
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.rioProtectedTrailingWidth) private var protectedTrailingWidth
 
@@ -439,11 +484,12 @@ struct RioCardPeek: View {
                 // 右端を莉央の左に、縦の中央を見出しの行に合わせて1行で出す(見出しの文字は数秒だけ隠れる)。
                 Color.clear
                     .frame(width: 1, height: 1)
-                    .overlay(alignment: .trailing) {
+                    .overlay(alignment: promotionalCapture ? .topTrailing : .trailing) {
                         if showsBubble {
                             RioPeekBubble(text: request.text)
-                                .lineLimit(1)
-                                .fixedSize()
+                                .lineLimit(promotionalCapture ? nil : 1)
+                                .fixedSize(horizontal: !promotionalCapture, vertical: true)
+                                .frame(maxWidth: promotionalCapture ? max(110, leftBubbleTrailing - RioPeekLayout.screenMargin) : nil)
                                 .onTapGesture { finish() }
                                 .accessibilityHidden(true)
                                 .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .trailing)))
@@ -559,6 +605,7 @@ enum RioIdlePeekEnding {
 /// 放置パターン「上から」: 安全領域の上端(ステータスバーの下)をつかみ、逆さまにぶら下がって覗き込む。
 /// 見出しの「＋」と右端の列にはかからないよう、顔の中心を画面幅の約25%に置く。
 struct RioIdleAbovePeek: View {
+    @Environment(\.rioPromotionalCapture) private var promotionalCapture
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.rioProtectedTrailingWidth) private var protectedTrailingWidth
 
@@ -622,7 +669,7 @@ struct RioIdleAbovePeek: View {
 
             Color.clear
                 .frame(width: 1, height: 1)
-                .overlay(alignment: .leading) {
+                .overlay(alignment: promotionalCapture ? .topLeading : .leading) {
                     if let bubbleText {
                         RioPeekBubble(text: bubbleText)
                             .frame(width: bubbleMaxWidth, alignment: .leading)
@@ -803,7 +850,15 @@ enum RioUnrequestedPeekSchedule {
     static let dailyLimit = 3
     static let minimumInterval: TimeInterval = 20 * 60
 
-    static func canShow(now: Date = .now, defaults: UserDefaults = .standard) -> Bool {
+    static func idleDelay(promotionalCapture: Bool) -> TimeInterval {
+        promotionalCapture ? 0.5 : 10
+    }
+
+    static func canShow(promotionalCapture: Bool = false, alreadyShownThisOpen: Bool = false,
+                        now: Date = .now, defaults: UserDefaults = .standard) -> Bool {
+        // 撮影は通常の回数・間隔・早期終了の制限と切り離す。
+        if promotionalCapture { return true }
+        guard !alreadyShownThisOpen else { return false }
         resetIfNewDay(now: now, defaults: defaults)
         guard defaults.integer(forKey: countKey) < dailyLimit,
               defaults.integer(forKey: quickDismissStreakKey) < 2 else { return false }
@@ -814,13 +869,16 @@ enum RioUnrequestedPeekSchedule {
         return true
     }
 
-    static func markShown(now: Date = .now, defaults: UserDefaults = .standard) {
+    static func markShown(promotionalCapture: Bool = false, now: Date = .now, defaults: UserDefaults = .standard) {
+        guard !promotionalCapture else { return }
         resetIfNewDay(now: now, defaults: defaults)
         defaults.set(defaults.integer(forKey: countKey) + 1, forKey: countKey)
         defaults.set(now, forKey: lastShownKey)
     }
 
-    static func record(_ ending: RioIdlePeekEnding, now: Date = .now, defaults: UserDefaults = .standard) {
+    static func record(_ ending: RioIdlePeekEnding, promotionalCapture: Bool = false,
+                       now: Date = .now, defaults: UserDefaults = .standard) {
+        guard !promotionalCapture else { return }
         resetIfNewDay(now: now, defaults: defaults)
         switch ending {
         case .dismissed(quickly: true):

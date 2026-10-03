@@ -79,6 +79,7 @@ struct SettingsView: View {
 /// 開発中の進行確認に使う値と操作をまとめた専用画面。
 private struct DebugSettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(RioPromotionalCapture.storageKey) private var promotionalCapture = false
 
     @State private var cumulativeAchievementDays = 0
     @State private var continuousAchievementDays = 0
@@ -100,6 +101,17 @@ private struct DebugSettingsView: View {
 
     var body: some View {
         List {
+            Section {
+                Toggle("莉央の介入を広報撮影用にする", isOn: $promotionalCapture)
+                    .tint(AppColor.primary)
+                if promotionalCapture {
+                    LabeledContent("放置時の撮影用セリフ", value: RioPromotionalCapture.idleText)
+                }
+            } header: {
+                Text("広報撮影")
+            } footer: {
+                Text("ホームの吹き出しの文字を160%、余白を200%に拡大し、Primary色の枠を付けます。横幅は画面内に収めます。「やらないこと」欄は非表示にします。放置時の莉央は約0.5秒で登場・再登場し、通常の回数制限には数えません。莉央の介入中はタブバーを隠し、閉じると戻します。オフにすると通常表示になります。")
+            }
             Section {
                 numberField("累積達成日数", value: $cumulativeAchievementDays)
 

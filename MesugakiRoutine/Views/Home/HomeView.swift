@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
+    @AppStorage(RioPromotionalCapture.storageKey) private var promotionalCaptureRequested = false
     @Environment(\.modelContext) private var modelContext
     @Environment(SiriLaunchCoordinator.self) private var siriLaunchCoordinator
     @Environment(\.scenePhase) private var scenePhase
@@ -92,14 +93,35 @@ struct HomeView: View {
             && presentedTimer == nil && onboardingRoutineID == nil
     }
 
+    private var promotionalCapture: Bool {
+        RioPromotionalCapture.isEnabled(promotionalCaptureRequested)
+    }
+
+    private var hidesTabBarForCapture: Bool {
+        promotionalCapture && (rioReaction != nil || cardPeek != nil || idlePeek != nil || grabPeek != nil)
+    }
+
+    private var captureListTopInset: CGFloat {
+        RioPromotionalCapture.listTopInset(
+            for: idlePeek?.kind,
+            enabled: promotionalCapture && canShowRioLayer
+                && rioReaction == nil && cardPeek == nil && grabPeek == nil
+        )
+    }
+
     var body: some View {
         List {
             todayRoutinesSection
-            todayPromiseSection
+            if !promotionalCapture {
+                todayPromiseSection
+            }
             zakoBulletinSection
         }
         // 端末の大きさで List の余白が16/20ptに変わらないよう、他の画面(.padding())と同じ16ptに固定する。
         .contentMargins(.horizontal, 16, for: .scrollContent)
+        // 莉央の層は動かさず、一覧の表示領域だけを下げる。下端は画面内に収める。
+        .padding(.top, captureListTopInset)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: captureListTopInset)
         // スクロール中は速報を切り替えない。List 全体に DragGesture を付けるとスクロールやタップを奪うため、スクロールの状態を見る。
         .pausesWhileScrolling($homeIsScrolling)
         .sheet(item: $selectedNewsPost) { post in ZakoNewsDetailView(post: post) }
@@ -121,11 +143,13 @@ struct HomeView: View {
             }
         }
         .appScreenBackground()
+        .toolbar(hidesTabBarForCapture ? .hidden : .automatic, for: .tabBar)
         .onPreferenceChange(HomeRoutineRowFramesKey.self) { routineRowFrames = $0 }
         // 莉央専用の層。莉央と吹き出し以外は下の一覧にタップが届く。
         .overlay {
             rioLayer
-                .environment(\.rioProtectedTrailingWidth, rioProtectedTrailingWidth)
+                .environment(\.rioProtectedTrailingWidth, promotionalCapture ? 0 : rioProtectedTrailingWidth)
+                .environment(\.rioPromotionalCapture, promotionalCapture)
         }
         .onChange(of: isPresentingNewRoutine) { _, presenting in
             if presenting { routineIDsBeforeAdding = Set(viewModel.todayRoutines.map(\.id)) }
@@ -246,13 +270,13 @@ struct HomeView: View {
             presentCardPeekIfNeeded()
         }
         .onDisappear { homeIsVisible = false }
-        // 放置の判定: 何も触らない状態が10秒続いたら、莉央が見にくる。
+        // 放置の判定: 通常は10秒、撮影中は0.5秒で莉央が見にくる。
         // スクロール・シート・莉央の登場・ボタンの操作があると、キーが変わって数え直す。
         .task(id: idleWatchKey) {
             guard canShowRioLayer, !homeIsScrolling, rioReaction == nil, cardPeek == nil, idlePeek == nil,
                   grabPeek == nil else { return }
             do {
-                try await Task.sleep(for: .seconds(10))
+                try await Task.sleep(for: .seconds(RioUnrequestedPeekSchedule.idleDelay(promotionalCapture: promotionalCapture)))
             } catch { return }
             presentIdlePeekIfNeeded()
         }
@@ -360,7 +384,7 @@ struct HomeView: View {
     @ViewBuilder
     private func idlePeekView(_ request: RioIdlePeekRequest, containerWidth: CGFloat) -> some View {
         let onFinished: (RioIdlePeekEnding) -> Void = { ending in
-            RioUnrequestedPeekSchedule.record(ending)
+            RioUnrequestedPeekSchedule.record(ending, promotionalCapture: promotionalCapture)
             if idlePeek?.id == request.id { idlePeek = nil }
         }
         switch request.kind {
@@ -400,7 +424,7 @@ struct HomeView: View {
 
     private var idleWatchKey: String {
         [
-            "\(canShowRioLayer)", "\(homeIsScrolling)", "\(idleResetToken)",
+            "\(canShowRioLayer)", "\(homeIsScrolling)", "\(idleResetToken)", "\(promotionalCapture)",
             rioReaction?.id.uuidString ?? "-", cardPeek?.id.uuidString ?? "-", idlePeek?.id.uuidString ?? "-",
             grabPeek?.id.uuidString ?? "-",
         ].joined(separator: "|")
@@ -409,10 +433,13 @@ struct HomeView: View {
     /// 放置で見にくる。未達成の約束があれば上から、全部達成していれば達成済みカードの右から。
     private func presentIdlePeekIfNeeded() {
         guard canShowRioLayer, !homeIsScrolling, rioReaction == nil, cardPeek == nil, idlePeek == nil,
-              grabPeek == nil, !unrequestedPeekShownThisOpen,
+              grabPeek == nil,
               // 読み上げを聞いている時間と放置を見分けられないので、VoiceOver 中は来ない。
               !UIAccessibility.isVoiceOverRunning,
-              RioUnrequestedPeekSchedule.canShow() else { return }
+              RioUnrequestedPeekSchedule.canShow(
+                promotionalCapture: promotionalCapture,
+                alreadyShownThisOpen: unrequestedPeekShownThisOpen
+              ) else { return }
 
         let unfinished = viewModel.todayRoutines.filter { !viewModel.todayProgress(for: $0).isCompletedToday }
         let kind: RioIdlePeekRequest.Kind
@@ -424,12 +451,17 @@ struct HomeView: View {
             // 約束が0件、または達成済みカードが画面に見えていないときは上から。
             kind = .above(unfinishedRoutineTitle: nil)
         }
-        unrequestedPeekShownThisOpen = true
-        RioUnrequestedPeekSchedule.markShown()
+        if !promotionalCapture { unrequestedPeekShownThisOpen = true }
+        RioUnrequestedPeekSchedule.markShown(promotionalCapture: promotionalCapture)
         let fromAbove: Bool
         if case .above = kind { fromAbove = true } else { fromAbove = false }
         withAnimation(nil) {
-            idlePeek = RioIdlePeekRequest(kind: kind, preferredText: viewModel.idleReactionText(fromAbove: fromAbove))
+            idlePeek = RioIdlePeekRequest(
+                kind: kind,
+                preferredText: promotionalCapture
+                    ? RioPromotionalCapture.idleText
+                    : viewModel.idleReactionText(fromAbove: fromAbove)
+            )
         }
         AccessibilityNotification.Announcement("莉央がのぞいています").post()
     }
