@@ -297,7 +297,7 @@ struct ChatStoryRenderer: View {
                           !shouldAutoAdvance,
                           !isWaitingForRioMessage,
                           !isWaitingForSystemMessage {
-                    manualAdvanceButton
+                    advanceControl
                 } else {
                     Color.clear
                         .frame(maxWidth: .infinity)
@@ -318,7 +318,7 @@ struct ChatStoryRenderer: View {
     private var manualAdvanceArea: some View {
         VStack(spacing: 0) {
             Divider()
-            manualAdvanceButton
+            advanceControl
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
         }
@@ -326,6 +326,57 @@ struct ChatStoryRenderer: View {
         .frame(height: 81)
         .safeAreaPadding(.bottom, 8)
         .background(AppColor.background)
+    }
+
+    @ViewBuilder
+    private var advanceControl: some View {
+        if ChatStoryPresentationPolicy.usesPrefilledComposer(node: node, scenarioType: scenarioType) {
+            prefilledComposer
+        } else {
+            manualAdvanceButton
+        }
+    }
+
+    /// 主人公の発言は「入力済みの入力欄＋送信ボタン」で見せ、選択肢や「次へ」と区別する。
+    /// 入力欄を含む全体をタップ範囲にする。
+    private var prefilledComposer: some View {
+        Button {
+            onPresentNode()
+            onAdvance()
+        } label: {
+            HStack(spacing: 10) {
+                Text(node.storyDisplayText)
+                    .font(.body)
+                    .foregroundStyle(AppColor.text)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .frame(minHeight: 48)
+                    .background(
+                        AppColor.surface,
+                        in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(AppColor.border)
+                    }
+
+                Image(systemName: "paperplane.fill")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 48, height: 48)
+                    .background(AppColor.primary, in: Circle())
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("「\(node.storyDisplayText)」を送信")
+        .accessibilityHint("会話を次へ進めます")
     }
 
     private var manualAdvanceButton: some View {
@@ -397,6 +448,18 @@ enum ChatStoryPresentationPolicy {
         case .daily, .prologue, .smallEvent, .middleEvent, .largeEvent:
             return true
         case .unknown:
+            return false
+        }
+    }
+
+    /// イベントの主人公の発言は、本文入りの入力欄として見せる。
+    /// 日々の会話は次の発言を先に見せないため「返信する」ボタンのまま。
+    static func usesPrefilledComposer(node: StoryNode, scenarioType: StoryScenarioType) -> Bool {
+        guard node.isPlayerSpeaker, !node.storyDisplayText.isEmpty else { return false }
+        switch scenarioType {
+        case .prologue, .smallEvent, .middleEvent, .largeEvent:
+            return true
+        case .daily, .unknown:
             return false
         }
     }

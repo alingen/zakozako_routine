@@ -967,6 +967,34 @@ final class StoryScenarioGraphTests: XCTestCase {
         )
     }
 
+    func testEventPlayerLineUsesPrefilledComposerButDailyKeepsReplyButton() {
+        let reply = StoryNode(
+            nodeId: "reply", lineOrder: 1, speaker: "user", messageType: .text, text: "10分"
+        )
+        for scenarioType: StoryScenarioType in [.prologue, .smallEvent, .middleEvent, .largeEvent] {
+            XCTAssertTrue(ChatStoryPresentationPolicy.usesPrefilledComposer(
+                node: reply, scenarioType: scenarioType
+            ))
+        }
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesPrefilledComposer(
+            node: reply, scenarioType: .daily
+        ))
+
+        let emptyReply = StoryNode(
+            nodeId: "empty-reply", lineOrder: 2, speaker: "user", messageType: .text, text: ""
+        )
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesPrefilledComposer(
+            node: emptyReply, scenarioType: .middleEvent
+        ))
+
+        let rio = StoryNode(
+            nodeId: "rio", lineOrder: 3, speaker: "rio", messageType: .text, text: "何分？"
+        )
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesPrefilledComposer(
+            node: rio, scenarioType: .middleEvent
+        ))
+    }
+
     func testDailyChoiceKeepsRiosQuestionButHidesUnsentPlayerPlaceholder() {
         let question = StoryNode(
             nodeId: "question",
