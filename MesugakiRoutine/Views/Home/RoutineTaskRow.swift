@@ -625,7 +625,7 @@ struct AddRoutineTaskRow: View {
                     .frame(width: 52, height: 52)
                     .background(AppColor.primarySoft, in: Circle())
 
-                Text("約束を追加")
+                Text("やることを追加")
                     .font(.headline)
                     .foregroundStyle(AppColor.primary)
 
@@ -646,7 +646,7 @@ struct AddRoutineTaskRow: View {
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(RoutineRowPressStyle())
-        .accessibilityHint("新しい約束を作成")
+        .accessibilityHint("新しいやることを作成")
     }
 }
 
@@ -662,7 +662,7 @@ struct AddBlockedBehaviorTaskRow: View {
                     .frame(width: 52, height: 52)
                     .background(AppColor.primarySoft, in: Circle())
 
-                Text("やらないことを決める")
+                Text("やめることを決める")
                     .font(.headline)
                     .foregroundStyle(AppColor.primary)
 
@@ -683,7 +683,7 @@ struct AddBlockedBehaviorTaskRow: View {
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(RoutineRowPressStyle())
-        .accessibilityHint("新しいやらないことを設定")
+        .accessibilityHint("新しいやめることを設定")
     }
 }
 

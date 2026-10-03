@@ -59,7 +59,7 @@ struct RoutineLogView: View {
             }
 
             if viewModel.hasLoaded && viewModel.achievements.isEmpty {
-                Text("達成状況を表示する約束がありません")
+                Text("達成状況を表示するやることがありません")
                     .font(.subheadline)
                     .foregroundStyle(AppColor.muted)
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -79,7 +79,7 @@ struct RoutineLogView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(behaviorAccessibilityLabel(behavior))
-                .accessibilityHint("やらないことの記録を表示")
+                .accessibilityHint("やめることの記録を表示")
             }
         }
         .padding()

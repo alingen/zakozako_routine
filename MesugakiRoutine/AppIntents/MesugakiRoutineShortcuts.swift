@@ -9,7 +9,7 @@ struct MesugakiRoutineShortcuts: AppShortcutsProvider {
             intent: OpenTodayRoutinesIntent(),
             phrases: [
                 "\(.applicationName)で今日の約束を開く",
-                "\(.applicationName)で約束を始める",
+                "\(.applicationName)でやることを始める",
                 "\(.applicationName)を開いて",
             ],
             shortTitle: "今日の約束を開く",

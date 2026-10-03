@@ -46,7 +46,7 @@ struct NotificationSettingsView: View {
             }
 
             if !viewModel.routines.isEmpty {
-                Section("対象の約束") {
+                Section("対象のやること") {
                     ForEach(viewModel.routines) { routine in
                         HStack {
                             Text(routine.title)

@@ -317,11 +317,11 @@ private extension StoryConditionEvaluator {
             return "ストーリーを進めると解放"
         }
         if type == "streak", ["continuous_days", "streak_days", "streak"].contains(key) {
-            return "約束を\(target)日連続で達成"
+            return "やることを\(target)日連続で達成"
         }
         if ["cumulative", "achievement"].contains(type),
            ["cumulative_days", "total_days"].contains(key) {
-            return "約束を累計\(target)日達成"
+            return "やることを累計\(target)日達成"
         }
         if type == "relationship", key == "trust" {
             return "信頼度を\(target)まで上げる"

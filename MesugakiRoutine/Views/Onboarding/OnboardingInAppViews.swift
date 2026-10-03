@@ -43,7 +43,7 @@ struct OnboardingStoryUnlockView: View {
                         ? "第1話を読む"
                         : (didCompleteFirstPromise
                             ? "もう一度確認する"
-                            : "明日の約束を確認する"),
+                            : "明日のやることを確認する"),
                     action: onContinue
                 )
                     .font(.headline)
@@ -91,7 +91,7 @@ struct OnboardingStoryUnlockView: View {
         if didCompleteFirstPromise {
             return "第1話の解禁状態を確認できませんでした。もう一度お試しください。"
         }
-        return "今日はまだ達成にしていません。あとで約束を実行すると、物語の進行にも反映されます。"
+        return "今日はまだ達成にしていません。あとで「やること」を達成すると、物語の進行にも反映されます。"
     }
 }
 
@@ -117,7 +117,7 @@ struct OnboardingFirstStoryReadView: View {
                     .foregroundStyle(AppColor.text)
                     .multilineTextAlignment(.center)
 
-                Button("明日の約束を確認する", action: onContinue)
+                Button("明日のやることを確認する", action: onContinue)
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -178,19 +178,19 @@ struct OnboardingTomorrowView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    Text("明日の約束")
+                    Text("明日のやること")
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(AppColor.text)
 
                     promiseCard
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("この約束を思い出せるように、お知らせしますか？")
+                        Text("忘れないように、お知らせしますか？")
                             .font(.headline)
                             .foregroundStyle(AppColor.text)
 
                         DatePicker(
-                            "約束を始める時刻",
+                            "始める時刻",
                             selection: $reminderTime,
                             displayedComponents: .hourAndMinute
                         )

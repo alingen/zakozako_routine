@@ -51,7 +51,7 @@ struct OnboardingIllustration: View {
             Group {
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("今日の約束", systemImage: "book")
+                        Label("やること", systemImage: "book")
                             .font(.caption2)
                             .foregroundStyle(AppColor.muted)
                         Text("本を5分読む")
@@ -71,7 +71,7 @@ struct OnboardingIllustration: View {
                         habitIcon("book")
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("今日の約束")
+                            Text("やること")
                                 .font(.caption2)
                                 .foregroundStyle(AppColor.muted)
                             Text("本を5分読む")
@@ -412,7 +412,7 @@ struct OnboardingIllustration: View {
     private var accessibilityDescription: String {
         switch kind {
         case .promiseToStory:
-            return "図解。約束を達成すると莉央が反応し、今日の会話やストーリーにつながります。"
+            return "図解。やることを達成すると莉央が反応し、今日の会話やストーリーにつながります。"
         case let .repeatOneHabit(title, _):
             return "図解。\(title)という1つの習慣を、1日目、2日目、3日目、4日目と繰り返し、いつもの行動にしていきます。"
         case .smallGoal:
@@ -422,7 +422,7 @@ struct OnboardingIllustration: View {
         case .askRioForHelp:
             return "図解。我慢が難しいときは、負けそうと莉央に報告できます。莉央が反応します。"
         case let .completedPromise(cueText, routineTitle, _):
-            return "図解。最初の約束。\(routineTitle)、\(cueText)、今日から。できたらタップしてチェックします。"
+            return "図解。最初のやること。\(routineTitle)、\(cueText)、今日から。できたらタップしてチェックします。"
         }
     }
 }

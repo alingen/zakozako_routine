@@ -195,9 +195,9 @@ final class StoryConditionEvaluatorTests: XCTestCase {
         let evaluator = StoryConditionEvaluator()
         let metrics = StoryProgressMetrics(continuousDays: 1, cumulativeAchievementDays: 2)
         let cases: [(type: String, key: String, operatorName: String, threshold: String, expected: String)] = [
-            ("achievement", "cumulative_days", "gte", "3", "約束を累計3日達成"),
-            ("streak", "continuous_days", "gte", "5", "約束を5日連続で達成"),
-            ("streak", "streak_days", "gt", "4", "約束を5日連続で達成"),
+            ("achievement", "cumulative_days", "gte", "3", "やることを累計3日達成"),
+            ("streak", "continuous_days", "gte", "5", "やることを5日連続で達成"),
+            ("streak", "streak_days", "gt", "4", "やることを5日連続で達成"),
             ("relationship", "trust", "gte", "10", "信頼度を10まで上げる"),
             ("event", "event_completed", "exists", "event_prologue", "前のストーリーを読む"),
             ("profile", "favorite_food", "eq", "curry", "ストーリーを進めると解放"),
@@ -220,7 +220,7 @@ final class StoryConditionEvaluatorTests: XCTestCase {
     func testConditionProgressTextIsOnlyShownForNumericValues() {
         let numeric = StoryConditionPresentation(
             id: "days",
-            text: "約束を累計3日達成",
+            text: "やることを累計3日達成",
             currentValue: "2",
             targetValue: "3",
             isSatisfied: false

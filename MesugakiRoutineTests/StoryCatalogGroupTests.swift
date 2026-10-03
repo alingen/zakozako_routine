@@ -54,7 +54,7 @@ final class StoryCatalogGroupTests: XCTestCase {
 
     func testLockedChapterShowsTheFirstUnmetCondition() {
         let condition = StoryConditionPresentation(
-            id: "days", text: "約束を累計5日達成", currentValue: "2", targetValue: "5", isSatisfied: false
+            id: "days", text: "やることを累計5日達成", currentValue: "2", targetValue: "5", isSatisfied: false
         )
         let chapter = StoryChapterPresentation(
             id: "chapter_02",
@@ -68,6 +68,6 @@ final class StoryCatalogGroupTests: XCTestCase {
         let group = StoryCatalogGroup.groups(from: [chapter])[0]
 
         XCTAssertFalse(group.isUnlocked)
-        XCTAssertEqual(group.unlockHint, "約束を累計5日達成")
+        XCTAssertEqual(group.unlockHint, "やることを累計5日達成")
     }
 }

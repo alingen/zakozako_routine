@@ -372,7 +372,7 @@ struct RootTabView: View {
             if blockedBehaviorToCreate != nil,
                existingBlockedBehavior == nil,
                !dependencies.blockedBehaviorRepository.canAddNew() {
-                presentOnboardingError("すでに挑戦中の「やらないこと」があります。")
+                presentOnboardingError("すでに挑戦中の「やめること」があります。")
                 return
             }
 
@@ -424,7 +424,7 @@ struct RootTabView: View {
                         if existing == nil {
                             try? dependencies.routineRepository.delete(routine)
                         }
-                        presentOnboardingError("やめたい習慣を保存できませんでした。もう一度お試しください。")
+                        presentOnboardingError("やめることを保存できませんでした。もう一度お試しください。")
                         return
                     }
                     createdBlockedBehavior = created
@@ -675,7 +675,7 @@ struct RootTabView: View {
         guard onboardingState.phase == .tomorrowPromise,
               !isSavingNotification else { return }
         guard let routine = onboardingRoutine() else {
-            presentOnboardingError("最初の約束が見つかりませんでした。")
+            presentOnboardingError("最初のやることが見つかりませんでした。")
             return
         }
 
@@ -1214,7 +1214,7 @@ private struct OnboardingFirstReportSpotlightView: View {
         .disabled(isSubmitting)
         .contentShape(Circle())
         .position(x: target.midX, y: target.midY)
-        .accessibilityLabel("最初の約束を報告")
+        .accessibilityLabel("最初のやることを報告")
         .accessibilityHint("実行できたらタップして達成を記録します")
     }
 

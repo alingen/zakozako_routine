@@ -29,7 +29,7 @@ struct BlockedBehaviorRecordView: View {
             .padding()
         }
         .background(AppColor.background)
-        .navigationTitle("やらないことの記録")
+        .navigationTitle("やめることの記録")
         .navigationBarTitleDisplayMode(.inline)
     }
 

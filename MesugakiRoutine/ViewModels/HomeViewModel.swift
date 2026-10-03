@@ -332,7 +332,7 @@ final class HomeViewModel {
             return "保存先を準備できませんでした。もう一度お試しください。"
         }
         guard canAddBlockedBehavior else {
-            return "挑戦中の「やらないこと」は同時に1つまでです。"
+            return "挑戦中の「やめること」は同時に1つまでです。"
         }
         let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return "タイトルを入力してください。" }

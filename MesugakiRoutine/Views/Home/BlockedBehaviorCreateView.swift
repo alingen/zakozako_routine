@@ -142,14 +142,14 @@ struct BlockedBehaviorCreateView: View {
     }
 
     private var navigationTitle: String {
-        if isEditing { return "やらないことを編集" }
-        return isSelectingPreset ? "やらないことを追加" : "やらないことを確認"
+        if isEditing { return "やめることを編集" }
+        return isSelectingPreset ? "やめることを追加" : "やめることを確認"
     }
 
     private var detailsForm: some View {
         Form {
             ZakoNewsSharingSection(isOn: $draft.shareToZakoNews)
-            Section("やらないこと") {
+            Section("やめること") {
                 TextField("例: YouTubeを見ない", text: $draft.title)
                     // オンボーディングと同じ長さ(28文字)までにする。ざこ速報の上限(80文字)にも収まる。
                     .onChange(of: draft.title) { _, value in
@@ -284,7 +284,7 @@ struct BlockedBehaviorCreateView: View {
                 dismiss()
             }
         } label: {
-            Text(isEditing ? "変更を保存" : "やらないことを保存")
+            Text(isEditing ? "変更を保存" : "やめることを保存")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)

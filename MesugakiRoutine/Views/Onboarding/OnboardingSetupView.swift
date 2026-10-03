@@ -449,7 +449,7 @@ struct OnboardingSetupView: View {
 
             if stateStore.draft.selectedGoalID == "custom" {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("できたと判断できる、具体的な約束")
+                    Text("できたと判断できる、具体的な内容")
                         .font(.subheadline.weight(.semibold))
                     TextField("例：筋トレを10分する", text: customGoalBinding)
                         .focused($focusedField, equals: .customGoal)
@@ -522,7 +522,7 @@ struct OnboardingSetupView: View {
 
     private var blockedBehaviorPresetPage: some View {
         VStack(alignment: .leading, spacing: 22) {
-            onboardingTitle("やめたい習慣はありますか？")
+            onboardingTitle("やめたいことはありますか？")
 
             LazyVGrid(
                 columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
@@ -1055,7 +1055,7 @@ struct OnboardingSetupView: View {
                     iconName: stateStore.draft.habitIconName ?? "checklist"
                 ),
                 title: "いつもの行動をきっかけに",
-                explanation: "すでに毎日している行動のあとに、\n新しい約束をつなげてみましょう。",
+                explanation: "すでに毎日している行動のあとに、\n新しい「やること」をつなげてみましょう。",
                 onContinue: { stateStore.advanceDelayedGuidance(for: step) },
                 onBack: { stateStore.retreatDelayedGuidance(for: step) }
             )

@@ -622,7 +622,7 @@ struct HomeView: View {
             }
         } header: {
             HStack(spacing: 8) {
-                homeSectionTitle("今日の約束")
+                homeSectionTitle("やること")
                 Spacer()
                 Text("\(viewModel.todayCompletedCount) / \(viewModel.todayTotalCount)")
                     .font(.subheadline.weight(.semibold).monospacedDigit())
@@ -641,7 +641,7 @@ struct HomeView: View {
                 // 44pt のタップ領域を確保しつつ、見た目の位置は右端に揃える。
                 .padding(.vertical, -8)
                 .padding(.trailing, -12)
-                .accessibilityLabel("約束を追加")
+                .accessibilityLabel("やることを追加")
             }
             .homeSectionHeaderStyle()
         }
@@ -749,7 +749,7 @@ struct HomeView: View {
                 .appCardRow()
             }
         } header: {
-            homeSectionTitle("やらないこと")
+            homeSectionTitle("やめること")
                 .homeSectionHeaderStyle()
         }
     }
