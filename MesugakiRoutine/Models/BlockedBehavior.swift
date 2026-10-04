@@ -8,13 +8,14 @@ enum BlockedBehaviorTrackingKind: String, Codable {
 
 /// ユーザーが「やらないと決めた行動」。同時に挑戦中(`isActive`)にできるのは1件のみ。
 ///
-/// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、ユーザーが敗北を確定すると
-/// `usageEvents` に1回分が記録される。期間内の消費が上限未満なら、その日は「達成」として
+/// 「日/週/月ごとに〇〇回まで」の回数制限を持ち、ユーザーが報告すると
+/// `usageEvents` に1回分が記録される。期間内の回数が許された回数以内なら、その日は「達成」として
 /// 連続日数に加算される。判定は `BlockedBehaviorRepository.autoEvaluate` が日付変更時に自動で行う。
 @Model
 final class BlockedBehavior {
     @Attribute(.unique) var id: UUID
     var title: String
+    var shareToZakoNews: Bool = false
     /// カードの円の中に表示する SF Symbol 名。既存データは nil のまま扱える。
     var iconName: String?
     /// 現在挑戦中かどうか。true になれるのは同時に1件のみ。
@@ -22,7 +23,9 @@ final class BlockedBehavior {
     /// 回数制限の集計期間(生値)。既存データの軽量マイグレーションを通すため optional String で保持する
     /// (nil は `.day` 扱い)。参照は必ず computed の `limitPeriod` を使う。
     var limitPeriodRawValue: String?
-    /// 集計期間あたりの上限回数(生値)。nil は 0 扱い。参照は computed の `limitCount` を使う。
+    /// 失敗になる回数(生値)。「N回までOK」の N+1 を保存する。旧仕様の「N回で失敗」の値を
+    /// そのまま引き継ぐため、保存形式は変えていない。nil は 1(=1回でもやったら失敗)扱い。
+    /// 参照は computed の `allowedCount` / `failureThreshold` を使う。
     var limitCountValue: Int?
     /// 失敗判定用の時刻ログ(生値)。nil は空配列扱い。参照は computed の `usageEvents` を使う。
     var usageEventsStore: [Date]?
@@ -43,16 +46,15 @@ final class BlockedBehavior {
         get { limitPeriodRawValue.flatMap(HabitPeriod.init(rawValue:)) ?? .day }
         set { limitPeriodRawValue = newValue.rawValue }
     }
-    /// 集計期間あたりの上限回数(設定値)。
-    var limitCount: Int {
-        get { limitCountValue ?? 1 }
-        set { limitCountValue = newValue }
+    /// 集計期間あたりに許される回数。0 は「1回でもやったら失敗」。これを超えた回で失敗になる。
+    var allowedCount: Int {
+        get { failureThreshold - 1 }
+        set { limitCountValue = max(newValue, 0) + 1 }
     }
 
-    /// 実際に使う上限。1未満は1として扱う(「1回で失敗」)。
-    /// 期間内の消費回数がこの数に達したら、その期間は「失敗」になる。
-    var effectiveLimit: Int { max(limitCount, 1) }
-    /// 失敗判定用の時刻ログ。期間内の件数が `effectiveLimit` に達したらその日は未達成扱い。
+    /// 期間内の回数がこの数に達したら、その期間は「失敗」になる(= `allowedCount` + 1)。
+    var failureThreshold: Int { max(limitCountValue ?? 1, 1) }
+    /// 失敗判定用の時刻ログ。期間内の件数が `failureThreshold` に達したらその日は未達成扱い。
     var usageEvents: [Date] {
         get { usageEventsStore ?? [] }
         set { usageEventsStore = newValue }
@@ -95,7 +97,7 @@ final class BlockedBehavior {
         iconName: String? = nil,
         isActive: Bool = true,
         limitPeriod: HabitPeriod = .day,
-        limitCount: Int = 1,
+        allowedCount: Int = 0,
         usageEvents: [Date] = [],
         trackingKind: BlockedBehaviorTrackingKind = .manual,
         screenTimeLimitMinutes: Int? = nil,
@@ -113,7 +115,7 @@ final class BlockedBehavior {
         self.iconName = iconName
         self.isActive = isActive
         self.limitPeriodRawValue = limitPeriod.rawValue
-        self.limitCountValue = limitCount
+        self.limitCountValue = max(allowedCount, 0) + 1
         self.usageEventsStore = usageEvents
         self.trackingKindRawValue = trackingKind.rawValue
         self.screenTimeLimitMinutesValue = screenTimeLimitMinutes.map {
@@ -137,14 +139,14 @@ final class BlockedBehavior {
         limitPeriod.window(containing: day, calendar: calendar)
     }
 
-    /// 指定日の終了時点で、その日を含む期間の消費回数が上限に達しているか(達したら「失敗」)。
+    /// 指定日の終了時点で、その日を含む期間の回数が許された回数を超えているか(超えたら「失敗」)。
     func exceededLimit(on day: Date, calendar: Calendar = .current) -> Bool {
         let window = limitWindow(containing: day, calendar: calendar)
         let dayStart = AppDay.startOfDay(for: day, calendar: calendar)
         let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? window.end
         let upperBound = min(window.end, dayEnd)
         let count = usageEvents.filter { $0 >= window.start && $0 < upperBound }.count
-        return count >= effectiveLimit
+        return count >= failureThreshold
     }
 
     /// 現在時刻を含む期間の、これまでの消費回数。

@@ -193,7 +193,7 @@ final class StorySceneTransitionTests: XCTestCase {
         XCTAssertEqual(probe.sleeps.reduce(0) { $0 + $1.milliseconds }, 700)
         XCTAssertEqual(
             player.consumePendingSoundEffects(),
-            [StorySoundEffectPlayback(assetID: "se_color_slide", volume: 1)]
+            [.play(StorySoundEffectPlayback(assetID: "se_color_slide", volume: 1))]
         )
         XCTAssertTrue(player.consumePendingSoundEffects().isEmpty, "Play the slide SE only once")
     }

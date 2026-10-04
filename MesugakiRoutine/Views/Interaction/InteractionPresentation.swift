@@ -11,13 +11,8 @@ enum InteractionCommentSelector {
         excluding excludedID: String? = nil,
         randomUnit: () -> Double = { Double.random(in: 0..<1) }
     ) -> InteractionComment? {
-        var candidates = comments.filter {
-            $0.active
-                && $0.weight > 0
-                && matchesTouchArea($0.touchArea, requested: touchArea)
-                && matchesTime($0.timeCondition, now: now, calendar: calendar)
-                && matchesCondition($0.condition, profileValues: profileValues)
-        }
+        var candidates = candidates(from: comments, touchArea: touchArea, now: now,
+            calendar: calendar, profileValues: profileValues)
         if candidates.count > 1, let excludedID {
             candidates.removeAll { $0.id == excludedID }
         }
@@ -31,6 +26,18 @@ enum InteractionCommentSelector {
             target -= comment.weight
         }
         return candidates.last
+    }
+
+    static func candidates(
+        from comments: [InteractionComment], touchArea: String, now: Date,
+        calendar: Calendar, profileValues: [String: String]
+    ) -> [InteractionComment] {
+        comments.filter {
+            $0.active && $0.weight > 0
+                && matchesTouchArea($0.touchArea, requested: touchArea)
+                && matchesTime($0.timeCondition, now: now, calendar: calendar)
+                && matchesCondition($0.condition, profileValues: profileValues)
+        }
     }
 
     private static func matchesTouchArea(_ value: String?, requested: String) -> Bool {
@@ -123,13 +130,55 @@ struct StoryChapterPresentation: Identifiable, Hashable {
     let stories: [StoryListItemPresentation]
 }
 
+/// ストーリー一覧の1枚(章の入口)。プロローグ(0話)は章から切り出して単独の入口にする。
+struct StoryCatalogGroup: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let stories: [StoryListItemPresentation]
+
+    var isUnlocked: Bool { stories.contains { $0.isUnlocked } }
+    var readCount: Int { stories.filter(\.isRead).count }
+    var hasNew: Bool { stories.contains { $0.isNew } }
+    /// カードの画像。背景が設定された最初の話のものを使う。
+    var thumbnailAssetId: String? { stories.lazy.compactMap(\.backgroundAssetId).first }
+    /// 未解放のときに添える、最初の話の解放条件。
+    var unlockHint: String? {
+        stories.first?.conditions.first { !$0.isSatisfied }?.text
+    }
+
+    static func groups(from chapters: [StoryChapterPresentation]) -> [StoryCatalogGroup] {
+        chapters.enumerated().flatMap { index, chapter -> [StoryCatalogGroup] in
+            let prologues = chapter.stories.filter { $0.episodeOrder == 0 }
+            let episodes = chapter.stories.filter { $0.episodeOrder != 0 }
+            var result: [StoryCatalogGroup] = []
+            if !prologues.isEmpty {
+                result.append(StoryCatalogGroup(
+                    id: "\(chapter.id)#prologue",
+                    // 2章目以降にもプロローグがあれば、どの章のものか分かるようにする。
+                    title: index == 0 ? "プロローグ" : "\(chapter.title) プロローグ",
+                    stories: prologues
+                ))
+            }
+            if !episodes.isEmpty {
+                result.append(StoryCatalogGroup(id: chapter.id, title: chapter.title, stories: episodes))
+            }
+            return result
+        }
+    }
+}
+
 /// The current main chapter's read stories, not a mock day count or a lifetime total.
 /// A chapter advances only after all of its stories have been read.
+/// ストーリー一覧と同じ数字になるよう、プロローグは章から切り出して数える(`StoryCatalogGroup`)。
 struct InteractionStoryProgressPresentation: Equatable {
     let chapterTitle: String
     let completedCount: Int
     let totalCount: Int
     let nextStoryText: String
+    /// 次に読む話の題名(「第2話 ○○」)。読み終えたときは nil。
+    var nextStoryTitle: String? = nil
+    /// 次の話がもう読めて、まだ開いていないとき true。ミニカードに NEW を出す。
+    var nextStoryIsNew = false
 
     var progressFraction: Double {
         guard totalCount > 0 else { return 0 }
@@ -147,9 +196,9 @@ struct InteractionStoryProgressPresentation: Equatable {
         chapters: [StoryChapterPresentation],
         evaluations: [StoryEventUnlockEvaluation]
     ) -> Self {
-        let nonemptyChapters = chapters.filter { !$0.stories.isEmpty }
-        guard let chapter = nonemptyChapters.first(where: { $0.stories.contains { !$0.isRead } })
-            ?? nonemptyChapters.last else { return .empty }
+        let groups = StoryCatalogGroup.groups(from: chapters)
+        guard let chapter = groups.first(where: { $0.stories.contains { !$0.isRead } })
+            ?? groups.last else { return .empty }
 
         let completedCount = chapter.stories.filter(\.isRead).count
         let nextStory = chapter.stories.first { !$0.isRead }
@@ -166,7 +215,11 @@ struct InteractionStoryProgressPresentation: Equatable {
             chapterTitle: chapter.title,
             completedCount: completedCount,
             totalCount: chapter.stories.count,
-            nextStoryText: nextStoryText
+            nextStoryText: nextStoryText,
+            nextStoryTitle: nextStory.map { story in
+                [story.episodeLabel, story.title].compactMap { $0 }.joined(separator: " ")
+            },
+            nextStoryIsNew: nextStory.map { $0.isUnlocked && $0.isNew } ?? false
         )
     }
 

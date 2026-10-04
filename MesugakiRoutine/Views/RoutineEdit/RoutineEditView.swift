@@ -65,7 +65,7 @@ struct RoutineEditView: View {
                 saveButton
             }
         }
-        .confirmationDialog("この約束を削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
+        .confirmationDialog("このやることを削除しますか？", isPresented: $isPresentingDeleteConfirm, titleVisibility: .visible) {
             Button("削除する", role: .destructive) {
                 if viewModel.deleteRoutine() {
                     dismiss()
@@ -101,14 +101,21 @@ struct RoutineEditView: View {
     }
 
     private var navigationTitle: String {
-        if isExisting { return "約束を編集" }
-        return isSelectingPreset ? "約束を追加" : "約束を確認"
+        if isExisting { return "やることを編集" }
+        return isSelectingPreset ? "やることを追加" : "やることを確認"
     }
 
     private var detailsForm: some View {
         Form {
-            Section("約束") {
+            ZakoNewsSharingSection(isOn: $viewModel.shareToZakoNews)
+            Section("やること") {
                 TextField("タイトル", text: $viewModel.title)
+                    // オンボーディングと同じ長さ(28文字)までにする。ざこ速報の上限(80文字)にも収まる。
+                    .onChange(of: viewModel.title) { _, value in
+                        if value.count > ItemTitleLimit.maxLength {
+                            viewModel.title = String(value.prefix(ItemTitleLimit.maxLength))
+                        }
+                    }
             }
 
             Section {
@@ -116,7 +123,7 @@ struct RoutineEditView: View {
             } header: {
                 Text("実行するタイミング")
             } footer: {
-                Text("いつもの行動の後など、約束を始めるきっかけを設定できます。")
+                Text("いつもの行動の後など、始めるきっかけを設定できます。")
             }
 
             Section("アイコン") {
@@ -225,12 +232,12 @@ struct RoutineEditView: View {
             } footer: {
                 Text(viewModel.notifyAtScheduledTime
                      ? "この時刻を過ぎても達成していないと、通知でお知らせします。"
-                     : "この約束の通知はオフです。")
+                     : "このやることの通知はオフです。")
             }
 
             if isExisting {
                 Section {
-                    Button("この約束を削除", role: .destructive) {
+                    Button("このやることを削除", role: .destructive) {
                         isPresentingDeleteConfirm = true
                     }
                 }
@@ -244,7 +251,7 @@ struct RoutineEditView: View {
                 dismiss()
             }
         } label: {
-            Text(isExisting ? "保存" : "約束を保存")
+            Text(isExisting ? "保存" : "やることを保存")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)

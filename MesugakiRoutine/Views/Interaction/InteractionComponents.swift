@@ -1,102 +1,70 @@
 import SwiftUI
 
+/// 交流画面の莉央のひとこと。ホームや煽りと同じピンクの吹き出しで、白い操作部品と見分ける。
+/// 莉央本人が大きく映っているので、名札やアバターは付けない。
 struct InteractionCharacterSpeechBubble: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     let text: String
-    var speakerName: String? = nil
+    /// 読み上げで誰の言葉かを伝えるための名前。
+    var speakerName: String = "莉央"
 
-    @ViewBuilder
     var body: some View {
-        if let speakerName {
-            labeledBubble(name: speakerName)
-        } else {
-            legacyBubble
-        }
-    }
-
-    private func labeledBubble(name: String) -> some View {
         Text(text)
             .font(.body.weight(.semibold))
             .foregroundStyle(AppColor.text)
             .multilineTextAlignment(.leading)
-            // 大きな文字サイズでは行数を制限せず、全文を読めるようにする。
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+            // CMSの[br]と長いリアクションを省略せず、既存の吹き出しの高さだけ合わせる。
+            .lineLimit(nil)
             .minimumScaleFactor(0.86)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.leading, 20)
-            .padding(.trailing, 30)
-            .padding(.top, 25)
-            .padding(.bottom, 18)
-            .frame(maxWidth: .infinity, minHeight: 102, alignment: .leading)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(AppColor.surface.opacity(0.91))
-                    .shadow(color: AppColor.text.opacity(0.14), radius: 16, y: 6)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(.white.opacity(0.9), lineWidth: 1)
-            }
-            .overlay(alignment: .topLeading) {
-                Text(name)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 6)
-                    .background(AppColor.primary, in: Capsule())
-                    .padding(.leading, 20)
-                    .offset(y: -14)
+                // 立ち絵の上でも輪郭が分かるよう、薄い影だけ付ける。
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(AppColor.primarySoft)
+                    .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 4)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(name)、\(text)")
-    }
-
-    private var legacyBubble: some View {
-        Text(text)
-            .font(.body.weight(.bold))
-            .foregroundStyle(AppColor.text)
-            .multilineTextAlignment(.center)
-            .lineLimit(3)
-            .minimumScaleFactor(0.86)
-            .padding(.horizontal, 22)
-            .padding(.top, 50)
-            .padding(.bottom, 22)
-            .frame(maxWidth: .infinity, minHeight: 112)
-            .background {
-                InteractionSpeechBubbleShape()
-                    .fill(AppColor.surface.opacity(0.94))
-                    .shadow(color: AppColor.text.opacity(0.18), radius: 14, y: 7)
-            }
-            .overlay {
-                InteractionSpeechBubbleShape()
-                    .stroke(.white.opacity(0.96), lineWidth: 1.5)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("莉央、\(text)")
+            .accessibilityLabel("\(speakerName)、\(text)")
     }
 }
 
-private struct InteractionSpeechBubbleShape: Shape {
-    private let tailHeight: CGFloat = 32
-    private let cornerRadius: CGFloat = 22
+/// 莉央をタップした位置に一瞬だけ出る小さなきらめき。飾りなので Yellow(accent)と白で描く。
+/// 視差効果を減らす設定では、広がらずにその場で消える。
+struct InteractionTapSparkle: View {
+    struct Burst: Identifiable {
+        let id = UUID()
+        let location: CGPoint
+    }
 
-    func path(in rect: CGRect) -> Path {
-        let bodyRect = CGRect(
-            x: rect.minX,
-            y: rect.minY + tailHeight,
-            width: rect.width,
-            height: max(0, rect.height - tailHeight)
-        )
-        let tailCenterX = rect.minX + rect.width * 0.56
-        let tailHalfWidth: CGFloat = 18
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isSpread = false
+    @State private var isFaded = false
 
-        var path = Path(roundedRect: bodyRect, cornerRadius: cornerRadius)
-        path.move(to: CGPoint(x: tailCenterX - tailHalfWidth, y: bodyRect.minY + 1))
-        path.addLine(to: CGPoint(x: tailCenterX, y: rect.minY))
-        path.addLine(to: CGPoint(x: tailCenterX + tailHalfWidth, y: bodyRect.minY + 1))
-        path.closeSubpath()
-        return path
+    private let pieces: [(offset: CGSize, size: CGFloat, color: Color)] = [
+        (CGSize(width: -14, height: -16), 13, AppColor.accent),
+        (CGSize(width: 15, height: -10), 10, .white),
+        (CGSize(width: 2, height: 16), 8, AppColor.accent),
+    ]
+
+    var body: some View {
+        ZStack {
+            ForEach(pieces.indices, id: \.self) { index in
+                let piece = pieces[index]
+                Image(systemName: "sparkle")
+                    .font(.system(size: piece.size, weight: .bold))
+                    .foregroundStyle(piece.color)
+                    .shadow(color: AppColor.text.opacity(0.18), radius: 1.5)
+                    .offset(isSpread && !reduceMotion ? piece.offset : .zero)
+                    .scaleEffect(isSpread ? 1 : 0.4)
+            }
+        }
+        .opacity(isFaded ? 0 : 1)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.3)) { isSpread = true }
+            withAnimation(.easeIn(duration: 0.25).delay(0.3)) { isFaded = true }
+        }
     }
 }
 
@@ -195,14 +163,16 @@ struct InteractionDockItem: View {
     var isEnabled = true
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
+            // アイコンは淡いピンクの丸い地に載せ、丸いボタンが並ぶリズムを作る(CLAUDE.md の primarySoft の役割)。
             Image(systemName: kind.symbol)
-                .font(.system(size: 24, weight: .medium))
+                .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(isEnabled ? kind.tint : AppColor.muted)
-                .frame(width: 44, height: 30)
+                .frame(width: 40, height: 40)
+                .background(isEnabled ? AppColor.primarySoft : AppColor.border, in: Circle())
                 .overlay(alignment: .topTrailing) {
                     indicator
-                        .offset(x: 6, y: -4)
+                        .offset(x: 6, y: -2)
                 }
 
             // 「スト/ーリー」のような不自然な折り返しを避け、大きな文字サイズでは1行のまま縮める。
@@ -257,7 +227,7 @@ struct InteractionProgressMiniCard: View {
                     .lineLimit(isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 0)
-                Text("\(progress.completedCount) / \(progress.totalCount)")
+                Text("\(progress.completedCount) / \(progress.totalCount)話")
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .fixedSize()
@@ -267,12 +237,9 @@ struct InteractionProgressMiniCard: View {
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule().fill(AppColor.secondary.opacity(0.14))
+                    // ストーリーの色(Purple)の単色で塗る。
                     Capsule()
-                        .fill(LinearGradient(
-                            colors: [AppColor.primarySoft, AppColor.primary],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ))
+                        .fill(AppColor.secondary)
                         .frame(width: proxy.size.width * progress.progressFraction)
                 }
             }
@@ -282,11 +249,35 @@ struct InteractionProgressMiniCard: View {
 
             // タップでストーリー一覧へ移れることを示す。
             HStack(alignment: .center, spacing: 4) {
-                Text(progress.nextStoryText)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(AppColor.muted)
-                    .lineLimit(isAccessibilitySize ? nil : 2)
-                    .fixedSize(horizontal: false, vertical: true)
+                // すりガラスの上なので muted ではなく本文色にする(muted は白地の上だけ)。
+                VStack(alignment: .leading, spacing: 3) {
+                    // 次に読む話の題名。もう読めるときは NEW を添え、「読めます」の文は省く。
+                    if let nextStoryTitle = progress.nextStoryTitle {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            if progress.nextStoryIsNew {
+                                Text("NEW")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 1)
+                                    .background(AppColor.primary, in: Capsule())
+                                    .fixedSize()
+                            }
+                            // 幅188ptでは題名が1行に収まりにくいので、2行まで出す。
+                            Text(nextStoryTitle)
+                                .font(.caption.weight(.semibold))
+                                .lineLimit(isAccessibilitySize ? 3 : 2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    if !progress.nextStoryIsNew || progress.nextStoryTitle == nil {
+                        Text(progress.nextStoryText)
+                            .font(.caption.weight(.medium))
+                            .lineLimit(isAccessibilitySize ? nil : 2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .foregroundStyle(AppColor.text)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
@@ -297,13 +288,24 @@ struct InteractionProgressMiniCard: View {
         .padding(12)
         // 大きな文字サイズでは幅を広げて、章名と進み具合が切れないようにする。
         .frame(width: isAccessibilitySize ? 260 : 188)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(.white.opacity(0.9))
         }
         .shadow(color: AppColor.text.opacity(0.12), radius: 12, y: 5)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(progress.chapterTitle)、\(progress.completedCount)話読了、全\(progress.totalCount)話。\(progress.nextStoryText)")
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        var parts = ["\(progress.chapterTitle)、\(progress.completedCount)話読了、全\(progress.totalCount)話。"]
+        if let nextStoryTitle = progress.nextStoryTitle {
+            parts.append(progress.nextStoryIsNew ? "新しい話、\(nextStoryTitle)。" : "次は\(nextStoryTitle)。")
+        }
+        if !progress.nextStoryIsNew || progress.nextStoryTitle == nil {
+            parts.append(progress.nextStoryText)
+        }
+        return parts.joined()
     }
 }

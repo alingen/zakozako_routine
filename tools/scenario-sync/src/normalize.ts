@@ -5,6 +5,9 @@ import type {
   NormalizedDailyCatalogRow,
   NormalizedEventRow,
   NormalizedInteractionRow,
+  NormalizedReactionCondition,
+  NormalizedReactionLine,
+  NormalizedRioLine,
   NormalizedScenarioRow,
   NormalizedSheets,
   RawRow,
@@ -18,6 +21,9 @@ import {
   DAILY_COLUMNS,
   EVENT_COLUMNS,
   INTERACTION_COLUMNS,
+  REACTION_CONDITION_COLUMNS,
+  REACTION_LINE_COLUMNS,
+  RIO_LINE_COLUMNS,
   REQUIRED_CHOICE_COLUMNS,
   REQUIRED_ASSET_CATALOG_COLUMNS,
   REQUIRED_DAILY_CATALOG_COLUMNS,
@@ -232,6 +238,7 @@ function normalizeScenarioRows(
       saveKey: optionalString(row, 'save_key'),
       saveValue: optionalString(row, 'save_value'),
       assetId: optionalString(row, 'asset_id'),
+      voiceAssetId: optionalString(row, 'voice_asset_id'),
       minPhase,
       maxPhase,
       speakerName: optionalString(row, 'speaker_name'),
@@ -445,6 +452,118 @@ function normalizeEvents(bag: IssueBag, rows: RawRow[]): NormalizedEventRow[] {
   return normalized;
 }
 
+function normalizeReactionConditions(bag: IssueBag, rows: RawRow[]): NormalizedReactionCondition[] {
+  const sheet = 'reaction_conditions';
+  checkColumns(
+    bag,
+    sheet,
+    rows,
+    REACTION_CONDITION_COLUMNS,
+    REACTION_CONDITION_COLUMNS.filter((c) => c !== 'note'),
+  );
+  return rows.flatMap((row): NormalizedReactionCondition[] => {
+    const active = booleanValue(bag, sheet, row, 'active', false);
+    // Keep disabled IDs for reference validation; their unfinished predicates are not evaluated.
+    if (!active) {
+      const conditionId = trimmed(row, 'condition_id');
+      return conditionId
+        ? [
+            {
+              __row: row.__row,
+              conditionId,
+              label: trimmed(row, 'label'),
+              triggerType: trimmed(row, 'trigger_type'),
+              conditionKey: trimmed(row, 'condition_key'),
+              operator: trimmed(row, 'operator'),
+              value: trimmed(row, 'value'),
+              priority: 0,
+              active: false,
+              note: optionalString(row, 'note'),
+            },
+          ]
+        : [];
+    }
+    const conditionId = requiredString(bag, sheet, row, 'condition_id');
+    const triggerType = requiredString(bag, sheet, row, 'trigger_type');
+    const conditionKey = requiredString(bag, sheet, row, 'condition_key');
+    const operator = requiredString(bag, sheet, row, 'operator');
+    const priority = integer(bag, sheet, row, 'priority', true);
+    if (!conditionId || !triggerType || !conditionKey || !operator || priority === undefined)
+      return [];
+    return [
+      {
+        __row: row.__row,
+        conditionId,
+        label: trimmed(row, 'label'),
+        triggerType,
+        conditionKey,
+        operator,
+        value: trimmed(row, 'value'),
+        priority,
+        active: true,
+        note: optionalString(row, 'note'),
+      },
+    ];
+  });
+}
+
+function normalizeReactionLines(bag: IssueBag, rows: RawRow[]): NormalizedReactionLine[] {
+  const sheet = 'reaction_lines';
+  checkColumns(
+    bag,
+    sheet,
+    rows,
+    REACTION_LINE_COLUMNS,
+    REACTION_LINE_COLUMNS.filter((c) => c !== 'note' && c !== 'display_target'),
+  );
+  return rows.flatMap((row) => {
+    if (!booleanValue(bag, sheet, row, 'active', false)) return [];
+    const lineId = requiredString(bag, sheet, row, 'line_id');
+    const conditionId = requiredString(bag, sheet, row, 'condition_id');
+    const text = requiredString(bag, sheet, row, 'text');
+    const weight = integer(bag, sheet, row, 'weight', false) ?? 1;
+    if (!lineId || !conditionId || !text) return [];
+    return [
+      {
+        __row: row.__row,
+        lineId,
+        conditionId,
+        text,
+        weight,
+        active: true,
+        strength: trimmed(row, 'strength') || 'normal',
+        premiumOnly: booleanValue(bag, sheet, row, 'premium_only', false),
+        note: optionalString(row, 'note'),
+        displayTarget: optionalString(row, 'display_target'),
+      },
+    ];
+  });
+}
+
+function normalizeRioLines(bag: IssueBag, rows: RawRow[]): NormalizedRioLine[] {
+  const sheet = 'rio_lines';
+  checkColumns(bag, sheet, rows, RIO_LINE_COLUMNS, RIO_LINE_COLUMNS);
+  return rows.flatMap((row): NormalizedRioLine[] => {
+    if (!booleanValue(bag, sheet, row, 'active', true)) return [];
+    const lineId = requiredString(bag, sheet, row, 'line_id');
+    const groupId = requiredString(bag, sheet, row, 'group_id');
+    const text = requiredString(bag, sheet, row, 'text');
+    const weight = integer(bag, sheet, row, 'weight', true);
+    if (!lineId || !groupId || !text || weight === undefined) return [];
+    return [
+      {
+        __row: row.__row,
+        lineId,
+        groupId,
+        text,
+        weight,
+        active: true,
+        note: optionalString(row, 'note'),
+      },
+    ];
+  });
+}
+
 export function normalize(raw: RawSheets): NormalizeResult {
   const issues = new IssueBag();
   return {
@@ -454,6 +573,9 @@ export function normalize(raw: RawSheets): NormalizeResult {
       assetCatalog: normalizeAssetCatalog(issues, raw.assetCatalog),
       choices: normalizeChoices(issues, raw.choices),
       interactions: normalizeInteractions(issues, raw.interactions),
+      reactionConditions: normalizeReactionConditions(issues, raw.reactionConditions),
+      reactionLines: normalizeReactionLines(issues, raw.reactionLines),
+      rioLines: normalizeRioLines(issues, raw.rioLines),
       scenarios: normalizeScenarioRows(issues, raw.scenarios, 'senarios'),
       events: normalizeEvents(issues, raw.events),
     },

@@ -18,6 +18,9 @@ export interface RawSheets {
   assetCatalog: RawRow[];
   choices: RawRow[];
   interactions: RawRow[];
+  reactionConditions: RawRow[];
+  reactionLines: RawRow[];
+  rioLines: RawRow[];
   /** Event scenario lines from the intentionally named `senarios` tab. */
   scenarios: RawRow[];
   events: RawRow[];
@@ -33,6 +36,9 @@ export interface SheetSnapshot {
     asset_catalog: string[][];
     choices: string[][];
     interactions: string[][];
+    reaction_conditions: string[][];
+    reaction_lines: string[][];
+    rio_lines: string[][];
     senarios: string[][];
     events: string[][];
   };
@@ -59,6 +65,7 @@ export interface NormalizedScenarioRow {
   saveKey?: string;
   saveValue?: string;
   assetId?: string;
+  voiceAssetId?: string;
   minPhase?: number;
   maxPhase?: number;
   speakerName?: string;
@@ -143,12 +150,52 @@ export interface NormalizedEventRow {
   storyCategory?: string;
 }
 
+export interface ReactionCondition {
+  conditionId: string;
+  label: string;
+  triggerType: string;
+  conditionKey: string;
+  operator: string;
+  value: string;
+  priority: number;
+  active: boolean;
+  note?: string;
+}
+
+export interface ReactionLine {
+  lineId: string;
+  conditionId: string;
+  text: string;
+  strength: string;
+  premiumOnly: boolean;
+  weight: number;
+  active: boolean;
+  note?: string;
+  displayTarget?: string;
+}
+
+export type NormalizedReactionCondition = ReactionCondition & { __row: number };
+export type NormalizedReactionLine = ReactionLine & { __row: number };
+
+export interface RioLine {
+  lineId: string;
+  groupId: string;
+  text: string;
+  weight: number;
+  active: boolean;
+  note?: string;
+}
+export type NormalizedRioLine = RioLine & { __row: number };
+
 export interface NormalizedSheets {
   daily: NormalizedScenarioRow[];
   dailyCatalog: NormalizedDailyCatalogRow[];
   assetCatalog: NormalizedAssetCatalogRow[];
   choices: NormalizedChoiceRow[];
   interactions: NormalizedInteractionRow[];
+  reactionConditions: NormalizedReactionCondition[];
+  reactionLines: NormalizedReactionLine[];
+  rioLines: NormalizedRioLine[];
   scenarios: NormalizedScenarioRow[];
   events: NormalizedEventRow[];
 }
@@ -166,7 +213,7 @@ export function allScenarioRows(data: NormalizedSheets): NormalizedScenarioRow[]
 export type StoryNode = Omit<
   NormalizedScenarioRow,
   '__row' | 'sourceSheet' | 'scenarioId' | 'scenarioType'
->;
+> & { voiceFileName?: string };
 
 export interface StoryScenario {
   scenarioId: string;
@@ -233,5 +280,8 @@ export interface StoryContentBundle {
   scenarios: StoryScenario[];
   choiceGroups: StoryChoiceGroup[];
   interactions: InteractionComment[];
+  reactionConditions: ReactionCondition[];
+  reactionLines: ReactionLine[];
+  rioLines: RioLine[];
   events: StoryEvent[];
 }

@@ -1,6 +1,7 @@
 import { IssueBag } from './issues.js';
 import { checkReachability } from './reachability.js';
 import {
+  REACTION_DISPLAY_TARGETS,
   KNOWN_ASSET_TYPES,
   KNOWN_COMMANDS,
   KNOWN_EVENT_TYPES,
@@ -24,6 +25,9 @@ import type {
 } from './types.js';
 import { allScenarioRows } from './types.js';
 
+/** rio_lines で使える差し込み。{user_name} はユーザーの名前(未設定なら空)に置き換わる。 */
+const RIO_LINE_PLACEHOLDERS = new Set(['{routine_title}', '{user_name}']);
+
 export interface ValidateResult {
   issues: IssueBag;
 }
@@ -41,10 +45,110 @@ export function validate(data: NormalizedSheets): ValidateResult {
   validateAssetReferences(scenarioRows, data.events, assets, issues);
   validateChoiceRows(data.choices, data.daily, choices, issues);
   validateInteractions(data.interactions, issues);
+  validateReactions(data, issues);
+  const rioLineIDs = new Set<string>();
+  const challengeGroups = new Set([
+    'standard',
+    'silly',
+    'exercise',
+    'music',
+    'memory',
+    'observation',
+    'small_task',
+  ]);
+  for (const row of data.rioLines) {
+    const at = { sheet: 'rio_lines', row: row.__row, column: 'line_id' };
+    if (rioLineIDs.has(row.lineId))
+      issues.error('duplicate_rio_line', 'line_id must be unique', { at });
+    rioLineIDs.add(row.lineId);
+    if (row.weight < 0) issues.error('invalid_rio_weight', 'weight must be nonnegative', { at });
+    const tokens = row.text.match(/\{[^{}]+\}/g) ?? [];
+    if (tokens.some((token) => !RIO_LINE_PLACEHOLDERS.has(token))) {
+      issues.error(
+        'invalid_rio_placeholder',
+        'Only {routine_title} and {user_name} are supported',
+        { at },
+      );
+    }
+    if (
+      row.groupId.startsWith('challenge_') &&
+      row.groupId !== 'challenge_intro' &&
+      !challengeGroups.has(row.groupId.slice('challenge_'.length))
+    ) {
+      issues.error('invalid_challenge_group', 'Unknown challenge category', { at });
+    }
+  }
   validateEventRows(data.events, scenarios, issues);
   checkReachability(data, issues);
 
   return { issues };
+}
+
+function validateReactions(data: NormalizedSheets, issues: IssueBag): void {
+  const conditionIDs = new Set<string>();
+  for (const row of data.reactionConditions) {
+    const at = { sheet: 'reaction_conditions', row: row.__row, column: 'condition_id' };
+    if (conditionIDs.has(row.conditionId))
+      issues.error('duplicate_reaction_condition', 'condition_id must be unique', { at });
+    conditionIDs.add(row.conditionId);
+    if (!row.active) continue;
+    if (!['state', 'derived', 'event', 'calendar'].includes(row.triggerType)) {
+      issues.error('invalid_reaction_trigger', 'Unsupported trigger_type', {
+        at,
+        value: row.triggerType,
+      });
+    }
+    if (!['==', '!=', '>=', '<=', '>', '<', 'derived', 'between', 'event'].includes(row.operator)) {
+      issues.error('invalid_reaction_operator', 'Unsupported operator', {
+        at,
+        value: row.operator,
+      });
+    }
+  }
+  const lineIDs = new Set<string>();
+  for (const row of data.reactionLines) {
+    const at = { sheet: 'reaction_lines', row: row.__row, column: 'line_id' };
+    if (lineIDs.has(row.lineId))
+      issues.error('duplicate_reaction_line', 'line_id must be unique', { at });
+    lineIDs.add(row.lineId);
+    if (!conditionIDs.has(row.conditionId))
+      issues.error('missing_reaction_condition', 'Active line must reference a known condition', {
+        at,
+        value: row.conditionId,
+      });
+    if (row.weight < 0)
+      issues.error('invalid_reaction_weight', 'weight must be nonnegative', { at });
+    if (!['normal', 'strong'].includes(row.strength))
+      issues.error('invalid_reaction_strength', 'strength must be normal or strong', { at });
+    const target = row.displayTarget ?? 'general';
+    if (!(REACTION_DISPLAY_TARGETS as readonly string[]).includes(target)) {
+      issues.error('invalid_reaction_display_target', 'Unknown display_target', { at });
+    }
+    const tokens = row.text.match(/\{[^{}]+\}/g) ?? [];
+    if (tokens.some((token) => token !== '{routine_title}')) {
+      issues.error('invalid_reaction_placeholder', 'Only {routine_title} is supported', { at });
+    }
+    if (
+      tokens.length &&
+      !['home_routine_added', 'home_peek_unfinished', 'home_idle_above'].includes(target)
+    ) {
+      issues.error(
+        'reaction_placeholder_without_title',
+        'This display_target cannot supply a routine title',
+        { at },
+      );
+    }
+    if (
+      target === 'home_peek_unfinished_top' &&
+      ([...row.text.replaceAll('[sp]', ' ')].length > 10 || /\[br\]|[\r\n]/.test(row.text))
+    ) {
+      issues.error(
+        'reaction_compact_text_too_long',
+        'Compact peek requires one line of at most 10 characters',
+        { at },
+      );
+    }
+  }
 }
 
 function validateAssetCatalog(
@@ -87,6 +191,15 @@ function validateAssetReferences(
   const audioTypes = new Set(['bgm', 'se', 'voice']);
 
   for (const row of scenarioRows) {
+    if (row.voiceAssetId) {
+      references.push({
+        id: row.voiceAssetId,
+        sheet: row.sourceSheet,
+        row: row.__row,
+        column: 'voice_asset_id',
+        expectedTypes: one('voice'),
+      });
+    }
     if (row.background) {
       references.push({
         id: row.background,
@@ -555,6 +668,23 @@ function validateScenarioRows(
           );
         }
       }
+    }
+
+    if (
+      row.uiVariant === 'fullscreen_narration' &&
+      (row.messageType !== 'text' ||
+        !row.text?.trim() ||
+        row.choiceId ||
+        (row.screenMode && row.screenMode !== 'chat'))
+    ) {
+      issues.error(
+        'invalid_fullscreen_narration',
+        'fullscreen_narration requires chat text without choices',
+        {
+          at: { sheet, row: row.__row, column: 'ui_variant' },
+          fix: 'Use screen_mode=chat, message_type=text, nonempty text, and no choice_id',
+        },
+      );
     }
 
     if (sheet === 'senarios') {

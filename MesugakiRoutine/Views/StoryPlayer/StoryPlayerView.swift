@@ -16,6 +16,7 @@ protocol StoryPlayerViewInput {
     var isHesitating: Bool { get }
     var availableChoices: [StoryChoice] { get }
     var isTyping: Bool { get }
+    var isWaitingForChatExit: Bool { get }
     var isModalPresented: Bool { get }
     var isCompleted: Bool { get }
     var isCurrentNodeTerminal: Bool { get }
@@ -37,6 +38,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
     let isHesitating: Bool
     let availableChoices: [StoryChoice]
     let isTyping: Bool
+    let isWaitingForChatExit: Bool
     let isModalPresented: Bool
     let isCompleted: Bool
     let isCurrentNodeTerminal: Bool
@@ -56,6 +58,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         isHesitating: Bool = false,
         availableChoices: [StoryChoice] = [],
         isTyping: Bool = false,
+        isWaitingForChatExit: Bool = false,
         isModalPresented: Bool = false,
         isCompleted: Bool = false,
         isCurrentNodeTerminal: Bool = false,
@@ -74,6 +77,7 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
         self.isHesitating = isHesitating
         self.availableChoices = availableChoices
         self.isTyping = isTyping
+        self.isWaitingForChatExit = isWaitingForChatExit
         self.isModalPresented = isModalPresented
         self.isCompleted = isCompleted
         self.isCurrentNodeTerminal = isCurrentNodeTerminal
@@ -84,6 +88,8 @@ struct StoryPlayerViewSnapshot: StoryPlayerViewInput {
 /// fullScreenCoverでの表示を前提とするStory Playerの統合画面。
 /// シナリオ進行や永続化は行わず、すべてcallbackを通じてCoreへ委譲する。
 struct StoryPlayerView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let input: any StoryPlayerViewInput
     var advOpeningRevealPhase: ADVOpeningRevealPhase = .text
     var allowsSkip = true
@@ -98,6 +104,7 @@ struct StoryPlayerView: View {
 
     @State private var isShowingLog = false
     @State private var advPlaybackMode: ADVPlaybackMode = .manual
+    @State private var voicePlayback = StoryVoicePlaybackController()
 
     private var isAutomaticallyReturningCompletedEvent: Bool {
         input.isCompleted
@@ -115,6 +122,11 @@ struct StoryPlayerView: View {
         }
     }
 
+    private var hidesChatControlsForNarration: Bool {
+        guard input.currentMode == .chat, !input.isCompleted, let node = input.currentNode else { return false }
+        return EventChatSystemPresentationPolicy.usesFullscreenNarration(node: node)
+    }
+
     var body: some View {
         ZStack {
             playerContent
@@ -124,6 +136,10 @@ struct StoryPlayerView: View {
             if !isAutomaticallyReturningCompletedEvent, !isShowingLog {
                 VStack(spacing: 10) {
                     topBar
+                        .opacity(hidesChatControlsForNarration ? 0 : 1)
+                        .allowsHitTesting(!hidesChatControlsForNarration)
+                        .accessibilityHidden(hidesChatControlsForNarration)
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: hidesChatControlsForNarration)
 
                     if let error = input.recoverableError, !error.isEmpty {
                         recoverableErrorBanner(error)
@@ -150,8 +166,19 @@ struct StoryPlayerView: View {
             }
         }
         .background(AppColor.background.ignoresSafeArea())
+        .onChange(of: input.currentNode?.nodeId) { _, nodeID in
+            voicePlayback.select(nodeID: nodeID)
+        }
+        .onChange(of: isSceneTransitionActive) { _, active in
+            if active { voicePlayback.stop() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { voicePlayback.stop() }
+        }
+        .onDisappear { voicePlayback.stop() }
         .onChange(of: input.currentMode.rawValue) { _, mode in
             if mode != StoryScreenMode.adv.rawValue {
+                voicePlayback.stop()
                 stopADVPlaybackModes()
             }
         }
@@ -215,6 +242,7 @@ struct StoryPlayerView: View {
                     showsHesitationBubble: input.isHesitating,
                     playbackMode: advPlaybackMode,
                     isPlaybackPaused: isShowingLog
+                        || scenePhase != .active
                         || isSceneTransitionActive
                         || !advOpeningRevealPhase.startsTextReveal,
                     isAutomationAvailable: input.recoverableError?.isEmpty != false,
@@ -222,15 +250,23 @@ struct StoryPlayerView: View {
                         for: input.scenarioType
                     ),
                     allowsSkip: allowsSkip,
-                    onAdvance: onAdvance,
-                    onSelectChoice: onChoice,
+                    onAdvance: { pace in
+                        voicePlayback.stop()
+                        onAdvance(pace)
+                    },
+                    onSelectChoice: { choice in
+                        voicePlayback.stop()
+                        onChoice(choice)
+                    },
                     onDismissModal: onDismissModal,
                     onTextWindowTap: onTextWindowTap,
                     onSkip: {
+                        voicePlayback.stop()
                         stopADVPlaybackModes()
                         onSkip()
                     },
                     onClose: {
+                        voicePlayback.stop()
                         stopADVPlaybackModes()
                         onClose()
                     },
@@ -238,6 +274,7 @@ struct StoryPlayerView: View {
                     onToggleAuto: toggleADVAuto,
                     onToggleFastForward: toggleADVFastForward
                 )
+                .environment(\.storyVoicePlayback, voicePlayback)
             case .chat:
                 ChatStoryRenderer(
                     node: node,
@@ -248,6 +285,7 @@ struct StoryPlayerView: View {
                     cgAssetID: input.cgAssetID,
                     choices: input.availableChoices,
                     isTyping: input.isTyping,
+                    isWaitingForChatExit: input.isWaitingForChatExit,
                     isModalPresented: input.isModalPresented,
                     onAdvance: { onAdvance(.normal) },
                     onPresentNode: onPresentNode,
@@ -330,6 +368,7 @@ struct StoryPlayerView: View {
     }
 
     private func showLog() {
+        voicePlayback.stop()
         if advPlaybackMode == .fastForward {
             advPlaybackMode = .manual
         }
@@ -344,6 +383,9 @@ struct StoryPlayerView: View {
 
     private func toggleADVFastForward() {
         advPlaybackMode = advPlaybackMode == .fastForward ? .manual : .fastForward
+        if advPlaybackMode == .fastForward {
+            voicePlayback.suppress(nodeID: input.currentNode?.nodeId)
+        }
     }
 
     private func stopADVPlaybackModes() {
@@ -553,9 +595,7 @@ private struct StoryLogRow: View {
             return nil
         }
         if isProtagonist {
-            let nickname = AppSettingsStore.userName
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            return nickname.isEmpty ? "主人公" : nickname
+            return node.protagonistDisplayName(userName: AppSettingsStore.userName)
         }
         if let speakerName = node.storyDisplaySpeakerName {
             switch speakerName.lowercased() {

@@ -26,6 +26,8 @@ struct NotificationSettingsView: View {
                         set: { viewModel.setNotificationsEnabled($0) }
                     )
                 )
+                // ナビゲーションの tint は本文色なので、トグルの ON は Primary を明示する。
+                .tint(AppColor.primary)
                 if viewModel.notificationsEnabled {
                     Picker(
                         "通知タイミング",
@@ -44,7 +46,7 @@ struct NotificationSettingsView: View {
             }
 
             if !viewModel.routines.isEmpty {
-                Section("対象の約束") {
+                Section("対象のやること") {
                     ForEach(viewModel.routines) { routine in
                         HStack {
                             Text(routine.title)

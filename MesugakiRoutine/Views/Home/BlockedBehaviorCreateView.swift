@@ -142,14 +142,21 @@ struct BlockedBehaviorCreateView: View {
     }
 
     private var navigationTitle: String {
-        if isEditing { return "やらないことを編集" }
-        return isSelectingPreset ? "やらないことを追加" : "やらないことを確認"
+        if isEditing { return "やめることを編集" }
+        return isSelectingPreset ? "やめることを追加" : "やめることを確認"
     }
 
     private var detailsForm: some View {
         Form {
-            Section("やらないこと") {
+            ZakoNewsSharingSection(isOn: $draft.shareToZakoNews)
+            Section("やめること") {
                 TextField("例: YouTubeを見ない", text: $draft.title)
+                    // オンボーディングと同じ長さ(28文字)までにする。ざこ速報の上限(80文字)にも収まる。
+                    .onChange(of: draft.title) { _, value in
+                        if value.count > ItemTitleLimit.maxLength {
+                            draft.title = String(value.prefix(ItemTitleLimit.maxLength))
+                        }
+                    }
             }
 
             Section("アイコン") {
@@ -239,18 +246,22 @@ struct BlockedBehaviorCreateView: View {
                                 Text(period.pickerLabel).tag(period)
                             }
                         }
+                        // 0 は旧仕様の「週に1回で失敗」などを引き継いだときのため。
                         Stepper(
-                            "\(draft.limitPeriod.pickerLabel) \(draft.limitCount) 回で失敗",
-                            value: $draft.limitCount,
-                            in: 1...50
+                            BlockedBehaviorLimitText.rule(
+                                period: draft.limitPeriod,
+                                allowedCount: draft.allowedCount
+                            ),
+                            value: $draft.allowedCount,
+                            in: 0...50
                         )
                     }
                 } header: {
                     Text("上限設定")
                 } footer: {
                     Text(draft.isQuitCompletely
-                         ? "1回でもやってしまったら、その日は失敗になります。"
-                         : "設定した回数に達すると、その期間は失敗になります。")
+                         ? BlockedBehaviorLimitText.quitFootnote
+                         : BlockedBehaviorLimitText.countedFootnote)
                 }
             }
 
@@ -273,7 +284,7 @@ struct BlockedBehaviorCreateView: View {
                 dismiss()
             }
         } label: {
-            Text(isEditing ? "変更を保存" : "やらないことを保存")
+            Text(isEditing ? "変更を保存" : "やめることを保存")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)

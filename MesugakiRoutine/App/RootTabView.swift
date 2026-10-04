@@ -3,7 +3,11 @@ import SwiftData
 
 enum AppDialogActionStyle: Equatable {
     case standard
+    /// 押してほしい操作(1つだけ)。Primary で塗る。
+    case primary
     case destructive
+    /// 次に確認画面が続く、失敗や取り消しにつながる操作。塗らずに白地＋枠線、文字だけ Error にする。
+    case caution
     /// 何もせず閉じる操作。ボタン群の下に文字だけで置く。
     case cancel
 }
@@ -42,6 +46,7 @@ struct AppDialogRequest: Identifiable {
 struct BlockedBehaviorTauntRequest: Identifiable {
     let id = UUID()
     let text: String
+    var offersChallenge = false
 }
 
 private enum RootTab: Hashable {
@@ -54,13 +59,16 @@ private enum RootTab: Hashable {
 /// アプリのルート画面。ホーム/記録/交流/設定をボトムタブで切り替える。
 struct RootTabView: View {
     private static let prologueEventID = "event_prologue_001"
-    private static let firstStoryEventID = "event_middle_001"
+    // CMSの第1話。解禁確認・再生・読了判定で同じIDを使う。
+    static let firstStoryEventID = "event_middle_001_1"
 
     @Environment(\.modelContext) private var modelContext
     @State private var appDialog: AppDialogRequest?
     @State private var blockedBehaviorTaunt: BlockedBehaviorTauntRequest?
     @State private var onboardingState = OnboardingStateStore()
     @State private var selectedTab: RootTab = .home
+    /// タブの中身が受け取る下側の余白(タブバー＋ホームインジケーター)。全面に重ねる画面がタブバーを避けるのに使う。
+    @State private var tabContentBottomInset: CGFloat = 0
     @State private var openTodayConversationRequest = false
     @State private var openStoryEventRequest: String?
     @State private var isOnboardingConversationPlaying = false
@@ -99,6 +107,16 @@ struct RootTabView: View {
                 .transition(.opacity)
             } else {
                 appShell
+
+                if onboardingState.shouldCoverAppForPrologue {
+                    // 交流タブのtaskがfullScreenCoverを開くより先にタブ本体が描かれる。
+                    // プレイヤーはこの幕より上に出るため、表示待ちと閉じる瞬間だけ黒が見える。
+                    Color.black
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                        .transition(.identity)
+                        .zIndex(7)
+                }
 
                 if isPresentingReportSpotlight {
                     OnboardingFirstReportSpotlightView(
@@ -200,6 +218,16 @@ struct RootTabView: View {
                         onOnboardingReportTargetFrameChange: updateOnboardingReportTargetFrame
                     )
                 }
+                // 戻るボタンや「閉じる」などナビバーの項目は本文色にする(Primary は今押すべき操作と莉央だけ)。
+                // タブの選択色は TabView の tint(Primary)のまま。
+                .tint(AppColor.text)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear { tabContentBottomInset = proxy.safeAreaInsets.bottom }
+                            .onChange(of: proxy.safeAreaInsets.bottom) { _, inset in tabContentBottomInset = inset }
+                    }
+                }
                 .tabItem {
                     Label("ホーム", systemImage: "house")
                 }
@@ -208,6 +236,7 @@ struct RootTabView: View {
                 NavigationStack {
                     RoutineLogView()
                 }
+                .tint(AppColor.text)
                 .tabItem {
                     Label("記録", systemImage: "list.bullet.clipboard")
                 }
@@ -223,6 +252,7 @@ struct RootTabView: View {
                         onStoryEventAutoPlayEnded: finishStoryEventAutoPlay
                     )
                 }
+                .tint(AppColor.text)
                 .tabItem {
                     Label("交流", systemImage: "sparkles")
                 }
@@ -231,6 +261,7 @@ struct RootTabView: View {
                 NavigationStack {
                     SettingsView()
                 }
+                .tint(AppColor.text)
                 .tabItem {
                     Label("設定", systemImage: "gearshape")
                 }
@@ -259,10 +290,20 @@ struct RootTabView: View {
             }
 
             if let blockedBehaviorTaunt {
-                Button(action: dismissBlockedBehaviorTaunt) {
-                    blockedBehaviorTauntOverlay(blockedBehaviorTaunt)
+                Group {
+                    if blockedBehaviorTaunt.offersChallenge {
+                        RioChallengeView(
+                            taunt: blockedBehaviorTaunt.text,
+                            tabContentBottomInset: tabContentBottomInset,
+                            onDismiss: dismissBlockedBehaviorTaunt
+                        )
+                    } else {
+                        Button(action: dismissBlockedBehaviorTaunt) {
+                            blockedBehaviorTauntOverlay(blockedBehaviorTaunt)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
                 .id(blockedBehaviorTaunt.id)
                 .transition(
                     .asymmetric(
@@ -315,8 +356,8 @@ struct RootTabView: View {
                         && $0.iconName == blockedBehavior.iconName
                         && $0.isActive
                         && $0.masteredAt == nil
-                        && $0.limitPeriod == .day
-                        && $0.effectiveLimit == 1
+                        && $0.limitPeriod == blockedBehavior.effectiveLimitPeriod
+                        && $0.allowedCount == blockedBehavior.effectiveAllowedCount
                         && $0.trackingKind == trackingKind
                         && (!blockedBehavior.usesScreenTime
                             || ($0.screenTimeLimitMinutes
@@ -331,7 +372,7 @@ struct RootTabView: View {
             if blockedBehaviorToCreate != nil,
                existingBlockedBehavior == nil,
                !dependencies.blockedBehaviorRepository.canAddNew() {
-                presentOnboardingError("すでに挑戦中の「やらないこと」があります。")
+                presentOnboardingError("すでに挑戦中の「やめること」があります。")
                 return
             }
 
@@ -370,8 +411,8 @@ struct RootTabView: View {
                     guard let created = dependencies.blockedBehaviorRepository.create(
                         title: blockedBehavior.trimmedTitle,
                         iconName: blockedBehavior.iconName,
-                        limitPeriod: .day,
-                        limitCount: 1,
+                        limitPeriod: blockedBehavior.effectiveLimitPeriod,
+                        allowedCount: blockedBehavior.effectiveAllowedCount,
                         trackingKind: trackingKind,
                         screenTimeLimitMinutes: blockedBehavior.usesScreenTime
                             ? blockedBehavior.effectiveScreenTimeLimitMinutes
@@ -383,7 +424,7 @@ struct RootTabView: View {
                         if existing == nil {
                             try? dependencies.routineRepository.delete(routine)
                         }
-                        presentOnboardingError("やめたい習慣を保存できませんでした。もう一度お試しください。")
+                        presentOnboardingError("やめることを保存できませんでした。もう一度お試しください。")
                         return
                     }
                     createdBlockedBehavior = created
@@ -419,7 +460,7 @@ struct RootTabView: View {
         guard onboardingState.phase == .firstReport else { return }
         onboardingReportTargetFrame = nil
         onboardingState.completeFirstReport(with: .completed)
-        blockedBehaviorTaunt = BlockedBehaviorTauntRequest(text: "ざこなのに頑張ったね♡")
+        blockedBehaviorTaunt = BlockedBehaviorTauntRequest(text: RioCopy.text("onboarding_completed_001"))
     }
 
     private func deferFirstReport() {
@@ -474,14 +515,14 @@ struct RootTabView: View {
             title: "今日の会話をはじめる？",
             message: "莉央との最初の会話を楽しめます。あとから交流画面で読むこともできます。",
             actions: [
-                AppDialogAction("あとで読む") {
+                AppDialogAction("あとで読む", style: .cancel) {
                     isOnboardingConversationDialog = false
                     prepareOnboardingConversationIdentityIfNeeded()
                     onboardingState.completeConversationPrompt(with: .later)
                     prepareStoryUnlockPresentation()
                     return .dismiss
                 },
-                AppDialogAction("はじめる") {
+                AppDialogAction("はじめる", style: .primary) {
                     isOnboardingConversationDialog = false
                     prepareOnboardingConversationIdentityIfNeeded()
                     isOnboardingConversationPlaying = true
@@ -562,7 +603,7 @@ struct RootTabView: View {
                 // 「あとでやる」だけでは第一話を強制解禁しない。
                 onboardingState.completeStoryUnlockPresentation()
             } else {
-                presentOnboardingError("第一話の解禁状態を確認できませんでした。もう一度お試しください。")
+                presentOnboardingError("第1話の解禁状態を確認できませんでした。もう一度お試しください。")
             }
             return
         }
@@ -607,12 +648,12 @@ struct RootTabView: View {
                 $0.event.eventId == Self.firstStoryEventID
             })?.canPlay == true else {
                 handleUnavailableFirstStory(
-                    "第一話を開けませんでした。時間をおいて、もう一度お試しください。"
+                    "第1話を開けませんでした。時間をおいて、もう一度お試しください。"
                 )
                 return
             }
         } catch {
-            handleUnavailableFirstStory("第一話を開けませんでした。\n\(error.localizedDescription)")
+            handleUnavailableFirstStory("第1話を開けませんでした。\n\(error.localizedDescription)")
             return
         }
 
@@ -634,7 +675,7 @@ struct RootTabView: View {
         guard onboardingState.phase == .tomorrowPromise,
               !isSavingNotification else { return }
         guard let routine = onboardingRoutine() else {
-            presentOnboardingError("最初の約束が見つかりませんでした。")
+            presentOnboardingError("最初のやることが見つかりませんでした。")
             return
         }
 
@@ -799,7 +840,7 @@ struct RootTabView: View {
             if let routine = onboardingRoutine(), routine.isComplete() {
                 onboardingState.reconcileFirstReportIfNeeded(isRoutineComplete: true)
                 blockedBehaviorTaunt = BlockedBehaviorTauntRequest(
-                    text: "ざこなのに頑張ったね♡"
+                    text: RioCopy.text("onboarding_completed_001")
                 )
             }
         case .conversationPrompt:
@@ -856,7 +897,7 @@ struct RootTabView: View {
                 onboardingState.leaveFirstStoryPlayback()
             } else {
                 handleUnavailableFirstStory(
-                    "第一話を開けませんでした。時間をおいて、もう一度お試しください。"
+                    "第1話を開けませんでした。時間をおいて、もう一度お試しください。"
                 )
             }
 
@@ -959,10 +1000,13 @@ struct RootTabView: View {
                     }
                 }
             }
-            .padding(24)
+            // 文字だけの取り消し(高さ44pt)は常にいちばん下に置くので、あるときは見た目の上下の余白がそろうよう下を詰める。
+            .padding([.horizontal, .top], 24)
+            .padding(.bottom, request.actions.contains { $0.style == .cancel } ? 12 : 24)
             .frame(maxWidth: 420)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .padding(.horizontal, 32)
+            // お題カードと同じ形(角丸20・横余白20)にそろえる。
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal, 20)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityAction(.escape) {
@@ -973,22 +1017,25 @@ struct RootTabView: View {
         }
     }
 
-    /// 取り消し以外の操作ボタン。破壊的な操作は塗り、通常の操作は白地＋枠線で区別する。
+    /// 取り消し以外の操作ボタン。押してほしい操作は Primary、破壊的な操作は Error で塗り、
+    /// 通常の操作は白地＋枠線で区別する。
+    /// 確認画面が後に続く操作(caution)は、通常と同じ強さのまま文字だけ Error にする。
     @ViewBuilder
     private func dialogButtons(for request: AppDialogRequest) -> some View {
         ForEach(request.actions.filter { $0.style != .cancel }) { action in
             let isDestructive = action.style == .destructive
+            let fill: Color? = isDestructive ? AppColor.error : action.style == .primary ? AppColor.primary : nil
             Button(role: isDestructive ? .destructive : nil) {
                 handle(action.action())
             } label: {
                 Text(action.title)
                     .font(.headline)
-                    .foregroundStyle(isDestructive ? Color.white : AppColor.text)
+                    .foregroundStyle(fill != nil ? Color.white : action.style == .caution ? AppColor.error : AppColor.text)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(isDestructive ? AppColor.error : AppColor.surface, in: Capsule())
+                    .background(fill ?? AppColor.surface, in: Capsule())
                     .overlay {
-                        if !isDestructive {
+                        if fill == nil {
                             Capsule().stroke(AppColor.border, lineWidth: 1.5)
                         }
                     }
@@ -1167,7 +1214,7 @@ private struct OnboardingFirstReportSpotlightView: View {
         .disabled(isSubmitting)
         .contentShape(Circle())
         .position(x: target.midX, y: target.midY)
-        .accessibilityLabel("最初の約束を報告")
+        .accessibilityLabel("最初のやることを報告")
         .accessibilityHint("実行できたらタップして達成を記録します")
     }
 
@@ -1307,7 +1354,7 @@ private struct OnboardingPostPrologueMessageView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var todayMessage: String {
-        "今日は「\(routineTitle)」だよ"
+        RioCopy.text("onboarding_today_001", routineTitle: routineTitle)
     }
 
     var body: some View {
@@ -1320,7 +1367,7 @@ private struct OnboardingPostPrologueMessageView: View {
                                 OnboardingRioBubble(text: todayMessage)
 
                                 if showsSecondMessage {
-                                    OnboardingRioBubble(text: "できたら報告してね〜")
+                                    OnboardingRioBubble(text: RioCopy.text("onboarding_report_001"))
                                         .transition(
                                             reduceMotion
                                                 ? .opacity
@@ -1334,26 +1381,22 @@ private struct OnboardingPostPrologueMessageView: View {
                     }
                     .frame(
                         maxWidth: 520,
-                        minHeight: dynamicTypeSize.isAccessibilitySize ? 210 : 150,
                         maxHeight: dynamicTypeSize.isAccessibilitySize ? 210 : 150,
                         alignment: .top
                     )
+                    .fixedSize(horizontal: false, vertical: true)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onContinue)
 
-                    Button("次へ", action: onContinue)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(AppColor.text)
-                        .padding(.horizontal, 20)
-                        .frame(minHeight: 44)
-                        .background(AppColor.surface.opacity(0.95), in: Capsule())
-                        .buttonStyle(.plain)
+                    OnboardingContinueButton(action: onContinue)
                         .accessibilityIdentifier("onboarding.prologueMessage.continue")
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                // 設定中の重ね画面と同じ高さに莉央を置き、場面ごとに位置が跳ばないようにする。
+                .padding(.top, OnboardingExplanationLayout.conversationTopInset(in: proxy.size))
+                .padding(.bottom, 12)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: proxy.size.height, alignment: .center)
+                .frame(minHeight: proxy.size.height, alignment: .top)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -1361,7 +1404,7 @@ private struct OnboardingPostPrologueMessageView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             showsSecondMessage
-                ? "莉央、\(todayMessage)。できたら報告してね〜"
+                ? "莉央、\(todayMessage)。\(RioCopy.text("onboarding_report_001"))"
                 : "莉央、\(todayMessage)"
         )
         .accessibilityAddTraits(.isModal)

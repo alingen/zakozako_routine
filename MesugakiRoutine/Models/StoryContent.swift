@@ -228,6 +228,7 @@ enum StoryScreenMode: Hashable, Codable {
 enum StoryUIVariant: Hashable, Codable {
     case titleCard
     case narration
+    case fullscreenNarration
     case dialogue
     case sceneTransition
     case incomingCall
@@ -248,6 +249,7 @@ enum StoryUIVariant: Hashable, Codable {
         switch rawValue {
         case "title_card": self = .titleCard
         case "narration": self = .narration
+        case "fullscreen_narration": self = .fullscreenNarration
         case "dialogue": self = .dialogue
         case "scene_transition": self = .sceneTransition
         case "incoming_call": self = .incomingCall
@@ -270,6 +272,7 @@ enum StoryUIVariant: Hashable, Codable {
         switch self {
         case .titleCard: return "title_card"
         case .narration: return "narration"
+        case .fullscreenNarration: return "fullscreen_narration"
         case .dialogue: return "dialogue"
         case .sceneTransition: return "scene_transition"
         case .incomingCall: return "incoming_call"
@@ -389,18 +392,38 @@ struct StoryContentBundle: Codable, Hashable {
     let scenarios: [StoryScenario]
     let choiceGroups: [StoryChoiceGroup]
     let interactions: [InteractionComment]
+    let reactionConditions: [ReactionCondition]
+    let reactionLines: [ReactionLine]
+    let rioLines: [RioLine]
     let events: [StoryEvent]
 
     init(
         scenarios: [StoryScenario],
         choiceGroups: [StoryChoiceGroup],
         interactions: [InteractionComment] = [],
+        reactionConditions: [ReactionCondition] = [],
+        reactionLines: [ReactionLine] = [],
+        rioLines: [RioLine] = [],
         events: [StoryEvent]
     ) {
         self.scenarios = scenarios
         self.choiceGroups = choiceGroups
         self.interactions = interactions
+        self.reactionConditions = reactionConditions
+        self.reactionLines = reactionLines
+        self.rioLines = rioLines
         self.events = events
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        scenarios = try values.decode([StoryScenario].self, forKey: .scenarios)
+        choiceGroups = try values.decode([StoryChoiceGroup].self, forKey: .choiceGroups)
+        interactions = try values.decode([InteractionComment].self, forKey: .interactions)
+        reactionConditions = try values.decodeIfPresent([ReactionCondition].self, forKey: .reactionConditions) ?? []
+        reactionLines = try values.decodeIfPresent([ReactionLine].self, forKey: .reactionLines) ?? []
+        rioLines = try values.decodeIfPresent([RioLine].self, forKey: .rioLines) ?? []
+        events = try values.decode([StoryEvent].self, forKey: .events)
     }
 }
 
@@ -413,6 +436,7 @@ struct InteractionComment: Codable, Hashable, Identifiable {
     let touchArea: String?
     let weight: Int
     let active: Bool
+    var displayText: String { text.replacingStoryTextMarkers() }
 
     init(
         id: String,
@@ -510,6 +534,9 @@ struct StoryNode: Codable, Hashable, Identifiable {
     let saveKey: String?
     let saveValue: String?
     let assetId: String?
+    let voiceAssetId: String?
+    /// Resolved from asset_catalog.file_name by the CMS exporter.
+    let voiceFileName: String?
     let minPhase: Int?
     let maxPhase: Int?
     let speakerName: String?
@@ -533,6 +560,18 @@ struct StoryNode: Codable, Hashable, Identifiable {
         ["user", "player", "protagonist"].contains(normalizedSpeakerKey)
     }
 
+    /// Replace the manuscript's protagonist placeholder, retaining an account-name suffix.
+    func protagonistDisplayName(userName: String) -> String {
+        let nickname = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = nickname.isEmpty ? "主人公" : nickname
+        let provided = speakerName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard provided.hasPrefix("主人公") else { return name }
+        let suffix = String(provided.dropFirst("主人公".count))
+        guard (suffix.hasPrefix("（") && suffix.hasSuffix("）"))
+            || (suffix.hasPrefix("(") && suffix.hasSuffix(")")) else { return name }
+        return name + suffix
+    }
+
     var isRioSpeaker: Bool {
         ["rio", "character"].contains(normalizedSpeakerKey)
             || speakerName?.trimmingCharacters(in: .whitespacesAndNewlines) == "莉央"
@@ -549,6 +588,8 @@ struct StoryNode: Codable, Hashable, Identifiable {
         saveKey: String? = nil,
         saveValue: String? = nil,
         assetId: String? = nil,
+        voiceAssetId: String? = nil,
+        voiceFileName: String? = nil,
         minPhase: Int? = nil,
         maxPhase: Int? = nil,
         speakerName: String? = nil,
@@ -572,6 +613,8 @@ struct StoryNode: Codable, Hashable, Identifiable {
         self.saveKey = saveKey
         self.saveValue = saveValue
         self.assetId = assetId
+        self.voiceAssetId = voiceAssetId
+        self.voiceFileName = voiceFileName
         self.minPhase = minPhase
         self.maxPhase = maxPhase
         self.speakerName = speakerName

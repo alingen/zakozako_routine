@@ -10,7 +10,7 @@ enum AppColor {
     static let primary = Color(hex: 0xD73A5A)
     /// Pink。莉央の吹き出し、アイコンの丸い地。
     static let primarySoft = Color(hex: 0xF8D5DC)
-    /// Purple。ストーリー・思い出、達成のお知らせなど特別感のあるもの。
+    /// Purple。達成(完了した約束の円とチェック、達成のお知らせ)、ストーリー・思い出など特別感のあるもの。
     static let secondary = Color(hex: 0x735ECF)
     /// Yellow。連続記録の炎などの飾り。文字や単独のアイコンには使わない(白地で1.44:1)。
     static let accent = Color(hex: 0xFFD166)

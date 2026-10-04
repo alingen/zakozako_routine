@@ -127,7 +127,7 @@ struct BlockedBehaviorPresetSelectionView: View {
             onSelectCustom: {},
             onSelectPreset: { _ in }
         )
-        .navigationTitle("やらないことを追加")
+        .navigationTitle("やめることを追加")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

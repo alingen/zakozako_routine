@@ -26,6 +26,9 @@ export interface SyncConfig {
     dailyCatalog: string;
     assetCatalog: string;
     interactions: string;
+    reactionConditions: string;
+    reactionLines: string;
+    rioLines: string;
     scenarios: string;
     choices: string;
     events: string;
@@ -75,6 +78,9 @@ export function loadConfig(): SyncConfig {
       assetCatalog: process.env.SCENARIO_TAB_ASSET_CATALOG?.trim() || 'asset_catalog',
       choices: process.env.SCENARIO_TAB_CHOICES?.trim() || 'choices',
       interactions: process.env.SCENARIO_TAB_INTERACTIONS?.trim() || 'interactions',
+      reactionConditions: 'reaction_conditions',
+      reactionLines: 'reaction_lines',
+      rioLines: 'rio_lines',
       scenarios: process.env.SCENARIO_TAB_SCENARIOS?.trim() || 'senarios',
       events: process.env.SCENARIO_TAB_EVENTS?.trim() || 'events',
     },

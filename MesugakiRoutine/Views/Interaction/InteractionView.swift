@@ -5,9 +5,15 @@ import SwiftUI
 struct InteractionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var viewModel = InteractionViewModel()
+    /// タップしたときに莉央が跳ねる量(上がマイナス)。
+    @State private var rioHopOffset: CGFloat = 0
+    /// タップした位置に出す小さなきらめき。
+    @State private var tapSparkles: [InteractionTapSparkle.Burst] = []
     @State private var onboardingPlaybackKeyInPlayer: String?
     @State private var autoPlayedStoryEventID: String?
+    @State private var isVisible = false
 
     @Binding private var openTodayConversationRequest: Bool
     @Binding private var openStoryEventRequest: String?
@@ -33,7 +39,7 @@ struct InteractionView: View {
     }
 
     private var homeDialogue: String? {
-        viewModel.interactionComment?.text
+        viewModel.interactionComment?.displayText
     }
 
     var body: some View {
@@ -46,13 +52,16 @@ struct InteractionView: View {
             // (iPhone 13 mini では従来と同じ大きさ・位置になる値)
             let artworkWidth = min(proxy.size.width * 1.8, proxy.size.height)
             let artworkTop = proxy.size.height * 0.2435
+            // 吹き出しは莉央の顔のすぐ下(あごの少し下、スカーフの結び目の高さ)から下へ伸ばす。
+            // あごは立ち絵の上端から幅の約22%の位置にある。
+            let bubbleTop = artworkTop + artworkWidth * 0.32
 
             ZStack(alignment: .top) {
                 AppColor.background
                     .ignoresSafeArea()
 
                 ZStack(alignment: .top) {
-                    Image("rio_interaction_background")
+                    Image("bg_rio_room")
                         .resizable()
                         .scaledToFill()
                         .frame(
@@ -60,15 +69,15 @@ struct InteractionView: View {
                             height: backgroundHeight,
                             alignment: .top
                         )
-                        .offset(y: -proxy.safeAreaInsets.top + 60 )
+                        .clipped()
+                        .offset(y: -proxy.safeAreaInsets.top)
                         .ignoresSafeArea(edges: .bottom)
-                        .scaleEffect(1.2)
 
                     Image("rio_interaction_home")
                         .resizable()
                         .scaledToFit()
                         .frame(width: artworkWidth)
-                        .offset(y: artworkTop)
+                        .offset(y: artworkTop + rioHopOffset)
                         .frame(
                             width: proxy.size.width,
                             height: visualHeight,
@@ -80,14 +89,14 @@ struct InteractionView: View {
                 .accessibilityHidden(true)
                 .allowsHitTesting(false)
 
+                // 時刻が読めるよう上端だけ薄く重ねる。部屋の色と窓の光は消さない。
                 LinearGradient(
                     colors: [
-                        AppColor.background.opacity(0.44),
+                        AppColor.background.opacity(0.16),
                         .clear,
-                        AppColor.background.opacity(0.18),
                     ],
                     startPoint: .top,
-                    endPoint: .bottom
+                    endPoint: .center
                 )
                 .allowsHitTesting(false)
 
@@ -104,8 +113,20 @@ struct InteractionView: View {
                     x: proxy.size.width * 0.46,
                     y: proxy.size.height * 0.55 + artworkDrop * 0.5
                 )
+                // ボタンの動作はそのままに、きらめきを出す位置だけ受け取る。
+                .simultaneousGesture(
+                    SpatialTapGesture(coordinateSpace: .named(Self.coordinateSpace))
+                        .onEnded { addTapSparkle(at: $0.location) }
+                )
                 .accessibilityLabel("莉央")
                 .accessibilityHint("タップすると莉央が話します")
+
+                ForEach(tapSparkles) { burst in
+                    InteractionTapSparkle()
+                        .position(burst.location)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
@@ -121,20 +142,31 @@ struct InteractionView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, proxy.size.height * 0.10)
 
-                    Spacer(minLength: 16)
+                    Spacer(minLength: 0)
+                }
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                .frame(width: proxy.size.width, height: proxy.size.height)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    // 上端は顔を基準に固定し、下のバーから積まない(行数が変わっても書き出しの位置が動かない)。
+                    // 大きな文字で入りきらないときだけ、優先度を上げたこの余白が縮んで上に持ち上がる。
+                    Color.clear
+                        .frame(maxHeight: bubbleTop)
+                        .layoutPriority(1)
 
                     if let homeDialogue {
                         InteractionCharacterSpeechBubble(text: homeDialogue, speakerName: "莉央")
-                            .frame(width: min(340, proxy.size.width - 48))
+                            .frame(width: min(300, proxy.size.width - 32))
                             .padding(.leading, 16)
-                            .padding(.bottom, 16)
                             .id(viewModel.interactionComment?.id)
                             .transition(
-                                .scale(scale: 0.94, anchor: .bottomLeading)
+                                .scale(scale: 0.94, anchor: .top)
                                     .combined(with: .opacity)
                             )
                             .allowsHitTesting(false)
                     }
+
+                    Spacer(minLength: 16)
 
                     // 入口は1本のバーに3つだけ並べ、莉央の見える範囲を広く取る。
                     InteractionDock {
@@ -168,6 +200,7 @@ struct InteractionView: View {
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            .coordinateSpace(name: Self.coordinateSpace)
         }
         // バーは隠したまま、遷移先の戻るボタンに「交流」と出すためのタイトル。
         .navigationTitle("交流")
@@ -181,9 +214,12 @@ struct InteractionView: View {
             openRequestedStoryEventIfNeeded()
         }
         .onAppear {
-            viewModel.reload()
+            isVisible = true
+            viewModel.configure(context: modelContext)
+            viewModel.recordInteractionScreenOpen(context: modelContext)
             offerDeferredConversationIfNeeded()
         }
+        .onDisappear { isVisible = false }
         .onChange(of: onboardingConversationIdentity) { _, _ in
             viewModel.reload()
             offerDeferredConversationIfNeeded()
@@ -195,8 +231,11 @@ struct InteractionView: View {
             if eventID != nil { openRequestedStoryEventIfNeeded() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
+            if phase == .active && isVisible {
                 viewModel.reload()
+                if viewModel.activeLaunch == nil {
+                    viewModel.recordInteractionScreenOpen(context: modelContext)
+                }
                 offerDeferredConversationIfNeeded()
             }
         }
@@ -231,7 +270,7 @@ struct InteractionView: View {
         ) { launch in
             StoryPlaybackContainerView(
                 launch: launch,
-                allowsSkip: autoPlayedStoryEventID != "event_middle_001"
+                allowsSkip: autoPlayedStoryEventID != RootTabView.firstStoryEventID
             ) {
                 viewModel.closePlayer()
             }
@@ -287,9 +326,33 @@ struct InteractionView: View {
         .accessibilityHint("思い出のコレクションを開きます")
     }
 
+    private static let coordinateSpace = "interactionScreen"
+
     private func showNextHomeDialogue() {
+        hopRio()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
             viewModel.selectInteractionComment(touchArea: "character")
+        }
+    }
+
+    /// タップに応えて、莉央を6ptだけ跳ねさせる。視差効果を減らす設定では動かさない。
+    private func hopRio() {
+        guard !reduceMotion else { return }
+        withAnimation(.easeOut(duration: 0.11)) {
+            rioHopOffset = -6
+        } completion: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
+                rioHopOffset = 0
+            }
+        }
+    }
+
+    private func addTapSparkle(at location: CGPoint) {
+        let burst = InteractionTapSparkle.Burst(location: location)
+        tapSparkles.append(burst)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
+            tapSparkles.removeAll { $0.id == burst.id }
         }
     }
 
@@ -337,6 +400,7 @@ struct InteractionView: View {
         for: [
             Routine.self,
             BlockedBehavior.self,
+            UserActionEvent.self,
             StoryEventProgress.self,
             StoryPlaybackProgress.self,
             StoryProfileValue.self,

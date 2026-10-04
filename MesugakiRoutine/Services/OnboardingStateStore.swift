@@ -60,6 +60,7 @@ enum OnboardingBlockedBehaviorStage: String, Codable, Sendable {
     case secondMessage
     case awaitingSelection
     case screenTimeConfiguration
+    case limitConfiguration
     case postSelectionFirstMessage
     case postSelectionSecondMessage
     case systemExplanation
@@ -129,6 +130,8 @@ struct OnboardingBlockedBehaviorDraft: Codable, Equatable, Sendable {
     static let customID = "custom"
     static let noneID = "none"
     static let screenTimeVideoID = "onboarding-stop-watching-videos"
+    static let screenTimeSocialMediaID = "onboarding-view-social-media"
+    static let none = OnboardingBlockedBehaviorDraft(selectionID: noneID, title: "", iconName: nil)
 
     var selectionID: String
     var title: String
@@ -136,6 +139,11 @@ struct OnboardingBlockedBehaviorDraft: Codable, Equatable, Sendable {
     /// 追加前の保存データをそのまま復元できるよう、Screen Time項目はoptionalで保持する。
     var screenTimeLimitMinutes: Int? = nil
     var screenTimeSelectionData: Data? = nil
+    // Optionalのまま追加し、旧版の下書きは従来の「1回でもやったら失敗」に復元する。
+    var quitCompletely: Bool? = nil
+    var limitPeriod: HabitPeriod? = nil
+    /// 期間内に許される回数(「N回まで」)。旧版の下書きの「N回で失敗」(limitCount)は読み込まない。
+    var allowedCount: Int? = nil
 
     var trimmedTitle: String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -143,7 +151,20 @@ struct OnboardingBlockedBehaviorDraft: Codable, Equatable, Sendable {
 
     var isNone: Bool { selectionID == Self.noneID }
     var shouldCreate: Bool { !isNone && !trimmedTitle.isEmpty }
-    var usesScreenTime: Bool { selectionID == Self.screenTimeVideoID }
+    var usesScreenTime: Bool {
+        selectionID == Self.screenTimeVideoID || selectionID == Self.screenTimeSocialMediaID
+    }
+    var isQuitCompletely: Bool { quitCompletely ?? true }
+    var effectiveLimitPeriod: HabitPeriod {
+        usesScreenTime || isQuitCompletely ? .day : (limitPeriod ?? .day)
+    }
+    var effectiveAllowedCount: Int {
+        usesScreenTime || isQuitCompletely ? 0 : min(max(allowedCount ?? 1, 1), 50)
+    }
+    var manualLimitSummary: String {
+        isQuitCompletely ? "1回でもやったら失敗"
+            : BlockedBehaviorLimitText.rule(period: effectiveLimitPeriod, allowedCount: effectiveAllowedCount)
+    }
     var effectiveScreenTimeLimitMinutes: Int {
         min(max(screenTimeLimitMinutes ?? 20, 5), 720)
     }
@@ -201,7 +222,7 @@ struct OnboardingDraft: Codable, Equatable, Sendable {
         selectedCueID: String? = nil,
         cueText: String = "",
         reminderMinuteOfDay: Int? = nil,
-        blockedBehavior: OnboardingBlockedBehaviorDraft? = nil
+        blockedBehavior: OnboardingBlockedBehaviorDraft? = OnboardingBlockedBehaviorDraft.none
     ) {
         self.userName = userName
         self.selectedHabitID = selectedHabitID
@@ -384,7 +405,11 @@ final class OnboardingStateStore {
             && snapshot.conversationChoice == nil
             ? .firstReport
             : snapshot.phase
-        draft = snapshot.draft
+        var restoredDraft = snapshot.draft
+        if restoredDraft.blockedBehavior == nil, snapshot.setupStep == .blockedBehaviorSelection {
+            restoredDraft.blockedBehavior = OnboardingBlockedBehaviorDraft.none
+        }
+        draft = restoredDraft
         createdRoutineID = snapshot.createdRoutineID
         firstReportOutcome = snapshot.firstReportOutcome
         conversationChoice = snapshot.conversationChoice
@@ -412,6 +437,11 @@ final class OnboardingStateStore {
         !isCompleted && phase == .dedicatedSetup
     }
 
+    /// 交流タブ上のプレイヤーが表示されるまで（復帰時も含む）、タブ本体を見せない。
+    var shouldCoverAppForPrologue: Bool {
+        !isCompleted && phase == .prologue
+    }
+
     var isRunningInAppTutorial: Bool {
         !isCompleted && phase != .dedicatedSetup
     }
@@ -433,7 +463,7 @@ final class OnboardingStateStore {
         case .blockedBehaviorSelection:
             guard draft.hasBlockedBehaviorSelection else { return false }
             switch blockedBehaviorStage {
-            case .awaitingSelection, .completed:
+            case .awaitingSelection, .limitConfiguration, .completed:
                 return true
             case .screenTimeConfiguration:
                 return draft.blockedBehavior?.hasValidScreenTimeConfiguration == true
@@ -463,9 +493,12 @@ final class OnboardingStateStore {
             } else if step == .habitSelection {
                 habitSelectionStage = draft.selectedHabitID == nil ? .awaitingSelection : .completed
             } else if step == .blockedBehaviorSelection {
-                blockedBehaviorStage = draft.hasBlockedBehaviorSelection
-                    ? .awaitingSelection
-                    : .waitingToPresent
+                if draft.blockedBehavior == nil {
+                    draft.blockedBehavior = OnboardingBlockedBehaviorDraft.none
+                }
+                if blockedBehaviorStage != .waitingToPresent {
+                    blockedBehaviorStage = .awaitingSelection
+                }
             }
         }
     }
@@ -494,6 +527,17 @@ final class OnboardingStateStore {
         blockedBehavior.screenTimeSelectionData = selectionData
         blockedBehavior.screenTimeLimitMinutes = min(max(limitMinutes, 5), 720)
         draft.blockedBehavior = blockedBehavior
+    }
+
+    func updateBlockedBehaviorLimit(quitCompletely: Bool, period: HabitPeriod, count: Int) {
+        guard !isCompleted, phase == .dedicatedSetup,
+              setupStep == .blockedBehaviorSelection,
+              var selection = draft.blockedBehavior,
+              selection.shouldCreate, !selection.usesScreenTime else { return }
+        selection.quitCompletely = quitCompletely
+        selection.limitPeriod = period
+        selection.allowedCount = min(max(count, 1), 50)
+        draft.blockedBehavior = selection
     }
 
     func presentBlockedBehaviorGuidanceIfNeeded() {
@@ -713,8 +757,11 @@ final class OnboardingStateStore {
                 } else if draft.blockedBehavior?.usesScreenTime == true {
                     blockedBehaviorStage = .screenTimeConfiguration
                 } else {
-                    blockedBehaviorStage = .postSelectionFirstMessage
+                    blockedBehaviorStage = .limitConfiguration
                 }
+            case .limitConfiguration:
+                guard draft.blockedBehavior?.shouldCreate == true else { return false }
+                blockedBehaviorStage = .postSelectionFirstMessage
             case .screenTimeConfiguration:
                 guard draft.blockedBehavior?.hasValidScreenTimeConfiguration == true else {
                     return false
@@ -748,6 +795,9 @@ final class OnboardingStateStore {
                blockedBehaviorStage == .completed {
                 // 追加前の最終確認データから内容を変更した場合は、新しい案内を初回表示する。
                 blockedBehaviorStage = .waitingToPresent
+            }
+            if nextStep == .blockedBehaviorSelection, draft.blockedBehavior == nil {
+                draft.blockedBehavior = OnboardingBlockedBehaviorDraft.none
             }
             setupStep = nextStep
         }
@@ -805,7 +855,7 @@ final class OnboardingStateStore {
             case .postSelectionFirstMessage:
                 blockedBehaviorStage = draft.blockedBehavior?.usesScreenTime == true
                     ? .screenTimeConfiguration
-                    : .awaitingSelection
+                    : .limitConfiguration
                 return true
             case .postSelectionSecondMessage:
                 blockedBehaviorStage = .postSelectionFirstMessage
@@ -813,7 +863,7 @@ final class OnboardingStateStore {
             case .systemExplanation:
                 blockedBehaviorStage = .postSelectionSecondMessage
                 return true
-            case .screenTimeConfiguration:
+            case .screenTimeConfiguration, .limitConfiguration:
                 blockedBehaviorStage = .awaitingSelection
                 return true
             case .waitingToPresent, .awaitingSelection, .completed:
@@ -832,15 +882,12 @@ final class OnboardingStateStore {
                 habitSelectionStage = .awaitingSelection
             } else if setupStep == .habitSelection {
                 habitSelectionStage = .completed
-            } else if setupStep == .blockedBehaviorSelection,
-                      draft.blockedBehavior == nil {
-                // 新画面追加前に最終確認まで進んでいた保存データは、戻っても行き止まりにしない。
-                draft.blockedBehavior = OnboardingBlockedBehaviorDraft(
-                    selectionID: OnboardingBlockedBehaviorDraft.noneID,
-                    title: "",
-                    iconName: nil
-                )
-                blockedBehaviorStage = .completed
+            } else if setupStep == .blockedBehaviorSelection {
+                // 確認画面から戻った場合も、現在の選択・上限を編集できるようにする。
+                if draft.blockedBehavior == nil {
+                    draft.blockedBehavior = OnboardingBlockedBehaviorDraft.none
+                }
+                blockedBehaviorStage = .awaitingSelection
             }
         }
         return true

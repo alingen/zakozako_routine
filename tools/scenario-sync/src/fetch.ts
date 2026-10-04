@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import type { RawRow, RawSheets, SheetSnapshot } from './types.js';
 import type { SyncConfig } from './config.js';
 import { SNAPSHOT_PATH } from './config.js';
+import { REACTION_CONDITION_COLUMNS, REACTION_LINE_COLUMNS, RIO_LINE_COLUMNS } from './schema.js';
 
 function headerRowIndex(grid: string[][], firstColumnName: string): number {
   const index = grid.findIndex((row) =>
@@ -33,12 +34,28 @@ export function gridToRows(grid: string[][], firstColumnName: string): RawRow[] 
 }
 
 export function snapshotToRawSheets(snapshot: SheetSnapshot): RawSheets {
+  // A missing/renamed live header is a failed fetch, not permission to erase the catalog.
+  for (const [tab, columns] of [
+    ['reaction_conditions', REACTION_CONDITION_COLUMNS],
+    ['reaction_lines', REACTION_LINE_COLUMNS.filter((column) => column !== 'display_target')],
+    ['rio_lines', RIO_LINE_COLUMNS],
+  ] as const) {
+    const header = snapshot.tabs[tab]?.find((row) =>
+      row.some((cell) => cell.trim() === columns[0]),
+    );
+    if (!header || columns.some((column) => !header.includes(column))) {
+      throw new Error(`Invalid or missing ${tab} header; refusing to generate.`);
+    }
+  }
   return {
     daily: gridToRows(snapshot.tabs.daily, 'scenario_id'),
     dailyCatalog: gridToRows(snapshot.tabs.daily_catalog, 'scenario_id'),
     assetCatalog: gridToRows(snapshot.tabs.asset_catalog, 'asset_id'),
     choices: gridToRows(snapshot.tabs.choices, 'choice_id'),
     interactions: gridToRows(snapshot.tabs.interactions, 'id'),
+    reactionConditions: gridToRows(snapshot.tabs.reaction_conditions, 'condition_id'),
+    reactionLines: gridToRows(snapshot.tabs.reaction_lines, 'line_id'),
+    rioLines: gridToRows(snapshot.tabs.rio_lines, 'line_id'),
     scenarios: gridToRows(snapshot.tabs.senarios, 'scenario_id'),
     events: gridToRows(snapshot.tabs.events, 'event_id'),
   };
@@ -56,6 +73,9 @@ export function loadSnapshot(path = SNAPSHOT_PATH): SheetSnapshot {
     !parsed.tabs.asset_catalog ||
     !parsed.tabs.choices ||
     !parsed.tabs.interactions ||
+    !parsed.tabs.reaction_conditions ||
+    !parsed.tabs.reaction_lines ||
+    !parsed.tabs.rio_lines ||
     !parsed.tabs.senarios ||
     !parsed.tabs.events
   ) {
@@ -99,6 +119,9 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
       config.tabs.interactions,
       config.tabs.scenarios,
       config.tabs.events,
+      config.tabs.reactionConditions,
+      config.tabs.reactionLines,
+      config.tabs.rioLines,
     ],
     majorDimension: 'ROWS',
   });
@@ -118,6 +141,9 @@ async function fetchViaApi(config: SyncConfig): Promise<SheetSnapshot> {
       interactions: grid(4),
       senarios: grid(5),
       events: grid(6),
+      reaction_conditions: grid(7),
+      reaction_lines: grid(8),
+      rio_lines: grid(9),
     },
   };
 }
@@ -160,6 +186,9 @@ async function fetchViaPublicXlsx(config: SyncConfig): Promise<SheetSnapshot> {
       interactions: readTab(config.tabs.interactions),
       senarios: readTab(config.tabs.scenarios),
       events: readTab(config.tabs.events),
+      reaction_conditions: readTab(config.tabs.reactionConditions),
+      reaction_lines: readTab(config.tabs.reactionLines),
+      rio_lines: readTab(config.tabs.rioLines),
     },
   };
 }

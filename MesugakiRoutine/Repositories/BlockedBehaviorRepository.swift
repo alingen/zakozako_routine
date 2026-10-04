@@ -2,7 +2,11 @@ import Foundation
 import SwiftData
 
 enum BlockedBehaviorFailureRecordResult: Equatable {
+    /// 許された回数を超え、この1回で失敗になった。
     case recorded
+    /// 許された回数の内の1回として記録した(失敗ではない)。
+    case usedWithinAllowance
+    /// すでに失敗していたので何も記録していない。
     case alreadyRecorded
 }
 
@@ -70,21 +74,23 @@ final class BlockedBehaviorRepository {
         title: String,
         iconName: String? = nil,
         limitPeriod: HabitPeriod = .day,
-        limitCount: Int = 0,
+        allowedCount: Int = 0,
         trackingKind: BlockedBehaviorTrackingKind = .manual,
         screenTimeLimitMinutes: Int? = nil,
-        screenTimeSelectionData: Data? = nil
+        screenTimeSelectionData: Data? = nil,
+        shareToZakoNews: Bool = false
     ) -> BlockedBehavior? {
         guard canAddNew() else { return nil }
         let behavior = BlockedBehavior(
             title: title,
             iconName: iconName,
             limitPeriod: limitPeriod,
-            limitCount: limitCount,
+            allowedCount: allowedCount,
             trackingKind: trackingKind,
             screenTimeLimitMinutes: screenTimeLimitMinutes,
             screenTimeSelectionData: screenTimeSelectionData
         )
+        behavior.shareToZakoNews = shareToZakoNews
         context.insert(behavior)
         do {
             try context.save()
@@ -102,16 +108,18 @@ final class BlockedBehaviorRepository {
         title: String,
         iconName: String?,
         limitPeriod: HabitPeriod,
-        limitCount: Int,
+        allowedCount: Int,
         trackingKind: BlockedBehaviorTrackingKind,
         screenTimeLimitMinutes: Int?,
         screenTimeSelectionData: Data?,
-        now: Date = .now
+        now: Date = .now,
+        shareToZakoNews: Bool? = nil
     ) -> Bool {
         behavior.title = title
+        if let shareToZakoNews { behavior.shareToZakoNews = shareToZakoNews }
         behavior.iconName = iconName
         behavior.limitPeriod = limitPeriod
-        behavior.limitCount = max(limitCount, 1)
+        behavior.allowedCount = allowedCount
         behavior.trackingKind = trackingKind
         if let screenTimeLimitMinutes {
             behavior.screenTimeLimitMinutes = screenTimeLimitMinutes
@@ -129,7 +137,7 @@ final class BlockedBehaviorRepository {
     }
 
     /// ユーザーが「負けました」を確定した時、その1回だけを消費ログとして記録する。
-    /// 現在期間の上限に達した後は何も変更しない。
+    /// 許された回数の内なら失敗にはせず、超えた1回で失敗にする。失敗した後は何も変更しない。
     @discardableResult
     func recordFailure(
         _ behavior: BlockedBehavior,
@@ -141,19 +149,41 @@ final class BlockedBehaviorRepository {
         }
 
         let used = behavior.usageInCurrentPeriod(now: now, calendar: calendar)
-        guard used < behavior.effectiveLimit else {
+        guard used < behavior.failureThreshold else {
             return .alreadyRecorded
         }
+        let fails = used + 1 >= behavior.failureThreshold
 
         try performMutation {
             behavior.usageEvents.append(now)
+            // 失敗の出来事は、許された回数を超えた1回だけ。莉央の反応やざこ速報はこれを見る。
+            if fails {
+                context.insert(UserActionEvent(
+                    eventType: .prohibitionFailed,
+                    targetType: .prohibition,
+                    targetID: behavior.id,
+                    occurredAt: now
+                ))
+            }
             // 配列が無限に伸びないよう、直近3か月より古いイベントは捨てる(判定に不要)。
             if let cutoff = calendar.date(byAdding: .month, value: -3, to: now) {
                 behavior.usageEvents.removeAll { $0 < cutoff }
             }
             behavior.updatedAt = now
         }
-        return .recorded
+        return fails ? .recorded : .usedWithinAllowance
+    }
+
+    /// 「負けそう…」を押した事実。日別の勝敗や消費回数は変えない。
+    @discardableResult
+    func recordUrge(_ behavior: BlockedBehavior, now: Date = .now) throws -> UserActionEvent {
+        guard behavior.isActive, behavior.masteredAt == nil else {
+            throw BlockedBehaviorRepositoryError.inactiveBehavior
+        }
+        let event = UserActionEvent(eventType: .prohibitionUrge, targetType: .prohibition,
+            targetID: behavior.id, occurredAt: now)
+        try performMutation { context.insert(event) }
+        return event
     }
 
     /// Device Activity 拡張から届いた、上限超過または1日の監視完了を保存する。

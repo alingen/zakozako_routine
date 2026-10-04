@@ -154,7 +154,7 @@ struct RoutinePresetSelectionView: View {
             onSelectCustom: {},
             onSelectPreset: { _ in }
         )
-        .navigationTitle("約束を追加")
+        .navigationTitle("やることを追加")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

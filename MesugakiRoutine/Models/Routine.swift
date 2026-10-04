@@ -6,10 +6,18 @@ import SwiftData
 /// 「1日 / 1週間のうち / 1ヶ月のうち に 〇回」のかたちで目標回数を持つ。
 /// タイマー完了と Home の丸ボタンは、どちらも実行1回ぶんを `progressEvents` に記録する。
 /// 期間内の回数が目標に達したら「達成」。
+/// 約束・やらないことのタイトルの上限。オンボーディングと編集画面で同じ長さにそろえる
+/// (ざこ速報の上限 80 文字にも収まる)。
+enum ItemTitleLimit {
+    static let maxLength = 28
+}
+
 @Model
 final class Routine {
     @Attribute(.unique) var id: UUID
     var title: String
+    /// 既存データは必ず共有OFFで移行する。
+    var shareToZakoNews: Bool = false
     /// 「寝る前」「朝ごはんの後」など、この約束を始めるきっかけ。
     /// 通知時刻とは分けて保持し、未設定の既存データでは nil。
     var cueText: String?

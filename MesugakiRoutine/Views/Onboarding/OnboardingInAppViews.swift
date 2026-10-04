@@ -22,7 +22,8 @@ struct OnboardingStoryUnlockView: View {
 
                     Image(systemName: hasUnlockedStory ? "book.pages.fill" : "sparkles")
                         .font(.system(size: 42, weight: .semibold))
-                        .foregroundStyle(hasUnlockedStory ? AppColor.primary : AppColor.secondary)
+                        // ストーリーは Purple の役割。Primary は今押す操作と莉央だけに使う。
+                        .foregroundStyle(AppColor.secondary)
                         .symbolEffect(.bounce, value: isVisible)
                 }
 
@@ -39,10 +40,10 @@ struct OnboardingStoryUnlockView: View {
 
                 Button(
                     hasUnlockedStory
-                        ? "第一話を読む"
+                        ? "第1話を読む"
                         : (didCompleteFirstPromise
                             ? "もう一度確認する"
-                            : "明日の約束を確認する"),
+                            : "明日のやることを確認する"),
                     action: onContinue
                 )
                     .font(.headline)
@@ -62,8 +63,9 @@ struct OnboardingStoryUnlockView: View {
             }
             .padding(24)
             .frame(maxWidth: 390)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 26))
-            .padding(.horizontal, 28)
+            // アプリのダイアログと同じ形(角丸20・横余白20)にそろえる。
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal, 20)
             .scaleEffect(isVisible ? 1 : 0.94)
             .opacity(isVisible ? 1 : 0)
         }
@@ -76,20 +78,20 @@ struct OnboardingStoryUnlockView: View {
     }
 
     private var title: String {
-        if hasUnlockedStory { return "新しいストーリーが解禁されました" }
+        if hasUnlockedStory { return "新しいストーリーが\n解禁されました" }
         return didCompleteFirstPromise
-            ? "第一話を確認できませんでした"
+            ? "第1話を確認できませんでした"
             : "莉央との物語はここから"
     }
 
     private var message: String {
         if hasUnlockedStory {
-            return "莉央との最初の物語が読めるようになりました"
+            return "莉央との最初の物語が\n読めるようになりました"
         }
         if didCompleteFirstPromise {
-            return "第一話の解禁状態を確認できませんでした。もう一度お試しください。"
+            return "第1話の解禁状態を確認できませんでした。もう一度お試しください。"
         }
-        return "今日はまだ達成にしていません。あとで約束を実行すると、物語の進行にも反映されます。"
+        return "今日はまだ達成にしていません。あとで「やること」を達成すると、物語の進行にも反映されます。"
     }
 }
 
@@ -106,15 +108,16 @@ struct OnboardingFirstStoryReadView: View {
             VStack(spacing: 20) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 72))
-                    .foregroundStyle(AppColor.primary)
+                    // 読み終えた印は達成と同じ Purple。
+                    .foregroundStyle(AppColor.secondary)
                     .accessibilityHidden(true)
 
-                Text("第一話を読み終わりました")
+                Text("第1話を読み終わりました")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(AppColor.text)
                     .multilineTextAlignment(.center)
 
-                Button("明日の約束を確認する", action: onContinue)
+                Button("明日のやることを確認する", action: onContinue)
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -124,8 +127,9 @@ struct OnboardingFirstStoryReadView: View {
             }
             .padding(24)
             .frame(maxWidth: 390)
-            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 26))
-            .padding(.horizontal, 28)
+            // アプリのダイアログと同じ形(角丸20・横余白20)にそろえる。
+            .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal, 20)
             .scaleEffect(isVisible ? 1 : 0.94)
             .opacity(isVisible ? 1 : 0)
         }
@@ -174,19 +178,19 @@ struct OnboardingTomorrowView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    Text("明日の約束")
+                    Text("明日のやること")
                         .font(.largeTitle.weight(.bold))
                         .foregroundStyle(AppColor.text)
 
                     promiseCard
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("この約束を思い出せるように、お知らせしますか？")
+                        Text("忘れないように、お知らせしますか？")
                             .font(.headline)
                             .foregroundStyle(AppColor.text)
 
                         DatePicker(
-                            "約束を始める時刻",
+                            "始める時刻",
                             selection: $reminderTime,
                             displayedComponents: .hourAndMinute
                         )
@@ -220,11 +224,16 @@ struct OnboardingTomorrowView: View {
                         .tint(AppColor.primary)
                         .disabled(isSaving)
 
-                        Button("今はしない", action: onSkipNotification)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(AppColor.primary)
-                            .buttonStyle(.plain)
-                            .disabled(isSaving)
+                        // 塗りの「通知を設定する」だけを Primary にする。
+                        Button(action: onSkipNotification) {
+                            Text("今はしない")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppColor.text)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isSaving)
                     }
                 }
                 .frame(maxWidth: 560)
@@ -243,11 +252,12 @@ struct OnboardingTomorrowView: View {
                 .foregroundStyle(AppColor.muted)
 
             HStack(spacing: 14) {
+                // ホームの約束アイコンと同じ見た目(primarySoft の丸＋Primary のアイコン)。
                 Image(systemName: iconName ?? "checklist")
                     .font(.system(size: 27, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AppColor.primary)
                     .frame(width: 60, height: 60)
-                    .background(AppColor.primary, in: Circle())
+                    .background(AppColor.primarySoft, in: Circle())
 
                 Text(routineTitle)
                     .font(.title3.weight(.bold))
@@ -260,7 +270,7 @@ struct OnboardingTomorrowView: View {
         .background(AppColor.surface, in: RoundedRectangle(cornerRadius: 24))
         .overlay {
             RoundedRectangle(cornerRadius: 24)
-                .stroke(AppColor.primary.opacity(0.25), lineWidth: 1)
+                .stroke(AppColor.border, lineWidth: 1)
         }
     }
 
@@ -290,23 +300,20 @@ struct OnboardingTomorrowRioMessageView: View {
                 ScrollView {
                     VStack(spacing: 22) {
                         RioSpeechRow {
-                            OnboardingRioBubble(text: "さすがに2日くらいはできるよね〜？w")
+                            OnboardingRioBubble(text: RioCopy.text("onboarding_tomorrow_001"))
                         }
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("莉央、さすがに2日くらいはできるよね〜？w")
+                        .accessibilityLabel("莉央、\(RioCopy.text("onboarding_tomorrow_001"))")
 
-                        Button("次へ", action: onContinue)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(AppColor.text)
-                            .padding(.horizontal, 20)
-                            .frame(minHeight: 44)
-                            .background(AppColor.surface.opacity(0.95), in: Capsule())
-                            .buttonStyle(.plain)
+                        OnboardingContinueButton(action: onContinue)
                     }
                     .frame(maxWidth: 520)
                     .padding(.horizontal, 20)
+                    // 設定中の重ね画面と同じ高さに莉央を置き、決める項目(時刻の行)に重ねない。
+                    .padding(.top, OnboardingExplanationLayout.conversationTopInset(in: proxy.size))
+                    .padding(.bottom, 12)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: proxy.size.height, alignment: .center)
+                    .frame(minHeight: proxy.size.height, alignment: .top)
                 }
                 .scrollBounceBehavior(.basedOnSize)
             }

@@ -195,9 +195,9 @@ final class StoryConditionEvaluatorTests: XCTestCase {
         let evaluator = StoryConditionEvaluator()
         let metrics = StoryProgressMetrics(continuousDays: 1, cumulativeAchievementDays: 2)
         let cases: [(type: String, key: String, operatorName: String, threshold: String, expected: String)] = [
-            ("achievement", "cumulative_days", "gte", "3", "約束を累計3日達成"),
-            ("streak", "continuous_days", "gte", "5", "約束を5日連続で達成"),
-            ("streak", "streak_days", "gt", "4", "約束を5日連続で達成"),
+            ("achievement", "cumulative_days", "gte", "3", "やることを累計3日達成"),
+            ("streak", "continuous_days", "gte", "5", "やることを5日連続で達成"),
+            ("streak", "streak_days", "gt", "4", "やることを5日連続で達成"),
             ("relationship", "trust", "gte", "10", "信頼度を10まで上げる"),
             ("event", "event_completed", "exists", "event_prologue", "前のストーリーを読む"),
             ("profile", "favorite_food", "eq", "curry", "ストーリーを進めると解放"),
@@ -220,7 +220,7 @@ final class StoryConditionEvaluatorTests: XCTestCase {
     func testConditionProgressTextIsOnlyShownForNumericValues() {
         let numeric = StoryConditionPresentation(
             id: "days",
-            text: "約束を累計3日達成",
+            text: "やることを累計3日達成",
             currentValue: "2",
             targetValue: "3",
             isSatisfied: false
@@ -477,12 +477,73 @@ final class InteractionStoryProgressPresentationTests: XCTestCase {
         XCTAssertEqual(progress.nextStoryText, "すべてのストーリーを読み終えました")
     }
 
+    func testPrologueIsCountedSeparatelyLikeTheStoryList() {
+        let stories = [
+            StoryListItemPresentation(
+                id: "prologue", title: "prologue", chapterId: "1", episodeOrder: 0,
+                backgroundAssetId: nil, isUnlocked: true, isNew: false, isRead: true, conditions: []
+            ),
+            StoryListItemPresentation(
+                id: "ep1", title: "ep1", chapterId: "1", episodeOrder: 1,
+                backgroundAssetId: nil, isUnlocked: true, isNew: false, isRead: true, conditions: []
+            ),
+            StoryListItemPresentation(
+                id: "ep2", title: "ep2", chapterId: "1", episodeOrder: 2,
+                backgroundAssetId: nil, isUnlocked: true, isNew: false, isRead: false, conditions: []
+            ),
+        ]
+        let progress = InteractionStoryProgressPresentation.make(
+            chapters: [chapter("1", stories: stories)],
+            evaluations: []
+        )
+        XCTAssertEqual(progress.chapterTitle, "チャプター 1")
+        XCTAssertEqual(progress.completedCount, 1)
+        XCTAssertEqual(progress.totalCount, 2)
+    }
+
     func testUnlockedUnreadStoryShowsAvailabilityNotRemainingDays() {
         let progress = InteractionStoryProgressPresentation.make(
             chapters: [chapter("1", stories: [story("next", isUnlocked: true)])],
             evaluations: []
         )
         XCTAssertEqual(progress.nextStoryText, "次のストーリーを読めます")
+    }
+
+    func testNextStoryTitleAndNewFlagForMiniCard() {
+        let stories = [
+            StoryListItemPresentation(
+                id: "ep1", title: "はじめての約束", chapterId: "1", episodeOrder: 1,
+                backgroundAssetId: nil, isUnlocked: true, isNew: false, isRead: true, conditions: []
+            ),
+            StoryListItemPresentation(
+                id: "ep2", title: "放課後の寄り道", chapterId: "1", episodeOrder: 2,
+                backgroundAssetId: nil, isUnlocked: true, isNew: true, isRead: false, conditions: []
+            ),
+        ]
+        let progress = InteractionStoryProgressPresentation.make(
+            chapters: [chapter("1", stories: stories)],
+            evaluations: []
+        )
+        XCTAssertEqual(progress.nextStoryTitle, "第2話 放課後の寄り道")
+        XCTAssertTrue(progress.nextStoryIsNew)
+    }
+
+    func testLockedNextStoryIsNotMarkedNew() {
+        let progress = InteractionStoryProgressPresentation.make(
+            chapters: [chapter("1", stories: [story("locked")])],
+            evaluations: []
+        )
+        XCTAssertNotNil(progress.nextStoryTitle)
+        XCTAssertFalse(progress.nextStoryIsNew)
+    }
+
+    func testAllReadHasNoNextStoryTitle() {
+        let progress = InteractionStoryProgressPresentation.make(
+            chapters: [chapter("1", stories: [story("a", isRead: true)])],
+            evaluations: []
+        )
+        XCTAssertNil(progress.nextStoryTitle)
+        XCTAssertFalse(progress.nextStoryIsNew)
     }
 
     func testDayThresholdDisplaysGenuineRemainingDays() {

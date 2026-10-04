@@ -2,7 +2,7 @@
 
 毎日の「やること」と「やらないこと」を記録し、キャラクターとの会話やストーリーを習慣の継続につなげるiOSアプリです。SwiftUIとSwiftDataで実装しており、対応OSはiOS 17以降です。
 
-正式名称は「ざこざこルーティン」です。ホーム画面など端末内では短縮名の「ざこルーティン」を表示します。`MesugakiRoutine` はXcode targetやコード上の内部名として使用しています。
+正式名称は「ざこざこルーティン」です。ホーム画面、通知、Siri、設定内の文書などユーザー向けの表示にはこの名称を使用します。`MesugakiRoutine` はXcode targetやコード上の内部名として使用しています。
 
 ## 現在の画面
 
@@ -179,6 +179,11 @@ MesugakiRoutine/Resources/GeneratedScenarios/story_content.generated.json
 ```
 
 Google Sheetsが唯一の正本（SSOT）です。生成JSONと `fixtures/sheets-snapshot.json` は成果物／再現用snapshotであり正本ではありません。どちらも直接編集せず、必ずGoogle Sheetsを更新して `scenario-sync` から再生成してください。ライブ取得失敗時にsnapshotへ暗黙fallbackすることもありません。
+
+交流リアクションも同じ同期処理で `reaction_conditions` / `reaction_lines` から生成します。
+莉央の初回案内・通知・予備セリフ・お題は `rio_lines` で管理します。詳細は [セリフ管理ガイド](docs/rio-copy-cms.md) を参照してください。
+`reaction_lines_draft` と `reaction_reference` はアプリの入力にしません。
+条件・抽選・4時境界・検証結果は [交流リアクションの実装報告](docs/interaction-reactions.md) を参照してください。
 
 初回セットアップ:
 

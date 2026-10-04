@@ -11,6 +11,7 @@ enum StoryAdvancePace: Equatable {
 }
 
 enum StoryPlaybackTiming {
+    static let chatToADVDelayMilliseconds: UInt64 = 1_000
     static let fastForwardMaximumCommandWaitMilliseconds: UInt64 = 60
 
     static func commandWaitMilliseconds(
@@ -70,6 +71,7 @@ final class StoryPlayer {
     private(set) var isHesitating = false
     private(set) var availableChoices: [StoryChoice] = []
     private(set) var isTyping = false
+    private(set) var isWaitingForChatExit = false
     private(set) var isModalPresented = false
     private(set) var isCompleted = false
     private(set) var recoverableError: String?
@@ -99,7 +101,11 @@ final class StoryPlayer {
     private(set) var callState: StoryCallPresentationState?
     private(set) var activeAudioAssetID: String?
     private(set) var bgmPlaybackState: StoryBGMPlaybackState?
-    private(set) var pendingSoundEffects: [StorySoundEffectPlayback] = []
+    private(set) var pendingBGMEvents: [StoryBGMEvent] = []
+    var bgmPlaybackUpdate: StoryBGMPlaybackUpdate {
+        StoryBGMPlaybackUpdate(state: bgmPlaybackState, events: pendingBGMEvents)
+    }
+    private(set) var pendingSoundEffects: [StorySoundEffectEvent] = []
     private(set) var loopingSoundEffects: [String: StorySoundEffectPlayback] = [:]
 
     @ObservationIgnored private let scenario: StoryScenario
@@ -178,9 +184,14 @@ final class StoryPlayer {
         }
     }
 
-    /// Loads a durable checkpoint. Previously visited presentation commands
-    /// are replayed without delays or persistence writes before resuming.
+    /// Events always start from the beginning, retaining read/unlock state.
+    /// Daily conversations still resume from their durable checkpoint.
     func start() async {
+        if event != nil {
+            await restart()
+            return
+        }
+
         guard let token = beginOperation() else { return }
         isClosed = false
         resetPresentation(clearError: true)
@@ -191,9 +202,6 @@ final class StoryPlayer {
                 throw StoryPlayerError.invalidScenario(
                     graphConstructionError ?? scenario.scenarioId
                 )
-            }
-            if let event {
-                try stateRepository.markOpened(eventId: event.eventId, at: now())
             }
             currentPhase = try stateRepository.relationshipPhase()
 
@@ -232,23 +240,10 @@ final class StoryPlayer {
             restorePresentation(from: checkpoint, graph: graph)
 
             if checkpoint.isCompleted {
-                // Opening an already-read event is a reread. Preserve its read
-                // state and unlocked memories, but always begin playback from
-                // the first node instead of returning to an old position.
-                if event != nil {
-                    checkpoint = try stateRepository.restartPlayback(
-                        playbackKey: playbackKey,
-                        scenarioId: scenario.scenarioId,
-                        at: now()
-                    )
-                    self.checkpoint = checkpoint
-                    resetPresentation(clearError: false)
-                } else {
-                    currentNode = nil
-                    availableChoices = []
-                    isCompleted = true
-                    return
-                }
+                currentNode = nil
+                availableChoices = []
+                isCompleted = true
+                return
             }
 
             // The last transition and `complete` are separate repository
@@ -486,16 +481,23 @@ final class StoryPlayer {
         operationGeneration &+= 1
         isProcessing = false
         isClosed = true
+        isWaitingForChatExit = false
         isHesitating = false
         isModalPresented = false
         availableChoices = []
         cancelSceneTransition()
     }
 
-    func consumePendingSoundEffects() -> [StorySoundEffectPlayback] {
+    func consumePendingSoundEffects() -> [StorySoundEffectEvent] {
         let effects = pendingSoundEffects
         pendingSoundEffects = []
         return effects
+    }
+
+    func consumePendingBGMEvents() -> [StoryBGMEvent] {
+        let events = pendingBGMEvents
+        pendingBGMEvents = []
+        return events
     }
 }
 
@@ -510,6 +512,7 @@ private extension StoryPlayer {
             if operationGeneration == token {
                 sceneTransition = nil
                 isHesitating = false
+                isWaitingForChatExit = false
             }
         }
         try await driveNodes(
@@ -556,6 +559,14 @@ private extension StoryPlayer {
         while let node = cursor {
             guard operationGeneration == token, !isClosed else { return }
             let dispatch = commandDispatcher.dispatch(node: node)
+            if !replayed, currentNode != nil, currentMode == .chat,
+               presentationMode(for: node, dispatch: dispatch) == .adv {
+                // 次のnodeや背景を適用する前に、送信済みのチャットを1秒残す。
+                isWaitingForChatExit = true
+                try await sleep(StoryPlaybackTiming.chatToADVDelayMilliseconds)
+                try validateTransitionOperation(token)
+                isWaitingForChatExit = false
+            }
             if !replayed, currentNode != nil, currentMode == .adv,
                sceneTransition == nil,
                normalized(node.command)?.lowercased() == "scene_change",
@@ -609,8 +620,17 @@ private extension StoryPlayer {
                     allowTransientEffects: true
                 )
                 for effect in dispatch.effects {
-                    if case .playSoundEffect(let sound) = effect, !sound.loop {
-                        pendingSoundEffects.append(sound)
+                    switch effect {
+                    case .playBGM(let state):
+                        pendingBGMEvents.append(.play(state))
+                    case .stopBGM(let fadeMilliseconds):
+                        pendingBGMEvents.append(.stop(fadeMilliseconds: fadeMilliseconds))
+                    case .playSoundEffect(let sound) where !sound.loop:
+                        pendingSoundEffects.append(.play(sound))
+                    case .stopSoundEffect(let assetID):
+                        pendingSoundEffects.append(.stop(assetID: assetID))
+                    default:
+                        break
                     }
                 }
                 appendVisibleChatNodeIfNeeded(displayedNode)
@@ -729,10 +749,15 @@ private extension StoryPlayer {
         isModalPresented = false
         isTyping = false
         loopingSoundEffects = [:]
+        if bgmPlaybackState != nil {
+            bgmPlaybackState = nil
+            pendingBGMEvents.append(.stop(fadeMilliseconds: StoryBGMPlaybackState.defaultStopFadeMilliseconds))
+        }
         shouldDelayCurrentADVText = false
         isHesitating = false
         awaitsTextAfterClearBackground = false
         isCompleted = true
+        isWaitingForChatExit = false
     }
 }
 
@@ -790,6 +815,7 @@ private extension StoryPlayer {
         allowTransientEffects: Bool
     ) -> Set<String> {
         var encounteredCGs = Set<String>()
+        let nextMode = presentationMode(for: node, dispatch: dispatch)
 
         // A delivered message replaces the transient typing indicator even if
         // the sheet omits an explicit typing_hide row.
@@ -862,14 +888,7 @@ private extension StoryPlayer {
             }
         }
 
-        if let mode = node.screenMode {
-            currentMode = StoryScreenModeTransitionPolicy.resolveRowMode(
-                mode,
-                currentMode: currentMode,
-                scenarioType: scenario.scenarioType,
-                hasExplicitTransition: normalized(node.command)?.lowercased() == "scene_change"
-            )
-        }
+        currentMode = nextMode
         shouldDelayCurrentADVText = node.messageType == .text
             && currentMode == .adv
             && backgroundAssetID == nil
@@ -879,6 +898,18 @@ private extension StoryPlayer {
             awaitsTextAfterClearBackground = false
         }
         return encounteredCGs
+    }
+
+    func presentationMode(for node: StoryNode, dispatch: StoryCommandDispatchResult) -> StoryScreenMode {
+        var mode = currentMode
+        for effect in dispatch.effects {
+            if case .setScreenMode(let target) = effect { mode = target }
+        }
+        guard let rowMode = node.screenMode else { return mode }
+        return StoryScreenModeTransitionPolicy.resolveRowMode(
+            rowMode, currentMode: mode, scenarioType: scenario.scenarioType,
+            hasExplicitTransition: normalized(node.command)?.lowercased() == "scene_change"
+        )
     }
 
     func choices(for node: StoryNode) throws -> [StoryChoice] {
@@ -1000,6 +1031,8 @@ private extension StoryPlayer {
             saveKey: node.saveKey,
             saveValue: node.saveValue,
             assetId: commandAssetID,
+            voiceAssetId: node.voiceAssetId,
+            voiceFileName: node.voiceFileName,
             minPhase: node.minPhase,
             maxPhase: node.maxPhase,
             speakerName: node.speakerName,
@@ -1145,6 +1178,7 @@ private extension StoryPlayer {
 
     func resetPresentation(clearError: Bool) {
         cancelSceneTransition()
+        isWaitingForChatExit = false
         currentNode = nil
         currentMode = initialMode
         visibleChatNodes = []
@@ -1162,6 +1196,7 @@ private extension StoryPlayer {
         callState = nil
         activeAudioAssetID = nil
         bgmPlaybackState = nil
+        pendingBGMEvents = []
         pendingSoundEffects = []
         loopingSoundEffects = [:]
         if clearError { recoverableError = nil }
@@ -1214,7 +1249,7 @@ private extension StoryPlayer {
         let reduced = reduceMotion()
         if configuration.type == .colorSlide {
             pendingSoundEffects.append(
-                StorySoundEffectPlayback(assetID: "se_color_slide", volume: 1)
+                .play(StorySoundEffectPlayback(assetID: "se_color_slide", volume: 1))
             )
         }
         sceneTransition = StorySceneTransitionState(

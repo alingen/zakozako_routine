@@ -6,6 +6,41 @@ import XCTest
 final class OnboardingDeferredReportIntegrationTests: XCTestCase {
     private var container: ModelContainer?
 
+    func testOnboardingFirstStoryExistsAndUnlocksAfterFirstAchievement() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let routineRepository = RoutineRepository(context: context)
+        let stateRepository = StoryStateRepository(context: context)
+        let contentRepository = try StoryContentRepository(bundle: .main)
+        let metricsProvider = StoryProgressMetricsProvider(
+            routineRepository: routineRepository,
+            storyStateRepository: stateRepository
+        )
+        let unlockService = StoryUnlockService(
+            contentRepository: contentRepository,
+            stateRepository: stateRepository,
+            metricsProvider: metricsProvider
+        )
+        // UIが参照するIDを直接検証し、CMS側との不一致を検出する。
+        let eventID = RootTabView.firstStoryEventID
+        let event = try XCTUnwrap(contentRepository.event(id: eventID))
+        XCTAssertEqual(event.chapterId, "chapter_01")
+        XCTAssertEqual(event.episodeOrder, 1)
+        XCTAssertNotNil(contentRepository.scenario(id: event.entryScenarioId))
+
+        let routine = try routineRepository.create(
+            title: "本を1ページ読む", cueText: "寝る前", iconName: "book"
+        )
+        let now = Date()
+        let before = try unlockService.refreshUnlocks(at: now)
+        XCTAssertFalse(try XCTUnwrap(before.events.first { $0.id == eventID }).canPlay)
+
+        try routineRepository.recordProgress(routine, now: now)
+        let after = try unlockService.refreshUnlocks(at: now)
+        XCTAssertTrue(try XCTUnwrap(after.events.first { $0.id == eventID }).canPlay)
+        XCTAssertTrue(try XCTUnwrap(stateRepository.eventProgress(for: eventID)).isUnlocked)
+    }
+
     func testDeferringFirstReportDoesNotRecordAchievement() throws {
         let suiteName = "OnboardingDeferredReportIntegrationTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

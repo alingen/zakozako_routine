@@ -15,6 +15,7 @@ export const DAILY_COLUMNS = [
   'max_phase',
   'speaker_name',
   'typing_duration_ms',
+  'voice_asset_id',
   'enabled',
   'notes',
   'screen_mode',
@@ -63,6 +64,7 @@ export const SCENARIO_COLUMNS = [
   'background',
   'portrait',
   'cg',
+  'voice_asset_id',
   'enabled',
   'notes',
   'screen_mode',
@@ -112,6 +114,38 @@ export const EVENT_COLUMNS = [
   'chapter_id',
   'episode_order',
   'story_category',
+] as const;
+
+export const REACTION_CONDITION_COLUMNS = [
+  'condition_id',
+  'label',
+  'trigger_type',
+  'condition_key',
+  'operator',
+  'value',
+  'priority',
+  'active',
+  'note',
+] as const;
+export const REACTION_LINE_COLUMNS = [
+  'line_id',
+  'condition_id',
+  'text',
+  'strength',
+  'premium_only',
+  'weight',
+  'active',
+  'note',
+  'display_target',
+] as const;
+
+export const REACTION_DISPLAY_TARGETS = [
+  'general',
+  'home_routine_added',
+  'home_peek_unfinished',
+  'home_peek_unfinished_top',
+  'home_idle_above',
+  'home_idle_right',
 ] as const;
 
 export const REQUIRED_DAILY_COLUMNS = [
@@ -190,6 +224,7 @@ export const KNOWN_UI_VARIANTS = new Set([
   'modal',
   'monologue',
   'narration',
+  'fullscreen_narration',
   'outgoing_call',
   'recording',
   'scene_transition',
@@ -233,3 +268,11 @@ export const KNOWN_ASSET_TYPES = new Set([
 export function isBlank(value: unknown): boolean {
   return value === undefined || value === null || String(value).trim() === '';
 }
+export const RIO_LINE_COLUMNS = [
+  'line_id',
+  'group_id',
+  'text',
+  'weight',
+  'active',
+  'note',
+] as const;

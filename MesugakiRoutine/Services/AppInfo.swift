@@ -3,6 +3,9 @@ import UIKit
 
 /// 設定の「このアプリについて」「お問い合わせ」で使うアプリの情報。
 enum AppInfo {
+    /// ユーザー向けに表示する正式名称。内部のtarget名やbundle IDとは区別する。
+    static let displayName = "ざこざこルーティン"
+
     /// お問い合わせ先。
     /// TODO: 公開前に正式な窓口へ差し替える(example.com は仮置き用の予約ドメイン)。
     static let supportEmail = "support@example.com"
@@ -18,12 +21,12 @@ enum AppInfo {
     /// 問い合わせメールの下書き。不具合の調査に要る情報だけを添える。
     @MainActor
     static func supportMailURL() -> URL? {
-        let subject = "ザコルーティンへのお問い合わせ"
+        let subject = "\(displayName)へのお問い合わせ"
         let body = """
 
 
         ----
-        アプリ: \(versionText)
+        アプリ: \(displayName) \(versionText)
         iOS: \(UIDevice.current.systemVersion)
         """
         var components = URLComponents()

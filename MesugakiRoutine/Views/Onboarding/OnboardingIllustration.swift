@@ -51,7 +51,7 @@ struct OnboardingIllustration: View {
             Group {
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 8) {
-                        Label("今日の約束", systemImage: "book")
+                        Label("やること", systemImage: "book")
                             .font(.caption2)
                             .foregroundStyle(AppColor.muted)
                         Text("本を5分読む")
@@ -62,7 +62,7 @@ struct OnboardingIllustration: View {
                             completionCheck
                             Text("達成！")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundStyle(AppColor.primary)
+                                .foregroundStyle(AppColor.secondary)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,7 +71,7 @@ struct OnboardingIllustration: View {
                         habitIcon("book")
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("今日の約束")
+                            Text("やること")
                                 .font(.caption2)
                                 .foregroundStyle(AppColor.muted)
                             Text("本を5分読む")
@@ -85,7 +85,7 @@ struct OnboardingIllustration: View {
                             completionCheck
                             Text("達成！")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundStyle(AppColor.primary)
+                                .foregroundStyle(AppColor.secondary)
                         }
                     }
                 }
@@ -104,7 +104,7 @@ struct OnboardingIllustration: View {
                     .background(AppColor.surface)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                Text("えらいえらい♡")
+                Text(RioCopy.text("onboarding_illustration_001"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(AppColor.text)
                     .fixedSize(horizontal: false, vertical: true)
@@ -154,9 +154,10 @@ struct OnboardingIllustration: View {
             ) {
                 ForEach(1...4, id: \.self) { day in
                     VStack(spacing: 5) {
+                        // 図解の地(Background)の上なので muted ではコントラストが足りない。
                         Text("\(day)日目")
-                            .font(.caption2)
-                            .foregroundStyle(AppColor.muted)
+                            .font(.caption)
+                            .foregroundStyle(AppColor.text)
                             .fixedSize(horizontal: false, vertical: true)
                         completionCheck
                     }
@@ -382,13 +383,14 @@ struct OnboardingIllustration: View {
             .font(.caption2.weight(.bold))
             .foregroundStyle(AppColor.surface)
             .frame(width: checkSize, height: checkSize)
-            .background(AppColor.primary, in: Circle())
+            // 達成の印はホームの完了と同じ Purple。Primary は「まだ押していない約束」の色なので使わない。
+            .background(AppColor.secondary, in: Circle())
     }
 
     private var flowArrow: some View {
         Image(systemName: "arrow.down")
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(AppColor.primary.opacity(0.75))
+            .foregroundStyle(AppColor.muted)
             .frame(maxWidth: .infinity)
     }
 
@@ -410,7 +412,7 @@ struct OnboardingIllustration: View {
     private var accessibilityDescription: String {
         switch kind {
         case .promiseToStory:
-            return "図解。約束を達成すると莉央が反応し、今日の会話やストーリーにつながります。"
+            return "図解。やることを達成すると莉央が反応し、今日の会話やストーリーにつながります。"
         case let .repeatOneHabit(title, _):
             return "図解。\(title)という1つの習慣を、1日目、2日目、3日目、4日目と繰り返し、いつもの行動にしていきます。"
         case .smallGoal:
@@ -420,7 +422,7 @@ struct OnboardingIllustration: View {
         case .askRioForHelp:
             return "図解。我慢が難しいときは、負けそうと莉央に報告できます。莉央が反応します。"
         case let .completedPromise(cueText, routineTitle, _):
-            return "図解。最初の約束。\(routineTitle)、\(cueText)、今日から。できたらタップしてチェックします。"
+            return "図解。最初のやること。\(routineTitle)、\(cueText)、今日から。できたらタップしてチェックします。"
         }
     }
 }
@@ -458,10 +460,11 @@ struct OnboardingPromiseTaskCard: View {
 
     private var taskDetails: some View {
         HStack(spacing: 10) {
+            // ホームの約束カードと同じく、達成したら Purple で満たす。
             RoutineProgressPie(
                 progress: isChecked ? 1 : 0,
                 size: 46,
-                tint: AppColor.primary,
+                tint: isChecked ? AppColor.secondary : AppColor.primary,
                 centerSystemImage: iconName
             )
 
@@ -499,10 +502,11 @@ private struct OnboardingPromiseCheck: View {
 
     var body: some View {
         ZStack {
+            // ホームの完了ボタンと同じく、未完了は Primary の線、達成は Purple の塗り。
             Circle()
-                .fill(isChecked ? AppColor.primary : AppColor.surface)
+                .fill(isChecked ? AppColor.secondary : AppColor.surface)
             Circle()
-                .stroke(isChecked ? AppColor.primary : AppColor.border, lineWidth: 2.5)
+                .stroke(isChecked ? AppColor.secondary : AppColor.primary, lineWidth: 2.5)
             if isChecked {
                 Image(systemName: "checkmark")
                     .font(.system(size: size * 0.42, weight: .bold))

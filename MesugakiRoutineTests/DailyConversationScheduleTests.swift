@@ -70,6 +70,30 @@ final class DailyConversationScheduleTests: XCTestCase {
         )
     }
 
+    func testMissingDateFallsBackToSampleConversation() throws {
+        let sample = scenario(id: "daily_q003", calendarDate: "2026-09-20")
+        XCTAssertEqual(DailyConversationSchedule.scenario(
+            on: try date(2099, 10, 2, 12, 0), from: [sample], calendar: calendar
+        )?.scenarioId, "daily_q003")
+        XCTAssertNil(DailyConversationSchedule.scenario(
+            on: try date(2099, 10, 2, 12, 0),
+            from: [scenario(id: "daily_q003", enabled: false)], calendar: calendar
+        ))
+    }
+
+    func testScheduledConversationTakesPriorityOverSample() throws {
+        let sample = scenario(id: "daily_q003")
+        let recurring = scenario(id: "recurring", calendarMonthDay: "09-02")
+        let exact = scenario(id: "exact", calendarDate: "2026-09-02")
+        let now = try date(2026, 9, 2, 12, 0)
+        XCTAssertEqual(DailyConversationSchedule.scenario(
+            on: now, from: [sample, recurring, exact], calendar: calendar
+        )?.scenarioId, "exact")
+        XCTAssertEqual(DailyConversationSchedule.scenario(
+            on: now, from: [sample, recurring], calendar: calendar
+        )?.scenarioId, "recurring")
+    }
+
     func testLegacyScenarioWithoutCatalogMetadataDefaultsToEnabled() throws {
         let json =
             """
@@ -351,7 +375,11 @@ final class InteractionViewModelOnboardingConversationTests: XCTestCase {
         let viewModel = InteractionViewModel()
 
         viewModel.configure(context: container.mainContext, now: now, calendar: calendar)
-        XCTAssertFalse(viewModel.todayConversationIsAvailable)
+        XCTAssertTrue(viewModel.todayConversationIsAvailable)
+        XCTAssertTrue(viewModel.todayConversationIsUnread)
+        viewModel.openToday(now: now, calendar: calendar)
+        XCTAssertEqual(viewModel.activeLaunch?.scenario.scenarioId, "daily_q003")
+        XCTAssertEqual(viewModel.activeLaunch?.playbackKey, "daily:2099-10-02")
 
         let identity = OnboardingConversationIdentity(
             scenarioID: "daily_q003",

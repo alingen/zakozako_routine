@@ -46,6 +46,9 @@ final class StoryContentRepository {
     let events: [StoryEvent]
     let dailyScenarios: [StoryScenario]
     let interactions: [InteractionComment]
+    let reactionConditions: [ReactionCondition]
+    let reactionLines: [ReactionLine]
+    let rioLines: [RioLine]
     let cgCatalog: [StoryCGCatalogEntry]
 
     convenience init(
@@ -105,6 +108,9 @@ final class StoryContentRepository {
                 $0.id.localizedStandardCompare($1.id) == .orderedAscending
             }
         cgCatalog = Self.makeCGCatalog(content: content, sortedEvents: events)
+        reactionConditions = content.reactionConditions.filter(\.active)
+        reactionLines = content.reactionLines.filter { $0.active && $0.weight > 0 }
+        rioLines = content.rioLines.filter { $0.active && $0.weight > 0 }.sorted { $0.id < $1.id }
     }
 
     func scenario(id: String) -> StoryScenario? {

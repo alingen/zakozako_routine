@@ -5,8 +5,8 @@ import FamilyControls
 enum BlockedBehaviorLimitRule: Equatable {
     /// 1回でも行ったら、その日は失敗。
     case quitCompletely
-    /// 指定期間内に `failureCount` 回行ったら失敗。
-    case counted(period: HabitPeriod, failureCount: Int)
+    /// 指定期間内に `allowedCount` 回まではOK。それを超えたら失敗。
+    case counted(period: HabitPeriod, allowedCount: Int)
 
     var period: HabitPeriod {
         switch self {
@@ -17,14 +17,27 @@ enum BlockedBehaviorLimitRule: Equatable {
         }
     }
 
-    var failureCount: Int {
+    var allowedCount: Int {
         switch self {
         case .quitCompletely:
-            return 1
-        case let .counted(_, failureCount):
-            return max(failureCount, 1)
+            return 0
+        case let .counted(_, allowedCount):
+            return max(allowedCount, 1)
         }
     }
+}
+
+/// 回数制限の決まりの言い方。編集画面・オンボーディング・記録で同じ言い方にそろえる。
+enum BlockedBehaviorLimitText {
+    /// 「1日2回まで」「1週間のうち1回でもやったら失敗」
+    static func rule(period: HabitPeriod, allowedCount: Int) -> String {
+        allowedCount == 0
+            ? "\(period.pickerLabel)1回でもやったら失敗"
+            : "\(period.pickerLabel)\(allowedCount)回まで"
+    }
+
+    static let countedFootnote = "設定した回数まではOK。それを超えると、その期間は失敗になります。"
+    static let quitFootnote = "1回でもやってしまったら、その日は失敗になります。"
 }
 
 /// 新しい「やらないこと」を作るときに選べる入力済みテンプレート。
@@ -108,7 +121,7 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
     ]
 
     /// 初回オンボーディングで、最初に見直す習慣として提示する候補。
-    /// 動画だけは続く内部画面で対象アプリと時間上限を設定し、Screen Time で自動判定する。
+    /// 動画・SNSは対象アプリと時間上限、その他は回数の上限を設定する。
     static let onboarding: [BlockedBehaviorPreset] = [
         BlockedBehaviorPreset(
             id: "onboarding-stop-watching-videos",
@@ -120,7 +133,9 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
         BlockedBehaviorPreset(
             id: "onboarding-view-social-media",
             title: "SNSを見る",
-            iconName: "bubble.left.and.bubble.right"
+            iconName: "bubble.left.and.bubble.right",
+            trackingKind: .screenTime,
+            screenTimeLimitMinutes: 20
         ),
         BlockedBehaviorPreset(
             id: "onboarding-smoking",
@@ -143,10 +158,12 @@ struct BlockedBehaviorPreset: Identifiable, Equatable {
 /// 選択画面と確認画面の間だけで保持する、未保存の入力内容。
 struct BlockedBehaviorDraft: Equatable {
     var title = ""
+    var shareToZakoNews = false
     var iconName: String?
     var isQuitCompletely = true
     var limitPeriod: HabitPeriod = .day
-    var limitCount = 1
+    /// 「回数を決める」のときの、期間内に許される回数。0 は「1回でもやったら失敗」。
+    var allowedCount = 1
     var trackingKind: BlockedBehaviorTrackingKind = .manual
     var screenTimeLimitMinutes = 20
     var screenTimeSelection = FamilyActivitySelection()
@@ -155,10 +172,11 @@ struct BlockedBehaviorDraft: Equatable {
 
     init(behavior: BlockedBehavior) {
         title = behavior.title
+        shareToZakoNews = behavior.shareToZakoNews
         iconName = behavior.iconName
-        isQuitCompletely = behavior.limitPeriod == .day && behavior.effectiveLimit == 1
+        isQuitCompletely = behavior.limitPeriod == .day && behavior.allowedCount == 0
         limitPeriod = behavior.limitPeriod
-        limitCount = behavior.effectiveLimit
+        allowedCount = isQuitCompletely ? 1 : behavior.allowedCount
         trackingKind = behavior.trackingKind
         screenTimeLimitMinutes = behavior.screenTimeLimitMinutes
 
@@ -190,8 +208,8 @@ struct BlockedBehaviorDraft: Equatable {
         isQuitCompletely ? .day : limitPeriod
     }
 
-    var effectiveLimitCount: Int {
-        isQuitCompletely ? 1 : max(limitCount, 1)
+    var effectiveAllowedCount: Int {
+        isQuitCompletely ? 0 : max(allowedCount, 0)
     }
 
     private var hasScreenTimeTargets: Bool {
@@ -209,11 +227,11 @@ struct BlockedBehaviorDraft: Equatable {
         case .quitCompletely:
             isQuitCompletely = true
             limitPeriod = .day
-            limitCount = 1
-        case let .counted(period, failureCount):
+            allowedCount = 1
+        case let .counted(period, _):
             isQuitCompletely = false
             limitPeriod = period
-            limitCount = max(failureCount, 1)
+            allowedCount = preset.limitRule.allowedCount
         }
     }
 

@@ -26,6 +26,12 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                NavigationLink { ZakoNewsSettingsView() } label: {
+                    settingsLabel("ざこ速報", systemImage: "megaphone")
+                }
+            }
+
             Section("このアプリについて") {
                 documentLink(.terms, systemImage: "doc.text")
                 documentLink(.privacyPolicy, systemImage: "hand.raised")
@@ -73,6 +79,7 @@ struct SettingsView: View {
 /// 開発中の進行確認に使う値と操作をまとめた専用画面。
 private struct DebugSettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(RioPromotionalCapture.storageKey) private var promotionalCapture = false
 
     @State private var cumulativeAchievementDays = 0
     @State private var continuousAchievementDays = 0
@@ -95,9 +102,21 @@ private struct DebugSettingsView: View {
     var body: some View {
         List {
             Section {
+                Toggle("莉央の介入を広報撮影用にする", isOn: $promotionalCapture)
+                    .tint(AppColor.primary)
+                if promotionalCapture {
+                    LabeledContent("放置時の撮影用セリフ", value: RioPromotionalCapture.idleText)
+                }
+            } header: {
+                Text("広報撮影")
+            } footer: {
+                Text("ホームの吹き出しの文字を160%、余白を200%に拡大し、Primary色の枠を付けます。横幅は画面内に収めます。「やめること」欄は非表示にします。放置時の莉央は約0.5秒で登場・再登場し、通常の回数制限には数えません。莉央の介入中はタブバーを隠し、閉じると戻します。オフにすると通常表示になります。")
+            }
+            Section {
                 numberField("累積達成日数", value: $cumulativeAchievementDays)
 
                 Toggle("連続達成日数を上書き", isOn: $isContinuousOverrideEnabled)
+                    .tint(AppColor.primary)
                 if isContinuousOverrideEnabled {
                     numberField("連続達成日数", value: $continuousAchievementDays)
                 } else {
@@ -112,7 +131,7 @@ private struct DebugSettingsView: View {
             } header: {
                 Text("ストーリー進行値")
             } footer: {
-                Text("保存するとストーリーの解放条件を再評価します。連続達成日数の上書きをオフにすると、約束の実データから算出した値を使います。")
+                Text("保存するとストーリーの解放条件を再評価します。連続達成日数の上書きをオフにすると、やることの実データから算出した値を使います。")
             }
 
             Section {
@@ -153,14 +172,14 @@ private struct DebugSettingsView: View {
                     )
                 }
 
-                Button("約束を1日巻き戻す（自動判定テスト）") {
+                Button("やることを1日巻き戻す（自動判定テスト）") {
                     AppDependencies(context: modelContext)
                         .blockedBehaviorRepository
                         .debugAgePromiseByOneDay()
                     reload()
                 }
 
-                Button("先頭の約束を昨日達成扱いにする") {
+                Button("先頭のやることを昨日達成扱いにする") {
                     let dependencies = AppDependencies(context: modelContext)
                     guard let routine = dependencies.routineRepository.fetchAll().first else {
                         return
@@ -187,9 +206,9 @@ private struct DebugSettingsView: View {
                 }
             }
 
-            Section("約束の進捗・連続達成") {
+            Section("やることの進捗・連続達成") {
                 if routineDebugRows.isEmpty {
-                    Text("約束がありません")
+                    Text("やることがありません")
                         .font(.subheadline)
                         .foregroundStyle(AppColor.muted)
                 } else {

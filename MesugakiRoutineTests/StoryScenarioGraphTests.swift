@@ -2,6 +2,175 @@ import SwiftUI
 import XCTest
 @testable import MesugakiRoutine
 
+@MainActor
+final class FullscreenNarrationRenderingTests: XCTestCase {
+    func testOrdinaryNarrationAppearsInlineAndWaitsForNextButton() async throws {
+        let preceding = StoryNode(nodeId: "rio", lineOrder: 1, speaker: "rio", messageType: .text,
+                                  text: "まあ", speakerName: "莉央", screenMode: .chat)
+        let narration = StoryNode(nodeId: "inline", lineOrder: 2, speaker: "narrator", messageType: .text,
+                                  text: "数秒、返信が来ない。[br]ノートを力ずくで取り返したって、負けたままだ。",
+                                  screenMode: .chat, uiVariant: .narration)
+        let presented = expectation(description: "Inline narration appears after a pause")
+        var advances = 0
+        let view = ChatStoryRenderer(
+            node: narration, scenarioType: .middleEvent, visibleNodes: [preceding, narration],
+            onAdvance: { advances += 1 }, onPresentNode: { presented.fulfill() },
+            onSelectChoice: { _ in }, onDismissModal: {}
+        )
+        let host = UIHostingController(rootView: view.environment(\.colorScheme, .light))
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        await fulfillment(of: [presented], timeout: 3)
+        try await Task.sleep(for: .milliseconds(500))
+        XCTAssertEqual(advances, 0)
+        host.view.layoutIfNeeded()
+        let image = UIGraphicsImageRenderer(bounds: host.view.bounds).image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "inline-chat-narration-compact"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testNarrationRevealsWithoutAutomaticAdvanceOnCompactIPhone() async throws {
+        let history = [
+            StoryNode(nodeId: "chat1", lineOrder: 1, speaker: "user", messageType: .text, text: "走ったよ", screenMode: .chat),
+            StoryNode(nodeId: "chat2", lineOrder: 2, speaker: "rio", messageType: .text, text: "何分？", screenMode: .chat),
+            StoryNode(nodeId: "chat3", lineOrder: 3, speaker: "user", messageType: .text, text: "10分", screenMode: .chat),
+            StoryNode(nodeId: "chat4", lineOrder: 4, speaker: "rio", messageType: .text, text: "ざこざこおにいさん♡", screenMode: .chat),
+        ]
+        let node = StoryNode(nodeId: "narration", lineOrder: 5, speaker: "narrator", messageType: .text,
+                             text: "莉央との最初の約束だった。", screenMode: .chat, uiVariant: .fullscreenNarration)
+        let presented = expectation(description: "Narration appears after controls fade")
+        var advances = 0
+        let view = StoryPlayerView(
+            input: StoryPlayerViewSnapshot(title: "最初の約束", scenarioType: .middleEvent,
+                                           currentNode: node, currentMode: .chat, visibleChatNodes: history + [node]),
+            onAdvance: { _ in advances += 1 }, onChoice: { _ in }, onDismissModal: {},
+            onPresentNode: { presented.fulfill() }, onSkip: {}, onClose: {}
+        )
+        let host = UIHostingController(rootView: view.environment(\.colorScheme, .light))
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 375, height: 812))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        await fulfillment(of: [presented], timeout: 3)
+        try await Task.sleep(for: .milliseconds(400))
+        XCTAssertEqual(advances, 0, "Only a reader tap should advance narration")
+        host.view.layoutIfNeeded()
+        let image = UIGraphicsImageRenderer(bounds: host.view.bounds).image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
+        let attachment = XCTAttachment(image: image)
+        attachment.name = "fullscreen-chat-narration-compact"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+}
+
+final class StoryProtagonistDisplayNameTests: XCTestCase {
+    private func node(speakerName: String?) -> StoryNode {
+        StoryNode(
+            nodeId: "name", lineOrder: 1, speaker: "protagonist", messageType: .text,
+            speakerName: speakerName
+        )
+    }
+
+    func testKeepsAccountNameWhenReplacingProtagonistPlaceholder() {
+        XCTAssertEqual(
+            node(speakerName: "主人公（孤高@考察垢）").protagonistDisplayName(userName: "たけし"),
+            "たけし（孤高@考察垢）"
+        )
+    }
+
+    func testOrdinaryDialogueStillUsesOnlyConfiguredName() {
+        for speakerName: String? in [nil, "", "主人公", "protagonist"] {
+            XCTAssertEqual(node(speakerName: speakerName).protagonistDisplayName(userName: "たけし"), "たけし")
+        }
+    }
+
+    func testEmptyNicknameFallsBackToProtagonistWithSuffix() {
+        XCTAssertEqual(
+            node(speakerName: "主人公（孤高@考察垢）").protagonistDisplayName(userName: " \n"),
+            "主人公（孤高@考察垢）"
+        )
+    }
+
+    func testTrimsOuterWhitespaceAndPreservesOtherAccountNames() {
+        XCTAssertEqual(
+            node(speakerName: " 主人公（別アカウント） ").protagonistDisplayName(userName: " たけし "),
+            "たけし（別アカウント）"
+        )
+        XCTAssertEqual(
+            node(speakerName: "主人公(孤高@考察垢)").protagonistDisplayName(userName: "たけし"),
+            "たけし(孤高@考察垢)"
+        )
+    }
+
+    func testDoesNotAppendUnrelatedSpeakerNamesOrRepeatNickname() {
+        for speakerName in ["別人（孤高@考察垢）", "主人公の友人", "たけし（孤高@考察垢）"] {
+            XCTAssertEqual(node(speakerName: speakerName).protagonistDisplayName(userName: "たけし"), "たけし")
+        }
+        XCTAssertEqual(
+            node(speakerName: "主人公（孤高@考察垢）").protagonistDisplayName(userName: "主人公たけし"),
+            "主人公たけし（孤高@考察垢）"
+        )
+    }
+}
+
+final class StorySceneChangeCommandTests: XCTestCase {
+    func testScreenModeSupportsBothArgumentNamesAndRowFallback() {
+        let arguments: [JSONValue?] = [
+            .object(["screen_mode": .string("chat")]),
+            .object(["screen": .string("chat")]),
+            nil,
+        ]
+        for args in arguments {
+            let node = StoryNode(
+                nodeId: "scene", lineOrder: 1, speaker: "system", messageType: .action,
+                screenMode: .chat, command: "scene_change", commandArgs: args
+            )
+            let result = StoryCommandDispatcher().dispatch(node: node)
+            XCTAssertEqual(result.effects, [.setScreenMode(.chat)])
+            XCTAssertNil(result.diagnostic)
+        }
+    }
+
+    func testExplicitArgumentsTakePrecedenceOverAliasesAndRowMode() {
+        let node = StoryNode(
+            nodeId: "scene", lineOrder: 1, speaker: "system", messageType: .action,
+            screenMode: .adv, command: "scene_change",
+            commandArgs: .object([
+                "screen_mode": .string("chat"), "screen": .string("call"),
+            ])
+        )
+        XCTAssertEqual(StoryCommandDispatcher().dispatch(node: node).effects, [.setScreenMode(.chat)])
+    }
+
+    func testScreenAliasWorksWithoutRowMode() {
+        let node = StoryNode(
+            nodeId: "scene", lineOrder: 1, speaker: "system", messageType: .action,
+            command: "scene_change", commandArgs: .object(["screen": .string("chat")])
+        )
+        let result = StoryCommandDispatcher().dispatch(node: node)
+        XCTAssertEqual(result.effects, [.setScreenMode(.chat)])
+        XCTAssertNil(result.diagnostic)
+    }
+
+    func testMissingBackgroundAndScreenStillReportsDiagnostic() {
+        let node = StoryNode(
+            nodeId: "scene", lineOrder: 1, speaker: "system", messageType: .action,
+            command: "scene_change"
+        )
+        let result = StoryCommandDispatcher().dispatch(node: node)
+        XCTAssertTrue(result.effects.isEmpty)
+        XCTAssertEqual(result.diagnostic, "command scene_change にbackground / screen_modeがありません")
+    }
+}
+
 final class StorySoundEffectCommandTests: XCTestCase {
     func testPlaySEUsesAssetIDAndClampsVolume() {
         let node = StoryNode(
@@ -967,6 +1136,58 @@ final class StoryScenarioGraphTests: XCTestCase {
         )
     }
 
+    func testEventPlayerLineUsesPrefilledComposerButDailyKeepsReplyButton() {
+        let reply = StoryNode(
+            nodeId: "reply", lineOrder: 1, speaker: "user", messageType: .text, text: "10分"
+        )
+        for scenarioType: StoryScenarioType in [.prologue, .smallEvent, .middleEvent, .largeEvent] {
+            XCTAssertTrue(ChatStoryPresentationPolicy.usesPrefilledComposer(
+                node: reply, scenarioType: scenarioType
+            ))
+        }
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesPrefilledComposer(
+            node: reply, scenarioType: .daily
+        ))
+
+        let emptyReply = StoryNode(
+            nodeId: "empty-reply", lineOrder: 2, speaker: "user", messageType: .text, text: ""
+        )
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesPrefilledComposer(
+            node: emptyReply, scenarioType: .middleEvent
+        ))
+
+        let rio = StoryNode(
+            nodeId: "rio", lineOrder: 3, speaker: "rio", messageType: .text, text: "何分？"
+        )
+        XCTAssertFalse(ChatStoryPresentationPolicy.usesPrefilledComposer(
+            node: rio, scenarioType: .middleEvent
+        ))
+    }
+
+    func testTerminalEventChatButtonSaysCloseWithoutChangingIntermediateOrReplyLabels() {
+        let narration = StoryNode(
+            nodeId: "final", lineOrder: 1, speaker: "narrator", messageType: .text,
+            text: "莉央との最初の約束だった。", screenMode: .chat, uiVariant: .narration
+        )
+        for scenarioType: StoryScenarioType in [.prologue, .middleEvent, .largeEvent] {
+            XCTAssertEqual(ChatStoryPresentationPolicy.manualAdvanceLabel(
+                node: narration, scenarioType: scenarioType, isTerminalNode: true
+            ), "閉じる")
+            XCTAssertEqual(ChatStoryPresentationPolicy.manualAdvanceLabel(
+                node: narration, scenarioType: scenarioType
+            ), "次へ")
+        }
+        let reply = StoryNode(
+            nodeId: "reply", lineOrder: 1, speaker: "user", messageType: .text, text: "また明日"
+        )
+        XCTAssertEqual(ChatStoryPresentationPolicy.manualAdvanceLabel(
+            node: reply, scenarioType: .middleEvent, isTerminalNode: true
+        ), "また明日")
+        XCTAssertEqual(ChatStoryPresentationPolicy.manualAdvanceLabel(
+            node: reply, scenarioType: .daily, isTerminalNode: true
+        ), "返信する")
+    }
+
     func testDailyChoiceKeepsRiosQuestionButHidesUnsentPlayerPlaceholder() {
         let question = StoryNode(
             nodeId: "question",
@@ -1008,7 +1229,7 @@ final class StoryScenarioGraphTests: XCTestCase {
         )
     }
 
-    func testMiddleAndLargeChatSystemTextUsesADVPresentation() {
+    func testChatNarrationUsesInlineSeparatorAndRemainsInHistory() {
         let narration = StoryNode(
             nodeId: "narration",
             lineOrder: 1,
@@ -1019,24 +1240,124 @@ final class StoryScenarioGraphTests: XCTestCase {
             uiVariant: .narration
         )
 
-        XCTAssertTrue(
-            EventChatSystemPresentationPolicy.usesADVTextWindow(
-                node: narration,
-                scenarioType: .middleEvent
-            )
+        XCTAssertTrue(EventChatSystemPresentationPolicy.usesInlineNarration(node: narration))
+        for type: StoryScenarioType in [.prologue, .middleEvent, .largeEvent, .smallEvent, .daily] {
+            XCTAssertFalse(EventChatSystemPresentationPolicy.omitsFromChatHistory(node: narration, scenarioType: type))
+        }
+        let dialogue = StoryNode(nodeId: "rio", lineOrder: 2, speaker: "rio", messageType: .text,
+                                 text: "まあ", screenMode: .chat, uiVariant: .dialogue)
+        XCTAssertFalse(EventChatSystemPresentationPolicy.usesInlineNarration(node: dialogue))
+    }
+
+    func testChatMonologueIsSeparatedFromSceneTransitionDivider() {
+        let monologue = StoryNode(
+            nodeId: "monologue", lineOrder: 1, speaker: "narrator", messageType: .text,
+            text: "即答。想定済みだ。", screenMode: .chat, uiVariant: .narration
         )
-        XCTAssertTrue(
-            EventChatSystemPresentationPolicy.usesADVTextWindow(
-                node: narration,
-                scenarioType: .largeEvent
-            )
+        XCTAssertTrue(EventChatSystemPresentationPolicy.usesInlineMonologue(node: monologue))
+
+        let untaggedNarrator = StoryNode(
+            nodeId: "untagged", lineOrder: 2, speaker: "narrator", messageType: .text,
+            text: "こいつ…", screenMode: .chat
         )
-        XCTAssertFalse(
-            EventChatSystemPresentationPolicy.usesADVTextWindow(
-                node: narration,
-                scenarioType: .smallEvent
-            )
+        XCTAssertTrue(EventChatSystemPresentationPolicy.usesInlineMonologue(node: untaggedNarrator))
+
+        let transition = StoryNode(
+            nodeId: "transition", lineOrder: 3, speaker: "system", messageType: .text,
+            text: "翌日", screenMode: .chat, uiVariant: .sceneTransition
         )
+        XCTAssertTrue(EventChatSystemPresentationPolicy.usesInlineNarration(node: transition))
+        XCTAssertFalse(EventChatSystemPresentationPolicy.usesInlineMonologue(node: transition))
+
+        let systemLine = StoryNode(
+            nodeId: "system", lineOrder: 4, speaker: "system", messageType: .text,
+            text: "end", screenMode: .chat
+        )
+        XCTAssertFalse(EventChatSystemPresentationPolicy.usesInlineMonologue(node: systemLine))
+
+        let fullscreen = StoryNode(
+            nodeId: "fullscreen", lineOrder: 5, speaker: "narrator", messageType: .text,
+            text: "代わりに、白紙は少し減った。", screenMode: .chat, uiVariant: .fullscreenNarration
+        )
+        XCTAssertFalse(EventChatSystemPresentationPolicy.usesInlineMonologue(node: fullscreen))
+    }
+
+    func testEventChatNarrationWaitsForTapInsteadOfAutomaticallyAdvancing() {
+        for speaker in ["narrator", "system"] {
+            let node = StoryNode(
+                nodeId: "narration", lineOrder: 1, speaker: speaker,
+                messageType: .text, text: "それが。", screenMode: .chat,
+                uiVariant: .narration
+            )
+            for scenarioType: StoryScenarioType in [.prologue, .middleEvent, .largeEvent] {
+                let renderer = ChatStoryRenderer(
+                    node: node, scenarioType: scenarioType,
+                    onAdvance: {}, onPresentNode: {}, onSelectChoice: { _ in }, onDismissModal: {}
+                )
+                XCTAssertFalse(renderer.shouldAutoAdvance)
+                XCTAssertTrue(EventChatSystemPresentationPolicy.requiresManualAdvance(
+                    node: node, scenarioType: scenarioType
+                ))
+            }
+            let smallEvent = ChatStoryRenderer(
+                node: node, scenarioType: .smallEvent,
+                onAdvance: {}, onPresentNode: {}, onSelectChoice: { _ in }, onDismissModal: {}
+            )
+            XCTAssertTrue(smallEvent.shouldAutoAdvance, "Small-event separators retain automatic progression")
+        }
+    }
+
+    func testFullscreenNarrationIsOptInManualAndExcludedFromChatBubbles() throws {
+        let node = StoryNode(
+            nodeId: "fullscreen", lineOrder: 1, speaker: "narrator", messageType: .text,
+            text: "それが。[br]莉央との最初の約束だった。", screenMode: .chat,
+            uiVariant: .fullscreenNarration
+        )
+        let decoded = try JSONDecoder().decode(StoryNode.self, from: JSONEncoder().encode(node))
+        XCTAssertEqual(decoded.uiVariant, .fullscreenNarration)
+        XCTAssertEqual(decoded.uiVariant?.rawValue, "fullscreen_narration")
+        XCTAssertEqual(decoded.storyDisplayText, "それが。\n莉央との最初の約束だった。")
+        XCTAssertTrue(EventChatSystemPresentationPolicy.usesFullscreenNarration(node: decoded))
+        for type: StoryScenarioType in [.prologue, .middleEvent, .largeEvent, .smallEvent, .daily] {
+            XCTAssertFalse(EventChatSystemPresentationPolicy.usesInlineNarration(node: node))
+            XCTAssertTrue(EventChatSystemPresentationPolicy.omitsFromChatHistory(node: node, scenarioType: type))
+            for terminal in [false, true] {
+                let renderer = ChatStoryRenderer(
+                    node: node, scenarioType: type, isTerminalNode: terminal,
+                    onAdvance: {}, onPresentNode: {}, onSelectChoice: { _ in }, onDismissModal: {}
+                )
+                XCTAssertFalse(renderer.shouldAutoAdvance)
+            }
+        }
+        let ordinary = StoryNode(
+            nodeId: "ordinary", lineOrder: 2, speaker: "narrator", messageType: .text,
+            text: "数分後", screenMode: .chat, uiVariant: .narration
+        )
+        XCTAssertFalse(EventChatSystemPresentationPolicy.usesFullscreenNarration(node: ordinary))
+        XCTAssertTrue(EventChatSystemPresentationPolicy.usesInlineNarration(node: ordinary))
+        let empty = StoryNode(
+            nodeId: "empty", lineOrder: 3, speaker: "system", messageType: .action,
+            screenMode: .chat, uiVariant: .fullscreenNarration
+        )
+        XCTAssertFalse(EventChatSystemPresentationPolicy.usesFullscreenNarration(node: empty))
+    }
+
+    func testFinalInlineNarrationWaitsForCloseButton() {
+        let node = StoryNode(
+            nodeId: "final", lineOrder: 2, speaker: "narrator", messageType: .text,
+            text: "莉央との最初の約束だった。", screenMode: .chat, uiVariant: .narration
+        )
+        XCTAssertTrue(EventChatSystemPresentationPolicy.requiresManualAdvance(
+            node: node, scenarioType: .middleEvent
+        ))
+        XCTAssertEqual(ChatStoryPresentationPolicy.manualAdvanceLabel(
+            node: node, scenarioType: .middleEvent, isTerminalNode: true
+        ), "閉じる")
+        let renderer = ChatStoryRenderer(
+            node: node, scenarioType: .middleEvent, isTerminalNode: true,
+            onAdvance: {}, onPresentNode: {}, onSelectChoice: { _ in }, onDismissModal: {}
+        )
+        XCTAssertFalse(renderer.shouldAutoAdvance)
     }
 
     func testEmptySystemCommandIsOmittedFromEventChatHistory() {
